@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build Output
+# Matches the 'outDir' in tsconfig and default tsup output
+dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# TypeScript
+# Incremental build info (if you ever use tsc --incremental)
+*.tsbuildinfo
+
+# OS Generated Files
+.DS_Store
