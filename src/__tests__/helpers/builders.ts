@@ -1,0 +1,137 @@
+import path from 'node:path';
+
+import type {
+  HeavyRouteCandidate,
+  RegistryEntry,
+  RegistryImport
+} from '../../core/types';
+import { absoluteFileModule, packageModule } from '../../module-reference';
+import type {
+  ResolvedModuleReference,
+  RouteHandlerNextPaths,
+  RouteHandlerNextResult
+} from '../../next/types';
+
+import {
+  TEST_COMPONENT_IMPORT_NAME,
+  TEST_COMPONENT_IMPORT_SOURCE,
+  TEST_PRIMARY_FACTORY_IMPORT,
+  TEST_PRIMARY_ROUTE_SEGMENT
+} from './fixtures';
+
+type ContentHandlerModuleInput = {
+  routeBasePath: string;
+  baseStaticPropsImport: ResolvedModuleReference;
+  runtimeHandlerFactoryImportBase: ResolvedModuleReference;
+};
+
+const DEFAULT_COMPONENT_IMPORT: RegistryImport = {
+  source: TEST_COMPONENT_IMPORT_SOURCE,
+  kind: 'named',
+  importedName: TEST_COMPONENT_IMPORT_NAME
+};
+
+/**
+ * Create a minimal test path record for next-slug-splitter tests.
+ *
+ * @param rootDir Temporary test root directory.
+ * @returns Test path record rooted in the provided temp directory.
+ */
+export const createTestPaths = (rootDir: string): RouteHandlerNextPaths => ({
+  rootDir,
+  contentPagesDir: path.join(
+    rootDir,
+    TEST_PRIMARY_ROUTE_SEGMENT,
+    'src',
+    'pages'
+  ),
+  buildtimeHandlerRegistryPath: path.join(
+    rootDir,
+    'node_modules',
+    'test-route-handlers',
+    'primary',
+    'registry.js'
+  ),
+  handlersDir: path.join(
+    rootDir,
+    'pages',
+    TEST_PRIMARY_ROUTE_SEGMENT,
+    '_handlers'
+  )
+});
+
+/**
+ * Create a heavy-route candidate fixture with optional overrides.
+ *
+ * @param overrides Partial heavy-route values to override in the default
+ * fixture.
+ * @returns Heavy-route fixture for tests.
+ */
+export const createHeavyRoute = (
+  overrides: Partial<HeavyRouteCandidate> = {}
+): HeavyRouteCandidate => ({
+  locale: 'en',
+  slugArray: ['example'],
+  handlerId: 'en-example',
+  handlerRelativePath: 'example/en',
+  usedLoadableComponentKeys: ['CustomComponent'],
+  ...overrides
+});
+
+/**
+ * Create a registry-entry fixture with required key and optional overrides.
+ *
+ * @param overrides Registry entry overrides including the required `key`.
+ * @returns Registry entry fixture for tests.
+ */
+export const createRegistryEntry = (
+  overrides: Partial<RegistryEntry> & Pick<RegistryEntry, 'key'>
+): RegistryEntry => ({
+  componentImport: DEFAULT_COMPONENT_IMPORT,
+  runtimeTraits: [],
+  ...overrides
+});
+
+/**
+ * Create a Next integration pipeline result fixture.
+ *
+ * @param overrides Partial result overrides.
+ * @returns Route-handler Next result fixture for tests.
+ */
+export const createPipelineResult = (
+  overrides: Partial<RouteHandlerNextResult> = {}
+): RouteHandlerNextResult => ({
+  analyzedCount: 1,
+  heavyCount: 1,
+  heavyPaths: [
+    createHeavyRoute({
+      locale: 'de',
+      slugArray: ['nested', 'example'],
+      handlerId: 'de-nested-example',
+      handlerRelativePath: 'nested/example/de',
+      usedLoadableComponentKeys: ['CustomComponent']
+    })
+  ],
+  rewrites: [
+    {
+      source: '/de/content/nested/example',
+      destination: '/content/_handlers/nested/example/de'
+    }
+  ],
+  ...overrides
+});
+
+/**
+ * Create the minimal handler-module input shared by generator tests.
+ *
+ * @returns Fixed handler-module input used in tests.
+ */
+export const createContentHandlerModuleInput = (
+  rootDir: string
+): ContentHandlerModuleInput => ({
+  routeBasePath: '/content',
+  baseStaticPropsImport: absoluteFileModule(
+    path.join(rootDir, 'pages', 'content', '[...entry]')
+  ),
+  runtimeHandlerFactoryImportBase: packageModule(TEST_PRIMARY_FACTORY_IMPORT)
+});
