@@ -1,0 +1,231 @@
+import globFiles from 'fast-glob';
+import path from 'path';
+
+import { isNonEmptyString } from '../utils/type-guards-extended';
+import type {
+  ContentLocaleMode,
+  LocaleConfig,
+  LocalizedRoutePath,
+  RouteIdentity
+} from './types';
+
+/**
+ * Convert a filesystem path to POSIX separators.
+ *
+ * @param value - Filesystem path value.
+ * @returns POSIX-normalized path string.
+ */
+export const toPosix = (value: string): string =>
+  value.split(path.sep).join('/');
+
+/**
+ * Convert slug segments into a slash-separated slug path.
+ *
+ * @param slugArray - Ordered slug segments.
+ * @returns Slash-separated slug path, or an empty string for the root route.
+ */
+export const toSlugPath = (slugArray: Array<string>): string =>
+  slugArray.length > 0 ? slugArray.join('/') : '';
+
+/**
+ * Build the public route path for a target route base and slug segments.
+ *
+ * @param routeBasePath - Public route base path owned by the target.
+ * @param slugArray - Ordered slug segments.
+ * @returns Full public route path.
+ */
+export const toRoutePath = (
+  routeBasePath: string,
+  slugArray: Array<string>
+): string => {
+  const slugPath = toSlugPath(slugArray);
+  return slugPath.length > 0 ? `${routeBasePath}/${slugPath}` : routeBasePath;
+};
+
+/**
+ * Compare two ordered string arrays lexicographically.
+ *
+ * @param left - Left string array.
+ * @param right - Right string array.
+ * @returns A negative number when `left` sorts before `right`, a positive
+ * number when `left` sorts after `right`, or `0` when both arrays are equal.
+ *
+ * @remarks
+ * This keeps route identity comparison structured instead of flattening the
+ * arrays into one delimiter-based string first.
+ */
+export const compareStringArrays = (
+  left: Array<string>,
+  right: Array<string>
+): number => {
+  const sharedLength = Math.min(left.length, right.length);
+
+  for (let index = 0; index < sharedLength; index += 1) {
+    const comparison = left[index].localeCompare(right[index]);
+    if (comparison !== 0) {
+      return comparison;
+    }
+  }
+
+  return left.length - right.length;
+};
+
+/**
+ * Compare two localized route identities by locale first and slug segments
+ * second.
+ *
+ * @template TRoute - Route-like record carrying `locale` and `slugArray`.
+ * @param left - Left route identity.
+ * @param right - Right route identity.
+ * @returns A stable ordering for localized route records.
+ */
+export const compareLocalizedRouteIdentity = <TRoute extends RouteIdentity>(
+  left: TRoute,
+  right: TRoute
+): number => {
+  const localeComparison = left.locale.localeCompare(right.locale);
+  return localeComparison !== 0
+    ? localeComparison
+    : compareStringArrays(left.slugArray, right.slugArray);
+};
+
+/**
+ * Determine whether two localized route identities are equal.
+ *
+ * @template TRoute - Route-like record carrying `locale` and `slugArray`.
+ * @param left - Left route identity.
+ * @param right - Right route identity.
+ * @returns `true` when both identities represent the same locale and slug
+ * sequence.
+ */
+const hasSameLocalizedRouteIdentity = <TRoute extends RouteIdentity>(
+  left: TRoute,
+  right: TRoute
+): boolean => compareLocalizedRouteIdentity(left, right) === 0;
+
+/**
+ * Build the stable handler id used in generated file headers and diagnostics.
+ *
+ * @param locale - Locale of the source route.
+ * @param slugArray - Ordered slug segments for the route.
+ * @returns Stable handler id for the localized route.
+ */
+export const toHandlerId = (
+  locale: string,
+  slugArray: Array<string>
+): string => {
+  const slugKey = slugArray.length > 0 ? slugArray.join('-') : 'index';
+  return `${locale}-${slugKey}`;
+};
+
+/**
+ * Build the relative output path for a generated handler page.
+ *
+ * @param locale - Locale of the source route.
+ * @param slugArray - Ordered slug segments for the route.
+ * @param options - Output-path options.
+ * @returns Relative handler output path.
+ */
+export const toHandlerRelativePath = (
+  locale: string,
+  slugArray: Array<string>,
+  {
+    includeLocaleLeaf = true
+  }: {
+    /**
+     * Whether the locale should be emitted as the leaf path segment.
+     */
+    includeLocaleLeaf?: boolean;
+  } = {}
+): string => {
+  if (!includeLocaleLeaf) {
+    const slugPath = toSlugPath(slugArray);
+    return slugPath.length > 0 ? slugPath : 'index';
+  }
+
+  if (slugArray.length === 0) {
+    return locale;
+  }
+
+  return `${toSlugPath(slugArray)}/${locale}`;
+};
+
+/**
+ * Deduplicate and sort a string array deterministically.
+ *
+ * @param values - String values to normalize.
+ * @returns Unique string values in locale-sorted order.
+ */
+export const sortStringArray = (values: Array<string>): Array<string> =>
+  [...new Set(values)].sort((a, b) => a.localeCompare(b));
+
+/**
+ * Discover localized content routes below the configured content pages
+ * directory.
+ *
+ * @param contentPagesDir - Content pages directory to scan.
+ * @param localeConfig - Locale configuration used to interpret localized routes.
+ * @param contentLocaleMode - Mode describing how locale participation is encoded
+ * in content files.
+ * @returns Localized route paths discovered below the content root.
+ */
+export const discoverLocalizedContentRoutes = async (
+  contentPagesDir: string,
+  localeConfig: LocaleConfig,
+  contentLocaleMode: ContentLocaleMode = 'filename'
+): Promise<Array<LocalizedRoutePath>> => {
+  const locales = localeConfig.locales;
+  const files = await globFiles(['**/*.{md,mdx}'], { cwd: contentPagesDir });
+
+  const tuples: Array<LocalizedRoutePath> = [];
+  for (const file of files) {
+    const normalized = toPosix(file);
+    const parts = normalized.split('/');
+    const fileName = parts.pop();
+    if (!isNonEmptyString(fileName)) {
+      continue;
+    }
+
+    if (contentLocaleMode === 'filename') {
+      const [locale] = fileName.split('.');
+      if (!isNonEmptyString(locale) || !locales.includes(locale)) {
+        continue;
+      }
+
+      tuples.push({
+        locale,
+        slugArray: parts,
+        filePath: path.resolve(contentPagesDir, normalized)
+      });
+      continue;
+    }
+
+    const extensionIndex = fileName.lastIndexOf('.');
+    const baseName =
+      extensionIndex === -1 ? fileName : fileName.slice(0, extensionIndex);
+    if (!isNonEmptyString(baseName)) {
+      continue;
+    }
+
+    tuples.push({
+      locale: localeConfig.defaultLocale,
+      slugArray: [...parts, baseName],
+      filePath: path.resolve(contentPagesDir, normalized)
+    });
+  }
+
+  const sortedTuples = [...tuples].sort(compareLocalizedRouteIdentity);
+  const deduped: Array<LocalizedRoutePath> = [];
+
+  for (const tuple of sortedTuples) {
+    const previousTuple = deduped[deduped.length - 1];
+    if (previousTuple && hasSameLocalizedRouteIdentity(previousTuple, tuple)) {
+      deduped[deduped.length - 1] = tuple;
+      continue;
+    }
+
+    deduped.push(tuple);
+  }
+
+  return deduped;
+};
