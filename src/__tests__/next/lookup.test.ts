@@ -21,8 +21,8 @@ import {
   TEST_PRIMARY_CONTENT_PAGES_DIR,
   TEST_PRIMARY_ROUTE_SEGMENT,
   TEST_SECONDARY_CONTENT_PAGES_DIR,
+  TEST_SECONDARY_COMPONENTS_IMPORT,
   TEST_SECONDARY_FACTORY_IMPORT,
-  TEST_SECONDARY_REGISTRY_IMPORT,
   TEST_SECONDARY_ROUTE_SEGMENT,
   TEST_SINGLE_ROUTE_PARAM_NAME,
   createTestHandlerBinding,
@@ -85,7 +85,7 @@ describe('route-handler cache lookup', () => {
             contentLocaleMode: 'default-locale',
             contentPagesDir: secondaryPagesDir,
             handlerBinding: createTestHandlerBinding({
-              registryImport: packageModule(TEST_SECONDARY_REGISTRY_IMPORT),
+              componentsImport: packageModule(TEST_SECONDARY_COMPONENTS_IMPORT),
               importBase: packageModule(TEST_SECONDARY_FACTORY_IMPORT)
             })
           })

@@ -22,10 +22,10 @@ export const TEST_SINGLE_ROUTE_PARAM_NAME = 'item';
 export const TEST_PRIMARY_CONTENT_PAGES_DIR = 'content/src/pages';
 export const TEST_SECONDARY_CONTENT_PAGES_DIR = 'secondary/src/pages';
 
-export const TEST_PRIMARY_REGISTRY_IMPORT =
-  'test-route-handlers/primary/registry';
-export const TEST_SECONDARY_REGISTRY_IMPORT =
-  'test-route-handlers/secondary/registry';
+export const TEST_PRIMARY_COMPONENTS_IMPORT =
+  'test-route-handlers/primary/components';
+export const TEST_SECONDARY_COMPONENTS_IMPORT =
+  'test-route-handlers/secondary/components';
 
 export const TEST_PRIMARY_FACTORY_IMPORT =
   'test-route-handlers/primary/factory';
@@ -83,8 +83,14 @@ const toDynamicPageSegment = ({
       ? `[...${name}]`
       : `[[...${name}]]`;
 
-const createRegistryModuleSource = (): string =>
-  "export const routeHandlerRegistryManifest = { entries: [] };\n";
+const createComponentModuleSource = (): string =>
+  [
+    'export const CustomComponent = () => null;',
+    'export const SecondaryComponent = () => null;',
+    'export const WrapperComponent = () => null;',
+    'export const SelectionComponent = () => null;',
+    ''
+  ].join('\n');
 
 const createFactoryModuleSource = (): string =>
   [
@@ -113,17 +119,20 @@ const createFactoryExports = ({
 };
 
 export const createTestHandlerBinding = ({
-  registryImport = packageModule(TEST_PRIMARY_REGISTRY_IMPORT),
+  componentsImport = packageModule(TEST_PRIMARY_COMPONENTS_IMPORT),
   importBase = packageModule(TEST_PRIMARY_FACTORY_IMPORT),
+  pageConfigImport,
   resolveVariant = TEST_HANDLER_FACTORY_VARIANT_RESOLVER,
   variants = ['none']
 }: {
-  registryImport?: ModuleReference;
+  componentsImport?: ModuleReference;
   importBase?: ModuleReference;
+  pageConfigImport?: ModuleReference;
   resolveVariant?: HandlerFactoryVariantResolver;
   variants?: Array<string>;
 } = {}): RouteHandlerBinding => ({
-  registryImport,
+  componentsImport,
+  pageConfigImport,
   runtimeFactory: {
     importBase,
     variantStrategy: {
@@ -135,17 +144,20 @@ export const createTestHandlerBinding = ({
 });
 
 export const createTestRuntimeTraitBinding = ({
-  registryImport = packageModule(TEST_PRIMARY_REGISTRY_IMPORT),
+  componentsImport = packageModule(TEST_PRIMARY_COMPONENTS_IMPORT),
   importBase = packageModule(TEST_PRIMARY_FACTORY_IMPORT),
+  pageConfigImport,
   defaultVariant = 'none',
   rules = DEFAULT_RUNTIME_TRAIT_RULES
 }: {
-  registryImport?: ModuleReference;
+  componentsImport?: ModuleReference;
   importBase?: ModuleReference;
+  pageConfigImport?: ModuleReference;
   defaultVariant?: string;
   rules?: Array<RuntimeTraitVariantRule>;
 } = {}): RouteHandlerBinding => ({
-  registryImport,
+  componentsImport,
+  pageConfigImport,
   runtimeFactory: {
     importBase,
     variantStrategy: {
@@ -169,8 +181,8 @@ export const writeTestRouteHandlerPackage = async (
     name: 'test-route-handlers',
     type: 'module',
     exports: {
-      './primary/registry': './primary/registry.js',
-      './secondary/registry': './secondary/registry.js',
+      './primary/components': './primary/components.js',
+      './secondary/components': './secondary/components.js',
       ...createFactoryExports({
         family: 'primary',
         variants: primaryVariants
@@ -189,12 +201,12 @@ export const writeTestRouteHandlerPackage = async (
   );
 
   await writeTestModule(
-    path.join(packageDir, 'primary', 'registry.js'),
-    createRegistryModuleSource()
+    path.join(packageDir, 'primary', 'components.js'),
+    createComponentModuleSource()
   );
   await writeTestModule(
-    path.join(packageDir, 'secondary', 'registry.js'),
-    createRegistryModuleSource()
+    path.join(packageDir, 'secondary', 'components.js'),
+    createComponentModuleSource()
   );
   await writeTestModule(
     path.join(packageDir, 'primary', 'factory', 'index.js'),

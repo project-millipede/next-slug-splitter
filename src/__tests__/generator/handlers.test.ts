@@ -4,20 +4,17 @@ import { describe, expect, it } from 'vitest';
 
 import { createRuntimeTraitVariantResolver } from '../../core/runtime-variants';
 import { emitRouteHandlerPages } from '../../generator/handlers';
-import {
-  buildHandlerNestedDependencyMap,
-  renderRouteHandlerModules
-} from '../../generator/render-modules';
+import { renderRouteHandlerModules } from '../../generator/render-modules';
 import {
   createContentHandlerModuleInput,
   createHeavyRoute,
-  createRegistryEntry,
+  createLoadableComponentEntry,
   createTestPaths
 } from '../helpers/builders';
 import { TEST_PRIMARY_FACTORY_IMPORT, TEST_STATIC_PROPS_IMPORT } from '../helpers/fixtures';
 import { withTempDir } from '../helpers/temp-dir';
 
-import type { RegistryEntry } from '../../core/types';
+import type { LoadableComponentEntry } from '../../core/types';
 
 const resolveHandlerFactoryVariant = createRuntimeTraitVariantResolver({
   defaultVariant: 'none',
@@ -35,8 +32,8 @@ const resolveHandlerFactoryVariant = createRuntimeTraitVariantResolver({
 
 describe('generator handlers', () => {
   it('emits static handler page module with inline runtime traits', () => {
-    const selectedRegistryEntries: Array<RegistryEntry> = [
-      createRegistryEntry({
+    const selectedComponentEntries: Array<LoadableComponentEntry> = [
+      createLoadableComponentEntry({
         key: 'WrapperComponent',
         componentImport: {
           source: '@next-slug-splitter-test/components',
@@ -45,7 +42,7 @@ describe('generator handlers', () => {
         },
         runtimeTraits: ['wrapper']
       }),
-      createRegistryEntry({
+      createLoadableComponentEntry({
         key: 'SelectionComponent',
         componentImport: {
           source: '@next-slug-splitter-test/components',
@@ -61,11 +58,9 @@ describe('generator handlers', () => {
       slugArray: ['nested', 'example'],
       handlerId: 'de-nested-example',
       usedLoadableComponentKeys: ['WrapperComponent', 'SelectionComponent'],
-      selectedRegistryEntries,
-      nestedDependencyMap: {
-        SelectionComponent: ['NestedCustomComponent']
-      },
+      selectedComponentEntries,
       renderConfig: {
+        pageFilePath: '/repo/pages/_handlers/de/nested/example.tsx',
         runtimeHandlerFactoryImport:
           '../../../../../../test-runtime/factory/selection',
         baseStaticPropsImport: '../../../../[...entry]',
@@ -79,7 +74,6 @@ describe('generator handlers', () => {
     );
     expect(pageSource).toContain("runtimeTraits: ['wrapper']");
     expect(pageSource).toContain("runtimeTraits: ['selection']");
-    expect(pageSource).toContain('nestedExpansionMap: NESTED_DEPENDENCY_MAP');
     expect(pageSource).toContain("() => import('../../../../[...entry]')");
     expect(pageSource).toContain('const HandlerPage = createHandlerPage({');
   });
@@ -90,8 +84,8 @@ describe('generator handlers', () => {
       slugArray: ['demo'],
       handlerId: 'en-demo',
       usedLoadableComponentKeys: ['Demo'],
-      selectedRegistryEntries: [
-        createRegistryEntry({
+      selectedComponentEntries: [
+        createLoadableComponentEntry({
           key: 'Demo',
           componentImport: {
             source: '@demo/pkg',
@@ -100,8 +94,8 @@ describe('generator handlers', () => {
           }
         })
       ],
-      nestedDependencyMap: {},
       renderConfig: {
+        pageFilePath: '/repo/pages/_handlers/en/demo.tsx',
         runtimeHandlerFactoryImport: '@next-slug-splitter-test/factory/none',
         baseStaticPropsImport: TEST_STATIC_PROPS_IMPORT,
         routeBasePath: '/content',
@@ -114,8 +108,8 @@ describe('generator handlers', () => {
       slugArray: ['demo'],
       handlerId: 'en-demo',
       usedLoadableComponentKeys: ['Demo'],
-      selectedRegistryEntries: [
-        createRegistryEntry({
+      selectedComponentEntries: [
+        createLoadableComponentEntry({
           key: 'Demo',
           componentImport: {
             source: '@demo/pkg',
@@ -125,8 +119,8 @@ describe('generator handlers', () => {
           runtimeTraits: ['selection']
         })
       ],
-      nestedDependencyMap: {},
       renderConfig: {
+        pageFilePath: '/repo/pages/_handlers/en/demo.tsx',
         runtimeHandlerFactoryImport: `${TEST_PRIMARY_FACTORY_IMPORT}/selection`,
         baseStaticPropsImport: TEST_STATIC_PROPS_IMPORT,
         routeBasePath: '/content',
@@ -155,8 +149,8 @@ describe('generator handlers', () => {
         'CustomComponentTwo',
         'CustomComponentThree'
       ],
-      selectedRegistryEntries: [
-        createRegistryEntry({
+      selectedComponentEntries: [
+        createLoadableComponentEntry({
           key: 'CustomComponentOne',
           componentImport: {
             source: '@next-slug-splitter-test/content-components',
@@ -164,7 +158,7 @@ describe('generator handlers', () => {
             importedName: 'CustomComponentOne'
           }
         }),
-        createRegistryEntry({
+        createLoadableComponentEntry({
           key: 'CustomComponentTwo',
           componentImport: {
             source: '@next-slug-splitter-test/content-components',
@@ -172,7 +166,7 @@ describe('generator handlers', () => {
             importedName: 'CustomComponentTwo'
           }
         }),
-        createRegistryEntry({
+        createLoadableComponentEntry({
           key: 'CustomComponentThree',
           componentImport: {
             source: '@next-slug-splitter-test/content-components',
@@ -181,8 +175,8 @@ describe('generator handlers', () => {
           }
         })
       ],
-      nestedDependencyMap: {},
       renderConfig: {
+        pageFilePath: '/repo/pages/_handlers/en/content/concepts.tsx',
         runtimeHandlerFactoryImport: '../../../../../test-runtime/factory/none',
         baseStaticPropsImport: '../../../[...entry]',
         routeBasePath: '/content',
@@ -201,29 +195,41 @@ describe('generator handlers', () => {
     ).toBe(1);
   });
 
-  it('builds handler-specific nested dependency map', () => {
-    const nestedDependencyMap = buildHandlerNestedDependencyMap({
-      handlerLoadableKeys: [
-        'CustomComponent',
-        'SelectionComponent',
-        'NestedCustomComponent'
+  it('rewrites absolute component sources relative to the generated handler file', () => {
+    const { pageSource } = renderRouteHandlerModules({
+      locale: 'en',
+      slugArray: ['content', 'concepts'],
+      handlerId: 'en-content-concepts',
+      usedLoadableComponentKeys: ['CustomComponent'],
+      selectedComponentEntries: [
+        createLoadableComponentEntry({
+          key: 'CustomComponent',
+          componentImport: {
+            source: '/repo/packages/content/mdx/src/route-handler-components.ts',
+            kind: 'named',
+            importedName: 'CustomComponent'
+          }
+        })
       ],
-      nestedDependencyMap: {
-        SelectionComponent: ['NestedCustomComponent'],
-        WrapperComponent: ['NestedCustomComponent', 'SupportingParagraph']
+      renderConfig: {
+        pageFilePath: '/repo/pages/docs/_handlers/content/concepts/en.tsx',
+        runtimeHandlerFactoryImport: '../../../../../test-runtime/factory/none',
+        baseStaticPropsImport: '../../../[...entry]',
+        routeBasePath: '/content',
+        emitFormat: 'ts'
       }
     });
 
-    expect(nestedDependencyMap).toEqual({
-      SelectionComponent: ['NestedCustomComponent']
-    });
+    expect(pageSource).toContain(
+      "from '../../../../../packages/content/mdx/src/route-handler-components';"
+    );
   });
 
   it('preserves catch-all base static props import for nested handler paths', async () => {
     await withTempDir('next-slug-splitter-', async rootDir => {
       const paths = createTestPaths(rootDir);
       const contentHandlerModuleInput = createContentHandlerModuleInput(rootDir);
-      const registryEntry = createRegistryEntry({
+      const componentEntry = createLoadableComponentEntry({
         key: 'NestedCustomComponent',
         componentImport: {
           source: '@next-slug-splitter-test/content-components',
@@ -243,12 +249,10 @@ describe('generator handlers', () => {
             usedLoadableComponentKeys: ['NestedCustomComponent']
           })
         ],
-        registry: {
-          entriesByKey: new Map([[registryEntry.key, registryEntry]]),
-          loadableKeys: new Set([registryEntry.key]),
-          nestedDependencyMap: {}
+        loadableComponents: {
+          entriesByKey: new Map([[componentEntry.key, componentEntry]]),
+          loadableKeys: new Set([componentEntry.key])
         },
-        nestedDependencyMap: {},
         emitFormat: 'ts',
         resolveHandlerFactoryVariant,
         runtimeHandlerFactoryImportBase:

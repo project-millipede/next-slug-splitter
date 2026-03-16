@@ -2,8 +2,8 @@ import path from 'node:path';
 
 import type {
   HeavyRouteCandidate,
-  RegistryEntry,
-  RegistryImport
+  ComponentImportSpec,
+  LoadableComponentEntry
 } from '../../core/types';
 import { absoluteFileModule, packageModule } from '../../module-reference';
 import type {
@@ -25,7 +25,7 @@ type ContentHandlerModuleInput = {
   runtimeHandlerFactoryImportBase: ResolvedModuleReference;
 };
 
-const DEFAULT_COMPONENT_IMPORT: RegistryImport = {
+const DEFAULT_COMPONENT_IMPORT: ComponentImportSpec = {
   source: TEST_COMPONENT_IMPORT_SOURCE,
   kind: 'named',
   importedName: TEST_COMPONENT_IMPORT_NAME
@@ -44,13 +44,6 @@ export const createTestPaths = (rootDir: string): RouteHandlerNextPaths => ({
     TEST_PRIMARY_ROUTE_SEGMENT,
     'src',
     'pages'
-  ),
-  buildtimeHandlerRegistryPath: path.join(
-    rootDir,
-    'node_modules',
-    'test-route-handlers',
-    'primary',
-    'registry.js'
   ),
   handlersDir: path.join(
     rootDir,
@@ -79,14 +72,15 @@ export const createHeavyRoute = (
 });
 
 /**
- * Create a registry-entry fixture with required key and optional overrides.
+ * Create a loadable-component-entry fixture with required key and optional overrides.
  *
- * @param overrides Registry entry overrides including the required `key`.
- * @returns Registry entry fixture for tests.
+ * @param overrides Loadable component entry overrides including the required `key`.
+ * @returns Loadable component entry fixture for tests.
  */
-export const createRegistryEntry = (
-  overrides: Partial<RegistryEntry> & Pick<RegistryEntry, 'key'>
-): RegistryEntry => ({
+export const createLoadableComponentEntry = (
+  overrides: Partial<LoadableComponentEntry> &
+    Pick<LoadableComponentEntry, 'key'>
+): LoadableComponentEntry => ({
   componentImport: DEFAULT_COMPONENT_IMPORT,
   runtimeTraits: [],
   ...overrides

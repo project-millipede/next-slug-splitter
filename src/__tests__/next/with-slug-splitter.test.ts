@@ -8,6 +8,7 @@ import {
 } from '../../next';
 import {
   loadRegisteredSlugSplitterConfig,
+  readRegisteredRouteHandlersConfig,
   readRegisteredSlugSplitterConfigPath,
   resolveSlugSplitterAdapterEntry
 } from '../../next/integration';
@@ -127,6 +128,38 @@ describe('withSlugSplitter', () => {
         });
       }
     );
+  });
+
+  it('registers an in-process routeHandlersConfig object when provided directly', async () => {
+    const routeHandlersConfig = {
+      app: {
+        rootDir: process.cwd(),
+        nextConfigPath: path.join(process.cwd(), 'next.config.ts')
+      }
+    };
+
+    const wrappedConfig = withSlugSplitter(
+      {
+        reactStrictMode: true
+      },
+      {
+        routeHandlersConfig
+      }
+    );
+
+    expect(wrappedConfig).toEqual({
+      reactStrictMode: true,
+      experimental: {
+        adapterPath: resolveSlugSplitterAdapterEntry({
+          rootDir: process.cwd()
+        })
+      }
+    });
+    expect(readRegisteredRouteHandlersConfig()).toEqual(routeHandlersConfig);
+    expect(readRegisteredSlugSplitterConfigPath()).toBeUndefined();
+
+    const loadedConfig = await loadRegisteredSlugSplitterConfig();
+    expect(loadedConfig).toEqual(routeHandlersConfig);
   });
 
   it('rejects existing experimental.adapterPath values', async () => {
