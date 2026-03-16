@@ -3,7 +3,7 @@
  *
  * @remarks
  * This file stays outside the syntax-emission layer. Its responsibility is
- * path resolution, registry selection, import path rewriting, and file
+ * path resolution, component-entry selection, import path rewriting, and file
  * persistence. Generated source text continues to come from the renderer
  * layer.
  */
@@ -15,8 +15,6 @@ import {
   toEmittedImportSpecifier
 } from '../module-reference';
 import {
-  buildHandlerNestedDependencyMap,
-  expandLoadableKeyClosure,
   type PreparedHandlerRenderConfig,
   renderRouteHandlerModules
 } from './render-modules';
@@ -24,9 +22,8 @@ import {
 import type {
   EmitFormat,
   HeavyRouteCandidate,
-  NestedExpansionMap,
-  RegistryEntry,
-  RegistrySnapshot,
+  LoadableComponentEntry,
+  LoadableComponentSnapshot,
   ResolvedRouteHandlerModuleReference,
   RouteHandlerPaths
 } from '../core/types';
@@ -64,14 +61,16 @@ const clearGeneratedHandlers = async (handlersDir: string): Promise<void> => {
  * @returns Non-empty variant name selected for the handler.
  */
 const resolveHandlerFactoryVariantName = ({
-  selectedRegistryEntries,
+  selectedComponentEntries,
   resolveHandlerFactoryVariant
 }: {
-  selectedRegistryEntries: Array<RegistryEntry>;
-  resolveHandlerFactoryVariant: (entries: Array<RegistryEntry>) => string;
+  selectedComponentEntries: Array<LoadableComponentEntry>;
+  resolveHandlerFactoryVariant: (
+    entries: Array<LoadableComponentEntry>
+  ) => string;
 }): string => {
   const handlerFactoryVariant = resolveHandlerFactoryVariant(
-    selectedRegistryEntries
+    selectedComponentEntries
   );
   if (!isNonEmptyString(handlerFactoryVariant)) {
     throw createGeneratorError(
@@ -94,7 +93,7 @@ const createPreparedHandlerRenderConfig = ({
   routeBasePath,
   baseStaticPropsImport,
   runtimeHandlerFactoryImportBase,
-  selectedRegistryEntries,
+  selectedComponentEntries,
   resolveHandlerFactoryVariant
 }: {
   pageFilePath: string;
@@ -102,11 +101,13 @@ const createPreparedHandlerRenderConfig = ({
   routeBasePath: string;
   baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
   runtimeHandlerFactoryImportBase: ResolvedRouteHandlerModuleReference;
-  selectedRegistryEntries: Array<RegistryEntry>;
-  resolveHandlerFactoryVariant: (entries: Array<RegistryEntry>) => string;
+  selectedComponentEntries: Array<LoadableComponentEntry>;
+  resolveHandlerFactoryVariant: (
+    entries: Array<LoadableComponentEntry>
+  ) => string;
 }): PreparedHandlerRenderConfig => {
   const handlerFactoryVariant = resolveHandlerFactoryVariantName({
-    selectedRegistryEntries,
+    selectedComponentEntries,
     resolveHandlerFactoryVariant
   });
   const runtimeHandlerFactoryImport = toEmittedImportSpecifier({
@@ -118,6 +119,7 @@ const createPreparedHandlerRenderConfig = ({
   });
 
   return {
+    pageFilePath,
     runtimeHandlerFactoryImport,
     baseStaticPropsImport: toEmittedImportSpecifier({
       pageFilePath,
@@ -129,7 +131,7 @@ const createPreparedHandlerRenderConfig = ({
 };
 
 /**
- * Emits one generated page per heavy route using the prepared registry and
+ * Emits one generated page per heavy route using the prepared loadable-component snapshot and
  * route planning result.
  *
  * @param input - Handler emission input for one target.
@@ -138,8 +140,7 @@ const createPreparedHandlerRenderConfig = ({
 export const emitRouteHandlerPages = async ({
   paths,
   heavyRoutes,
-  registry,
-  nestedDependencyMap,
+  loadableComponents,
   emitFormat,
   resolveHandlerFactoryVariant,
   runtimeHandlerFactoryImportBase,
@@ -155,13 +156,9 @@ export const emitRouteHandlerPages = async ({
    */
   heavyRoutes: Array<HeavyRouteCandidate>;
   /**
-   * Registry snapshot used for component resolution.
+   * Loadable-component snapshot used for component resolution.
    */
-  registry: RegistrySnapshot;
-  /**
-   * Nested dependency map for loadable components.
-   */
-  nestedDependencyMap: NestedExpansionMap;
+  loadableComponents: LoadableComponentSnapshot;
   /**
    * Output format for generated files.
    */
@@ -169,7 +166,9 @@ export const emitRouteHandlerPages = async ({
   /**
    * Function that selects the handler factory variant.
    */
-  resolveHandlerFactoryVariant: (entries: Array<RegistryEntry>) => string;
+  resolveHandlerFactoryVariant: (
+    entries: Array<LoadableComponentEntry>
+  ) => string;
   /**
    * Resolved runtime handler factory import base.
    */
@@ -186,26 +185,15 @@ export const emitRouteHandlerPages = async ({
   await clearGeneratedHandlers(paths.handlersDir);
 
   for (const entry of heavyRoutes) {
-    const handlerLoadableKeys = expandLoadableKeyClosure({
-      baseLoadableKeys: entry.usedLoadableComponentKeys,
-      nestedDependencyMap,
-      availableLoadableKeys: registry.loadableKeys
-    });
+    const selectedComponentEntries = entry.usedLoadableComponentKeys
+      .map(key => loadableComponents.entriesByKey.get(key))
+      .filter((value): value is LoadableComponentEntry => Boolean(value));
 
-    const selectedRegistryEntries = handlerLoadableKeys
-      .map(key => registry.entriesByKey.get(key))
-      .filter((value): value is RegistryEntry => Boolean(value));
-
-    if (!isNonEmptyArray(selectedRegistryEntries)) {
+    if (!isNonEmptyArray(selectedComponentEntries)) {
       throw createGeneratorError(
-        `Handler ${entry.handlerId} has zero selected registry entries.`
+        `Handler ${entry.handlerId} has zero selected component entries.`
       );
     }
-
-    const handlerNestedDependencyMap = buildHandlerNestedDependencyMap({
-      handlerLoadableKeys,
-      nestedDependencyMap
-    });
 
     const pageExtension = emitFormat === 'ts' ? 'tsx' : 'js';
     const pageFilePath = path.join(
@@ -218,7 +206,7 @@ export const emitRouteHandlerPages = async ({
       routeBasePath,
       baseStaticPropsImport,
       runtimeHandlerFactoryImportBase,
-      selectedRegistryEntries,
+      selectedComponentEntries,
       resolveHandlerFactoryVariant
     });
 
@@ -227,8 +215,7 @@ export const emitRouteHandlerPages = async ({
       slugArray: entry.slugArray,
       handlerId: entry.handlerId,
       usedLoadableComponentKeys: entry.usedLoadableComponentKeys,
-      selectedRegistryEntries,
-      nestedDependencyMap: handlerNestedDependencyMap,
+      selectedComponentEntries,
       renderConfig
     });
 

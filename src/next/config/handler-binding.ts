@@ -34,9 +34,13 @@ import type {
  */
 export type ResolvedRouteHandlerBinding = {
   /**
-   * Absolute filesystem path for the buildtime handler registry module.
+   * Resolved import path for components used in MDX content.
    */
-  buildtimeHandlerRegistryPath: string;
+  componentsImport: ResolvedModuleReference;
+  /**
+   * Optional resolved page-config import used during planning and capture.
+   */
+  pageConfigImport?: ResolvedModuleReference;
   /**
    * Resolver function for selecting the factory variant.
    */
@@ -169,10 +173,21 @@ const readRouteHandlerBinding = (value: unknown): RouteHandlerBinding => {
     throw createConfigError('handlerBinding must be an object.');
   }
 
-  const registryImport = readObjectProperty(value, 'registryImport');
-  if (!isModuleReference(registryImport)) {
+  const componentsImport = readObjectProperty(value, 'componentsImport');
+  if (!isModuleReference(componentsImport)) {
     throw createConfigError(
-      'handlerBinding.registryImport must be a module reference object.'
+      'handlerBinding.componentsImport must be a module reference object.'
+    );
+  }
+  if (readObjectProperty(value, 'registryImport') !== undefined) {
+    throw createConfigError(
+      'handlerBinding.registryImport has been replaced by handlerBinding.pageConfigImport.'
+    );
+  }
+  const pageConfigImport = readObjectProperty(value, 'pageConfigImport');
+  if (pageConfigImport !== undefined && !isModuleReference(pageConfigImport)) {
+    throw createConfigError(
+      'handlerBinding.pageConfigImport must be a module reference object when provided.'
     );
   }
 
@@ -189,7 +204,9 @@ const readRouteHandlerBinding = (value: unknown): RouteHandlerBinding => {
   }
 
   return {
-    registryImport,
+    componentsImport,
+    pageConfigImport:
+      pageConfigImport !== undefined ? pageConfigImport : undefined,
     runtimeFactory: {
       importBase,
       variantStrategy: readHandlerFactoryVariantStrategy(
@@ -317,27 +334,22 @@ export const resolveRouteHandlerBinding = ({
   handlerBinding: unknown;
 }): ResolvedRouteHandlerBinding => {
   const binding = readRouteHandlerBinding(handlerBinding);
-  const normalizedRegistryImport = normalizeModuleReferenceFromRoot({
+  const componentsImport = normalizeModuleReferenceFromRoot({
     rootDir,
-    reference: binding.registryImport
+    reference: binding.componentsImport
   });
+  const pageConfigImport =
+    binding.pageConfigImport == null
+      ? undefined
+      : normalizeModuleReferenceFromRoot({
+          rootDir,
+          reference: binding.pageConfigImport
+        });
   const runtimeHandlerFactoryImportBase = normalizeModuleReferenceFromRoot({
     rootDir,
     reference: binding.runtimeFactory.importBase
   });
   const strategy = binding.runtimeFactory.variantStrategy;
-  const buildtimeHandlerRegistryPath = (() => {
-    try {
-      return resolveModuleReferenceToPath({
-        rootDir,
-        reference: normalizedRegistryImport
-      });
-    } catch {
-      throw createConfigError(
-        `handlerBinding.registryImport "${getModuleReferenceValue(normalizedRegistryImport)}" could not be resolved from "${rootDir}".`
-      );
-    }
-  })();
 
   assertResolvableHandlerFactoryBindingImports({
     rootDir,
@@ -345,8 +357,19 @@ export const resolveRouteHandlerBinding = ({
     knownVariants: getKnownVariantNames(strategy)
   });
 
+  if (pageConfigImport != null) {
+    assertResolvableModuleReference({
+      rootDir,
+      reference: pageConfigImport,
+      errorMessage: `handlerBinding.pageConfigImport "${getModuleReferenceValue(
+        pageConfigImport
+      )}" could not be resolved from "${rootDir}".`
+    });
+  }
+
   return {
-    buildtimeHandlerRegistryPath,
+    componentsImport,
+    pageConfigImport,
     resolveHandlerFactoryVariant: createVariantResolver(strategy),
     runtimeHandlerFactoryImportBase
   };

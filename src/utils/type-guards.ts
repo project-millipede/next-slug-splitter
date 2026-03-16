@@ -36,8 +36,14 @@ export const isNumber = is('number');
 /** Guard verifying the value is a boolean. */
 export const isBoolean = is('boolean');
 
+/** Guard verifying the value is a bigint. */
+export const isBigInt = is('bigint');
+
 /** Guard verifying the value is undefined. */
 export const isUndefined = is('undefined');
+
+/** Guard verifying the value is a symbol. */
+export const isSymbol = is('symbol');
 
 /**
  * Guard verifying the value is `null`.

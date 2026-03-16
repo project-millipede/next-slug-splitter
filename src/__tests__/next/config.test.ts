@@ -1,4 +1,4 @@
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -17,13 +17,13 @@ import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   TEST_COMPONENT_IMPORT_NAME,
   TEST_COMPONENT_IMPORT_SOURCE,
+  TEST_PRIMARY_COMPONENTS_IMPORT,
   TEST_PRIMARY_CONTENT_PAGES_DIR,
   TEST_PRIMARY_FACTORY_IMPORT,
-  TEST_PRIMARY_REGISTRY_IMPORT,
   TEST_PRIMARY_ROUTE_SEGMENT,
   TEST_SECONDARY_CONTENT_PAGES_DIR,
+  TEST_SECONDARY_COMPONENTS_IMPORT,
   TEST_SECONDARY_FACTORY_IMPORT,
-  TEST_SECONDARY_REGISTRY_IMPORT,
   TEST_SECONDARY_ROUTE_SEGMENT,
   TEST_SINGLE_ROUTE_PARAM_NAME,
   createTestHandlerBinding,
@@ -33,10 +33,13 @@ import {
 } from '../helpers/fixtures';
 import { withTempDir } from '../helpers/temp-dir';
 
-import type { RegistryEntry, RegistryImport } from '../../core/types';
+import type {
+  ComponentImportSpec,
+  LoadableComponentEntry
+} from '../../core/types';
 import type { RouteHandlersConfig } from '../../next/types';
 
-const TEST_COMPONENT_IMPORT: RegistryImport = {
+const TEST_COMPONENT_IMPORT: ComponentImportSpec = {
   source: TEST_COMPONENT_IMPORT_SOURCE,
   kind: 'named',
   importedName: TEST_COMPONENT_IMPORT_NAME
@@ -53,6 +56,9 @@ const createAppConfig = (rootDir: string) => ({
   rootDir,
   nextConfigPath: path.join(rootDir, 'mocked-app-config.js')
 });
+
+function testRemarkPlugin() {}
+function testRecmaPlugin() {}
 
 describe('next config helpers', () => {
   it('finds the first supported Next config filename in rootDir', async () => {
@@ -86,8 +92,8 @@ describe('next config helpers', () => {
     expect(routeHandlersConfig.paths?.contentPagesDir).toBe(
       TEST_PRIMARY_CONTENT_PAGES_DIR
     );
-    expect(routeHandlersConfig.handlerBinding.registryImport).toEqual(
-      packageModule(TEST_PRIMARY_REGISTRY_IMPORT)
+    expect(routeHandlersConfig.handlerBinding.componentsImport).toEqual(
+      packageModule(TEST_PRIMARY_COMPONENTS_IMPORT)
     );
     expect(routeHandlersConfig.paths?.handlersDir).toBe(
       path.join('pages', 'content', '_handlers')
@@ -103,7 +109,7 @@ describe('next config helpers', () => {
       },
       contentPagesDir: TEST_SECONDARY_CONTENT_PAGES_DIR,
       handlerBinding: createTestHandlerBinding({
-        registryImport: packageModule(TEST_SECONDARY_REGISTRY_IMPORT),
+        componentsImport: packageModule(TEST_SECONDARY_COMPONENTS_IMPORT),
         importBase: packageModule(TEST_SECONDARY_FACTORY_IMPORT)
       })
     });
@@ -138,7 +144,7 @@ describe('next config helpers', () => {
         contentLocaleMode: 'default-locale',
         contentPagesDir: TEST_SECONDARY_CONTENT_PAGES_DIR,
         handlerBinding: createTestHandlerBinding({
-          registryImport: packageModule(TEST_SECONDARY_REGISTRY_IMPORT),
+          componentsImport: packageModule(TEST_SECONDARY_COMPONENTS_IMPORT),
           importBase: packageModule(TEST_SECONDARY_FACTORY_IMPORT)
         })
       });
@@ -153,6 +159,94 @@ describe('next config helpers', () => {
       });
 
       expect(resolvedConfig.contentLocaleMode).toBe('default-locale');
+    });
+  });
+
+  it('passes mdxCompileOptions through preset and config resolution', async () => {
+    await withTempDir('next-slug-splitter-config-', async rootDir => {
+      await writeTestRouteHandlerPackage(rootDir);
+      await writeTestBaseStaticPropsPage(rootDir, {
+        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
+        handlerRouteParam: {
+          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+          kind: 'catch-all'
+        }
+      });
+
+      const routeHandlersConfig = createCatchAllRouteHandlersPreset({
+        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
+        handlerRouteParam: {
+          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+          kind: 'catch-all'
+        },
+        contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+        handlerBinding: createTestHandlerBinding(),
+        mdxCompileOptions: {
+          remarkPlugins: [testRemarkPlugin],
+          recmaPlugins: [testRecmaPlugin]
+        }
+      });
+
+      expect(routeHandlersConfig.mdxCompileOptions).toEqual({
+        remarkPlugins: [testRemarkPlugin],
+        recmaPlugins: [testRecmaPlugin]
+      });
+
+      const resolvedConfig = resolveRouteHandlersConfig({
+        rootDir,
+        nextConfig: createNextConfig(),
+        routeHandlersConfig: {
+          app: createAppConfig(rootDir),
+          ...routeHandlersConfig
+        }
+      });
+
+      expect(resolvedConfig.mdxCompileOptions).toEqual({
+        remarkPlugins: [testRemarkPlugin],
+        recmaPlugins: [testRecmaPlugin]
+      });
+    });
+  });
+
+  it('resolves handlerBinding.pageConfigImport from the app root', async () => {
+    await withTempDir('next-slug-splitter-config-', async rootDir => {
+      await writeTestRouteHandlerPackage(rootDir);
+      await writeTestBaseStaticPropsPage(rootDir, {
+        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
+        handlerRouteParam: {
+          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+          kind: 'catch-all'
+        }
+      });
+      await mkdir(path.join(rootDir, 'src'), { recursive: true });
+      await writeFile(
+        path.join(rootDir, 'src', 'page-config.tsx'),
+        'export const nestedDocComponents = defineComponents({}, () => ({}));\n',
+        'utf8'
+      );
+
+      const resolvedConfig = resolveRouteHandlersConfig({
+        rootDir,
+        nextConfig: createNextConfig(),
+        routeHandlersConfig: {
+          app: createAppConfig(rootDir),
+          ...createCatchAllRouteHandlersPreset({
+            routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
+            handlerRouteParam: {
+              name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+              kind: 'catch-all'
+            },
+            contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+            handlerBinding: createTestHandlerBinding({
+              pageConfigImport: appRelativeModule('src/page-config.tsx')
+            })
+          })
+        }
+      });
+
+      expect(resolvedConfig.pageConfigImport).toEqual(
+        absoluteFileModule(path.join(rootDir, 'src', 'page-config.tsx'))
+      );
     });
   });
 
@@ -214,6 +308,43 @@ describe('next config helpers', () => {
     });
   });
 
+  it('rejects invalid mdxCompileOptions plugin lists', async () => {
+    await withTempDir('next-slug-splitter-config-', async rootDir => {
+      await writeTestRouteHandlerPackage(rootDir);
+      await writeTestBaseStaticPropsPage(rootDir, {
+        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
+        handlerRouteParam: {
+          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+          kind: 'catch-all'
+        }
+      });
+
+      expect(() =>
+        resolveRouteHandlersConfig({
+          rootDir,
+          nextConfig: createNextConfig(),
+          routeHandlersConfig: {
+            app: createAppConfig(rootDir),
+            ...createCatchAllRouteHandlersPreset({
+              routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
+              handlerRouteParam: {
+                name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+                kind: 'catch-all'
+              },
+              contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+              handlerBinding: createTestHandlerBinding()
+            }),
+            mdxCompileOptions: {
+              remarkPlugins: 'not-an-array'
+            }
+          } as unknown as RouteHandlersConfig
+        })
+      ).toThrow(
+        '[next-slug-splitter] mdxCompileOptions.remarkPlugins must be an array.'
+      );
+    });
+  });
+
   it('resolves multi-target configs via targets array', async () => {
     await withTempDir('next-slug-splitter-config-', async rootDir => {
       await writeTestRouteHandlerPackage(rootDir);
@@ -252,7 +383,7 @@ describe('next config helpers', () => {
             },
             contentPagesDir: TEST_SECONDARY_CONTENT_PAGES_DIR,
             handlerBinding: createTestHandlerBinding({
-              registryImport: packageModule(TEST_SECONDARY_REGISTRY_IMPORT),
+              componentsImport: packageModule(TEST_SECONDARY_COMPONENTS_IMPORT),
               importBase: packageModule(TEST_SECONDARY_FACTORY_IMPORT)
             })
           })
@@ -319,21 +450,21 @@ describe('next config helpers', () => {
         }
       });
 
-      const selectionEntries: Array<RegistryEntry> = [
+      const selectionEntries: Array<LoadableComponentEntry> = [
         {
           key: 'SelectionComponent',
           componentImport: TEST_COMPONENT_IMPORT,
           runtimeTraits: ['selection']
         }
       ];
-      const wrapperEntries: Array<RegistryEntry> = [
+      const wrapperEntries: Array<LoadableComponentEntry> = [
         {
           key: 'WrapperComponent',
           componentImport: TEST_COMPONENT_IMPORT,
           runtimeTraits: ['wrapper']
         }
       ];
-      const defaultEntries: Array<RegistryEntry> = [
+      const defaultEntries: Array<LoadableComponentEntry> = [
         {
           key: 'CustomComponent',
           componentImport: TEST_COMPONENT_IMPORT,

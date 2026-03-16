@@ -7,6 +7,7 @@ import {
   createConfigError,
   createConfigMissingError
 } from '../../utils/errors';
+import type { RouteHandlerMdxCompileOptions } from '../../core/types';
 import type {
   ModuleReference,
   ResolvedRouteHandlersAppConfig,
@@ -17,7 +18,7 @@ import type {
 } from '../types';
 export type { ResolvedRouteHandlersConfigBase } from '../types';
 
-import { readProvidedOrRegisteredRouteHandlersConfig } from '../integration/adapter-entry';
+import { readProvidedOrRegisteredRouteHandlersConfig } from '../integration/config-registry';
 import { resolveRouteHandlerBinding } from './handler-binding';
 import {
   deriveTargetIdFromRouteBasePath,
@@ -32,6 +33,44 @@ import {
   resolveConfiguredPathOption,
 } from './paths';
 import { isObjectRecord, readObjectProperty } from './shared';
+
+/**
+ * Read and validate target-local MDX compile options.
+ *
+ * @param value - Candidate compile options value.
+ * @returns Validated compile options.
+ * @throws If a configured plugin list is not an array.
+ */
+const readMdxCompileOptions = (
+  value: unknown
+): RouteHandlerMdxCompileOptions => {
+  if (value === undefined) {
+    return {};
+  }
+
+  if (!isObjectRecord(value)) {
+    throw createConfigError('mdxCompileOptions must be an object.');
+  }
+
+  const remarkPlugins = readObjectProperty(value, 'remarkPlugins');
+  if (remarkPlugins !== undefined && !Array.isArray(remarkPlugins)) {
+    throw createConfigError(
+      'mdxCompileOptions.remarkPlugins must be an array.'
+    );
+  }
+
+  const recmaPlugins = readObjectProperty(value, 'recmaPlugins');
+  if (recmaPlugins !== undefined && !Array.isArray(recmaPlugins)) {
+    throw createConfigError(
+      'mdxCompileOptions.recmaPlugins must be an array.'
+    );
+  }
+
+  return {
+    remarkPlugins: Array.isArray(remarkPlugins) ? [...remarkPlugins] : undefined,
+    recmaPlugins: Array.isArray(recmaPlugins) ? [...recmaPlugins] : undefined
+  };
+};
 
 /**
  * Input for resolving the target-local config.
@@ -102,7 +141,7 @@ export const resolveRouteHandlersConfigBase = ({
     undefined
   ) {
     throw createConfigError(
-      'paths.buildtimeHandlerRegistryImport has been replaced by handlerBinding.registryImport.'
+      'paths.buildtimeHandlerRegistryImport has been replaced by handlerBinding.pageConfigImport.'
     );
   }
   if (
@@ -156,7 +195,6 @@ export const resolveRouteHandlersConfigBase = ({
       }),
       label: 'paths.contentPagesDir'
     }),
-    buildtimeHandlerRegistryPath: resolvedHandlerBinding.buildtimeHandlerRegistryPath,
     handlersDir: readRequiredStringOption({
       value: resolveConfiguredPathOption({
         rootDir: resolvedRootDir,
@@ -171,6 +209,9 @@ export const resolveRouteHandlersConfigBase = ({
       value: configuredRouteHandlers.routeBasePath,
       label: 'routeBasePath'
     })
+  );
+  const mdxCompileOptions = readMdxCompileOptions(
+    readObjectProperty(configuredRouteHandlers, 'mdxCompileOptions')
   );
   const handlerRouteParam = normalizeHandlerRouteParam(
     configuredRouteHandlers.handlerRouteParam
@@ -194,6 +235,9 @@ export const resolveRouteHandlersConfigBase = ({
     runtimeHandlerFactoryImportBase:
       resolvedHandlerBinding.runtimeHandlerFactoryImportBase,
     baseStaticPropsImport: resolvedBaseStaticPropsImport,
+    componentsImport: resolvedHandlerBinding.componentsImport,
+    pageConfigImport: resolvedHandlerBinding.pageConfigImport,
+    mdxCompileOptions,
     routeBasePath,
     paths: resolvedPaths
   };

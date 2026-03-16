@@ -169,7 +169,7 @@ A target typically describes:
 - the public route segment such as `docs` or `blog`
 - the dynamic route parameter kind
 - the content page directory
-- the binding that provides the handler registry and runtime factory imports
+- the binding that provides component imports and runtime factory imports
 
 `createCatchAllRouteHandlersPreset(...)` is the shortest way to configure
 catch-all targets without hand-assembling all path values.
@@ -233,6 +233,6 @@ public route space.
 - Install rewrite integration without mutating the incoming Next config object
 - Resolve app-level and target-level route handler config in one shared shape
 - Discover content pages and generate handler artifacts per target
-- Reuse handler bindings for registry loading and runtime factory selection
+- Reuse handler bindings for component imports and runtime factory selection
 - Support multi-target setups such as `docs` plus `blog`
 - Offer both generation and analyze-only CLI modes

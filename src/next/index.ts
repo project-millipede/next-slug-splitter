@@ -22,11 +22,9 @@ export {
   appRelativeModule,
   packageModule
 } from '../module-reference';
-export {
-  createRouteHandlersAdapterPath,
-  withSlugSplitter
-} from './integration/index';
+export { createRouteHandlersAdapterPath } from './integration/adapter-entry';
+export { withSlugSplitter } from './integration/with-slug-splitter';
 export type {
   NextConfigExport,
   WithSlugSplitterOptions
-} from './integration/index';
+} from './integration/with-slug-splitter';

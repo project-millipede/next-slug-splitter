@@ -7,6 +7,7 @@ import {
 } from 'recma-component-resolver';
 
 import { runRouteCaptureBuild } from './capture-build';
+import type { RouteHandlerMdxCompileOptions } from './types';
 
 /**
  * Capture the component names referenced by one content source file.
@@ -20,12 +21,17 @@ import { runRouteCaptureBuild } from './capture-build';
  * component-graph builder derives the final referenced component set.
  */
 export const captureReferencedComponentNames = async ({
-  filePath
+  filePath,
+  mdxCompileOptions
 }: {
   /**
    * Absolute path to the content source file being analyzed.
    */
   filePath: string;
+  /**
+   * MDX compile plugins forwarded into the capture build.
+   */
+  mdxCompileOptions?: RouteHandlerMdxCompileOptions;
 }): Promise<Array<string>> => {
   const capturedModules = new Map<string, CapturedModule>();
 
@@ -38,10 +44,17 @@ export const captureReferencedComponentNames = async ({
     capturedModules.set(payload.moduleId, payload);
   };
 
-  const recmaPlugins: PluggableList = [[recmaCapture, { onModuleCapture }]];
+  const remarkPlugins: PluggableList = mdxCompileOptions?.remarkPlugins ?? [];
+  const externalRecmaPlugins: PluggableList =
+    mdxCompileOptions?.recmaPlugins ?? [];
+  const recmaPlugins: PluggableList = [
+    ...externalRecmaPlugins,
+    [recmaCapture, { onModuleCapture }]
+  ];
 
   await runRouteCaptureBuild({
     filePath,
+    remarkPlugins,
     recmaPlugins
   });
 

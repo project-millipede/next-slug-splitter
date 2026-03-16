@@ -6,6 +6,7 @@ import type {
   ContentLocaleMode,
   EmitFormat,
   LocaleConfig,
+  RouteHandlerMdxCompileOptions,
   ResolvedRouteHandlerModuleReference,
   RouteHandlerModuleReference,
   RouteHandlerPaths,
@@ -134,13 +135,9 @@ export type RouteHandlerNextPaths = RouteHandlerPaths;
 /**
  * Target-local filesystem path overrides.
  *
- * Excludes `rootDir` and `buildtimeHandlerRegistryPath` as those are
- * resolved at the app level.
+ * Excludes `rootDir` as that is resolved at the app level.
  */
-export type RouteHandlerTargetPaths = Omit<
-  RouteHandlerNextPaths,
-  'rootDir' | 'buildtimeHandlerRegistryPath'
->;
+export type RouteHandlerTargetPaths = Omit<RouteHandlerNextPaths, 'rootDir'>;
 
 /**
  * App-level inputs shared by all configured targets.
@@ -261,7 +258,7 @@ export type CustomHandlerFactoryVariantStrategy = {
    */
   kind: 'custom';
   /**
-   * Function that inspects registry entries and returns a variant subpath.
+   * Function that inspects loadable component entries and returns a variant subpath.
    */
   resolveVariant: HandlerFactoryVariantResolver;
   /**
@@ -298,13 +295,20 @@ export type RuntimeHandlerFactoryBinding = {
 };
 
 /**
- * Binding that owns registry loading and runtime factory selection.
+ * Binding for runtime factory and component imports.
  */
 export type RouteHandlerBinding = {
   /**
-   * Import path for the handler registry module.
+   * Import path for components used in MDX content.
+   * Components are imported by name from this module.
+   * Example: '@/components/mdx' or 'site-components'
    */
-  registryImport: RouteHandlerModuleReference;
+  componentsImport: RouteHandlerModuleReference;
+  /**
+   * Optional page-config source module used to extract runtime traits and
+   * scoped MDX transform metadata.
+   */
+  pageConfigImport?: RouteHandlerModuleReference;
   /**
    * Runtime factory binding configuration.
    */
@@ -339,9 +343,13 @@ export type TargetConfigBase = {
    */
   handlerRouteParam?: DynamicRouteParam;
   /**
-   * Binding that provides registry and factory configuration.
+   * Binding that provides component-import and factory configuration.
    */
   handlerBinding: RouteHandlerBinding;
+  /**
+   * MDX compile plugins forwarded into analysis builds for this target.
+   */
+  mdxCompileOptions?: RouteHandlerMdxCompileOptions;
   /**
    * Import path for the base static props module.
    */
@@ -400,7 +408,11 @@ export type RouteHandlersEntrypointInput = {
  */
 export type CreateCatchAllRouteHandlersPresetOptions = Pick<
   TargetConfigBase,
-  'targetId' | 'contentLocaleMode' | 'emitFormat' | 'handlerBinding'
+  | 'targetId'
+  | 'contentLocaleMode'
+  | 'emitFormat'
+  | 'handlerBinding'
+  | 'mdxCompileOptions'
 > & {
   /**
    * Route segment for the catch-all target (e.g., 'docs').
@@ -435,6 +447,18 @@ type ResolvedTargetConfigBase = Omit<
    * Resolved import path for the base static props module.
    */
   baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
+  /**
+   * Resolved import path for components used in MDX content.
+   */
+  componentsImport: ResolvedRouteHandlerModuleReference;
+  /**
+   * Optional resolved page-config source used during planning and capture.
+   */
+  pageConfigImport?: ResolvedRouteHandlerModuleReference;
+  /**
+   * MDX compile plugins forwarded into the capture build.
+   */
+  mdxCompileOptions: RouteHandlerMdxCompileOptions;
   /**
    * Resolved filesystem paths for the target.
    */

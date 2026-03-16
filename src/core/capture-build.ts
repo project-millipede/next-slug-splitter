@@ -22,8 +22,10 @@ import type { PluggableList } from 'unified';
  * @returns The esbuild plugin used during capture builds.
  */
 const createNestedMdxPlugin = ({
+  remarkPlugins,
   recmaPlugins
 }: {
+  remarkPlugins: PluggableList;
   recmaPlugins: PluggableList;
 }): Plugin => {
   return {
@@ -56,6 +58,7 @@ const createNestedMdxPlugin = ({
           const compiled = await compile(
             { value: fileContent, path: filePath },
             {
+              remarkPlugins,
               recmaPlugins
             }
           );
@@ -78,12 +81,15 @@ const createNestedMdxPlugin = ({
  */
 export const runRouteCaptureBuild = async ({
   filePath,
+  remarkPlugins,
   recmaPlugins
 }: {
   filePath: string;
+  remarkPlugins: PluggableList;
   recmaPlugins: PluggableList;
 }): Promise<void> => {
   const nestedMdxPlugin = createNestedMdxPlugin({
+    remarkPlugins,
     recmaPlugins
   });
 
@@ -117,6 +123,7 @@ export const runRouteCaptureBuild = async ({
       }),
       nestedMdxPlugin,
       buildMdx({
+        remarkPlugins,
         recmaPlugins
       })
     ]

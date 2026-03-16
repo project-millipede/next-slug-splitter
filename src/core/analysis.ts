@@ -6,22 +6,20 @@ import {
   toHandlerRelativePath
 } from './discovery';
 
-import type {
-  HeavyRouteCandidate,
-  LocalizedRoutePath,
-  RegistrySnapshot
-} from './types';
+import type { HeavyRouteCandidate, LocalizedRoutePath } from './types';
 
 /**
  * Analyze localized route files and classify which ones require dedicated
  * generated handlers.
+ *
+ * All captured components are treated as "loadable" - no separate allowlist filtering.
  *
  * @param input - Analysis input.
  * @returns The per-route analysis record set plus the filtered heavy routes.
  */
 export const classifyHeavyRoutes = async ({
   routePaths,
-  registry,
+  mdxCompileOptions,
   includeLocaleInHandlerPath = true
 }: {
   /**
@@ -29,9 +27,9 @@ export const classifyHeavyRoutes = async ({
    */
   routePaths: Array<LocalizedRoutePath>;
   /**
-   * Registry snapshot used to decide which referenced components are loadable.
+   * MDX compile plugins forwarded into the capture build.
    */
-  registry: RegistrySnapshot;
+  mdxCompileOptions?: import('./types').RouteHandlerMdxCompileOptions;
   /**
    * Whether generated handler paths should keep the locale as a leaf segment.
    */
@@ -44,16 +42,13 @@ export const classifyHeavyRoutes = async ({
   const analysisRecords: Array<HeavyRouteCandidate> = [];
 
   for (const entry of routePaths) {
-    // Capture returns every referenced component. The registry decides which
-    // references actually promote a route into a generated handler candidate.
-    const usedComponents = sortStringArray(
+    // Capture returns every referenced component.
+    // All components are treated as "loadable" (no separate allowlist filtering).
+    const usedLoadableComponentKeys = sortStringArray(
       await captureReferencedComponentNames({
-        filePath: entry.filePath
+        filePath: entry.filePath,
+        mdxCompileOptions
       })
-    );
-
-    const usedLoadableComponentKeys = usedComponents.filter(componentName =>
-      registry.loadableKeys.has(componentName)
     );
 
     const record: HeavyRouteCandidate = {
@@ -67,7 +62,7 @@ export const classifyHeavyRoutes = async ({
           includeLocaleLeaf: includeLocaleInHandlerPath
         }
       ),
-      usedLoadableComponentKeys: sortStringArray(usedLoadableComponentKeys)
+      usedLoadableComponentKeys
     };
 
     analysisRecords.push(record);

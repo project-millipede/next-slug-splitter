@@ -1,10 +1,7 @@
-import {
-  loadNextConfig,
-  type NextConfigLike,
-  resolveRouteHandlersAppConfig,
-  resolveRouteHandlersConfigs
-} from '../config';
-import { loadRegisteredSlugSplitterConfig } from '../integration/slug-splitter-config';
+import { resolveRouteHandlersAppConfig } from '../config/app';
+import { resolveRouteHandlersConfigs } from '../config/resolve-configs';
+import { loadNextConfig, type NextConfigLike } from '../config/load-next-config';
+import { loadRegisteredSlugSplitterConfig } from '../integration/slug-splitter-config-loader';
 
 import type {
   ResolvedRouteHandlersConfig,
