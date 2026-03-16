@@ -21,7 +21,7 @@ export type PackageModuleReference = {
    * Package export specifier resolved from the app root.
    *
    * Examples:
-   * - `"site-route-handlers/docs/registry"`
+   * - `"site-route-handlers/docs/components"`
    * - `"site-route-handlers/docs/factory"`
    */
   specifier: string;
@@ -92,6 +92,11 @@ const MODULE_SOURCE_EXTENSIONS = [
   '.mjs',
   '.cjs'
 ] as const;
+
+const isModuleSourceExtension = (
+  value: string
+): value is (typeof MODULE_SOURCE_EXTENSIONS)[number] =>
+  MODULE_SOURCE_EXTENSIONS.some(extension => extension === value);
 
 /**
  * Virtual file path used only to anchor Node package resolution at the app
@@ -370,12 +375,7 @@ export const toEmittedImportSpecifier = ({
 
   let relativePath = path.relative(path.dirname(pageFilePath), reference.path);
   const extension = path.extname(reference.path);
-  if (
-    extension.length > 0 &&
-    MODULE_SOURCE_EXTENSIONS.includes(
-      extension as (typeof MODULE_SOURCE_EXTENSIONS)[number]
-    )
-  ) {
+  if (extension.length > 0 && isModuleSourceExtension(extension)) {
     relativePath = relativePath.slice(0, -extension.length);
   }
 

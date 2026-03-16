@@ -3,22 +3,28 @@
  *
  * @remarks
  * This file stays syntax-agnostic. It decides aliases, groups imports,
- * resolves runtime variants, and shapes registry data for the syntax emitter.
+ * resolves runtime variants, and shapes loadable-component data for the syntax
+ * emitter.
  * Direct source rendering remains delegated to the emitter layer.
  */
+import path from 'node:path';
+
 import { sortStringArray } from '../core/discovery';
+import {
+  absoluteFileModule,
+  toEmittedImportSpecifier
+} from '../module-reference';
 import { createGeneratorError } from '../utils/errors';
 
-import type { HandlerRegistryEmitEntry } from './emitters';
+import type { HandlerLoadableComponentEmitEntry } from './emitters';
 import type { HandlerComponentImportRecord } from './import-block';
 
 import { renderHandlerPageSource } from './emitters';
 
 import type {
+  ComponentImportKind,
   EmitFormat,
-  NestedExpansionMap,
-  RegistryEntry,
-  RegistryImportKind
+  LoadableComponentEntry
 } from '../core/types';
 
 /**
@@ -29,7 +35,7 @@ type PendingComponentImportRecord = Omit<
   'alias'
 > & {
   /**
-   * Registry entry keys that map to this import.
+   * Loadable component entry keys that map to this import.
    */
   entryKeys: Set<string>;
 };
@@ -38,7 +44,7 @@ type PendingComponentImportRecord = Omit<
  * Nested map of pending imports indexed by kind, source, and imported name.
  */
 type PendingComponentImportsByKind = Map<
-  RegistryImportKind,
+  ComponentImportKind,
   Map<string, Map<string, PendingComponentImportRecord>>
 >;
 
@@ -46,8 +52,8 @@ const isSafeIdentifier = (value: string): boolean =>
   /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value);
 
 /**
- * Builds a usable identifier candidate from an arbitrary registry key or import
- * source segment.
+ * Builds a usable identifier candidate from an arbitrary component key or
+ * import source segment.
  *
  * @param value - Raw value that should influence the generated identifier.
  * @param fallback - Fallback prefix when no usable identifier characters exist.
@@ -97,8 +103,8 @@ const getSourceLocalNameCandidate = (source: string): string => {
 /**
  * Resolves a stable local identifier for one pending import record.
  *
- * @param importRecord - Pending import record that may map to multiple registry
- * keys.
+ * @param importRecord - Pending import record that may map to multiple
+ * loadable component keys.
  * @param usedLocalNames - Local names already claimed in the current module.
  * @returns A collision-free local identifier.
  */
@@ -180,7 +186,7 @@ const comparePendingComponentImportRecords = (
  */
 const getOrCreateSourceImportMap = (
   importsByKind: PendingComponentImportsByKind,
-  kind: RegistryImportKind
+  kind: ComponentImportKind
 ): Map<string, Map<string, PendingComponentImportRecord>> => {
   const existingSourceImportMap = importsByKind.get(kind);
   if (existingSourceImportMap) {
@@ -242,14 +248,15 @@ const flattenPendingComponentImportRecords = (
 };
 
 /**
- * Collapses selected registry entries into normalized component import records
+ * Collapses selected component entries into normalized component import records
  * and a lookup from entry key to emitted local alias.
  *
- * @param selectedRegistryEntries - Registry entries selected for one handler.
+ * @param selectedComponentEntries - Loadable component entries selected for one handler.
  * @returns Grouped component imports and alias lookup data.
  */
 const buildHandlerImports = (
-  selectedRegistryEntries: Array<RegistryEntry>
+  selectedComponentEntries: Array<LoadableComponentEntry>,
+  pageFilePath: string
 ): {
   componentImports: Array<HandlerComponentImportRecord>;
   componentAliasByKey: Map<string, string>;
@@ -257,7 +264,7 @@ const buildHandlerImports = (
   const importsByKind: PendingComponentImportsByKind = new Map();
   const componentAliasByKey = new Map<string, string>();
 
-  for (const entry of selectedRegistryEntries) {
+  for (const entry of selectedComponentEntries) {
     const componentImport = entry.componentImport;
     const sourceImportMap = getOrCreateSourceImportMap(
       importsByKind,
@@ -296,7 +303,12 @@ const buildHandlerImports = (
 
     return {
       alias,
-      source: importRecord.source,
+      source: path.isAbsolute(importRecord.source)
+        ? toEmittedImportSpecifier({
+            pageFilePath,
+            reference: absoluteFileModule(importRecord.source)
+          })
+        : importRecord.source,
       kind: importRecord.kind,
       importedName: importRecord.importedName
     };
@@ -309,17 +321,17 @@ const buildHandlerImports = (
 };
 
 /**
- * Converts one registry entry into its emit-ready representation.
+ * Converts one loadable component entry into its emit-ready representation.
  *
- * @param entry - Registry entry being emitted.
+ * @param entry - Loadable component entry being emitted.
  * @param componentAliasByKey - Alias lookup for already prepared component
  * imports.
- * @returns Emit-ready registry entry record.
+ * @returns Emit-ready loadable component entry record.
  */
-const buildRegistryEmitEntries = (
-  entry: RegistryEntry,
+const buildComponentEmitEntry = (
+  entry: LoadableComponentEntry,
   componentAliasByKey: Map<string, string>
-): HandlerRegistryEmitEntry => {
+): HandlerLoadableComponentEmitEntry => {
   const componentAlias = componentAliasByKey.get(entry.key);
   if (componentAlias == null) {
     throw createGeneratorError(
@@ -338,6 +350,10 @@ const buildRegistryEmitEntries = (
  * Fully prepared render config for one generated handler module.
  */
 export type PreparedHandlerRenderConfig = {
+  /**
+   * Absolute path of the generated handler page.
+   */
+  pageFilePath: string;
   /**
    * Final runtime handler factory import specifier written into the generated
    * module.
@@ -379,13 +395,9 @@ type HandlerSourceInput = {
    */
   usedLoadableComponentKeys: Array<string>;
   /**
-   * Registry entries selected for this handler.
+   * Loadable component entries selected for this handler.
    */
-  selectedRegistryEntries: Array<RegistryEntry>;
-  /**
-   * Nested dependency map for loadable components.
-   */
-  nestedDependencyMap: NestedExpansionMap;
+  selectedComponentEntries: Array<LoadableComponentEntry>;
   /**
    * Fully prepared render config for the generated module.
    */
@@ -414,15 +426,15 @@ export const renderRouteHandlerModules = ({
   slugArray,
   handlerId,
   usedLoadableComponentKeys,
-  selectedRegistryEntries,
-  nestedDependencyMap,
+  selectedComponentEntries,
   renderConfig
 }: HandlerSourceInput): HandlerSources => {
   const { componentImports, componentAliasByKey } = buildHandlerImports(
-    selectedRegistryEntries
+    selectedComponentEntries,
+    renderConfig.pageFilePath
   );
-  const registryEntries = selectedRegistryEntries.map(entry =>
-    buildRegistryEmitEntries(entry, componentAliasByKey)
+  const componentEntries = selectedComponentEntries.map(entry =>
+    buildComponentEmitEntry(entry, componentAliasByKey)
   );
 
   const pageSource = renderHandlerPageSource({
@@ -434,78 +446,11 @@ export const renderRouteHandlerModules = ({
     baseStaticPropsImport: renderConfig.baseStaticPropsImport,
     routeBasePath: renderConfig.routeBasePath,
     componentImports,
-    nestedDependencyMap,
-    registryEntries,
+    componentEntries,
     emitFormat: renderConfig.emitFormat
   });
 
   return {
     pageSource
   };
-};
-
-/**
- * Expands the set of required loadable keys by walking nested component
- * dependencies.
- *
- * @param input - Closure expansion input.
- * @returns Sorted loadable keys required for the handler after nested expansion.
- */
-export const expandLoadableKeyClosure = ({
-  baseLoadableKeys,
-  nestedDependencyMap,
-  availableLoadableKeys
-}: {
-  baseLoadableKeys: Array<string>;
-  nestedDependencyMap: NestedExpansionMap;
-  availableLoadableKeys: Set<string>;
-}): Array<string> => {
-  const expanded = new Set(baseLoadableKeys);
-  const queue = [...baseLoadableKeys];
-
-  while (queue.length > 0) {
-    const componentName = queue.shift();
-    if (componentName == null || componentName.length === 0) continue;
-
-    const nestedTargets = nestedDependencyMap[componentName] ?? [];
-    for (const nestedTarget of nestedTargets) {
-      if (!availableLoadableKeys.has(nestedTarget)) continue;
-      if (expanded.has(nestedTarget)) continue;
-      expanded.add(nestedTarget);
-      queue.push(nestedTarget);
-    }
-  }
-
-  return sortStringArray([...expanded]);
-};
-
-/**
- * Filters the global nested dependency map down to the subset relevant for one
- * handler.
- *
- * @param input - Handler-specific nested dependency selection input.
- * @returns Nested dependency map scoped to the emitted handler.
- */
-export const buildHandlerNestedDependencyMap = ({
-  handlerLoadableKeys,
-  nestedDependencyMap
-}: {
-  handlerLoadableKeys: Array<string>;
-  nestedDependencyMap: NestedExpansionMap;
-}): NestedExpansionMap => {
-  const selectedKeys = new Set(handlerLoadableKeys);
-  const filteredMap: NestedExpansionMap = {};
-
-  for (const key of sortStringArray(handlerLoadableKeys)) {
-    const nestedTargets = nestedDependencyMap[key] ?? [];
-    const selectedTargets = sortStringArray(
-      nestedTargets.filter(target => selectedKeys.has(target))
-    );
-
-    if (selectedTargets.length > 0) {
-      filteredMap[key] = selectedTargets;
-    }
-  }
-
-  return filteredMap;
 };

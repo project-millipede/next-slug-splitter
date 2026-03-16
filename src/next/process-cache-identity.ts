@@ -5,6 +5,7 @@ import {
   isSameHandlerFactoryVariantResolverIdentity
 } from '../core/runtime-variants';
 import { isSameModuleReference } from '../module-reference';
+import { createMdxCompileOptionsIdentity } from './mdx-compile-options-identity';
 
 import type { LocaleConfig } from '../core/types';
 import type {
@@ -20,12 +21,16 @@ import type {
  */
 type RouteHandlerProcessConfigIdentity = Omit<
   ResolvedRouteHandlersConfig,
-  'resolveHandlerFactoryVariant'
+  'resolveHandlerFactoryVariant' | 'mdxCompileOptions'
 > & {
   /**
    * Serializable variant resolver identity for cache comparison.
    */
   resolveHandlerFactoryVariant: HandlerFactoryVariantResolverIdentity;
+  /**
+   * Stable identity for target-local MDX compile options.
+   */
+  mdxCompileOptionsIdentity: string;
 };
 
 /**
@@ -73,6 +78,14 @@ const createRouteHandlerProcessConfigIdentity = (
   baseStaticPropsImport: {
     ...config.baseStaticPropsImport
   },
+  componentsImport: {
+    ...config.componentsImport
+  },
+  pageConfigImport:
+    config.pageConfigImport == null ? undefined : { ...config.pageConfigImport },
+  mdxCompileOptionsIdentity: createMdxCompileOptionsIdentity(
+    config.mdxCompileOptions
+  ),
   routeBasePath: config.routeBasePath,
   paths: { ...config.paths }
 });
@@ -144,7 +157,6 @@ const isSameRouteHandlerNextPaths = (
 ): boolean =>
   left.rootDir === right.rootDir &&
   left.contentPagesDir === right.contentPagesDir &&
-  left.buildtimeHandlerRegistryPath === right.buildtimeHandlerRegistryPath &&
   left.handlersDir === right.handlersDir;
 
 /**
@@ -201,6 +213,24 @@ const isSameRouteHandlerProcessConfigIdentity = (
   }
 
   if (!isSameModuleReference(left.baseStaticPropsImport, right.baseStaticPropsImport)) {
+    return false;
+  }
+
+  if (!isSameModuleReference(left.componentsImport, right.componentsImport)) {
+    return false;
+  }
+
+  if (left.pageConfigImport == null || right.pageConfigImport == null) {
+    if (left.pageConfigImport !== right.pageConfigImport) {
+      return false;
+    }
+  } else if (
+    !isSameModuleReference(left.pageConfigImport, right.pageConfigImport)
+  ) {
+    return false;
+  }
+
+  if (left.mdxCompileOptionsIdentity !== right.mdxCompileOptionsIdentity) {
     return false;
   }
 

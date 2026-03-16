@@ -1,12 +1,15 @@
-import { createCacheError, createLookupError } from '../utils/errors';
+import { createConfigMissingError, createLookupError } from '../utils/errors';
 import {
   computePipelineFingerprintForConfigs,
   PIPELINE_CACHE_VERSION,
   readPersistentCacheRecord,
   resolvePersistentCachePath
 } from './cache';
-import { resolveRouteHandlersConfigBases } from './config/index';
+import type { NextConfigLike } from './config/load-next-config';
+import { resolveRouteHandlersConfigBases } from './config/resolve-configs';
 import { resolveSharedEmitFormat } from './emit-format';
+import { loadRegisteredSlugSplitterConfig } from './integration/slug-splitter-config-loader';
+import { executeRouteHandlerNextPipeline } from './runtime';
 
 import type {
   RouteHandlerHeavyRouteLookup,
@@ -23,8 +26,8 @@ import type {
  * light catch-all page, or is it owned by a generated heavy handler?" before
  * static paths are finalized.
  *
- * This module deliberately answers that question from the persistent
- * persistent splitter cache instead of:
+ * This module answers that question from the persistent splitter cache
+ * whenever possible instead of:
  *
  * - re-running route analysis from page code
  * - importing generated helper source that might not exist yet
@@ -32,12 +35,11 @@ import type {
  *
  * That keeps page code on a narrow, deterministic contract:
  *
- * - generation runs first
  * - generation writes a cache record for all configured targets
- * - page code reads the already-generated result for one target only
- *
- * If that contract is broken, this module fails loudly instead of silently
- * regenerating handlers from inside `getStaticPaths`.
+ * - page code reads the already-generated result for one target when it is
+ *   available
+ * - one fallback generation pass repairs missing or stale cache state during
+ *   build-time `getStaticPaths`
  */
 
 /**
@@ -99,12 +101,13 @@ const createHeavyRouteLookup = ({
  * Read heavy-route membership for a single target from the persistent cache.
  *
  * @remarks
- * This loader reads from the persistent cache only. It resolves the configured
+ * This loader prefers the persistent cache. It resolves the configured
  * targets, recomputes the expected pipeline fingerprint, validates the stored
  * cache record, and then exposes a semantic lookup for the requested target.
  *
- * Generation and analysis are not performed here. Route-handler generation
- * must already have run before `getStaticPaths` reaches this point.
+ * When the persistent cache is missing or stale, one internal generation pass
+ * is executed so `withSlugSplitter(...)` remains sufficient during build-time
+ * `getStaticPaths` execution.
  *
  * Generated handler files on disk are not validated here. Heavy-route
  * membership comes from the persistent cache record exclusively so
@@ -115,24 +118,39 @@ const createHeavyRouteLookup = ({
  * @returns A semantic heavy-route lookup scoped to one configured target.
  *
  * @throws If the target is unknown.
- * @throws If the persistent cache is missing or stale.
+ * @throws If no route-handlers config is available.
  */
 export const loadRouteHandlerCacheLookup = async ({
   routeHandlersConfig,
+  nextConfig,
   targetId
 }: {
   /**
    * App-owned `RouteHandlersConfig` that supplies app-level settings and
    * target definitions.
    */
-  routeHandlersConfig: RouteHandlersConfig;
+  routeHandlersConfig?: RouteHandlersConfig;
+  /**
+   * Already-loaded Next config object to reuse during fallback generation.
+   */
+  nextConfig?: NextConfigLike;
   /**
    * Stable target identifier whose heavy-route membership should be exposed.
    */
   targetId: string;
 }): Promise<RouteHandlerHeavyRouteLookup> => {
+  const effectiveRouteHandlersConfig =
+    routeHandlersConfig ?? (await loadRegisteredSlugSplitterConfig());
+
+  if (effectiveRouteHandlersConfig == null) {
+    throw createConfigMissingError(
+      'Missing route handlers config. Pass routeHandlersConfig explicitly or register it through withSlugSplitter(...).',
+      { targetId }
+    );
+  }
+
   const resolvedConfigs = resolveRouteHandlersConfigBases({
-    routeHandlersConfig
+    routeHandlersConfig: effectiveRouteHandlersConfig
   });
   const resolvedTargetConfig = resolvedConfigs.find(
     config => config.targetId === targetId
@@ -155,21 +173,27 @@ export const loadRouteHandlerCacheLookup = async ({
     mode: 'generate'
   });
   const cachedRecord = await readPersistentCacheRecord(cachePath);
+  const hasFreshCache =
+    cachedRecord != null &&
+    cachedRecord.version === PIPELINE_CACHE_VERSION &&
+    cachedRecord.fingerprint === fingerprint &&
+    cachedRecord.emitFormat === emitFormat;
 
   /**
-   * Missing or stale cache records cause `getStaticPaths` to throw when the
-   * cache no longer matches the configured target inputs.
+   * Missing or stale cache records trigger one internal generation pass so
+   * `getStaticPaths` can recover without a manual pre-step.
    */
-  if (
-    !cachedRecord ||
-    cachedRecord.version !== PIPELINE_CACHE_VERSION ||
-    cachedRecord.fingerprint !== fingerprint ||
-    cachedRecord.emitFormat !== emitFormat
-  ) {
-    throw createCacheError(
-      'Missing fresh cache for static paths. Generate route handlers before getStaticPaths runs.',
-      { targetId }
-    );
+  if (!hasFreshCache) {
+    const freshResult = await executeRouteHandlerNextPipeline({
+      routeHandlersConfig: effectiveRouteHandlersConfig,
+      nextConfig,
+      mode: 'generate'
+    });
+
+    return createHeavyRouteLookup({
+      targetId,
+      result: freshResult
+    });
   }
 
   return createHeavyRouteLookup({

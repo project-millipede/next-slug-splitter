@@ -6,11 +6,10 @@ import {
 } from 'next/constants.js';
 
 import { createConfigMissingError } from '../utils/errors';
-import {
-  resolveRouteHandlersAppConfig,
-  resolveRouteHandlersConfigs
-} from './config/index';
-import { loadRegisteredSlugSplitterConfig } from './integration/slug-splitter-config';
+import { resolveRouteHandlersAppConfig } from './config/app';
+import type { NextConfigLike } from './config/load-next-config';
+import { resolveRouteHandlersConfigs } from './config/resolve-configs';
+import { loadRegisteredSlugSplitterConfig } from './integration/slug-splitter-config-loader';
 import { withRouteHandlerRewrites } from './plugin';
 import {
   createRouteHandlerProcessCacheIdentity,
@@ -19,7 +18,6 @@ import {
 } from './process-cache-identity';
 import { executeRouteHandlerNextPipeline } from './runtime';
 
-import type { NextConfigLike } from './config/index';
 import type { RewriteRecord, RouteHandlersConfig } from './types';
 
 let cacheIdentity: RouteHandlerProcessCacheIdentity | null = null;

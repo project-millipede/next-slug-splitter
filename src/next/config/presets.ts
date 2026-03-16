@@ -23,7 +23,8 @@ export const createCatchAllRouteHandlersPreset = ({
   contentLocaleMode,
   contentPagesDir,
   emitFormat,
-  handlerBinding
+  handlerBinding,
+  mdxCompileOptions
 }: CreateCatchAllRouteHandlersPresetOptions): RouteHandlersTargetConfig => {
   const normalizedRouteSegment = normalizeRouteSegment(routeSegment);
   const normalizedHandlerRouteParam =
@@ -39,6 +40,7 @@ export const createCatchAllRouteHandlersPreset = ({
     contentLocaleMode,
     handlerRouteParam: normalizedHandlerRouteParam,
     handlerBinding,
+    mdxCompileOptions,
     baseStaticPropsImport: createCatchAllBaseStaticPropsImport({
       routeSegment: normalizedRouteSegment,
       handlerRouteParam: normalizedHandlerRouteParam

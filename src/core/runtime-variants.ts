@@ -1,10 +1,10 @@
-import type { RegistryEntry } from './types';
+import type { LoadableComponentEntry } from './types';
 
 /**
- * Function that selects the handler factory variant based on registry entries.
+ * Function that selects the handler factory variant based on loadable component entries.
  */
 export type HandlerFactoryVariantResolver = (
-  entries: Array<RegistryEntry>
+  entries: Array<LoadableComponentEntry>
 ) => string;
 
 /**
@@ -164,7 +164,7 @@ export const createRuntimeTraitVariantResolver = ({
   defaultVariant,
   rules
 }: HandlerFactoryVariantDescriptor): HandlerFactoryVariantResolver => {
-  const resolveVariant = (entries: Array<RegistryEntry>): string => {
+  const resolveVariant = (entries: Array<LoadableComponentEntry>): string => {
     const presentTraits = new Set<string>();
 
     for (const entry of entries) {

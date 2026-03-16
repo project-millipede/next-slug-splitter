@@ -14,20 +14,8 @@
  */
 import { VariableDeclarationKind, type WriterFunction } from 'ts-morph';
 import { toRoutePath } from '../core/discovery';
-import type {
-  EmitFormat,
-  NestedExpansionMap,
-  RegistryEntry
-} from '../core/types';
+import type { EmitFormat, LoadableComponentEntry } from '../core/types';
 import { createGeneratorError } from '../utils/errors';
-import {
-  isArray,
-  isBoolean,
-  isNull,
-  isNumber,
-  isString
-} from '../utils/type-guards';
-import { isObjectRecord } from '../utils/type-guards-custom';
 import {
   isNonEmptyArray,
   isNonEmptyString
@@ -48,10 +36,10 @@ import {
 } from './import-block';
 
 /**
- * Registry entry prepared for emission into a generated handler.
+ * Loadable component entry prepared for emission into a generated handler.
  */
-export type HandlerRegistryEmitEntry = Pick<
-  RegistryEntry,
+export type HandlerLoadableComponentEmitEntry = Pick<
+  LoadableComponentEntry,
   'key' | 'runtimeTraits'
 > & {
   /**
@@ -97,13 +85,9 @@ type HandlerPageEmitInput = {
    */
   componentImports: Array<HandlerComponentImportRecord>;
   /**
-   * Nested dependency map for loadable components.
+   * Loadable component entries to include in the handler.
    */
-  nestedDependencyMap: NestedExpansionMap;
-  /**
-   * Registry entries to include in the handler.
-   */
-  registryEntries: Array<HandlerRegistryEmitEntry>;
+  componentEntries: Array<HandlerLoadableComponentEmitEntry>;
   /**
    * Output format for the generated file.
    */
@@ -111,67 +95,14 @@ type HandlerPageEmitInput = {
 };
 
 /**
- * Writes plain literal data through the writer so emitted object expressions
- * use the same quoting and formatting rules as the rest of the generated file.
+ * Writes one loadable component entry object into the generated handler module.
  *
  * @param writer - Writer receiving the generated syntax.
- * @param value - Literal value to emit.
+ * @param entry - Loadable component entry data already normalized for emission.
  */
-const writeLiteralValue = (writer: Writer, value: unknown): void => {
-  if (isNull(value)) {
-    writer.write('null');
-    return;
-  }
-
-  if (isString(value)) {
-    writeStringLiteral(writer, value);
-    return;
-  }
-
-  if (isNumber(value) || isBoolean(value)) {
-    writer.write(String(value));
-    return;
-  }
-
-  if (isArray(value)) {
-    writer.write('[');
-    value.forEach((item, index) => {
-      writeLiteralValue(writer, item);
-      if (index < value.length - 1) {
-        writer.write(',');
-      }
-    });
-    writer.write(']');
-    return;
-  }
-
-  if (isObjectRecord(value)) {
-    const entries = Object.entries(value);
-    writer.write('{');
-    entries.forEach(([key, entryValue], index) => {
-      writePropertyName(writer, key);
-      writer.write(': ');
-      writeLiteralValue(writer, entryValue);
-      if (index < entries.length - 1) {
-        writer.write(',');
-      }
-    });
-    writer.write('}');
-    return;
-  }
-
-  throw createGeneratorError('Unsupported literal value in emitter.');
-};
-
-/**
- * Writes one registry entry object into the generated handler module.
- *
- * @param writer - Writer receiving the generated syntax.
- * @param entry - Registry entry data already normalized for emission.
- */
-const writeRegistryEntryObject = (
+const writeComponentEntryObject = (
   writer: Writer,
-  entry: HandlerRegistryEmitEntry
+  entry: HandlerLoadableComponentEmitEntry
 ): void => {
   const fieldWriters: Array<{ key: string; write: WriterFunction }> = [];
 
@@ -216,11 +147,11 @@ const writeRegistryEntryObject = (
 /**
  * Creates the initializer for the emitted `loadableRegistrySubset` object.
  *
- * @param entries - Ordered registry entries selected for the handler.
- * @returns A writer function that emits the registry subset object literal.
+ * @param entries - Ordered loadable component entries selected for the handler.
+ * @returns A writer function that emits the component subset object literal.
  */
-const createRegistrySubsetInitializer = (
-  entries: Array<HandlerRegistryEmitEntry>
+const createComponentSubsetInitializer = (
+  entries: Array<HandlerLoadableComponentEmitEntry>
 ): WriterFunction => {
   return writer => {
     writer.write('{');
@@ -231,7 +162,7 @@ const createRegistrySubsetInitializer = (
         entries.forEach((entry, index) => {
           writePropertyName(writer, entry.key);
           writer.write(': ');
-          writeRegistryEntryObject(writer, entry);
+          writeComponentEntryObject(writer, entry);
           if (index < entries.length - 1) writer.write(',');
           writer.newLine();
         });
@@ -245,25 +176,18 @@ const createRegistrySubsetInitializer = (
 /**
  * Creates the initializer for the generated handler page instance.
  *
- * @param hasNestedDependencyMap - Whether the emitted module should include the
- * nested expansion map.
+ * @param entries - Ordered loadable component entries selected for the handler.
  * @returns A writer function that emits the `createHandlerPage(...)` call.
  */
-const createHandlerPageInitializer = ({
-  hasNestedDependencyMap
-}: {
-  hasNestedDependencyMap: boolean;
-}): WriterFunction => {
+const createHandlerPageInitializer = (
+  entries: Array<HandlerLoadableComponentEmitEntry>
+): WriterFunction => {
   return writer => {
     writer.write('createHandlerPage({');
     writer.newLine();
     writer.indent(() => {
-      writer.write('loadableRegistrySubset');
-      if (hasNestedDependencyMap) {
-        writer.write(',');
-        writer.newLine();
-        writer.write('nestedExpansionMap: NESTED_DEPENDENCY_MAP');
-      }
+      writer.write('loadableRegistrySubset: ');
+      createComponentSubsetInitializer(entries)(writer);
       writer.newLine();
     });
     writer.write('})');
@@ -345,8 +269,7 @@ export const renderHandlerPageSource = ({
   baseStaticPropsImport,
   routeBasePath,
   componentImports,
-  nestedDependencyMap,
-  registryEntries,
+  componentEntries,
   emitFormat
 }: HandlerPageEmitInput): string => {
   /**
@@ -358,8 +281,6 @@ export const renderHandlerPageSource = ({
     emitFormat,
     'route-handler.generated'
   );
-
-  const hasNestedDependencyMap = Object.keys(nestedDependencyMap).length > 0;
 
   const importDeclarations: Array<HandlerImportDeclarationRecord> = [];
 
@@ -382,36 +303,12 @@ export const renderHandlerPageSource = ({
     ]
   });
 
-  if (hasNestedDependencyMap) {
-    sourceFile.addVariableStatement({
-      declarationKind: VariableDeclarationKind.Const,
-      declarations: [
-        {
-          name: 'NESTED_DEPENDENCY_MAP',
-          initializer: writer => writeLiteralValue(writer, nestedDependencyMap)
-        }
-      ]
-    });
-  }
-
-  sourceFile.addVariableStatement({
-    declarationKind: VariableDeclarationKind.Const,
-    declarations: [
-      {
-        name: 'loadableRegistrySubset',
-        initializer: createRegistrySubsetInitializer(registryEntries)
-      }
-    ]
-  });
-
   sourceFile.addVariableStatement({
     declarationKind: VariableDeclarationKind.Const,
     declarations: [
       {
         name: 'HandlerPage',
-        initializer: createHandlerPageInitializer({
-          hasNestedDependencyMap
-        })
+        initializer: createHandlerPageInitializer(componentEntries)
       }
     ]
   });

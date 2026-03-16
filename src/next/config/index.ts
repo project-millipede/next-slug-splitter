@@ -7,9 +7,9 @@ export { resolveRouteHandlersAppConfig } from './app';
 export type { ResolveRouteHandlersAppConfigInput } from './app';
 export {
   DEFAULT_NEXT_CONFIG_FILENAMES,
-  findNextConfigPath,
-  loadNextConfig
-} from './load-next-config';
+  findNextConfigPath
+} from './find-next-config-path';
+export { loadNextConfig } from './load-next-config';
 export type { NextConfigLike } from './load-next-config';
 export type { ResolveConfiguredPathOptionInput } from './paths';
 export { createCatchAllRouteHandlersPreset } from './presets';

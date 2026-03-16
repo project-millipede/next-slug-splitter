@@ -8,7 +8,7 @@ import type {
   RouteHandlersTargetConfig
 } from '../types';
 
-import { readProvidedOrRegisteredRouteHandlersConfig } from '../integration/adapter-entry';
+import { readProvidedOrRegisteredRouteHandlersConfig } from '../integration/config-registry';
 import { resolveRouteHandlersAppConfig } from './app';
 import type { NextConfigLike } from './load-next-config';
 import { resolveLocaleConfig } from './locale';

@@ -3,6 +3,7 @@ import { Dirent } from 'node:fs';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { resolveModuleReferenceToPath } from '../module-reference';
 import { toPosix } from '../core/discovery';
 import { getHandlerFactoryVariantResolverIdentity } from '../core/runtime-variants';
 import { isArray, isNumber, isString } from '../utils/type-guards';
@@ -18,6 +19,7 @@ import type {
   ResolvedRouteHandlersConfigBase,
   RouteHandlerNextResult
 } from './types';
+import { createMdxCompileOptionsIdentity } from './mdx-compile-options-identity';
 
 /**
  * Configuration subset used for fingerprint computation.
@@ -27,9 +29,19 @@ type RouteHandlerFingerprintConfig = ResolvedRouteHandlersConfigBase;
 /**
  * Cache format version. Increment when the persistent cache contract changes.
  */
-export const PIPELINE_CACHE_VERSION = 12;
+export const PIPELINE_CACHE_VERSION = 15;
 
 const DEFAULT_PERSISTENT_CACHE_PATH = '.next/cache/route-handlers.json';
+
+/**
+ * Determine whether a caught value exposes one specific errno-style code.
+ *
+ * @param error - Unknown caught value.
+ * @param code - Expected error code.
+ * @returns `true` when the value has a matching `code` property.
+ */
+const hasErrorCode = (error: unknown, code: string): boolean =>
+  isObjectRecord(error) && readObjectProperty(error, 'code') === code;
 
 /**
  * Determine whether a file path should participate in route content
@@ -84,7 +96,7 @@ const collectRouteContentFiles = async (
   try {
     await walk(directoryPath);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+    if (hasErrorCode(error, 'ENOENT')) {
       return [];
     }
 
@@ -123,7 +135,7 @@ const toFileStatSignature = async (
       fileStat.mtimeMs
     )}`;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+    if (hasErrorCode(error, 'ENOENT')) {
       return null;
     }
 
@@ -187,7 +199,15 @@ export const computePipelineFingerprint = async ({
   const staticInputs = (
     await Promise.all([
       toFileStatSignature(config.app.rootDir, config.app.nextConfigPath),
-      toFileStatSignature(rootDir, config.paths.buildtimeHandlerRegistryPath)
+      config.pageConfigImport == null
+        ? Promise.resolve(null)
+        : toFileStatSignature(
+            config.app.rootDir,
+            resolveModuleReferenceToPath({
+              rootDir: config.app.rootDir,
+              reference: config.pageConfigImport
+            })
+          )
     ])
   ).filter(isDefined);
 
@@ -203,6 +223,10 @@ export const computePipelineFingerprint = async ({
     ),
     runtimeHandlerFactoryImportBase: config.runtimeHandlerFactoryImportBase,
     baseStaticPropsImport: config.baseStaticPropsImport,
+    componentsImport: config.componentsImport,
+    mdxCompileOptionsIdentity: createMdxCompileOptionsIdentity(
+      config.mdxCompileOptions
+    ),
     routeBasePath: config.routeBasePath,
     contentFiles: contentFileStats,
     staticInputs
@@ -304,7 +328,7 @@ export const readPersistentCacheRecord = async (
 
     return parsed;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+    if (hasErrorCode(error, 'ENOENT')) {
       return null;
     }
 

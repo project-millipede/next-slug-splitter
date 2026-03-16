@@ -4,10 +4,14 @@ import type { NextConfig } from 'next';
 
 import { createConfigError } from '../../utils/errors';
 import { isFunction } from '../../utils/type-guards';
+import type { RouteHandlersConfig } from '../types';
 
 import type { NextConfigLike } from '../config/load-next-config';
 import { isObjectRecord, readObjectProperty } from '../config/shared';
-import { resolveSlugSplitterAdapterEntry } from './adapter-entry';
+import {
+  createRouteHandlersAdapterPath,
+  resolveSlugSplitterAdapterEntry
+} from './adapter-entry';
 import {
   registerSlugSplitterConfigPath,
   resolveSlugSplitterConfigPath
@@ -35,15 +39,25 @@ const isNextConfigFactory = (
 /**
  * Input for `withSlugSplitter(...)`.
  */
-export type WithSlugSplitterOptions = {
-  /**
-   * Path to the app-owned next-slug-splitter config module.
-   *
-   * Relative paths are resolved from the true Next entrypoint root, which is
-   * represented by `process.cwd()` at `next.config.*` evaluation time.
-   */
-  configPath: string;
-};
+export type WithSlugSplitterOptions =
+  | {
+      /**
+       * Path to the app-owned next-slug-splitter config module.
+       *
+       * Relative paths are resolved from the true Next entrypoint root, which is
+       * represented by `process.cwd()` at `next.config.*` evaluation time.
+       */
+      configPath: string;
+      routeHandlersConfig?: never;
+    }
+  | {
+      /**
+       * App-owned route-handlers config object registered directly in the
+       * current process.
+       */
+      routeHandlersConfig: RouteHandlersConfig;
+      configPath?: never;
+    };
 
 /**
  * Attach next-slug-splitter integration to a Next config export.
@@ -67,18 +81,24 @@ export function withSlugSplitter(
 ): NextConfigLike;
 export function withSlugSplitter(
   nextConfigExport: NextConfigExport,
-  { configPath }: WithSlugSplitterOptions
+  options: WithSlugSplitterOptions
 ): NextConfigExport {
-  const rootDir = process.cwd();
-  const resolvedConfigPath = resolveSlugSplitterConfigPath({
-    rootDir,
-    configPath
-  });
-  const resolvedAdapterPath = resolveSlugSplitterAdapterEntry({
-    rootDir
-  });
+  const resolvedAdapterPath =
+    options.routeHandlersConfig != null
+      ? createRouteHandlersAdapterPath(options.routeHandlersConfig)
+      : (() => {
+          const rootDir = process.cwd();
+          const resolvedConfigPath = resolveSlugSplitterConfigPath({
+            rootDir,
+            configPath: options.configPath
+          });
 
-  registerSlugSplitterConfigPath(resolvedConfigPath);
+          registerSlugSplitterConfigPath(resolvedConfigPath);
+
+          return resolveSlugSplitterAdapterEntry({
+            rootDir
+          });
+        })();
 
   const applyRouteHandlers = (nextConfig: NextConfigLike): NextConfigLike => {
     if (!isObjectRecord(nextConfig)) {

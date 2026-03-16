@@ -9,8 +9,27 @@ import type {
   ModuleReference,
   ResolvedModuleReference
 } from '../module-reference';
+import type { PluggableList } from 'unified';
 
 export type PipelineMode = 'analyze' | 'generate';
+
+/**
+ * MDX compile plugins forwarded into route analysis builds.
+ *
+ * Values are passed through to the underlying MDX compiler as-is so sites can
+ * align analysis with their application MDX pipeline.
+ */
+export type RouteHandlerMdxCompileOptions = {
+  /**
+   * Remark plugins applied before recma analysis runs.
+   */
+  remarkPlugins?: PluggableList;
+
+  /**
+   * Recma plugins applied before the internal capture plugin runs.
+   */
+  recmaPlugins?: PluggableList;
+};
 
 /**
  * Output format for generated route handler files.
@@ -117,9 +136,9 @@ export type RouteHandlerPlan = {
   heavyRoutes: Array<HeavyRouteCandidate>;
 
   /**
-   * Resolved registry snapshot used during analysis.
+   * Resolved loadable-component snapshot used during analysis.
    */
-  registry: RegistrySnapshot;
+  loadableComponents: LoadableComponentSnapshot;
 };
 
 /**
@@ -135,11 +154,6 @@ export type RouteHandlerPaths = {
    * Directory containing content page files to scan.
    */
   contentPagesDir: string;
-
-  /**
-   * Import path or module specifier for the buildtime handler registry.
-   */
-  buildtimeHandlerRegistryPath: string;
 
   /**
    * Output directory for generated handler files.
@@ -172,9 +186,11 @@ export type RouteHandlerPipelineOptions = {
   emitFormat?: EmitFormat;
 
   /**
-   * Function that selects the handler factory variant based on registry entries.
+   * Function that selects the handler factory variant based on loadable component entries.
    */
-  resolveHandlerFactoryVariant: (entries: Array<RegistryEntry>) => string;
+  resolveHandlerFactoryVariant: (
+    entries: Array<LoadableComponentEntry>
+  ) => string;
 
   /**
    * Resolved runtime handler factory import base.
@@ -185,6 +201,22 @@ export type RouteHandlerPipelineOptions = {
    * Resolved base static props module reference.
    */
   baseStaticPropsImport: ResolvedModuleReference;
+
+  /**
+   * Resolved import path for components used in MDX content.
+   */
+  componentsImport: ResolvedModuleReference;
+
+  /**
+   * Optional resolved page-config source used to extract runtime traits and
+   * scoped MDX transforms during planning.
+   */
+  pageConfigImport?: ResolvedModuleReference;
+
+  /**
+   * MDX compile plugins forwarded into the capture build.
+   */
+  mdxCompileOptions?: RouteHandlerMdxCompileOptions;
 
   /**
    * Base path prefix for public routes in this target.
@@ -219,12 +251,12 @@ export type LocaleConfig = {
  * - 'default': Default export import.
  * - 'named': Named export import.
  */
-export type RegistryImportKind = 'default' | 'named';
+export type ComponentImportKind = 'default' | 'named';
 
 /**
- * Import metadata for a registry entry.
+ * Import metadata for one loadable component entry.
  */
-export type RegistryImport = {
+export type ComponentImportSpec = {
   /**
    * Module source path or package specifier.
    */
@@ -233,7 +265,7 @@ export type RegistryImport = {
   /**
    * Kind of import (default or named).
    */
-  kind: RegistryImportKind;
+  kind: ComponentImportKind;
 
   /**
    * Name of the exported symbol being imported.
@@ -253,14 +285,9 @@ export type RouteHandlerModuleReference = ModuleReference;
 export type ResolvedRouteHandlerModuleReference = ResolvedModuleReference;
 
 /**
- * Alias for registry import metadata used in entry contexts.
+ * Single loadable component entry used during planning and emission.
  */
-export type EntryImportMetadata = RegistryImport;
-
-/**
- * Single entry in the handler registry.
- */
-export type RegistryEntry = {
+export type LoadableComponentEntry = {
   /**
    * Unique key identifying this entry.
    */
@@ -269,7 +296,7 @@ export type RegistryEntry = {
   /**
    * Import metadata for the component.
    */
-  componentImport: RegistryImport;
+  componentImport: ComponentImportSpec;
 
   /**
    * Runtime traits associated with this entry.
@@ -278,68 +305,18 @@ export type RegistryEntry = {
 };
 
 /**
- * Snapshot of the loaded handler registry.
+ * Snapshot of the loadable components available for generated handlers.
  */
-export type RegistrySnapshot = {
+export type LoadableComponentSnapshot = {
   /**
-   * Map of registry entries keyed by their unique key.
+   * Map of loadable component entries keyed by their unique key.
    */
-  entriesByKey: Map<string, RegistryEntry>;
+  entriesByKey: Map<string, LoadableComponentEntry>;
 
   /**
    * Set of keys that are available for dynamic loading.
    */
   loadableKeys: Set<string>;
-
-  /**
-   * Map describing nested component dependencies.
-   */
-  nestedDependencyMap: NestedExpansionMap;
-};
-
-/**
- * Map of component names to their nested dependency keys.
- */
-export type NestedExpansionMap = {
-  /**
-   * Array of component keys that this component depends on.
-   */
-  [componentName: string]: Array<string>;
-};
-
-/**
- * Entry in the route handler registry manifest.
- */
-export type RouteHandlerRegistryManifestEntry = {
-  /**
-   * Unique key for the registry entry.
-   */
-  key: string;
-
-  /**
-   * Import metadata for the entry.
-   */
-  import: RegistryImport;
-
-  /**
-   * Optional runtime traits for the entry.
-   */
-  runtimeTraits?: Array<string>;
-};
-
-/**
- * Manifest structure for the route handler registry.
- */
-export type RouteHandlerRegistryManifest = {
-  /**
-   * Registry entries.
-   */
-  entries: Array<RouteHandlerRegistryManifestEntry>;
-
-  /**
-   * Optional nested dependency map.
-   */
-  nestedDependencyMap?: NestedExpansionMap;
 };
 
 /**
