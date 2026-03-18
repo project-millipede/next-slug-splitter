@@ -342,7 +342,7 @@ const buildComponentEmitEntry = (
   return {
     key: entry.key,
     componentAlias,
-    runtimeTraits: entry.runtimeTraits
+    metadata: entry.metadata
   };
 };
 

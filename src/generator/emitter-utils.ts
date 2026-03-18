@@ -9,6 +9,7 @@ import {
 } from 'ts-morph';
 
 import type { EmitFormat } from '../core/types';
+import { JsonValue } from '../utils/type-guards-json';
 
 /**
  * Type alias for the code block writer used in generators.
@@ -108,4 +109,21 @@ export const renderStringArrayLiteral = (values: Array<string>): string => {
   });
   createStringArrayInitializer(values)(writer);
   return writer.toString();
+};
+
+/**
+ * Creates a writer initializer for one JSON-like metadata value.
+ *
+ * Metadata values are emitted through `JSON.stringify(...)` because the
+ * processor contract intentionally restricts them to JSON-compatible shapes.
+ *
+ * @param value - Metadata value to emit.
+ * @returns A writer function that emits the serialized value.
+ */
+export const createSerializableValueInitializer = (
+  value: JsonValue
+): WriterFunction => {
+  return writer => {
+    writer.write(JSON.stringify(value));
+  };
 };

@@ -2,18 +2,33 @@ export type {
   AbsoluteFileModuleReference,
   AppConfigBase,
   AppRelativeModuleReference,
-  CustomHandlerFactoryVariantStrategy,
+  ComponentImportSpec,
   DynamicRouteParam,
-  HandlerFactoryVariantStrategy,
   ModuleReference,
-  PackageModuleReference, ResolvedModuleReference, RewriteRecord, RouteHandlerBinding,
+  PackageModuleReference,
+  ResolvedModuleReference,
+  ResolvedRouteHandlerCommandPreparation,
+  ResolvedRouteHandlerPreparation,
+  ResolvedRouteHandlerTscProjectPreparation,
+  RewriteRecord,
+  RouteHandlerBinding,
   RouteHandlerBindingMap,
+  RouteHandlerCommandPreparation,
+  RouteHandlerGeneratorComponent,
+  RouteHandlerGeneratorPlan,
+  RouteHandlerPreparation,
+  RouteHandlerProcessor,
+  RouteHandlerProcessorCacheConfig,
   RouteHandlerRewrite,
   RouteHandlerRewritePhaseConfig,
-  RouteHandlerRewritePhases, RouteHandlerTargetPaths, RouteHandlersAppConfig,
+  RouteHandlerRewritePhases,
+  RouteHandlerRouteContext,
+  RouteHandlerTargetPaths,
+  RouteHandlerTscProjectPreparation,
+  RouteHandlersAppConfig,
   RouteHandlersConfig,
-  RouteHandlersTargetConfig, RuntimeHandlerFactoryBinding,
-  RuntimeTraitHandlerFactoryVariantStrategy,
+  RouteHandlersTargetConfig,
+  RuntimeHandlerFactoryBinding,
   TargetConfigBase
 } from './types';
 
@@ -22,6 +37,8 @@ export {
   appRelativeModule,
   packageModule
 } from '../module-reference';
+export { defineRouteHandlerProcessor } from '../core/processor';
+export { createCatchAllRouteHandlersPreset } from './config/presets';
 export { createRouteHandlersAdapterPath } from './integration/adapter-entry';
 export { withSlugSplitter } from './integration/with-slug-splitter';
 export type {

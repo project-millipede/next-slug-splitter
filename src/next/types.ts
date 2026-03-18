@@ -1,12 +1,17 @@
 import type {
-  HandlerFactoryVariantDescriptor,
-  HandlerFactoryVariantResolver
-} from '../core/runtime-variants';
-import type {
+  ComponentImportSpec,
   ContentLocaleMode,
   EmitFormat,
   LocaleConfig,
+  ProcessorEgressDefaults,
+  ProcessorIngressInput,
+  ResolvedRouteHandlerProcessorConfig,
+  RouteHandlerGeneratorComponent,
+  RouteHandlerGeneratorPlan,
   RouteHandlerMdxCompileOptions,
+  RouteHandlerProcessor,
+  RouteHandlerProcessorCacheConfig,
+  RouteHandlerRouteContext,
   ResolvedRouteHandlerModuleReference,
   RouteHandlerModuleReference,
   RouteHandlerPaths,
@@ -155,14 +160,104 @@ export type AppConfigBase = {
 };
 
 /**
+ * App-owned TypeScript project build preparation.
+ */
+export type RouteHandlerTscProjectPreparation = {
+  /**
+   * Stable task identifier used in diagnostics.
+   */
+  id: string;
+
+  /**
+   * Discriminator for TypeScript-project preparation.
+   */
+  kind: 'tsc-project';
+
+  /**
+   * App-owned tsconfig project file compiled before processor loading.
+   */
+  tsconfigPath: RouteHandlerModuleReference;
+};
+
+/**
+ * App-owned arbitrary command preparation.
+ */
+export type RouteHandlerCommandPreparation = {
+  /**
+   * Stable task identifier used in diagnostics.
+   */
+  id: string;
+
+  /**
+   * Discriminator for generic command preparation.
+   */
+  kind: 'command';
+
+  /**
+   * Command argv executed without a shell.
+   */
+  command: readonly string[];
+
+  /**
+   * Optional working directory. Relative paths are resolved from app.rootDir.
+   */
+  cwd?: string;
+};
+
+/**
+ * Optional app-owned prepare task executed before route planning.
+ */
+export type RouteHandlerPreparation =
+  | RouteHandlerTscProjectPreparation
+  | RouteHandlerCommandPreparation;
+
+/**
+ * Resolved TypeScript-project preparation.
+ */
+export type ResolvedRouteHandlerTscProjectPreparation = {
+  /** Stable task identifier used in diagnostics. */
+  id: string;
+  /** Discriminator for TypeScript-project preparation. */
+  kind: 'tsc-project';
+  /** Absolute path to the resolved tsconfig project file. */
+  tsconfigPath: string;
+};
+
+/**
+ * Resolved arbitrary command preparation.
+ */
+export type ResolvedRouteHandlerCommandPreparation = {
+  /** Stable task identifier used in diagnostics. */
+  id: string;
+  /** Discriminator for generic command preparation. */
+  kind: 'command';
+  /** Command argv executed without a shell. */
+  command: Array<string>;
+  /** Resolved absolute working directory. */
+  cwd: string;
+};
+
+/**
+ * Resolved app-owned prepare task.
+ */
+export type ResolvedRouteHandlerPreparation =
+  | ResolvedRouteHandlerTscProjectPreparation
+  | ResolvedRouteHandlerCommandPreparation;
+
+/**
  * User-facing app configuration.
  */
-export type RouteHandlersAppConfig = AppConfigBase;
+export type RouteHandlersAppConfig = AppConfigBase & {
+  /**
+   * Optional app-owned preparation tasks executed before processor loading.
+   */
+  prepare?: Array<RouteHandlerPreparation>;
+};
 
 /**
  * Fully resolved app-level configuration.
  */
-export type ResolvedRouteHandlersAppConfig = Required<RouteHandlersAppConfig>;
+export type ResolvedRouteHandlersAppConfig = Required<AppConfigBase>;
 
 /**
  * Kind discriminator for dynamic route parameter segments.
@@ -223,64 +318,6 @@ export type DynamicRouteParam =
     };
 
 /**
- * Strategy for selecting the runtime handler factory variant using trait rules.
- */
-export type RuntimeTraitHandlerFactoryVariantStrategy = {
-  /**
-   * Discriminator for runtime-trait strategy.
-   */
-  kind: 'runtime-traits';
-  /**
-   * Fallback variant when no trait rules match.
-   */
-  defaultVariant: string;
-  /**
-   * Ordered trait-to-variant mapping rules.
-   */
-  rules: Array<{
-    /**
-     * Runtime trait to check for.
-     */
-    trait: string;
-    /**
-     * Variant to use when the trait is present.
-     */
-    variant: string;
-  }>;
-} & HandlerFactoryVariantDescriptor;
-
-/**
- * Custom strategy for selecting the runtime handler factory variant.
- */
-export type CustomHandlerFactoryVariantStrategy = {
-  /**
-   * Discriminator for custom strategy.
-   */
-  kind: 'custom';
-  /**
-   * Function that inspects loadable component entries and returns a variant subpath.
-   */
-  resolveVariant: HandlerFactoryVariantResolver;
-  /**
-   * All possible variant subpaths this resolver may return.
-   *
-   * Used for eager validation of resolvable variant imports.
-   */
-  variants: Array<string>;
-};
-
-/**
- * Strategy for selecting the runtime handler factory variant.
- *
- * Variants:
- * - {@link RuntimeTraitHandlerFactoryVariantStrategy}: Declarative trait-based matching.
- * - {@link CustomHandlerFactoryVariantStrategy}: Custom resolver function.
- */
-export type HandlerFactoryVariantStrategy =
-  | RuntimeTraitHandlerFactoryVariantStrategy
-  | CustomHandlerFactoryVariantStrategy;
-
-/**
  * Runtime handler factory binding for one target.
  */
 export type RuntimeHandlerFactoryBinding = {
@@ -288,16 +325,27 @@ export type RuntimeHandlerFactoryBinding = {
    * Base import path for the handler factory module.
    */
   importBase: RouteHandlerModuleReference;
-  /**
-   * Strategy for selecting the specific factory variant.
-   */
-  variantStrategy: HandlerFactoryVariantStrategy;
 };
 
 /**
- * Binding for runtime factory and component imports.
+ * Public alias for processor route context.
  */
-export type RouteHandlerBinding = {
+export type {
+  ComponentImportSpec,
+  ProcessorEgressDefaults,
+  ProcessorIngressInput,
+  ResolvedRouteHandlerProcessorConfig,
+  RouteHandlerGeneratorComponent,
+  RouteHandlerGeneratorPlan,
+  RouteHandlerProcessor,
+  RouteHandlerProcessorCacheConfig,
+  RouteHandlerRouteContext
+};
+
+/**
+ * Processor-first binding for runtime factory and component imports.
+ */
+export type ProcessorRouteHandlerBinding = {
   /**
    * Import path for components used in MDX content.
    * Components are imported by name from this module.
@@ -305,15 +353,19 @@ export type RouteHandlerBinding = {
    */
   componentsImport: RouteHandlerModuleReference;
   /**
-   * Optional page-config source module used to extract runtime traits and
-   * scoped MDX transform metadata.
+   * App-owned processor module used to transform captured keys into a
+   * route-local generation plan.
    */
-  pageConfigImport?: RouteHandlerModuleReference;
+  processorImport: RouteHandlerModuleReference;
   /**
    * Runtime factory binding configuration.
    */
-  runtimeFactory: RuntimeHandlerFactoryBinding;
+  runtimeFactory: {
+    importBase: RouteHandlerModuleReference;
+  };
 };
+
+export type RouteHandlerBinding = ProcessorRouteHandlerBinding;
 
 /**
  * Map of named bindings exported by a site-owned handler package.
@@ -436,10 +488,6 @@ type ResolvedTargetConfigBase = Omit<
   'handlerBinding' | 'baseStaticPropsImport' | 'paths'
 > & {
   /**
-   * Resolver function for selecting the factory variant.
-   */
-  resolveHandlerFactoryVariant: HandlerFactoryVariantResolver;
-  /**
    * Resolved import path for the runtime handler factory.
    */
   runtimeHandlerFactoryImportBase: ResolvedRouteHandlerModuleReference;
@@ -452,9 +500,9 @@ type ResolvedTargetConfigBase = Omit<
    */
   componentsImport: ResolvedRouteHandlerModuleReference;
   /**
-   * Optional resolved page-config source used during planning and capture.
+   * Resolved processor configuration used during planning.
    */
-  pageConfigImport?: ResolvedRouteHandlerModuleReference;
+  processorConfig: ResolvedRouteHandlerProcessorConfig;
   /**
    * MDX compile plugins forwarded into the capture build.
    */

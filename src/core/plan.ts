@@ -1,17 +1,15 @@
-import {
-  loadPageConfigMetadata,
-  type PageConfigMetadataEntry
-} from './page-config-metadata';
 import { createPipelineError } from '../utils/errors';
 import { isDefined, isNonEmptyArray } from '../utils/type-guards-extended';
-import type { ResolvedModuleReference } from '../module-reference';
 import { classifyHeavyRoutes } from './analysis';
 import { discoverLocalizedContentRoutes } from './discovery';
+import {
+  createRouteContext,
+  createRouteHandlerRoutePlanner
+} from './processor-runner';
 
 import type {
-  LoadableComponentEntry,
-  LoadableComponentSnapshot,
   LocaleConfig,
+  PlannedHeavyRoute,
   RouteHandlerPipelineOptions,
   RouteHandlerPlan
 } from './types';
@@ -42,49 +40,16 @@ const assertLocaleConfig = (
 };
 
 /**
- * Build loadable component entries from captured component names and import source.
- *
- * @param componentNames - Component names captured from MDX files.
- * @param componentsImport - Import source for components.
- * @param pageConfigEntriesByKey - Optional extracted entries keyed by component key.
- * @returns Loadable component entries for the captured components.
- */
-const buildLoadableComponentEntries = (
-  componentNames: Array<string>,
-  componentsImport: ResolvedModuleReference,
-  pageConfigEntriesByKey: Map<string, PageConfigMetadataEntry>
-): Array<LoadableComponentEntry> => {
-  const importSource =
-    componentsImport.kind === 'package'
-      ? componentsImport.specifier
-      : componentsImport.path;
-
-  return componentNames.map(name => ({
-    key: name,
-    componentImport: {
-      source: importSource,
-      kind: 'named',
-      importedName: name
-    },
-    runtimeTraits: pageConfigEntriesByKey.get(name)?.runtimeTraits ?? []
-  }));
-};
-
-/**
  * Build the semantic route-handler plan without emitting files.
  *
  * @param options - Pipeline options describing the target route space.
- * @returns The analyzed route-handler plan containing heavy routes and the
- * resolved loadable-component snapshot.
+ * @returns The analyzed route-handler plan containing heavy routes and their
+ * resolved route-local generation plans.
  */
 export const planRouteHandlers = async (
   options: RouteHandlerPipelineOptions
 ): Promise<RouteHandlerPlan> => {
   const localeConfig = assertLocaleConfig(options);
-  const pageConfigMetadata = await loadPageConfigMetadata({
-    rootDir: options.paths.rootDir,
-    reference: options.pageConfigImport
-  });
 
   const routePaths = await discoverLocalizedContentRoutes(
     options.paths.contentPagesDir,
@@ -92,47 +57,62 @@ export const planRouteHandlers = async (
     options.contentLocaleMode
   );
 
-  // Analyze routes to get component names first
   const { analysisRecords, heavyRoutes } = await classifyHeavyRoutes({
     routePaths,
     mdxCompileOptions: options.mdxCompileOptions,
     includeLocaleInHandlerPath: options.contentLocaleMode !== 'default-locale'
   });
 
-  // Collect all unique component names from heavy routes
-  const allComponentNames = new Set<string>();
-  for (const route of heavyRoutes) {
-    for (const key of route.usedLoadableComponentKeys) {
-      allComponentNames.add(key);
+  const planRoute = await createRouteHandlerRoutePlanner({
+    rootDir: options.paths.rootDir,
+    componentsImport: options.componentsImport,
+    processorConfig: options.processorConfig,
+    runtimeHandlerFactoryImportBase: options.runtimeHandlerFactoryImportBase
+  });
+
+  const routePathsByIdentity = new Map<string, string>();
+  for (const routePath of routePaths) {
+    routePathsByIdentity.set(
+      `${routePath.locale}:${routePath.slugArray.join('/')}`,
+      routePath.filePath
+    );
+  }
+
+  const plannedHeavyRoutes: Array<PlannedHeavyRoute> = [];
+  for (const heavyRoute of heavyRoutes) {
+    const routeFilePath = routePathsByIdentity.get(
+      `${heavyRoute.locale}:${heavyRoute.slugArray.join('/')}`
+    );
+    if (!isDefined(routeFilePath)) {
+      throw createPipelineError(
+        `Could not resolve source file path for handler "${heavyRoute.handlerId}".`
+      );
     }
+
+    const route = createRouteContext({
+      filePath: routeFilePath,
+      handlerId: heavyRoute.handlerId,
+      handlerRelativePath: heavyRoute.handlerRelativePath,
+      locale: heavyRoute.locale,
+      routeBasePath: options.routeBasePath,
+      slugArray: heavyRoute.slugArray,
+      targetId: heavyRoute.targetId
+    });
+
+    const { factoryVariant, componentEntries } = await planRoute({
+      route,
+      capturedKeys: heavyRoute.usedLoadableComponentKeys
+    });
+
+    plannedHeavyRoutes.push({
+      ...heavyRoute,
+      factoryVariant,
+      componentEntries
+    });
   }
-
-  const pageConfigEntries = pageConfigMetadata?.entries ?? [];
-  const pageConfigEntriesByKey = new Map<string, PageConfigMetadataEntry>();
-  for (const entry of pageConfigEntries) {
-    pageConfigEntriesByKey.set(entry.key, entry);
-  }
-
-  // Build loadable component entries dynamically from componentsImport.
-  const entries = buildLoadableComponentEntries(
-    Array.from(allComponentNames),
-    options.componentsImport,
-    pageConfigEntriesByKey
-  );
-
-  const entriesByKey = new Map<string, LoadableComponentEntry>();
-  for (const entry of entries) {
-    entriesByKey.set(entry.key, entry);
-  }
-
-  const loadableComponents: LoadableComponentSnapshot = {
-    entriesByKey,
-    loadableKeys: new Set(entries.map(e => e.key))
-  };
 
   return {
     analyzedCount: analysisRecords.length,
-    heavyRoutes,
-    loadableComponents
+    heavyRoutes: plannedHeavyRoutes
   };
 };

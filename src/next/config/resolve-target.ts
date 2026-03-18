@@ -29,10 +29,9 @@ import {
   readEmitFormatOption,
   readRequiredStringOption
 } from './options';
-import {
-  resolveConfiguredPathOption,
-} from './paths';
+import { resolveConfiguredPathOption } from './paths';
 import { isObjectRecord, readObjectProperty } from './shared';
+import { ObjectRecord } from '../../utils/type-guards-custom';
 
 /**
  * Read and validate target-local MDX compile options.
@@ -61,13 +60,13 @@ const readMdxCompileOptions = (
 
   const recmaPlugins = readObjectProperty(value, 'recmaPlugins');
   if (recmaPlugins !== undefined && !Array.isArray(recmaPlugins)) {
-    throw createConfigError(
-      'mdxCompileOptions.recmaPlugins must be an array.'
-    );
+    throw createConfigError('mdxCompileOptions.recmaPlugins must be an array.');
   }
 
   return {
-    remarkPlugins: Array.isArray(remarkPlugins) ? [...remarkPlugins] : undefined,
+    remarkPlugins: Array.isArray(remarkPlugins)
+      ? [...remarkPlugins]
+      : undefined,
     recmaPlugins: Array.isArray(recmaPlugins) ? [...recmaPlugins] : undefined
   };
 };
@@ -103,11 +102,24 @@ export const resolveRouteHandlersConfigBase = ({
       'Missing registered routeHandlersConfig. Call withSlugSplitter(...) or createRouteHandlersAdapterPath(...) before exporting the Next config.'
     );
   }
-  if (readObjectProperty(configuredRouteHandlers, 'targets') !== undefined) {
-    throw createConfigError(
-      'Multi-target routeHandlersConfig is not supported in resolveRouteHandlersConfig(...). Use resolveRouteHandlersConfigs(...).'
-    );
+
+  /**
+   * TODO: FIX
+   * Treat the config as a generic 'ObjectRecord' to safely check for the
+   * 'targets' property, which may not exist on the current narrowed type.
+   */
+  if (isObjectRecord(configuredRouteHandlers)) {
+    const rawConfig = configuredRouteHandlers as ObjectRecord;
+    if (
+      readObjectProperty<ObjectRecord, string>(rawConfig, 'targets') !==
+      undefined
+    ) {
+      throw createConfigError(
+        'Multi-target routeHandlersConfig is not supported in resolveRouteHandlersConfig(...). Use resolveRouteHandlersConfigs(...).'
+      );
+    }
   }
+
   if (
     configuredRouteHandlers.paths !== undefined &&
     !isObjectRecord(configuredRouteHandlers.paths)
@@ -131,35 +143,6 @@ export const resolveRouteHandlersConfigBase = ({
 
     return value;
   };
-  if (readObjectProperty(configuredPaths, 'rootDir') !== undefined) {
-    throw createConfigError(
-      'paths.rootDir is no longer supported. Configure routeHandlersConfig.app.rootDir instead.'
-    );
-  }
-  if (
-    readObjectProperty(configuredPaths, 'buildtimeHandlerRegistryImport') !==
-    undefined
-  ) {
-    throw createConfigError(
-      'paths.buildtimeHandlerRegistryImport has been replaced by handlerBinding.pageConfigImport.'
-    );
-  }
-  if (
-    readObjectProperty(configuredRouteHandlers, 'runtimeHandlerFactoryImport') !==
-    undefined
-  ) {
-    throw createConfigError(
-      'runtimeHandlerFactoryImport has been replaced by handlerBinding.runtimeFactory.importBase.'
-    );
-  }
-  if (
-    readObjectProperty(configuredRouteHandlers, 'resolveHandlerFactoryVariant') !==
-    undefined
-  ) {
-    throw createConfigError(
-      'resolveHandlerFactoryVariant has been replaced by handlerBinding.runtimeFactory.variantStrategy.'
-    );
-  }
 
   // App-level config owns root resolution now, so target-local paths are only
   // allowed to override path fragments, not the root itself.
@@ -230,13 +213,11 @@ export const resolveRouteHandlersConfigBase = ({
       configuredRouteHandlers.contentLocaleMode
     ),
     handlerRouteParam,
-    resolveHandlerFactoryVariant:
-      resolvedHandlerBinding.resolveHandlerFactoryVariant,
     runtimeHandlerFactoryImportBase:
       resolvedHandlerBinding.runtimeHandlerFactoryImportBase,
     baseStaticPropsImport: resolvedBaseStaticPropsImport,
     componentsImport: resolvedHandlerBinding.componentsImport,
-    pageConfigImport: resolvedHandlerBinding.pageConfigImport,
+    processorConfig: resolvedHandlerBinding.processorConfig,
     mdxCompileOptions,
     routeBasePath,
     paths: resolvedPaths

@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { resolveModuleReferenceToPath } from '../module-reference';
 import { toPosix } from '../core/discovery';
-import { getHandlerFactoryVariantResolverIdentity } from '../core/runtime-variants';
+import { resolveRouteHandlerProcessorCacheInfo } from '../core/processor-runner';
 import { isArray, isNumber, isString } from '../utils/type-guards';
 import {
   isObjectRecord,
@@ -29,7 +29,7 @@ type RouteHandlerFingerprintConfig = ResolvedRouteHandlersConfigBase;
 /**
  * Cache format version. Increment when the persistent cache contract changes.
  */
-export const PIPELINE_CACHE_VERSION = 15;
+export const PIPELINE_CACHE_VERSION = 17;
 
 const DEFAULT_PERSISTENT_CACHE_PATH = '.next/cache/route-handlers.json';
 
@@ -196,18 +196,30 @@ export const computePipelineFingerprint = async ({
       contentFiles.map(filePath => toFileStatSignature(rootDir, filePath))
     )
   ).filter(isDefined);
+  const processorCacheInfo = await resolveRouteHandlerProcessorCacheInfo({
+    rootDir: config.app.rootDir,
+    processorConfig: config.processorConfig,
+    targetId: config.targetId
+  });
   const staticInputs = (
     await Promise.all([
       toFileStatSignature(config.app.rootDir, config.app.nextConfigPath),
-      config.pageConfigImport == null
-        ? Promise.resolve(null)
-        : toFileStatSignature(
-            config.app.rootDir,
-            resolveModuleReferenceToPath({
-              rootDir: config.app.rootDir,
-              reference: config.pageConfigImport
-            })
-          )
+      toFileStatSignature(
+        config.app.rootDir,
+        resolveModuleReferenceToPath({
+          rootDir: config.app.rootDir,
+          reference: config.processorConfig.processorImport
+        })
+      ),
+      ...processorCacheInfo.inputImports.map(reference =>
+        toFileStatSignature(
+          config.app.rootDir,
+          resolveModuleReferenceToPath({
+            rootDir: config.app.rootDir,
+            reference
+          })
+        )
+      )
     ])
   ).filter(isDefined);
 
@@ -218,12 +230,13 @@ export const computePipelineFingerprint = async ({
     handlerRouteParam: config.handlerRouteParam,
     emitFormat: config.emitFormat,
     contentLocaleMode: config.contentLocaleMode,
-    resolveHandlerFactoryVariant: getHandlerFactoryVariantResolverIdentity(
-      config.resolveHandlerFactoryVariant
-    ),
     runtimeHandlerFactoryImportBase: config.runtimeHandlerFactoryImportBase,
     baseStaticPropsImport: config.baseStaticPropsImport,
     componentsImport: config.componentsImport,
+    processor: {
+      processorImport: config.processorConfig.processorImport,
+      cacheIdentity: processorCacheInfo.identity
+    },
     mdxCompileOptionsIdentity: createMdxCompileOptionsIdentity(
       config.mdxCompileOptions
     ),
