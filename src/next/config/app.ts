@@ -1,6 +1,10 @@
 import path from 'path';
 
 import {
+  isModuleReference,
+  resolveModuleReferenceToFilePath
+} from '../../module-reference';
+import {
   createConfigError,
   createConfigMissingError
 } from '../../utils/errors';
@@ -8,12 +12,18 @@ import { isUndefined } from '../../utils/type-guards';
 import { isNonEmptyString as isNonEmptyResolvedString } from '../../utils/type-guards-extended';
 import type {
   ResolvedRouteHandlersAppConfig,
+  ResolvedRouteHandlerPreparation,
   RouteHandlersConfig,
   RouteHandlersEntrypointInput
 } from '../types';
 
 import { resolveConfiguredPathOption } from './paths';
-import { isNonEmptyString, isObjectRecord, readObjectProperty } from './shared';
+import {
+  isNonEmptyString,
+  isObjectRecord,
+  isStringArray,
+  readObjectProperty
+} from './shared';
 
 /**
  * Read the app-level `RouteHandlersConfig.app` object.
@@ -92,6 +102,119 @@ const resolveConfiguredAppRootDir = ({
  * arguments; `process.cwd()` is not probed implicitly.
  */
 export type ResolveRouteHandlersAppConfigInput = RouteHandlersEntrypointInput;
+
+/**
+ * Resolve app-owned preparation tasks.
+ *
+ * @param input - Resolver input.
+ * @returns Fully resolved preparation tasks.
+ */
+export const resolveRouteHandlerPreparations = ({
+  rootDir,
+  routeHandlersConfig
+}: {
+  rootDir: string;
+  routeHandlersConfig: RouteHandlersConfig | undefined;
+}): Array<ResolvedRouteHandlerPreparation> => {
+  const configuredApp = readConfiguredRouteHandlersApp(routeHandlersConfig);
+  const configuredPrepare = readObjectProperty(configuredApp, 'prepare');
+
+  if (isUndefined(configuredPrepare)) {
+    return [];
+  }
+
+  if (!Array.isArray(configuredPrepare)) {
+    throw createConfigError(
+      'routeHandlersConfig.app.prepare must be an array when provided.'
+    );
+  }
+
+  const resolvedPreparations: Array<ResolvedRouteHandlerPreparation> = [];
+
+  for (const [index, preparation] of configuredPrepare.entries()) {
+    if (!isObjectRecord(preparation)) {
+      throw createConfigError(
+        `routeHandlersConfig.app.prepare[${index}] must be an object.`
+      );
+    }
+
+    const id = readObjectProperty(preparation, 'id');
+    if (!isNonEmptyString(id)) {
+      throw createConfigError(
+        `routeHandlersConfig.app.prepare[${index}].id must be a non-empty string.`
+      );
+    }
+
+    const kind = readObjectProperty(preparation, 'kind');
+    if (kind === 'tsc-project') {
+      const tsconfigPathReference = readObjectProperty(
+        preparation,
+        'tsconfigPath'
+      );
+
+      if (!isModuleReference(tsconfigPathReference)) {
+        throw createConfigError(
+          `routeHandlersConfig.app.prepare[${index}].tsconfigPath must be a module reference object.`
+        );
+      }
+
+      try {
+        resolvedPreparations.push({
+          id,
+          kind,
+          tsconfigPath: resolveModuleReferenceToFilePath({
+            rootDir,
+            reference: tsconfigPathReference
+          })
+        });
+      } catch {
+        throw createConfigError(
+          `routeHandlersConfig.app.prepare[${index}].tsconfigPath could not be resolved from "${rootDir}".`
+        );
+      }
+
+      continue;
+    }
+
+    if (kind === 'command') {
+      const command = readObjectProperty(preparation, 'command');
+      if (!isStringArray(command) || command.length === 0) {
+        throw createConfigError(
+          `routeHandlersConfig.app.prepare[${index}].command must be a non-empty string array.`
+        );
+      }
+
+      const configuredCwd = readObjectProperty(preparation, 'cwd');
+      const cwd =
+        isUndefined(configuredCwd)
+          ? rootDir
+          : resolveConfiguredPathOption({
+              rootDir,
+              value: configuredCwd,
+              label: `routeHandlersConfig.app.prepare[${index}].cwd`
+            });
+      if (!isNonEmptyString(cwd)) {
+        throw createConfigError(
+          `routeHandlersConfig.app.prepare[${index}].cwd must resolve to a non-empty string path.`
+        );
+      }
+
+      resolvedPreparations.push({
+        id,
+        kind,
+        command: [...command],
+        cwd
+      });
+      continue;
+    }
+
+    throw createConfigError(
+      `routeHandlersConfig.app.prepare[${index}].kind must be "tsc-project" or "command".`
+    );
+  }
+
+  return resolvedPreparations;
+};
 
 /**
  * Resolve the application-level config shared by all targets.

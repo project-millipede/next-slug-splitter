@@ -47,7 +47,10 @@ import { mergeRouteHandlerNextResults } from './results';
 import { executeRouteHandlerTarget } from './target';
 
 import type { PipelineMode } from '../../core/types';
-import type { RouteHandlerNextResult } from '../types';
+import type {
+  ResolvedRouteHandlersConfig,
+  RouteHandlerNextResult
+} from '../types';
 
 /**
  * Input for executing the Next-integrated route-handler pipeline.
@@ -74,28 +77,18 @@ const canUsePersistentCache = ({ mode }: { mode: PipelineMode }): boolean =>
   mode === 'generate';
 
 /**
- * Execute the full Next-integrated route-handler pipeline.
+ * Execute the route-handler pipeline from pre-resolved configs.
  *
- * @param input - Pipeline execution input.
+ * @param input - Pipeline execution input with already-resolved target configs.
  * @returns The merged Next integration result for the configured targets.
- *
- * @remarks
- * This module stays orchestration-focused. Config loading, fresh execution,
- * cache reuse, and result shaping live in dedicated helpers.
  */
-export const executeRouteHandlerNextPipeline = async ({
-  rootDir,
-  nextConfigPath,
-  nextConfig,
-  routeHandlersConfig,
+export const executeResolvedRouteHandlerNextPipeline = async ({
+  resolvedConfigs,
   mode = 'generate'
-}: ExecuteRouteHandlerNextPipelineInput = {}): Promise<RouteHandlerNextResult> => {
-  const resolvedConfigs = await loadResolvedRouteHandlersConfigs({
-    rootDir,
-    nextConfigPath,
-    nextConfig,
-    routeHandlersConfig
-  });
+}: {
+  resolvedConfigs: Array<ResolvedRouteHandlersConfig>;
+  mode?: PipelineMode;
+}): Promise<RouteHandlerNextResult> => {
   const emitFormat = resolveSharedEmitFormat({
     configs: resolvedConfigs,
     createError: createRuntimeError
@@ -193,4 +186,33 @@ export const executeRouteHandlerNextPipeline = async ({
   });
 
   return result;
+};
+
+/**
+ * Execute the full Next-integrated route-handler pipeline.
+ *
+ * @param input - Pipeline execution input.
+ * @returns The merged Next integration result for the configured targets.
+ *
+ * @remarks
+ * This module stays orchestration-focused. Config loading, fresh execution,
+ * cache reuse, and result shaping live in dedicated helpers.
+ */
+export const executeRouteHandlerNextPipeline = async ({
+  rootDir,
+  nextConfigPath,
+  nextConfig,
+  routeHandlersConfig,
+  mode = 'generate'
+}: ExecuteRouteHandlerNextPipelineInput = {}): Promise<RouteHandlerNextResult> => {
+  const resolvedConfigs = await loadResolvedRouteHandlersConfigs({
+    rootDir,
+    nextConfigPath,
+    nextConfig,
+    routeHandlersConfig
+  });
+  return executeResolvedRouteHandlerNextPipeline({
+    resolvedConfigs,
+    mode
+  });
 };

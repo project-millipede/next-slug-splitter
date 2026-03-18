@@ -6,7 +6,11 @@ import {
   toHandlerRelativePath
 } from './discovery';
 
-import type { HeavyRouteCandidate, LocalizedRoutePath } from './types';
+import type {
+  HeavyRouteCandidate,
+  LocalizedRoutePath,
+  RouteHandlerMdxCompileOptions
+} from './types';
 
 /**
  * Analyze localized route files and classify which ones require dedicated
@@ -29,7 +33,7 @@ export const classifyHeavyRoutes = async ({
   /**
    * MDX compile plugins forwarded into the capture build.
    */
-  mdxCompileOptions?: import('./types').RouteHandlerMdxCompileOptions;
+  mdxCompileOptions?: RouteHandlerMdxCompileOptions;
   /**
    * Whether generated handler paths should keep the locale as a leaf segment.
    */

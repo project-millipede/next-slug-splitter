@@ -1,10 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import type {
-  HandlerFactoryVariantResolver,
-  RuntimeTraitVariantRule
-} from '../../core/runtime-variants';
 import {
   appRelativeModule,
   packageModule
@@ -31,6 +27,10 @@ export const TEST_PRIMARY_FACTORY_IMPORT =
   'test-route-handlers/primary/factory';
 export const TEST_SECONDARY_FACTORY_IMPORT =
   'test-route-handlers/secondary/factory';
+export const TEST_PRIMARY_PROCESSOR_IMPORT =
+  'test-route-handlers/primary/processor';
+export const TEST_SECONDARY_PROCESSOR_IMPORT =
+  'test-route-handlers/secondary/processor';
 
 export const TEST_STATIC_PROPS_IMPORT =
   '@next-slug-splitter-test/static-props';
@@ -38,28 +38,17 @@ export const TEST_COMPONENT_IMPORT_SOURCE =
   '@next-slug-splitter-test/components';
 export const TEST_COMPONENT_IMPORT_NAME = 'CustomComponent';
 
-export const TEST_HANDLER_FACTORY_VARIANT_RESOLVER: HandlerFactoryVariantResolver =
-  () => 'none';
-
 const DEFAULT_TEST_FACTORY_VARIANTS = ['none', 'selection', 'wrapper'];
-
-const DEFAULT_RUNTIME_TRAIT_RULES: Array<RuntimeTraitVariantRule> = [
-  {
-    trait: 'selection',
-    variant: 'selection'
-  },
-  {
-    trait: 'wrapper',
-    variant: 'wrapper'
-  }
-];
 
 type WriteTestRouteHandlerPackageOptions = {
   primaryVariants?: Array<string>;
   secondaryVariants?: Array<string>;
 };
 
-const writeTestModule = async (
+/**
+ * Write a source module to disk, creating parent directories as needed.
+ */
+export const writeTestModule = async (
   filePath: string,
   source: string
 ): Promise<void> => {
@@ -99,6 +88,22 @@ const createFactoryModuleSource = (): string =>
     ''
   ].join('\n');
 
+const createProcessorModuleSource = (): string =>
+  [
+    'export const routeHandlerProcessor = {',
+    '  ingress({ capturedKeys }) {',
+    '    return Object.fromEntries(capturedKeys.map(key => [key, {}]));',
+    '  },',
+    '  egress({ capturedKeys }) {',
+    '    return {',
+    "      factoryVariant: 'none',",
+    '      components: capturedKeys.map(key => ({ key }))',
+    '    };',
+    '  }',
+    '};',
+    ''
+  ].join('\n');
+
 const createFactoryExports = ({
   family,
   variants
@@ -107,7 +112,8 @@ const createFactoryExports = ({
   variants: Array<string>;
 }): Record<string, string> => {
   const exportsRecord: Record<string, string> = {
-    [`./${family}/factory`]: `./${family}/factory/index.js`
+    [`./${family}/factory`]: `./${family}/factory/index.js`,
+    [`./${family}/processor`]: `./${family}/processor.js`
   };
 
   for (const variant of variants) {
@@ -121,52 +127,27 @@ const createFactoryExports = ({
 export const createTestHandlerBinding = ({
   componentsImport = packageModule(TEST_PRIMARY_COMPONENTS_IMPORT),
   importBase = packageModule(TEST_PRIMARY_FACTORY_IMPORT),
-  pageConfigImport,
-  resolveVariant = TEST_HANDLER_FACTORY_VARIANT_RESOLVER,
-  variants = ['none']
+  processorImport
 }: {
   componentsImport?: ModuleReference;
   importBase?: ModuleReference;
-  pageConfigImport?: ModuleReference;
-  resolveVariant?: HandlerFactoryVariantResolver;
-  variants?: Array<string>;
-} = {}): RouteHandlerBinding => ({
-  componentsImport,
-  pageConfigImport,
-  runtimeFactory: {
-    importBase,
-    variantStrategy: {
-      kind: 'custom',
-      resolveVariant,
-      variants
-    }
-  }
-});
+  processorImport?: ModuleReference;
+} = {}): RouteHandlerBinding => {
+  const resolvedProcessorImport =
+    processorImport ??
+    (componentsImport.kind === 'package' &&
+    componentsImport.specifier === TEST_SECONDARY_COMPONENTS_IMPORT
+      ? packageModule(TEST_SECONDARY_PROCESSOR_IMPORT)
+      : packageModule(TEST_PRIMARY_PROCESSOR_IMPORT));
 
-export const createTestRuntimeTraitBinding = ({
-  componentsImport = packageModule(TEST_PRIMARY_COMPONENTS_IMPORT),
-  importBase = packageModule(TEST_PRIMARY_FACTORY_IMPORT),
-  pageConfigImport,
-  defaultVariant = 'none',
-  rules = DEFAULT_RUNTIME_TRAIT_RULES
-}: {
-  componentsImport?: ModuleReference;
-  importBase?: ModuleReference;
-  pageConfigImport?: ModuleReference;
-  defaultVariant?: string;
-  rules?: Array<RuntimeTraitVariantRule>;
-} = {}): RouteHandlerBinding => ({
-  componentsImport,
-  pageConfigImport,
-  runtimeFactory: {
-    importBase,
-    variantStrategy: {
-      kind: 'runtime-traits',
-      defaultVariant,
-      rules
+  return {
+    componentsImport,
+    processorImport: resolvedProcessorImport,
+    runtimeFactory: {
+      importBase
     }
-  }
-});
+  };
+};
 
 export const writeTestRouteHandlerPackage = async (
   rootDir: string,
@@ -205,8 +186,16 @@ export const writeTestRouteHandlerPackage = async (
     createComponentModuleSource()
   );
   await writeTestModule(
+    path.join(packageDir, 'primary', 'processor.js'),
+    createProcessorModuleSource()
+  );
+  await writeTestModule(
     path.join(packageDir, 'secondary', 'components.js'),
     createComponentModuleSource()
+  );
+  await writeTestModule(
+    path.join(packageDir, 'secondary', 'processor.js'),
+    createProcessorModuleSource()
   );
   await writeTestModule(
     path.join(packageDir, 'primary', 'factory', 'index.js'),

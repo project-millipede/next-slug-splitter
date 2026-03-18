@@ -2,6 +2,7 @@ import { resolveRouteHandlersAppConfig } from '../config/app';
 import { resolveRouteHandlersConfigs } from '../config/resolve-configs';
 import { loadNextConfig, type NextConfigLike } from '../config/load-next-config';
 import { loadRegisteredSlugSplitterConfig } from '../integration/slug-splitter-config-loader';
+import { prepareRouteHandlersFromConfig } from '../prepare';
 
 import type {
   ResolvedRouteHandlersConfig,
@@ -51,6 +52,10 @@ export const loadResolvedRouteHandlersConfigs = async ({
   if (resolvedRouteHandlersConfig == null) {
     resolvedRouteHandlersConfig = await loadRegisteredSlugSplitterConfig();
   }
+  await prepareRouteHandlersFromConfig({
+    rootDir: appConfig.rootDir,
+    routeHandlersConfig: resolvedRouteHandlersConfig
+  });
 
   return resolveRouteHandlersConfigs({
     rootDir: appConfig.rootDir,

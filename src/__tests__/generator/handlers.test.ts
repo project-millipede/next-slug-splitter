@@ -2,33 +2,18 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { createRuntimeTraitVariantResolver } from '../../core/runtime-variants';
 import { emitRouteHandlerPages } from '../../generator/handlers';
 import { renderRouteHandlerModules } from '../../generator/render-modules';
 import {
   createContentHandlerModuleInput,
-  createHeavyRoute,
   createLoadableComponentEntry,
+  createPlannedHeavyRoute,
   createTestPaths
 } from '../helpers/builders';
 import { TEST_PRIMARY_FACTORY_IMPORT, TEST_STATIC_PROPS_IMPORT } from '../helpers/fixtures';
 import { withTempDir } from '../helpers/temp-dir';
 
 import type { LoadableComponentEntry } from '../../core/types';
-
-const resolveHandlerFactoryVariant = createRuntimeTraitVariantResolver({
-  defaultVariant: 'none',
-  rules: [
-    {
-      trait: 'selection',
-      variant: 'selection'
-    },
-    {
-      trait: 'wrapper',
-      variant: 'wrapper'
-    }
-  ]
-});
 
 describe('generator handlers', () => {
   it('emits static handler page module with inline runtime traits', () => {
@@ -40,7 +25,9 @@ describe('generator handlers', () => {
           kind: 'named',
           importedName: 'WrapperComponent'
         },
-        runtimeTraits: ['wrapper']
+        metadata: {
+          runtimeTraits: ['wrapper']
+        }
       }),
       createLoadableComponentEntry({
         key: 'SelectionComponent',
@@ -49,7 +36,9 @@ describe('generator handlers', () => {
           kind: 'named',
           importedName: 'SelectionComponent'
         },
-        runtimeTraits: ['selection']
+        metadata: {
+          runtimeTraits: ['selection']
+        }
       })
     ];
 
@@ -72,8 +61,8 @@ describe('generator handlers', () => {
     expect(pageSource).toContain(
       "from '../../../../../../test-runtime/factory/selection';"
     );
-    expect(pageSource).toContain("runtimeTraits: ['wrapper']");
-    expect(pageSource).toContain("runtimeTraits: ['selection']");
+    expect(pageSource).toContain('runtimeTraits: ["wrapper"]');
+    expect(pageSource).toContain('runtimeTraits: ["selection"]');
     expect(pageSource).toContain("() => import('../../../../[...entry]')");
     expect(pageSource).toContain('const HandlerPage = createHandlerPage({');
   });
@@ -116,7 +105,9 @@ describe('generator handlers', () => {
             kind: 'named',
             importedName: 'Demo'
           },
-          runtimeTraits: ['selection']
+          metadata: {
+            runtimeTraits: ['selection']
+          }
         })
       ],
       renderConfig: {
@@ -241,20 +232,17 @@ describe('generator handlers', () => {
       await emitRouteHandlerPages({
         paths,
         heavyRoutes: [
-          createHeavyRoute({
+          createPlannedHeavyRoute({
             locale: 'de',
             slugArray: ['nested', 'example'],
             handlerId: 'de-nested-example',
             handlerRelativePath: 'nested/example/de',
-            usedLoadableComponentKeys: ['NestedCustomComponent']
+            usedLoadableComponentKeys: ['NestedCustomComponent'],
+            factoryVariant: 'none',
+            componentEntries: [componentEntry]
           })
         ],
-        loadableComponents: {
-          entriesByKey: new Map([[componentEntry.key, componentEntry]]),
-          loadableKeys: new Set([componentEntry.key])
-        },
         emitFormat: 'ts',
-        resolveHandlerFactoryVariant,
         runtimeHandlerFactoryImportBase:
           contentHandlerModuleInput.runtimeHandlerFactoryImportBase,
         baseStaticPropsImport: contentHandlerModuleInput.baseStaticPropsImport,

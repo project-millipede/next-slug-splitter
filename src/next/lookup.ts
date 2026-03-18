@@ -9,6 +9,8 @@ import type { NextConfigLike } from './config/load-next-config';
 import { resolveRouteHandlersConfigBases } from './config/resolve-configs';
 import { resolveSharedEmitFormat } from './emit-format';
 import { loadRegisteredSlugSplitterConfig } from './integration/slug-splitter-config-loader';
+import { prepareRouteHandlersFromConfig } from './prepare';
+import { resolveRouteHandlersAppConfig } from './config/app';
 import { executeRouteHandlerNextPipeline } from './runtime';
 
 import type {
@@ -149,9 +151,19 @@ export const loadRouteHandlerCacheLookup = async ({
     );
   }
 
+  const appConfig = resolveRouteHandlersAppConfig({
+    routeHandlersConfig: effectiveRouteHandlersConfig
+  });
+
+  await prepareRouteHandlersFromConfig({
+    rootDir: appConfig.rootDir,
+    routeHandlersConfig: effectiveRouteHandlersConfig
+  });
+
   const resolvedConfigs = resolveRouteHandlersConfigBases({
     routeHandlersConfig: effectiveRouteHandlersConfig
   });
+
   const resolvedTargetConfig = resolvedConfigs.find(
     config => config.targetId === targetId
   );
@@ -164,14 +176,18 @@ export const loadRouteHandlerCacheLookup = async ({
     configs: resolvedConfigs,
     createError: createLookupError
   });
+
   const [referenceResolvedTarget] = resolvedConfigs;
+
   const cachePath = resolvePersistentCachePath({
     rootDir: referenceResolvedTarget.app.rootDir
   });
+
   const fingerprint = await computePipelineFingerprintForConfigs({
     configs: resolvedConfigs,
     mode: 'generate'
   });
+
   const cachedRecord = await readPersistentCacheRecord(cachePath);
   const hasFreshCache =
     cachedRecord != null &&

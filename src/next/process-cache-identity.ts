@@ -1,10 +1,9 @@
 import { compareStringArrays } from '../core/discovery';
+import { resolveRouteHandlerProcessorCacheInfo } from '../core/processor-runner';
 import {
-  getHandlerFactoryVariantResolverIdentity,
-  type HandlerFactoryVariantResolverIdentity,
-  isSameHandlerFactoryVariantResolverIdentity
-} from '../core/runtime-variants';
-import { isSameModuleReference } from '../module-reference';
+  isSameModuleReference,
+  type ResolvedModuleReference
+} from '../module-reference';
 import { createMdxCompileOptionsIdentity } from './mdx-compile-options-identity';
 
 import type { LocaleConfig } from '../core/types';
@@ -15,18 +14,20 @@ import type {
   RouteHandlerNextPaths
 } from './types';
 
-/**
- * Pure-data identity for one resolved target in the adapter's
- * in-process rewrite cache.
- */
+type RouteHandlerProcessProcessorIdentity = {
+  processorImport: ResolvedModuleReference;
+  inputImports: Array<ResolvedModuleReference>;
+  cacheIdentity?: string;
+};
+
 type RouteHandlerProcessConfigIdentity = Omit<
   ResolvedRouteHandlersConfig,
-  'resolveHandlerFactoryVariant' | 'mdxCompileOptions'
+  'mdxCompileOptions' | 'processorConfig'
 > & {
   /**
-   * Serializable variant resolver identity for cache comparison.
+   * Serializable processor identity for cache comparison.
    */
-  resolveHandlerFactoryVariant: HandlerFactoryVariantResolverIdentity;
+  processor: RouteHandlerProcessProcessorIdentity;
   /**
    * Stable identity for target-local MDX compile options.
    */
@@ -53,42 +54,50 @@ export type RouteHandlerProcessCacheIdentity = {
  * @param config - Resolved target config.
  * @returns Structured identity for one target.
  */
-const createRouteHandlerProcessConfigIdentity = (
+const createRouteHandlerProcessConfigIdentity = async (
   config: ResolvedRouteHandlersConfig
-): RouteHandlerProcessConfigIdentity => ({
-  app: {
-    ...config.app
-  },
-  targetId: config.targetId,
-  localeConfig: {
-    locales: [...config.localeConfig.locales],
-    defaultLocale: config.localeConfig.defaultLocale
-  },
-  emitFormat: config.emitFormat,
-  contentLocaleMode: config.contentLocaleMode,
-  handlerRouteParam: {
-    ...config.handlerRouteParam
-  },
-  resolveHandlerFactoryVariant: getHandlerFactoryVariantResolverIdentity(
-    config.resolveHandlerFactoryVariant
-  ),
-  runtimeHandlerFactoryImportBase: {
-    ...config.runtimeHandlerFactoryImportBase
-  },
-  baseStaticPropsImport: {
-    ...config.baseStaticPropsImport
-  },
-  componentsImport: {
-    ...config.componentsImport
-  },
-  pageConfigImport:
-    config.pageConfigImport == null ? undefined : { ...config.pageConfigImport },
-  mdxCompileOptionsIdentity: createMdxCompileOptionsIdentity(
-    config.mdxCompileOptions
-  ),
-  routeBasePath: config.routeBasePath,
-  paths: { ...config.paths }
-});
+): Promise<RouteHandlerProcessConfigIdentity> => {
+  const cacheInfo = await resolveRouteHandlerProcessorCacheInfo({
+    rootDir: config.app.rootDir,
+    processorConfig: config.processorConfig,
+    targetId: config.targetId
+  });
+
+  return {
+    app: {
+      ...config.app
+    },
+    targetId: config.targetId,
+    localeConfig: {
+      locales: [...config.localeConfig.locales],
+      defaultLocale: config.localeConfig.defaultLocale
+    },
+    emitFormat: config.emitFormat,
+    contentLocaleMode: config.contentLocaleMode,
+    handlerRouteParam: {
+      ...config.handlerRouteParam
+    },
+    processor: {
+      processorImport: { ...config.processorConfig.processorImport },
+      inputImports: cacheInfo.inputImports.map(reference => ({ ...reference })),
+      cacheIdentity: cacheInfo.identity
+    },
+    runtimeHandlerFactoryImportBase: {
+      ...config.runtimeHandlerFactoryImportBase
+    },
+    baseStaticPropsImport: {
+      ...config.baseStaticPropsImport
+    },
+    componentsImport: {
+      ...config.componentsImport
+    },
+    mdxCompileOptionsIdentity: createMdxCompileOptionsIdentity(
+      config.mdxCompileOptions
+    ),
+    routeBasePath: config.routeBasePath,
+    paths: { ...config.paths }
+  };
+};
 
 /**
  * Create the structured identity used by the adapter's in-process cache.
@@ -96,24 +105,17 @@ const createRouteHandlerProcessConfigIdentity = (
  * @param input - Process cache identity input.
  * @returns Structured process cache identity.
  */
-export const createRouteHandlerProcessCacheIdentity = ({
+export const createRouteHandlerProcessCacheIdentity = async ({
   phase,
   configs
 }: {
   phase: string;
   configs: Array<ResolvedRouteHandlersConfig>;
-}): RouteHandlerProcessCacheIdentity => ({
+}): Promise<RouteHandlerProcessCacheIdentity> => ({
   phase,
-  configs: configs.map(createRouteHandlerProcessConfigIdentity)
+  configs: await Promise.all(configs.map(createRouteHandlerProcessConfigIdentity))
 });
 
-/**
- * Compare two resolved app configs structurally.
- *
- * @param left - Left app config.
- * @param right - Right app config.
- * @returns `true` when both app configs are equal.
- */
 const isSameResolvedRouteHandlersAppConfig = (
   left: ResolvedRouteHandlersAppConfig,
   right: ResolvedRouteHandlersAppConfig
@@ -121,36 +123,15 @@ const isSameResolvedRouteHandlersAppConfig = (
   left.rootDir === right.rootDir &&
   left.nextConfigPath === right.nextConfigPath;
 
-/**
- * Compare two locale configs structurally.
- *
- * @param left - Left locale config.
- * @param right - Right locale config.
- * @returns `true` when both locale configs are equal.
- */
 const isSameLocaleConfig = (left: LocaleConfig, right: LocaleConfig): boolean =>
   left.defaultLocale === right.defaultLocale &&
   compareStringArrays(left.locales, right.locales) === 0;
 
-/**
- * Compare two dynamic route parameter descriptors structurally.
- *
- * @param left - Left route parameter.
- * @param right - Right route parameter.
- * @returns `true` when both parameters are equal.
- */
 const isSameDynamicRouteParam = (
   left: DynamicRouteParam,
   right: DynamicRouteParam
 ): boolean => left.name === right.name && left.kind === right.kind;
 
-/**
- * Compare two resolved route-handler path records structurally.
- *
- * @param left - Left path record.
- * @param right - Right path record.
- * @returns `true` when both path records are equal.
- */
 const isSameRouteHandlerNextPaths = (
   left: RouteHandlerNextPaths,
   right: RouteHandlerNextPaths
@@ -158,6 +139,34 @@ const isSameRouteHandlerNextPaths = (
   left.rootDir === right.rootDir &&
   left.contentPagesDir === right.contentPagesDir &&
   left.handlersDir === right.handlersDir;
+
+/**
+ * Compare two processor identities structurally.
+ *
+ * @param left - Left processor identity.
+ * @param right - Right processor identity.
+ * @returns `true` when both processor identities are equal.
+ */
+const isSameProcessorIdentity = (
+  left: RouteHandlerProcessProcessorIdentity,
+  right: RouteHandlerProcessProcessorIdentity
+): boolean => {
+  if (!isSameModuleReference(left.processorImport, right.processorImport)) {
+    return false;
+  }
+
+  if (left.cacheIdentity !== right.cacheIdentity) {
+    return false;
+  }
+
+  if (left.inputImports.length !== right.inputImports.length) {
+    return false;
+  }
+
+  return left.inputImports.every((reference, index) =>
+    isSameModuleReference(reference, right.inputImports[index])
+  );
+};
 
 /**
  * Compare two process-config identities structurally.
@@ -194,12 +203,7 @@ const isSameRouteHandlerProcessConfigIdentity = (
     return false;
   }
 
-  if (
-    !isSameHandlerFactoryVariantResolverIdentity(
-      left.resolveHandlerFactoryVariant,
-      right.resolveHandlerFactoryVariant
-    )
-  ) {
+  if (!isSameProcessorIdentity(left.processor, right.processor)) {
     return false;
   }
 
@@ -217,16 +221,6 @@ const isSameRouteHandlerProcessConfigIdentity = (
   }
 
   if (!isSameModuleReference(left.componentsImport, right.componentsImport)) {
-    return false;
-  }
-
-  if (left.pageConfigImport == null || right.pageConfigImport == null) {
-    if (left.pageConfigImport !== right.pageConfigImport) {
-      return false;
-    }
-  } else if (
-    !isSameModuleReference(left.pageConfigImport, right.pageConfigImport)
-  ) {
     return false;
   }
 

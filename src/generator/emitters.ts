@@ -16,13 +16,11 @@ import { VariableDeclarationKind, type WriterFunction } from 'ts-morph';
 import { toRoutePath } from '../core/discovery';
 import type { EmitFormat, LoadableComponentEntry } from '../core/types';
 import { createGeneratorError } from '../utils/errors';
+import { isNonEmptyString } from '../utils/type-guards-extended';
 import {
-  isNonEmptyArray,
-  isNonEmptyString
-} from '../utils/type-guards-extended';
-import {
-  createGeneratedSourceFile,
   createStringArrayInitializer,
+  createSerializableValueInitializer,
+  createGeneratedSourceFile,
   renderStringArrayLiteral,
   writePropertyName,
   type Writer,
@@ -40,7 +38,7 @@ import {
  */
 export type HandlerLoadableComponentEmitEntry = Pick<
   LoadableComponentEntry,
-  'key' | 'runtimeTraits'
+  'key' | 'metadata'
 > & {
   /**
    * Local alias for the component in the generated module.
@@ -107,9 +105,7 @@ const writeComponentEntryObject = (
   const fieldWriters: Array<{ key: string; write: WriterFunction }> = [];
 
   if (!isNonEmptyString(entry.componentAlias)) {
-    throw createGeneratorError(
-      `Entry "${entry.key}" missing component alias.`
-    );
+    throw createGeneratorError(`Entry "${entry.key}" missing component alias.`);
   }
 
   const componentAlias = entry.componentAlias;
@@ -118,12 +114,12 @@ const writeComponentEntryObject = (
     write: currentWriter => currentWriter.write(componentAlias)
   });
 
-  if (isNonEmptyArray(entry.runtimeTraits)) {
-    const runtimeTraits = entry.runtimeTraits;
+  const metadataEntries = Object.entries(entry.metadata);
+  for (const [metadataKey, metadataValue] of metadataEntries) {
     fieldWriters.push({
-      key: 'runtimeTraits',
+      key: metadataKey,
       write: currentWriter =>
-        createStringArrayInitializer(runtimeTraits)(currentWriter)
+        createSerializableValueInitializer(metadataValue)(currentWriter)
     });
   }
 

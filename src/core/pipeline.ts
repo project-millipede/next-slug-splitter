@@ -12,8 +12,8 @@ import type {
  *
  * Pipeline phases:
  * 1. Analysis
- *    Discover localized content routes, build the loadable-component snapshot, and
- *    classify the target's heavy routes.
+ *    Discover localized content routes, execute the configured processor for
+ *    each heavy route, and build route-local generation plans.
  * 2. Generation
  *    When `mode === 'generate'`, emit one handler page for each heavy route
  *    selected during analysis.
@@ -45,9 +45,7 @@ export const executeRouteHandlerPipeline = async (
     await emitRouteHandlerPages({
       paths: config.paths,
       heavyRoutes: plan.heavyRoutes,
-      loadableComponents: plan.loadableComponents,
       emitFormat,
-      resolveHandlerFactoryVariant: config.resolveHandlerFactoryVariant,
       runtimeHandlerFactoryImportBase: config.runtimeHandlerFactoryImportBase,
       baseStaticPropsImport: config.baseStaticPropsImport,
       routeBasePath: config.routeBasePath

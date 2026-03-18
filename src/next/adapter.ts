@@ -16,9 +16,14 @@ import {
   isSameRouteHandlerProcessCacheIdentity,
   type RouteHandlerProcessCacheIdentity
 } from './process-cache-identity';
-import { executeRouteHandlerNextPipeline } from './runtime';
+import { prepareRouteHandlersFromConfig } from './prepare';
+import { executeResolvedRouteHandlerNextPipeline } from './runtime';
 
-import type { RewriteRecord, RouteHandlersConfig } from './types';
+import type {
+  ResolvedRouteHandlersConfig,
+  RewriteRecord,
+  RouteHandlersConfig
+} from './types';
 
 let cacheIdentity: RouteHandlerProcessCacheIdentity | null = null;
 let generationIdentity: RouteHandlerProcessCacheIdentity | null = null;
@@ -48,21 +53,12 @@ const isRouteOptimizedPhase = (phase: string): boolean =>
  * @returns Generated route-handler rewrites.
  */
 const generateRewrites = async ({
-  rootDir,
-  nextConfigPath,
-  nextConfig,
-  routeHandlersConfig
+  resolvedConfigs
 }: {
-  rootDir: string;
-  nextConfigPath: string;
-  nextConfig: NextConfigLike;
-  routeHandlersConfig: RouteHandlersConfig;
+  resolvedConfigs: Array<ResolvedRouteHandlersConfig>;
 }): Promise<Array<RewriteRecord>> => {
-  const result = await executeRouteHandlerNextPipeline({
-    rootDir,
-    nextConfigPath,
-    nextConfig,
-    routeHandlersConfig,
+  const result = await executeResolvedRouteHandlerNextPipeline({
+    resolvedConfigs,
     mode: 'generate'
   });
 
@@ -96,13 +92,18 @@ const getRewritesWithProcessCache = async ({
   nextConfig: NextConfigLike;
   routeHandlersConfig: RouteHandlersConfig;
 }): Promise<Array<RewriteRecord>> => {
+  await prepareRouteHandlersFromConfig({
+    rootDir,
+    routeHandlersConfig
+  });
+
   const resolvedConfigs = resolveRouteHandlersConfigs({
     rootDir,
     nextConfigPath,
     nextConfig,
     routeHandlersConfig
   });
-  const nextIdentity = createRouteHandlerProcessCacheIdentity({
+  const nextIdentity = await createRouteHandlerProcessCacheIdentity({
     phase,
     configs: resolvedConfigs
   });
@@ -128,10 +129,7 @@ const getRewritesWithProcessCache = async ({
     // Cache the in-flight promise before starting the async work so concurrent
     // callers for the same identity share one generation run.
     const rewrites = await generateRewrites({
-      rootDir,
-      nextConfigPath,
-      nextConfig,
-      routeHandlersConfig
+      resolvedConfigs
     });
     cacheIdentity = nextIdentity;
     cachedRewrites = rewrites;

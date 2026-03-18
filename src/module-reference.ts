@@ -279,6 +279,21 @@ const isExistingFile = (filePath: string): boolean => {
   }
 };
 
+/**
+ * Assert that an absolute file path exists on disk and return it.
+ *
+ * @param absolutePath - Absolute path to verify.
+ * @returns The same absolute path when the file exists.
+ * @throws When the file does not exist.
+ */
+const resolveExactExistingFilePath = (absolutePath: string): string => {
+  if (isExistingFile(absolutePath)) {
+    return absolutePath;
+  }
+
+  throw new Error(`Could not resolve local file path "${absolutePath}".`);
+};
+
 const resolveExistingLocalModulePath = (absolutePath: string): string => {
   const candidates =
     hasKnownSourceExtension(absolutePath)
@@ -329,6 +344,36 @@ export const resolveModuleReferenceToPath = ({
       : path.resolve(rootDir, reference.path);
 
   return resolveExistingLocalModulePath(absolutePath);
+};
+
+/**
+ * Resolve one module reference to an existing absolute file path without
+ * probing source-file extensions.
+ *
+ * @param input Resolution input.
+ * @returns Absolute existing file path.
+ * @throws When the reference does not resolve to an existing file.
+ */
+export const resolveModuleReferenceToFilePath = ({
+  rootDir,
+  reference
+}: {
+  rootDir: string;
+  reference: ModuleReference | ResolvedModuleReference;
+}): string => {
+  if (reference.kind === 'package') {
+    const requireFromRoot = createRequire(
+      path.resolve(rootDir, APP_ROOT_PACKAGE_RESOLUTION_ANCHOR)
+    );
+    return requireFromRoot.resolve(reference.specifier);
+  }
+
+  const absolutePath =
+    reference.kind === 'absolute-file'
+      ? path.resolve(reference.path)
+      : path.resolve(rootDir, reference.path);
+
+  return resolveExactExistingFilePath(absolutePath);
 };
 
 /**

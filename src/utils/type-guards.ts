@@ -1,4 +1,4 @@
-type Guard<T> = (value: unknown) => value is T;
+export type Guard<T> = (value: unknown) => value is T;
 
 /**
  * Mapping of JavaScript `typeof` results to corresponding TypeScript types.

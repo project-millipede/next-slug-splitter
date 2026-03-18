@@ -10,8 +10,17 @@ import type {
   ResolvedModuleReference
 } from '../module-reference';
 import type { PluggableList } from 'unified';
+import {
+  isJsonObject,
+  JsonObject,
+  JsonPrimitive,
+  JsonValue
+} from '../utils/type-guards-json';
 
 export type PipelineMode = 'analyze' | 'generate';
+
+/** @deprecated Use JsonPrimitive instead */
+export type SerializableMetadataPrimitive = JsonPrimitive;
 
 /**
  * MDX compile plugins forwarded into route analysis builds.
@@ -131,14 +140,10 @@ export type RouteHandlerPlan = {
   analyzedCount: number;
 
   /**
-   * Heavy routes selected for handler generation.
+   * Heavy routes selected for handler generation with their resolved
+   * route-local generation plans.
    */
-  heavyRoutes: Array<HeavyRouteCandidate>;
-
-  /**
-   * Resolved loadable-component snapshot used during analysis.
-   */
-  loadableComponents: LoadableComponentSnapshot;
+  heavyRoutes: Array<PlannedHeavyRoute>;
 };
 
 /**
@@ -186,13 +191,6 @@ export type RouteHandlerPipelineOptions = {
   emitFormat?: EmitFormat;
 
   /**
-   * Function that selects the handler factory variant based on loadable component entries.
-   */
-  resolveHandlerFactoryVariant: (
-    entries: Array<LoadableComponentEntry>
-  ) => string;
-
-  /**
    * Resolved runtime handler factory import base.
    */
   runtimeHandlerFactoryImportBase: ResolvedModuleReference;
@@ -208,10 +206,10 @@ export type RouteHandlerPipelineOptions = {
   componentsImport: ResolvedModuleReference;
 
   /**
-   * Optional resolved page-config source used to extract runtime traits and
-   * scoped MDX transforms during planning.
+   * Resolved processor binding that transforms captured component keys into
+   * route-local generation plans.
    */
-  pageConfigImport?: ResolvedModuleReference;
+  processorConfig: ResolvedRouteHandlerProcessorConfig;
 
   /**
    * MDX compile plugins forwarded into the capture build.
@@ -285,7 +283,149 @@ export type RouteHandlerModuleReference = ModuleReference;
 export type ResolvedRouteHandlerModuleReference = ResolvedModuleReference;
 
 /**
- * Single loadable component entry used during planning and emission.
+ * Route-local context exposed to processors.
+ */
+export type RouteHandlerRouteContext = {
+  /**
+   * Stable identifier for the owning target.
+   */
+  targetId?: string;
+
+  /**
+   * Locale of the source route.
+   */
+  locale: string;
+
+  /**
+   * Ordered slug segments of the source route.
+   */
+  slugArray: readonly string[];
+
+  /**
+   * Public route path for the source page.
+   */
+  routePath: string;
+
+  /**
+   * Absolute source file path for the route.
+   */
+  filePath: string;
+
+  /**
+   * Stable generated handler identifier.
+   */
+  handlerId: string;
+
+  /**
+   * Relative output path for the generated handler page.
+   */
+  handlerRelativePath: string;
+};
+
+/**
+ * Input passed to one processor ingress run.
+ */
+export type ProcessorIngressInput = {
+  /**
+   * Route context for the current source page.
+   */
+  route: RouteHandlerRouteContext;
+
+  /**
+   * Captured component keys referenced by the source page.
+   */
+  capturedKeys: readonly string[];
+};
+
+/**
+ * Default helpers exposed to processor egress.
+ */
+export type ProcessorEgressDefaults = {
+  /**
+   * Build the default named component import for one captured key.
+   */
+  namedComponent: (key: string) => ComponentImportSpec;
+};
+
+/**
+ * Generic processor-facing component instruction.
+ */
+export type RouteHandlerGeneratorComponent<TMeta = JsonObject> = {
+  /**
+   * Captured key represented by this component plan entry.
+   */
+  key: string;
+
+  /**
+   * Optional import override for the component.
+   */
+  componentImport?: ComponentImportSpec;
+
+  /**
+   * Opaque metadata preserved on the emitted runtime entry.
+   */
+  metadata?: TMeta;
+};
+
+/**
+ * Generic route-local generation plan returned by processor egress.
+ */
+export type RouteHandlerGeneratorPlan<TMeta = JsonObject> = {
+  /**
+   * Runtime handler factory variant selected for this route.
+   */
+  factoryVariant: string;
+
+  /**
+   * Component instructions selected for the generated handler.
+   */
+  components: readonly RouteHandlerGeneratorComponent<TMeta>[];
+};
+
+/**
+ * Optional processor cache hints used by the Next integration layer.
+ */
+export type RouteHandlerProcessorCacheConfig = {
+  /**
+   * Additional module references that should participate in cache invalidation.
+   */
+  inputImports?: readonly ModuleReference[];
+
+  /**
+   * Optional app-owned cache identity for external or generated data.
+   */
+  getIdentity?: (input: { targetId?: string }) => string | Promise<string>;
+};
+
+/**
+ * Generic app-owned processor contract.
+ */
+export type RouteHandlerProcessor<TResolved = unknown, TMeta = JsonObject> = {
+  /**
+   * Optional cache hints for the Next integration layer.
+   */
+  cache?: RouteHandlerProcessorCacheConfig;
+
+  /**
+   * Build any private processor state from the captured keys and route context.
+   */
+  ingress: (input: ProcessorIngressInput) => TResolved | Promise<TResolved>;
+
+  /**
+   * Convert the resolved processor state into a route-local generation plan.
+   */
+  egress: (input: {
+    route: RouteHandlerRouteContext;
+    capturedKeys: readonly string[];
+    resolved: TResolved;
+    defaults: ProcessorEgressDefaults;
+  }) =>
+    | RouteHandlerGeneratorPlan<TMeta>
+    | Promise<RouteHandlerGeneratorPlan<TMeta>>;
+};
+
+/**
+ * Single emitted component entry used during handler generation.
  */
 export type LoadableComponentEntry = {
   /**
@@ -299,25 +439,46 @@ export type LoadableComponentEntry = {
   componentImport: ComponentImportSpec;
 
   /**
-   * Runtime traits associated with this entry.
+   * Opaque metadata emitted alongside the component reference.
    */
-  runtimeTraits: Array<string>;
+  metadata: JsonObject;
 };
 
 /**
- * Snapshot of the loadable components available for generated handlers.
+ * Route selected for generation after processor validation succeeds.
  */
-export type LoadableComponentSnapshot = {
+export type PlannedHeavyRoute = HeavyRouteCandidate & {
   /**
-   * Map of loadable component entries keyed by their unique key.
+   * Runtime handler factory variant selected for this route.
    */
-  entriesByKey: Map<string, LoadableComponentEntry>;
+  factoryVariant: string;
 
   /**
-   * Set of keys that are available for dynamic loading.
+   * Fully normalized component entries selected for the route.
    */
-  loadableKeys: Set<string>;
+  componentEntries: Array<LoadableComponentEntry>;
 };
+
+/**
+ * Resolved processor module reference owned by the app.
+ */
+export type ModuleRouteHandlerProcessorConfig = {
+  /**
+   * Discriminator for module-backed processors.
+   */
+  kind: 'module';
+
+  /**
+   * Resolved module reference pointing at the processor module.
+   */
+  processorImport: ResolvedModuleReference;
+};
+
+/**
+ * Resolved processor configuration used by the planner.
+ */
+export type ResolvedRouteHandlerProcessorConfig =
+  ModuleRouteHandlerProcessorConfig;
 
 /**
  * Alias for heavy route candidate used in analysis contexts.

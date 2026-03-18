@@ -1,4 +1,4 @@
-import { isString } from './type-guards';
+import { isArray, isObject, isString } from './type-guards';
 
 /**
  * Guard verifying the value is a non-empty string.
@@ -66,7 +66,7 @@ export function isDefined<T>(value: T | null | undefined): value is T {
  * ```
  */
 export function isNonEmptyArray<T>(value: unknown): value is T[] {
-  return Array.isArray(value) && value.length > 0;
+  return isArray(value) && value.length > 0;
 }
 
 /**
@@ -91,10 +91,5 @@ export function isNonEmptyArray<T>(value: unknown): value is T[] {
 export function isNonEmptyObject(
   value: unknown
 ): value is Record<string, unknown> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    Object.keys(value).length > 0
-  );
+  return isObject(value) && Object.keys(value).length > 0;
 }
