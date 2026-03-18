@@ -3,7 +3,8 @@ import path from 'node:path';
 import type {
   HeavyRouteCandidate,
   ComponentImportSpec,
-  LoadableComponentEntry
+  LoadableComponentEntry,
+  PlannedHeavyRoute
 } from '../../core/types';
 import { absoluteFileModule, packageModule } from '../../module-reference';
 import type {
@@ -72,6 +73,20 @@ export const createHeavyRoute = (
 });
 
 /**
+ * Create a planned heavy-route fixture with factory variant and component entries.
+ *
+ * @param overrides Partial planned heavy-route values to override defaults.
+ * @returns Planned heavy-route fixture for tests.
+ */
+export const createPlannedHeavyRoute = (
+  overrides: Partial<PlannedHeavyRoute> &
+    Pick<PlannedHeavyRoute, 'factoryVariant' | 'componentEntries'>
+): PlannedHeavyRoute => ({
+  ...createHeavyRoute(overrides),
+  ...overrides
+});
+
+/**
  * Create a loadable-component-entry fixture with required key and optional overrides.
  *
  * @param overrides Loadable component entry overrides including the required `key`.
@@ -82,7 +97,7 @@ export const createLoadableComponentEntry = (
     Pick<LoadableComponentEntry, 'key'>
 ): LoadableComponentEntry => ({
   componentImport: DEFAULT_COMPONENT_IMPORT,
-  runtimeTraits: [],
+  metadata: {},
   ...overrides
 });
 

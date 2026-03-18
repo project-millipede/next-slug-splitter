@@ -15,8 +15,6 @@ import {
 } from '../../next/config/index';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-  TEST_COMPONENT_IMPORT_NAME,
-  TEST_COMPONENT_IMPORT_SOURCE,
   TEST_PRIMARY_COMPONENTS_IMPORT,
   TEST_PRIMARY_CONTENT_PAGES_DIR,
   TEST_PRIMARY_FACTORY_IMPORT,
@@ -27,23 +25,12 @@ import {
   TEST_SECONDARY_ROUTE_SEGMENT,
   TEST_SINGLE_ROUTE_PARAM_NAME,
   createTestHandlerBinding,
-  createTestRuntimeTraitBinding,
   writeTestBaseStaticPropsPage,
   writeTestRouteHandlerPackage
 } from '../helpers/fixtures';
 import { withTempDir } from '../helpers/temp-dir';
 
-import type {
-  ComponentImportSpec,
-  LoadableComponentEntry
-} from '../../core/types';
 import type { RouteHandlersConfig } from '../../next/types';
-
-const TEST_COMPONENT_IMPORT: ComponentImportSpec = {
-  source: TEST_COMPONENT_IMPORT_SOURCE,
-  kind: 'named',
-  importedName: TEST_COMPONENT_IMPORT_NAME
-};
 
 const createNextConfig = () => ({
   i18n: {
@@ -208,7 +195,7 @@ describe('next config helpers', () => {
     });
   });
 
-  it('resolves handlerBinding.pageConfigImport from the app root', async () => {
+  it('resolves handlerBinding.processorImport from the app root', async () => {
     await withTempDir('next-slug-splitter-config-', async rootDir => {
       await writeTestRouteHandlerPackage(rootDir);
       await writeTestBaseStaticPropsPage(rootDir, {
@@ -220,8 +207,8 @@ describe('next config helpers', () => {
       });
       await mkdir(path.join(rootDir, 'src'), { recursive: true });
       await writeFile(
-        path.join(rootDir, 'src', 'page-config.tsx'),
-        'export const nestedDocComponents = defineComponents({}, () => ({}));\n',
+        path.join(rootDir, 'src', 'route-handler-processor.mjs'),
+        'export const routeHandlerProcessor = { ingress: () => ({}), egress: () => ({ factoryVariant: "none", components: [] }) };\n',
         'utf8'
       );
 
@@ -237,74 +224,25 @@ describe('next config helpers', () => {
               kind: 'catch-all'
             },
             contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
-            handlerBinding: createTestHandlerBinding({
-              pageConfigImport: appRelativeModule('src/page-config.tsx')
-            })
+            handlerBinding: {
+              componentsImport: packageModule(TEST_PRIMARY_COMPONENTS_IMPORT),
+              processorImport: appRelativeModule(
+                'src/route-handler-processor.mjs'
+              ),
+              runtimeFactory: {
+                importBase: packageModule(TEST_PRIMARY_FACTORY_IMPORT)
+              }
+            }
           })
         }
       });
 
-      expect(resolvedConfig.pageConfigImport).toEqual(
-        absoluteFileModule(path.join(rootDir, 'src', 'page-config.tsx'))
-      );
-    });
-  });
-
-  it('rejects target-level rootDir overrides', async () => {
-    await withTempDir('next-slug-splitter-config-', async rootDir => {
-      await writeTestRouteHandlerPackage(rootDir);
-
-      expect(() =>
-        resolveRouteHandlersConfig({
-          rootDir,
-          nextConfig: createNextConfig(),
-          routeHandlersConfig: {
-            app: createAppConfig(rootDir),
-            ...createCatchAllRouteHandlersPreset({
-              routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-              handlerRouteParam: {
-                name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-                kind: 'catch-all'
-              },
-              contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
-              handlerBinding: createTestHandlerBinding()
-            }),
-            paths: {
-              rootDir: '/tmp/other-root'
-            } as RouteHandlersConfig['paths'] & { rootDir: string }
-          }
-        })
-      ).toThrow(
-        '[next-slug-splitter] paths.rootDir is no longer supported. Configure routeHandlersConfig.app.rootDir instead.'
-      );
-    });
-  });
-
-  it('rejects legacy runtimeHandlerFactoryImport config', async () => {
-    await withTempDir('next-slug-splitter-config-', async rootDir => {
-      await writeTestRouteHandlerPackage(rootDir);
-
-      expect(() =>
-        resolveRouteHandlersConfig({
-          rootDir,
-          nextConfig: createNextConfig(),
-          routeHandlersConfig: {
-            app: createAppConfig(rootDir),
-            ...createCatchAllRouteHandlersPreset({
-              routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-              handlerRouteParam: {
-                name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-                kind: 'catch-all'
-              },
-              contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
-              handlerBinding: createTestHandlerBinding()
-            }),
-            runtimeHandlerFactoryImport: TEST_PRIMARY_FACTORY_IMPORT
-          } as RouteHandlersConfig
-        })
-      ).toThrow(
-        '[next-slug-splitter] runtimeHandlerFactoryImport has been replaced by handlerBinding.runtimeFactory.importBase.'
-      );
+      expect(resolvedConfig.processorConfig).toEqual({
+        kind: 'module',
+        processorImport: absoluteFileModule(
+          path.join(rootDir, 'src', 'route-handler-processor.mjs')
+        )
+      });
     });
   });
 
@@ -421,97 +359,4 @@ describe('next config helpers', () => {
     });
   });
 
-  it('derives handler factory variant resolver from handlerBinding', async () => {
-    await withTempDir('next-slug-splitter-config-', async rootDir => {
-      await writeTestRouteHandlerPackage(rootDir);
-      await writeTestBaseStaticPropsPage(rootDir, {
-        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-        handlerRouteParam: {
-          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-          kind: 'catch-all'
-        }
-      });
-
-      const routeHandlersConfig = createCatchAllRouteHandlersPreset({
-        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-        handlerRouteParam: {
-          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-          kind: 'catch-all'
-        },
-        contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
-        handlerBinding: createTestRuntimeTraitBinding()
-      });
-      const resolvedConfig = resolveRouteHandlersConfig({
-        rootDir,
-        nextConfig: createNextConfig(),
-        routeHandlersConfig: {
-          app: createAppConfig(rootDir),
-          ...routeHandlersConfig
-        }
-      });
-
-      const selectionEntries: Array<LoadableComponentEntry> = [
-        {
-          key: 'SelectionComponent',
-          componentImport: TEST_COMPONENT_IMPORT,
-          runtimeTraits: ['selection']
-        }
-      ];
-      const wrapperEntries: Array<LoadableComponentEntry> = [
-        {
-          key: 'WrapperComponent',
-          componentImport: TEST_COMPONENT_IMPORT,
-          runtimeTraits: ['wrapper']
-        }
-      ];
-      const defaultEntries: Array<LoadableComponentEntry> = [
-        {
-          key: 'CustomComponent',
-          componentImport: TEST_COMPONENT_IMPORT,
-          runtimeTraits: []
-        }
-      ];
-
-      expect(resolvedConfig.resolveHandlerFactoryVariant(selectionEntries)).toBe(
-        'selection'
-      );
-      expect(resolvedConfig.resolveHandlerFactoryVariant(wrapperEntries)).toBe(
-        'wrapper'
-      );
-      expect(resolvedConfig.resolveHandlerFactoryVariant(defaultEntries)).toBe(
-        'none'
-      );
-    });
-  });
-
-  it('rejects handler bindings with missing resolvable variant imports', async () => {
-    await withTempDir('next-slug-splitter-handler-binding-', async rootDir => {
-      await writeTestRouteHandlerPackage(rootDir, {
-        primaryVariants: ['none']
-      });
-
-      expect(() =>
-        resolveRouteHandlersConfig({
-          rootDir,
-          nextConfig: createNextConfig(),
-          routeHandlersConfig: {
-            app: createAppConfig(rootDir),
-            ...createCatchAllRouteHandlersPreset({
-              routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-              handlerRouteParam: {
-                name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-                kind: 'catch-all'
-              },
-              contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
-              handlerBinding: createTestHandlerBinding({
-                variants: ['none', 'selection']
-              })
-            })
-          }
-        })
-      ).toThrow(
-        `[next-slug-splitter] handlerBinding.runtimeFactory.importBase "${TEST_PRIMARY_FACTORY_IMPORT}" is missing resolvable variant import "${TEST_PRIMARY_FACTORY_IMPORT}/selection" from "${rootDir}".`
-      );
-    });
-  });
 });
