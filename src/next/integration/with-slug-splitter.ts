@@ -95,9 +95,7 @@ export function withSlugSplitter(
 
           registerSlugSplitterConfigPath(resolvedConfigPath);
 
-          return resolveSlugSplitterAdapterEntry({
-            rootDir
-          });
+          return resolveSlugSplitterAdapterEntry(rootDir);
         })();
 
   const applyRouteHandlers = (nextConfig: NextConfigLike): NextConfigLike => {
@@ -107,7 +105,10 @@ export function withSlugSplitter(
       );
     }
 
-    const configuredExperimental = readObjectProperty(nextConfig, 'experimental');
+    const configuredExperimental = readObjectProperty(
+      nextConfig,
+      'experimental'
+    );
     if (
       configuredExperimental != null &&
       !isObjectRecord(configuredExperimental)
