@@ -3,6 +3,8 @@ export {
   resolveSlugSplitterAdapterEntry
 } from './adapter-entry';
 export {
+  resolveRegisteredSlugSplitterConfigRegistration,
+  readRegisteredSlugSplitterConfigRootDir,
   readRegisteredSlugSplitterConfigPath,
   registerSlugSplitterConfigPath,
   resolveSlugSplitterConfigPath

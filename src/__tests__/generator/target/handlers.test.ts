@@ -1,19 +1,31 @@
-import { readFile } from 'node:fs/promises';
+import { access, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { emitRouteHandlerPages } from '../../generator/handlers';
-import { renderRouteHandlerModules } from '../../generator/render-modules';
+import { emitRouteHandlerPages } from '../../../generator/handlers';
+import { renderRouteHandlerModules } from '../../../generator/render-modules';
 import {
   createContentHandlerModuleInput,
   createLoadableComponentEntry,
   createPlannedHeavyRoute,
   createTestPaths
-} from '../helpers/builders';
-import { TEST_PRIMARY_FACTORY_IMPORT, TEST_STATIC_PROPS_IMPORT } from '../helpers/fixtures';
-import { withTempDir } from '../helpers/temp-dir';
+} from '../../helpers/builders';
+import {
+  TEST_PRIMARY_FACTORY_IMPORT,
+  TEST_STATIC_PROPS_IMPORT
+} from '../../helpers/fixtures';
+import { withTempDir } from '../../helpers/temp-dir';
 
-import type { LoadableComponentEntry } from '../../core/types';
+import type { LoadableComponentEntry } from '../../../core/types';
+
+const fileExists = async (filePath: string): Promise<boolean> => {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 describe('generator handlers', () => {
   it('emits static handler page module with inline runtime traits', () => {
@@ -65,6 +77,9 @@ describe('generator handlers', () => {
     expect(pageSource).toContain('runtimeTraits: ["selection"]');
     expect(pageSource).toContain("() => import('../../../../[...entry]')");
     expect(pageSource).toContain('const HandlerPage = createHandlerPage({');
+    expect(pageSource).toContain(
+      'export const getStaticProps = createHandlerGetStaticProps('
+    );
   });
 
   it('supports custom and package factory base imports', () => {
@@ -255,6 +270,122 @@ describe('generator handlers', () => {
       );
 
       expect(pageSource).toContain("() => import('../../../[...entry]')");
+    });
+  });
+
+  it('selectively rewrites changed handlers and removes stale generated files', async () => {
+    await withTempDir('next-slug-splitter-', async rootDir => {
+      const paths = createTestPaths(rootDir);
+      const contentHandlerModuleInput = createContentHandlerModuleInput(rootDir);
+
+      const unchangedRoute = createPlannedHeavyRoute({
+        locale: 'en',
+        slugArray: ['stable'],
+        handlerId: 'en-stable',
+        handlerRelativePath: 'stable/en',
+        usedLoadableComponentKeys: ['StableComponent'],
+        factoryVariant: 'none',
+        componentEntries: [
+          createLoadableComponentEntry({
+            key: 'StableComponent',
+            componentImport: {
+              source: '@next-slug-splitter-test/content-components',
+              kind: 'named',
+              importedName: 'StableComponent'
+            }
+          })
+        ]
+      });
+      const changedRouteInitial = createPlannedHeavyRoute({
+        locale: 'en',
+        slugArray: ['changed'],
+        handlerId: 'en-changed',
+        handlerRelativePath: 'changed/en',
+        usedLoadableComponentKeys: ['ChangedComponent'],
+        factoryVariant: 'none',
+        componentEntries: [
+          createLoadableComponentEntry({
+            key: 'ChangedComponent',
+            componentImport: {
+              source: '@next-slug-splitter-test/content-components',
+              kind: 'named',
+              importedName: 'ChangedComponent'
+            }
+          })
+        ]
+      });
+      const staleRoute = createPlannedHeavyRoute({
+        locale: 'en',
+        slugArray: ['stale'],
+        handlerId: 'en-stale',
+        handlerRelativePath: 'stale/en',
+        usedLoadableComponentKeys: ['StaleComponent'],
+        factoryVariant: 'none',
+        componentEntries: [
+          createLoadableComponentEntry({
+            key: 'StaleComponent',
+            componentImport: {
+              source: '@next-slug-splitter-test/content-components',
+              kind: 'named',
+              importedName: 'StaleComponent'
+            }
+          })
+        ]
+      });
+
+      await emitRouteHandlerPages({
+        paths,
+        heavyRoutes: [unchangedRoute, changedRouteInitial, staleRoute],
+        emitFormat: 'ts',
+        runtimeHandlerFactoryImportBase:
+          contentHandlerModuleInput.runtimeHandlerFactoryImportBase,
+        baseStaticPropsImport: contentHandlerModuleInput.baseStaticPropsImport,
+        routeBasePath: contentHandlerModuleInput.routeBasePath
+      });
+
+      const unchangedPath = path.join(paths.handlersDir, 'stable', 'en.tsx');
+      const changedPath = path.join(paths.handlersDir, 'changed', 'en.tsx');
+      const stalePath = path.join(paths.handlersDir, 'stale', 'en.tsx');
+      const unchangedStatBefore = await stat(unchangedPath);
+      const changedSourceBefore = await readFile(changedPath, 'utf8');
+
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      const changedRouteUpdated = createPlannedHeavyRoute({
+        ...changedRouteInitial,
+        factoryVariant: 'selection',
+        componentEntries: [
+          createLoadableComponentEntry({
+            key: 'ChangedComponent',
+            componentImport: {
+              source: '@next-slug-splitter-test/content-components',
+              kind: 'named',
+              importedName: 'ChangedComponent'
+            },
+            metadata: {
+              runtimeTraits: ['selection']
+            }
+          })
+        ]
+      });
+
+      await emitRouteHandlerPages({
+        paths,
+        heavyRoutes: [unchangedRoute, changedRouteUpdated],
+        emitFormat: 'ts',
+        runtimeHandlerFactoryImportBase:
+          contentHandlerModuleInput.runtimeHandlerFactoryImportBase,
+        baseStaticPropsImport: contentHandlerModuleInput.baseStaticPropsImport,
+        routeBasePath: contentHandlerModuleInput.routeBasePath
+      });
+
+      const unchangedStatAfter = await stat(unchangedPath);
+      const changedSourceAfter = await readFile(changedPath, 'utf8');
+
+      expect(unchangedStatAfter.mtimeMs).toBe(unchangedStatBefore.mtimeMs);
+      expect(changedSourceAfter).not.toBe(changedSourceBefore);
+      expect(changedSourceAfter).toContain('/selection');
+      expect(await fileExists(stalePath)).toBe(false);
     });
   });
 });

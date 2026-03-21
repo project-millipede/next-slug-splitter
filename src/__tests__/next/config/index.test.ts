@@ -6,13 +6,14 @@ import {
   absoluteFileModule,
   appRelativeModule,
   packageModule
-} from '../../module-reference';
+} from '../../../module-reference';
 import {
   createCatchAllRouteHandlersPreset,
   findNextConfigPath,
   resolveRouteHandlersConfig,
-  resolveRouteHandlersConfigs
-} from '../../next/config/index';
+  resolveRouteHandlersConfigs,
+  resolveRouteHandlersAppConfig
+} from '../../../next/config/index';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   TEST_PRIMARY_COMPONENTS_IMPORT,
@@ -27,10 +28,10 @@ import {
   createTestHandlerBinding,
   writeTestBaseStaticPropsPage,
   writeTestRouteHandlerPackage
-} from '../helpers/fixtures';
-import { withTempDir } from '../helpers/temp-dir';
+} from '../../helpers/fixtures';
+import { withTempDir } from '../../helpers/temp-dir';
 
-import type { RouteHandlersConfig } from '../../next/types';
+import type { RouteHandlersConfig } from '../../../next/types';
 
 const createNextConfig = () => ({
   i18n: {
@@ -85,6 +86,39 @@ describe('next config helpers', () => {
     expect(routeHandlersConfig.paths?.handlersDir).toBe(
       path.join('pages', 'content', '_handlers')
     );
+  });
+
+  it('defaults development routing policy to proxy and allows an explicit rewrite override', () => {
+    const defaultResolvedAppConfig = resolveRouteHandlersAppConfig({
+      rootDir: '/tmp/app',
+      nextConfigPath: '/tmp/app/next.config.ts',
+      routeHandlersConfig: {
+        app: {
+          rootDir: '/tmp/app',
+          nextConfigPath: '/tmp/app/next.config.ts'
+        }
+      }
+    });
+    const overrideResolvedAppConfig = resolveRouteHandlersAppConfig({
+      rootDir: '/tmp/app',
+      nextConfigPath: '/tmp/app/next.config.ts',
+      routeHandlersConfig: {
+        app: {
+          rootDir: '/tmp/app',
+          nextConfigPath: '/tmp/app/next.config.ts',
+          routing: {
+            development: 'rewrites'
+          }
+        }
+      }
+    });
+
+    expect(defaultResolvedAppConfig.routing).toEqual({
+      development: 'proxy'
+    });
+    expect(overrideResolvedAppConfig.routing).toEqual({
+      development: 'rewrites'
+    });
   });
 
   it('supports single-segment route params via handlerRouteParam', () => {

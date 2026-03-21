@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   discoverLocalizedContentRoutes,
+  resolveLocalizedContentRoute,
   sortStringArray,
   toHandlerId,
   toHandlerRelativePath,
@@ -111,6 +112,72 @@ describe('discovery helpers', () => {
           slugArray: ['feature-summary']
         })
       ]);
+    });
+  });
+
+  it('resolves one filename-mode localized route by path-local lookup and preserves locale-prefixed variants', async () => {
+    await withTempDir('route-handler-discovery-', async rootDir => {
+      const contentPagesDir = path.join(
+        rootDir,
+        'content/src/pages/nested/example'
+      );
+      await mkdir(contentPagesDir, { recursive: true });
+      await writeFile(path.join(contentPagesDir, 'en.mdx'), '# EN', 'utf8');
+      await writeFile(
+        path.join(contentPagesDir, 'en.page.mdx'),
+        '# EN PAGE',
+        'utf8'
+      );
+
+      const resolved = await resolveLocalizedContentRoute({
+        contentPagesDir: path.join(rootDir, 'content/src/pages'),
+        localeConfig: {
+          locales: ['en', 'de'],
+          defaultLocale: 'en'
+        },
+        contentLocaleMode: 'filename',
+        identity: {
+          locale: 'en',
+          slugArray: ['nested', 'example']
+        }
+      });
+
+      expect(resolved).toEqual({
+        locale: 'en',
+        slugArray: ['nested', 'example'],
+        filePath: path.join(contentPagesDir, 'en.page.mdx')
+      });
+    });
+  });
+
+  it('resolves one default-locale route by deterministic file candidates', async () => {
+    await withTempDir('route-handler-discovery-', async rootDir => {
+      const contentPagesDir = path.join(rootDir, 'content/src/pages');
+      await mkdir(path.join(contentPagesDir, 'guides'), { recursive: true });
+      await writeFile(
+        path.join(contentPagesDir, 'guides', 'getting-started.mdx'),
+        '# Content',
+        'utf8'
+      );
+
+      const resolved = await resolveLocalizedContentRoute({
+        contentPagesDir,
+        localeConfig: {
+          locales: ['en', 'de'],
+          defaultLocale: 'en'
+        },
+        contentLocaleMode: 'default-locale',
+        identity: {
+          locale: 'en',
+          slugArray: ['guides', 'getting-started']
+        }
+      });
+
+      expect(resolved).toEqual({
+        locale: 'en',
+        slugArray: ['guides', 'getting-started'],
+        filePath: path.join(contentPagesDir, 'guides', 'getting-started.mdx')
+      });
     });
   });
 });

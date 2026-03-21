@@ -1,5 +1,6 @@
-import globFiles from 'fast-glob';
+import { access, readdir } from 'node:fs/promises';
 import path from 'path';
+import globFiles from 'fast-glob';
 
 import { isNonEmptyString } from '../utils/type-guards-extended';
 import type {
@@ -228,4 +229,171 @@ export const discoverLocalizedContentRoutes = async (
   }
 
   return deduped;
+};
+
+/**
+ * Candidate input for resolving one localized route identity to one concrete
+ * source file without scanning the full content tree.
+ */
+export type ResolveLocalizedContentRouteInput = {
+  /**
+   * Content pages directory to resolve from.
+   */
+  contentPagesDir: string;
+  /**
+   * Locale configuration used to interpret localized routes.
+   */
+  localeConfig: LocaleConfig;
+  /**
+   * Mode describing how locale participation is encoded in content files.
+   */
+  contentLocaleMode?: ContentLocaleMode;
+  /**
+   * Localized route identity being resolved.
+   */
+  identity: RouteIdentity;
+};
+
+/**
+ * Check whether one path exists on disk.
+ *
+ * @param filePath - Absolute candidate path.
+ * @returns `true` when the path exists.
+ */
+const fileExists = async (filePath: string): Promise<boolean> => {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Read one directory when present and return an empty list otherwise.
+ *
+ * @param directoryPath - Absolute directory path.
+ * @returns Directory entry names, or an empty list when the directory is
+ * missing.
+ */
+const readDirectoryEntriesIfPresent = async (
+  directoryPath: string
+): Promise<Array<string>> => {
+  try {
+    const entries = await readdir(directoryPath, {
+      withFileTypes: true
+    });
+    return entries.filter(entry => entry.isFile()).map(entry => entry.name);
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Determine whether one filename is a valid match for a filename-mode localized
+ * route identity.
+ *
+ * @param fileName - Candidate filename within one slug directory.
+ * @param locale - Requested locale.
+ * @returns `true` when the filename can satisfy the requested localized route.
+ *
+ * @remarks
+ * The full-tree discovery logic accepts locale-prefixed variants such as:
+ * - `en.mdx`
+ * - `en.page.mdx`
+ * - `en.something.md`
+ *
+ * The lazy request path must preserve that flexibility, but it only needs to
+ * inspect the one target directory that corresponds to the requested slug.
+ */
+const isFilenameModeLocalizedRouteCandidate = ({
+  fileName,
+  locale
+}: {
+  fileName: string;
+  locale: string;
+}): boolean =>
+  new RegExp(
+    `^${locale.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?:\\..+)?\\.(?:md|mdx)$`
+  ).test(fileName);
+
+/**
+ * Resolve one localized route identity to one concrete source file using a
+ * path-local lookup instead of a full-tree content scan.
+ *
+ * @param input - Resolution input.
+ * @param input.contentPagesDir - Content pages directory to resolve from.
+ * @param input.localeConfig - Locale configuration used to interpret routes.
+ * @param input.contentLocaleMode - Mode describing how locale participation is
+ * encoded in content files.
+ * @param input.identity - Localized route identity being resolved.
+ * @returns Concrete localized route path when present, otherwise `null`.
+ *
+ * @remarks
+ * This helper is the path-local counterpart to `discoverLocalizedContentRoutes`.
+ * It intentionally resolves only one requested route identity and does not
+ * enumerate unrelated files elsewhere in the content tree.
+ *
+ * Resolution rules mirror the existing discovery semantics:
+ * - `filename` mode looks only in the requested slug directory and accepts any
+ *   locale-prefixed markdown filename for that locale
+ * - `default-locale` mode resolves only the default locale and maps the last
+ *   slug segment to the markdown filename
+ */
+export const resolveLocalizedContentRoute = async ({
+  contentPagesDir,
+  localeConfig,
+  contentLocaleMode = 'filename',
+  identity
+}: ResolveLocalizedContentRouteInput): Promise<LocalizedRoutePath | null> => {
+  if (contentLocaleMode === 'filename') {
+    const routeDirectoryPath = path.resolve(contentPagesDir, ...identity.slugArray);
+    const matchedFileName = (
+      await readDirectoryEntriesIfPresent(routeDirectoryPath)
+    )
+      .filter(fileName =>
+        isFilenameModeLocalizedRouteCandidate({
+          fileName,
+          locale: identity.locale
+        })
+      )
+      .sort((left, right) => left.localeCompare(right))
+      .at(-1);
+
+    if (!isNonEmptyString(matchedFileName)) {
+      return null;
+    }
+
+    return {
+      locale: identity.locale,
+      slugArray: identity.slugArray,
+      filePath: path.resolve(routeDirectoryPath, matchedFileName)
+    };
+  }
+
+  if (identity.locale !== localeConfig.defaultLocale) {
+    return null;
+  }
+
+  if (identity.slugArray.length === 0) {
+    // The current discovery model for default-locale mode derives route slugs
+    // from markdown basenames, so there is no empty-slug file shape to resolve
+    // here.
+    return null;
+  }
+
+  const baseFilePath = path.resolve(contentPagesDir, ...identity.slugArray);
+  const candidateFilePaths = [`${baseFilePath}.mdx`, `${baseFilePath}.md`];
+
+  for (const candidateFilePath of candidateFilePaths) {
+    if (await fileExists(candidateFilePath)) {
+      return {
+        locale: identity.locale,
+        slugArray: identity.slugArray,
+        filePath: candidateFilePath
+      };
+    }
+  }
+
+  return null;
 };

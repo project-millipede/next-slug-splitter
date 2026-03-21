@@ -35,6 +35,11 @@
       "import": "./dist/next/lookup.js",
       "default": "./dist/next/lookup.js"
     },
+    "./next/proxy": {
+      "types": "./dist/next/proxy.d.ts",
+      "import": "./dist/next/proxy.js",
+      "default": "./dist/next/proxy.js"
+    },
     "./cli": {
       "types": "./dist/cli.d.ts",
       "import": "./dist/cli.js",
@@ -66,23 +71,30 @@
     "prepublishOnly": "npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
+    "@cacheable/utils": "^2.4.0",
     "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
     "@mdx-js/esbuild": "^3.1.1",
     "@mdx-js/mdx": "^3.1.1",
     "esbuild": "0.27.3",
     "fast-glob": "^3.3.2",
+    "file-entry-cache": "^11.1.2",
     "recma-component-resolver": "^0.5.1",
     "ts-morph": "^27.0.2",
     "unified": "^11.0.5"
   },
   "peerDependencies": {
-    "next": "^16.0.0"
+    "next": "^16.2.0"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",
-    "next": "16.0.0",
+    "next": "16.2.0",
     "tsup": "^8.5.0",
     "typescript": "6.0.0-beta",
     "vitest": "^3.2.4"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "next@>=16.2.0 <17": "patches/next@16.2.0.patch"
+    }
   }
 }

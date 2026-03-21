@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildRouteRewriteEntries } from '../../next/rewrites';
-import { createHeavyRoute } from '../helpers/builders';
+import { buildRouteRewriteEntries } from '../../../next/rewrites';
+import { createHeavyRoute } from '../../helpers/builders';
 
-import type { RouteHandlerRewrite } from '../../next/types';
+import type { RouteHandlerRewrite } from '../../../next/types';
 
 const heavyRoutes = [
   createHeavyRoute({

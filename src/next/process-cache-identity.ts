@@ -121,7 +121,8 @@ const isSameResolvedRouteHandlersAppConfig = (
   right: ResolvedRouteHandlersAppConfig
 ): boolean =>
   left.rootDir === right.rootDir &&
-  left.nextConfigPath === right.nextConfigPath;
+  left.nextConfigPath === right.nextConfigPath &&
+  left.routing.development === right.routing.development;
 
 const isSameLocaleConfig = (left: LocaleConfig, right: LocaleConfig): boolean =>
   left.defaultLocale === right.defaultLocale &&

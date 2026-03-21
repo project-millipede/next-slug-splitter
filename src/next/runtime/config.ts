@@ -1,3 +1,18 @@
+/**
+ * Runtime configuration loading for the Next integration layer.
+ *
+ * @remarks
+ * This module is the bridge between consumer-provided configuration and the
+ * deeper cache-aware runtime pipeline. Its place in the system is important:
+ * before shared cache policy, target-local planning reuse, or selective
+ * emission can happen, the runtime must first normalize app config, load the
+ * Next config, and execute app-owned preparation tasks.
+ *
+ * The cache group touched here is the preparation-cache group. When this file
+ * calls `prepareRouteHandlersFromConfig(...)`, the runtime is not yet deciding
+ * about route planning or emitted handlers; it is only making sure any
+ * app-owned prerequisites, such as cached `tsc-project` steps, are in place.
+ */
 import { resolveRouteHandlersAppConfig } from '../config/app';
 import { resolveRouteHandlersConfigs } from '../config/resolve-configs';
 import { loadNextConfig, type NextConfigLike } from '../config/load-next-config';
@@ -52,6 +67,10 @@ export const loadResolvedRouteHandlersConfigs = async ({
   if (resolvedRouteHandlersConfig == null) {
     resolvedRouteHandlersConfig = await loadRegisteredSlugSplitterConfig();
   }
+  // Consumer entry into the preparation-cache group. This call happens before
+  // target execution and before shared-cache policy is consulted because the
+  // app may need its preparation tasks to materialize processor/runtime inputs
+  // that the rest of the pipeline depends on.
   await prepareRouteHandlersFromConfig({
     rootDir: appConfig.rootDir,
     routeHandlersConfig: resolvedRouteHandlersConfig

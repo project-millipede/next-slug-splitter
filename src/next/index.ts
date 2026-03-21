@@ -10,6 +10,7 @@ export type {
   ResolvedRouteHandlerCommandPreparation,
   ResolvedRouteHandlerPreparation,
   ResolvedRouteHandlerTscProjectPreparation,
+  RouteHandlerDevelopmentRoutingMode,
   RewriteRecord,
   RouteHandlerBinding,
   RouteHandlerBindingMap,
@@ -27,6 +28,7 @@ export type {
   RouteHandlerTscProjectPreparation,
   RouteHandlersAppConfig,
   RouteHandlersConfig,
+  RouteHandlersRoutingPolicy,
   RouteHandlersTargetConfig,
   RuntimeHandlerFactoryBinding,
   TargetConfigBase

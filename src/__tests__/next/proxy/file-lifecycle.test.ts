@@ -1,0 +1,319 @@
+import { access, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD } from 'next/constants.js';
+
+import { createCatchAllRouteHandlersPreset } from '../../../next/config';
+import { synchronizeRouteHandlerProxyFile } from '../../../next/proxy/file-lifecycle';
+import { resolveRouteHandlerRoutingStrategy } from '../../../next/routing-strategy';
+import {
+  TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+  createTestHandlerBinding
+} from '../../helpers/fixtures';
+import { withTempDir } from '../../helpers/temp-dir';
+
+import type {
+  ResolvedRouteHandlersConfig,
+  RouteHandlersConfig
+} from '../../../next/types';
+
+const SYNTHETIC_PROXY_MARKER =
+  'next-slug-splitter:experimental-synthetic-proxy';
+
+const createMultiTargetConfig = (rootDir: string): RouteHandlersConfig => ({
+  app: {
+    rootDir,
+    nextConfigPath: path.join(rootDir, 'next.config.mjs')
+  },
+  targets: [
+    createCatchAllRouteHandlersPreset({
+      routeSegment: 'docs',
+      handlerRouteParam: {
+        name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+        kind: 'catch-all'
+      },
+      contentPagesDir: path.join(rootDir, 'docs', 'src', 'pages'),
+      handlerBinding: createTestHandlerBinding()
+    }),
+    createCatchAllRouteHandlersPreset({
+      routeSegment: 'blog',
+      handlerRouteParam: {
+        name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+        kind: 'catch-all'
+      },
+      contentPagesDir: path.join(rootDir, 'blog', 'src', 'pages'),
+      handlerBinding: createTestHandlerBinding()
+    })
+  ]
+});
+
+const createResolvedConfigs = ({
+  rootDir,
+  routeHandlersConfig
+}: {
+  rootDir: string;
+  routeHandlersConfig: RouteHandlersConfig;
+}): Array<ResolvedRouteHandlersConfig> => {
+  const targets = Array.isArray(routeHandlersConfig.targets)
+    ? routeHandlersConfig.targets
+    : [routeHandlersConfig];
+
+  return targets.map((targetConfig, targetIndex) => ({
+    routeBasePath: targetConfig.routeBasePath,
+    localeConfig: {
+      locales: ['en', 'de'],
+      defaultLocale: 'en'
+    }
+  })) as Array<ResolvedRouteHandlersConfig>;
+};
+
+const createDevelopmentRoutingPolicy = ({
+  routeHandlersConfig
+}: {
+  routeHandlersConfig: RouteHandlersConfig;
+}) => ({
+  development: routeHandlersConfig.app?.routing?.development ?? 'proxy'
+});
+
+describe('generated proxy file lifecycle', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('writes a plugin-owned proxy.ts with target matchers in development by default', async () => {
+    await withTempDir('next-slug-splitter-synthetic-proxy-', async rootDir => {
+      const routeHandlersConfig = createMultiTargetConfig(rootDir);
+      const proxyPath = path.join(rootDir, 'proxy.ts');
+      const resolvedConfigs = createResolvedConfigs({
+        rootDir,
+        routeHandlersConfig
+      });
+
+      vi.stubEnv('NODE_ENV', 'development');
+
+      await synchronizeRouteHandlerProxyFile({
+        rootDir,
+        strategy: resolveRouteHandlerRoutingStrategy({
+          phase: PHASE_DEVELOPMENT_SERVER,
+          routingPolicy: createDevelopmentRoutingPolicy({
+            routeHandlersConfig
+          })
+        }),
+        resolvedConfigs
+      });
+
+      const proxySource = await readFile(proxyPath, 'utf8');
+
+      expect(proxySource).toContain(SYNTHETIC_PROXY_MARKER);
+      expect(proxySource).toContain(
+        "import { proxy as routeHandlerProxy } from 'next-slug-splitter/next/proxy';"
+      );
+      expect(proxySource).not.toContain("'/_next/data/:path*'");
+      expect(proxySource).toContain("'/docs/:path*'");
+      expect(proxySource).toContain("'/blog/:path*'");
+      expect(proxySource).toContain("'/de/docs/:path*'");
+      expect(proxySource).toContain("'/de/blog/:path*'");
+      expect(proxySource).toContain('const CONFIG_REGISTRATION = {');
+      expect(proxySource).toContain('configPath: undefined');
+      expect(proxySource).toContain('rootDir: undefined');
+    });
+  });
+
+  it('embeds app-owned config registration into the generated proxy bridge when available', async () => {
+    await withTempDir('next-slug-splitter-synthetic-proxy-', async rootDir => {
+      const routeHandlersConfig = createMultiTargetConfig(rootDir);
+      const proxyPath = path.join(rootDir, 'proxy.ts');
+      const resolvedConfigs = createResolvedConfigs({
+        rootDir,
+        routeHandlersConfig
+      });
+      const configPath = path.join(rootDir, 'route-handlers-config.ts');
+
+      vi.stubEnv('NODE_ENV', 'development');
+
+      await synchronizeRouteHandlerProxyFile({
+        rootDir,
+        strategy: resolveRouteHandlerRoutingStrategy({
+          phase: PHASE_DEVELOPMENT_SERVER,
+          routingPolicy: createDevelopmentRoutingPolicy({
+            routeHandlersConfig
+          })
+        }),
+        resolvedConfigs,
+        configRegistration: {
+          configPath,
+          rootDir
+        }
+      });
+
+      const proxySource = await readFile(proxyPath, 'utf8');
+
+      expect(proxySource).toContain(`configPath: '${configPath}'`);
+      expect(proxySource).toContain(`rootDir: '${rootDir}'`);
+      expect(proxySource).toContain('configRegistration: {');
+    });
+  });
+
+  it('removes a previously generated proxy.ts when development routing is explicitly forced back to rewrites', async () => {
+    await withTempDir('next-slug-splitter-synthetic-proxy-', async rootDir => {
+      const routeHandlersConfig = createMultiTargetConfig(rootDir);
+      const proxyPath = path.join(rootDir, 'proxy.ts');
+      const resolvedConfigs = createResolvedConfigs({
+        rootDir,
+        routeHandlersConfig
+      });
+
+      vi.stubEnv('NODE_ENV', 'development');
+
+      await synchronizeRouteHandlerProxyFile({
+        rootDir,
+        strategy: resolveRouteHandlerRoutingStrategy({
+          phase: PHASE_DEVELOPMENT_SERVER,
+          routingPolicy: createDevelopmentRoutingPolicy({
+            routeHandlersConfig
+          })
+        }),
+        resolvedConfigs
+      });
+
+      routeHandlersConfig.app = {
+        ...routeHandlersConfig.app,
+        routing: {
+          development: 'rewrites'
+        }
+      };
+
+      await synchronizeRouteHandlerProxyFile({
+        rootDir,
+        strategy: resolveRouteHandlerRoutingStrategy({
+          phase: PHASE_DEVELOPMENT_SERVER,
+          routingPolicy: createDevelopmentRoutingPolicy({
+            routeHandlersConfig
+          })
+        }),
+        resolvedConfigs
+      });
+
+      await expect(access(proxyPath)).rejects.toBeTruthy();
+    });
+  });
+
+  it('does not delete a user-authored proxy.ts when development routing is forced to rewrites', async () => {
+    await withTempDir('next-slug-splitter-synthetic-proxy-', async rootDir => {
+      const routeHandlersConfig = createMultiTargetConfig(rootDir);
+      const proxyPath = path.join(rootDir, 'proxy.ts');
+      const resolvedConfigs = createResolvedConfigs({
+        rootDir,
+        routeHandlersConfig
+      });
+
+      await writeFile(
+        proxyPath,
+        'export function proxy() { return Response.redirect("https://example.com"); }\n',
+        'utf8'
+      );
+
+      vi.stubEnv('NODE_ENV', 'development');
+      routeHandlersConfig.app = {
+        ...routeHandlersConfig.app,
+        routing: {
+          development: 'rewrites'
+        }
+      };
+
+      await synchronizeRouteHandlerProxyFile({
+        rootDir,
+        strategy: resolveRouteHandlerRoutingStrategy({
+          phase: PHASE_DEVELOPMENT_SERVER,
+          routingPolicy: createDevelopmentRoutingPolicy({
+            routeHandlersConfig
+          })
+        }),
+        resolvedConfigs
+      });
+
+      expect(await readFile(proxyPath, 'utf8')).toContain(
+        'https://example.com'
+      );
+    });
+  });
+
+  it('fails fast when development defaults to proxy and an app-owned proxy.ts already exists', async () => {
+    await withTempDir('next-slug-splitter-synthetic-proxy-', async rootDir => {
+      const routeHandlersConfig = createMultiTargetConfig(rootDir);
+      const resolvedConfigs = createResolvedConfigs({
+        rootDir,
+        routeHandlersConfig
+      });
+
+      await writeFile(
+        path.join(rootDir, 'proxy.ts'),
+        'export function proxy() { return Response.json({ ok: true }); }\n',
+        'utf8'
+      );
+
+      vi.stubEnv('NODE_ENV', 'development');
+
+      await expect(
+        synchronizeRouteHandlerProxyFile({
+          rootDir,
+          strategy: resolveRouteHandlerRoutingStrategy({
+            phase: PHASE_DEVELOPMENT_SERVER,
+            routingPolicy: createDevelopmentRoutingPolicy({
+              routeHandlersConfig
+            })
+          }),
+          resolvedConfigs
+        })
+      ).rejects.toThrow(/existing app-owned proxy file/i);
+    });
+  });
+
+  it('fails fast when development defaults to proxy and a legacy middleware.ts exists', async () => {
+    await withTempDir('next-slug-splitter-synthetic-proxy-', async rootDir => {
+      const routeHandlersConfig = createMultiTargetConfig(rootDir);
+      const resolvedConfigs = createResolvedConfigs({
+        rootDir,
+        routeHandlersConfig
+      });
+
+      await writeFile(
+        path.join(rootDir, 'middleware.ts'),
+        'export function middleware() { return Response.json({ ok: true }); }\n',
+        'utf8'
+      );
+
+      vi.stubEnv('NODE_ENV', 'development');
+
+      await expect(
+        synchronizeRouteHandlerProxyFile({
+          rootDir,
+          strategy: resolveRouteHandlerRoutingStrategy({
+            phase: PHASE_DEVELOPMENT_SERVER,
+            routingPolicy: createDevelopmentRoutingPolicy({
+              routeHandlersConfig
+            })
+          }),
+          resolvedConfigs
+        })
+      ).rejects.toThrow(/existing app-owned middleware file/i);
+    });
+  });
+
+  it('falls back to rewrite strategy outside development even when development policy prefers proxy', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    expect(
+      resolveRouteHandlerRoutingStrategy({
+        phase: PHASE_PRODUCTION_BUILD,
+        routingPolicy: {
+          development: 'proxy'
+        }
+      })
+    ).toEqual({
+      kind: 'rewrites',
+      reason: 'proxy-disabled-in-production'
+    });
+  });
+});

@@ -1,7 +1,22 @@
-import { createHash } from 'node:crypto';
+/**
+ * Shared cache-identity and persistent-record helpers for the Next runtime.
+ *
+ * @remarks
+ * This module underpins two related cache groups:
+ * - the shared persistent runtime cache record stored at
+ *   `.next/cache/route-handlers.json`
+ * - the target-static identity used by the target-local incremental planning
+ *   cache to decide whether per-file route records are still reusable
+ *
+ * It is helpful to read this file as the "identity vocabulary" for the wider
+ * caching system. Other modules execute work or persist manifests, but this
+ * file defines the hashes and cache-file locations they agree on.
+ */
 import { Dirent } from 'node:fs';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+
+import { hash, HashAlgorithm } from '@cacheable/utils';
 
 import { resolveModuleReferenceToPath } from '../module-reference';
 import { toPosix } from '../core/discovery';
@@ -12,6 +27,7 @@ import {
   readObjectProperty
 } from '../utils/type-guards-custom';
 import { isDefined } from '../utils/type-guards-extended';
+import { toCanonicalJson } from '../utils/json-serializer';
 
 import type { PipelineMode } from '../core/types';
 import type {
@@ -147,10 +163,14 @@ const toFileStatSignature = async (
  * Create a stable hash for cache identity payloads.
  *
  * @param payload - Structured payload to hash.
- * @returns Deterministic SHA-256 hash of the payload.
+ * @returns Deterministic SHA-256 hash of the payload using Cacheable's
+ * hashing implementation.
  */
-const createStableHash = (payload: unknown): string =>
-  createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+const createStableHash = async (payload: unknown): Promise<string> =>
+  hash(payload, {
+    algorithm: HashAlgorithm.SHA256,
+    serialize: value => JSON.stringify(toCanonicalJson(value))
+  });
 
 /**
  * Resolve the shared persistent cache location for next-slug-splitter.
@@ -170,32 +190,26 @@ export const resolvePersistentCachePath = ({
 }): string => path.resolve(rootDir, DEFAULT_PERSISTENT_CACHE_PATH);
 
 /**
- * Compute the fingerprint for one resolved target.
+ * Compute the static identity for one resolved target.
  *
  * @remarks
- * `targetId` is part of the fingerprint. Two targets may share the same route
- * shape or source filenames, but they must not hash as the same cache
- * participant.
+ * This identity excludes route-content inputs so target-local incremental
+ * caches can reuse unchanged per-file analysis data across runs.
  *
- * @param input - Fingerprint computation input.
- * @returns Content fingerprint string for cache validation.
+ * This function belongs to the target-local incremental planning cache group.
+ * Consumers do not call it directly; the target planner uses it to answer a
+ * more architectural question: "did the non-content environment for this
+ * target change so much that every per-file planning record must be thrown
+ * away?"
+ *
+ * @param input - Static identity input.
+ * @returns Deterministic identity string for target-local cache reuse.
  */
-export const computePipelineFingerprint = async ({
-  config,
-  mode
+export const computeTargetStaticCacheIdentity = async ({
+  config
 }: {
   config: RouteHandlerFingerprintConfig;
-  mode: PipelineMode;
 }): Promise<string> => {
-  const rootDir = config.paths.rootDir;
-  const contentFiles = await collectRouteContentFiles(
-    config.paths.contentPagesDir
-  );
-  const contentFileStats = (
-    await Promise.all(
-      contentFiles.map(filePath => toFileStatSignature(rootDir, filePath))
-    )
-  ).filter(isDefined);
   const processorCacheInfo = await resolveRouteHandlerProcessorCacheInfo({
     rootDir: config.app.rootDir,
     processorConfig: config.processorConfig,
@@ -226,7 +240,6 @@ export const computePipelineFingerprint = async ({
   return createStableHash({
     version: PIPELINE_CACHE_VERSION,
     targetId: config.targetId,
-    mode,
     handlerRouteParam: config.handlerRouteParam,
     emitFormat: config.emitFormat,
     contentLocaleMode: config.contentLocaleMode,
@@ -241,8 +254,51 @@ export const computePipelineFingerprint = async ({
       config.mdxCompileOptions
     ),
     routeBasePath: config.routeBasePath,
-    contentFiles: contentFileStats,
     staticInputs
+  });
+};
+
+/**
+ * Compute the fingerprint for one resolved target.
+ *
+ * @remarks
+ * `targetId` is part of the fingerprint. Two targets may share the same route
+ * shape or source filenames, but they must not hash as the same cache
+ * participant.
+ *
+ * This function belongs to the shared persistent runtime-cache group. Unlike
+ * the target-static identity above, this fingerprint does include route-content
+ * signatures because the merged persistent cache record is meant to describe a
+ * fully current runtime result for one target execution mode.
+ *
+ * @param input - Fingerprint computation input.
+ * @returns Content fingerprint string for cache validation.
+ */
+export const computePipelineFingerprint = async ({
+  config,
+  mode
+}: {
+  config: RouteHandlerFingerprintConfig;
+  mode: PipelineMode;
+}): Promise<string> => {
+  const rootDir = config.paths.rootDir;
+  const contentFiles = await collectRouteContentFiles(
+    config.paths.contentPagesDir
+  );
+  const contentFileStats = (
+    await Promise.all(
+      contentFiles.map(filePath => toFileStatSignature(rootDir, filePath))
+    )
+  ).filter(isDefined);
+  const targetStaticIdentity = await computeTargetStaticCacheIdentity({
+    config
+  });
+
+  return createStableHash({
+    version: PIPELINE_CACHE_VERSION,
+    mode,
+    targetStaticIdentity,
+    contentFiles: contentFileStats
   });
 };
 
@@ -252,7 +308,11 @@ export const computePipelineFingerprint = async ({
  * @remarks
  * The persistent cache stores one merged result for all configured targets.
  * This function preserves that single-record model while still keeping each
- * target's identity by hashing the already target-aware per-target fingerprints.
+ * target's identity by hashing the already target-aware per-target
+ * fingerprints.
+ *
+ * Consumer-facing runtime orchestration uses this helper when one call is
+ * responsible for multiple targets and still needs one shared cache artifact.
  *
  * @param input - Fingerprint computation input.
  * @returns Combined fingerprint string.

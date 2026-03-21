@@ -1,4 +1,5 @@
 import { createConfigMissingError, createLookupError } from '../utils/errors';
+import { toHeavyRoutePathKey } from './heavy-route-path-key';
 import {
   computePipelineFingerprintForConfigs,
   PIPELINE_CACHE_VERSION,
@@ -10,6 +11,8 @@ import { resolveRouteHandlersConfigBases } from './config/resolve-configs';
 import { resolveSharedEmitFormat } from './emit-format';
 import { loadRegisteredSlugSplitterConfig } from './integration/slug-splitter-config-loader';
 import { prepareRouteHandlersFromConfig } from './prepare';
+import { resolveRouteHandlerLookupPolicy } from './policy/lookup-policy';
+import { readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeys } from './proxy/lazy/lookup';
 import { resolveRouteHandlersAppConfig } from './config/app';
 import { executeRouteHandlerNextPipeline } from './runtime';
 
@@ -45,18 +48,6 @@ import type {
  */
 
 /**
- * Encode a locale and slug array into a unique path key.
- *
- * @param locale - Locale code.
- * @param slugArray - Ordered slug segments.
- * @returns Path key string.
- */
-const toHeavyRoutePathKey = (
-  locale: string,
-  slugArray: Array<string>
-): string => `${locale}:${slugArray.join('/')}`;
-
-/**
  * Build a page-facing heavy-route lookup for one target.
  *
  * @remarks
@@ -66,7 +57,32 @@ const toHeavyRoutePathKey = (
  * @param input - Lookup construction input.
  * @returns Semantic heavy-route lookup scoped to one configured target.
  */
-const createHeavyRouteLookup = ({
+const createHeavyRouteLookupFromPathKeys = ({
+  targetId,
+  heavyRoutePathKeys
+}: {
+  /**
+   * Target identifier for cache separation.
+   */
+  targetId: string;
+  /**
+   * Already-normalized heavy-route lookup keys.
+   */
+  heavyRoutePathKeys: ReadonlySet<string>;
+}): RouteHandlerHeavyRouteLookup => ({
+  targetId,
+  heavyRoutePathKeys,
+  isHeavyRoute: (locale, slugArray) =>
+    heavyRoutePathKeys.has(toHeavyRoutePathKey(locale, slugArray))
+});
+
+/**
+ * Build a page-facing heavy-route lookup from one Next pipeline result.
+ *
+ * @param input - Lookup construction input.
+ * @returns Semantic heavy-route lookup scoped to one configured target.
+ */
+const createHeavyRouteLookupFromResult = ({
   targetId,
   result
 }: {
@@ -91,12 +107,46 @@ const createHeavyRouteLookup = ({
     );
   }
 
-  return {
+  return createHeavyRouteLookupFromPathKeys({
     targetId,
-    heavyRoutePathKeys,
-    isHeavyRoute: (locale, slugArray) =>
-      heavyRoutePathKeys.has(toHeavyRoutePathKey(locale, slugArray))
-  };
+    heavyRoutePathKeys
+  });
+};
+
+/**
+ * Decide whether page-time `getStaticPaths` should actively filter out heavy
+ * routes right now.
+ *
+ * @param input - Policy input.
+ * @param input.routeHandlersConfig - App-owned route-handlers config.
+ * @returns `true` when `getStaticPaths` should exclude heavy routes from the
+ * light catch-all page, `false` when page-time filtering should be skipped.
+ *
+ * @remarks
+ * This helper intentionally exposes the higher-level policy question instead of
+ * leaking lookup-policy details into app code.
+ *
+ * The current split is:
+ * - build / rewrite mode: `true`
+ * - development + proxy mode: `false`
+ *
+ * In dev proxy mode, request-time Proxy routing owns cold heavy-route
+ * discovery. `getStaticPaths` should therefore return the full public path set
+ * and must not treat page-time heavy lookup as an exact owner partition.
+ */
+export const shouldFilterHeavyRoutesInStaticPaths = ({
+  routeHandlersConfig
+}: {
+  routeHandlersConfig: RouteHandlersConfig;
+}): boolean => {
+  const appConfig = resolveRouteHandlersAppConfig({
+    routeHandlersConfig
+  });
+  const lookupPolicy = resolveRouteHandlerLookupPolicy({
+    routingPolicy: appConfig.routing
+  });
+
+  return !lookupPolicy.readPersistedLazyDiscoveries;
 };
 
 /**
@@ -154,7 +204,14 @@ export const loadRouteHandlerCacheLookup = async ({
   const appConfig = resolveRouteHandlersAppConfig({
     routeHandlersConfig: effectiveRouteHandlersConfig
   });
+  const lookupPolicy = resolveRouteHandlerLookupPolicy({
+    routingPolicy: appConfig.routing
+  });
 
+  // Consumer entry into the preparation-cache group from the lookup path.
+  // `getStaticPaths`-style callers need the same app-owned prerequisites as
+  // the adapter path before they can trust cache identities or fallback
+  // generation.
   await prepareRouteHandlersFromConfig({
     rootDir: appConfig.rootDir,
     routeHandlersConfig: effectiveRouteHandlersConfig
@@ -183,6 +240,10 @@ export const loadRouteHandlerCacheLookup = async ({
     rootDir: referenceResolvedTarget.app.rootDir
   });
 
+  // This fingerprint belongs to the shared persistent runtime-cache group. The
+  // lookup path uses it only to decide whether the merged cache artifact is
+  // fresh enough to answer directly, not to skip target execution within the
+  // generate pipeline itself.
   const fingerprint = await computePipelineFingerprintForConfigs({
     configs: resolvedConfigs,
     mode: 'generate'
@@ -194,26 +255,72 @@ export const loadRouteHandlerCacheLookup = async ({
     cachedRecord.version === PIPELINE_CACHE_VERSION &&
     cachedRecord.fingerprint === fingerprint &&
     cachedRecord.emitFormat === emitFormat;
+  const sharedHeavyRoutePathKeys = hasFreshCache
+    ? createHeavyRouteLookupFromResult({
+        targetId,
+        result: cachedRecord.result
+      }).heavyRoutePathKeys
+    : new Set<string>();
+
+  if (lookupPolicy.readPersistedLazyDiscoveries) {
+    // Proxy-mode page-time lookup is intentionally read-only and best-effort.
+    // It may merge:
+    // - exact heavy routes from a fresh shared cache record
+    // - exact heavy routes that were lazily discovered earlier in proxy mode
+    //
+    // What it may not do is trigger a whole-target generate pass just to make
+    // `getStaticPaths` exact. Request-time proxy routing now owns cold heavy
+    // discovery in development.
+    const lazyDiscoveryHeavyRoutePathKeys =
+      await readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeys({
+        rootDir: appConfig.rootDir,
+        targetId
+      });
+
+    return createHeavyRouteLookupFromPathKeys({
+      targetId,
+      heavyRoutePathKeys: new Set([
+        ...sharedHeavyRoutePathKeys,
+        ...lazyDiscoveryHeavyRoutePathKeys
+      ])
+    });
+  }
 
   /**
    * Missing or stale cache records trigger one internal generation pass so
    * `getStaticPaths` can recover without a manual pre-step.
+   *
+   * That fallback generation call enters the full runtime stack:
+   * preparation caching may already be warm, shared-cache policy is applied,
+   * target-local incremental planning runs, and generate mode can resync
+   * emitted handler files before the new shared cache record is written.
    */
   if (!hasFreshCache) {
+    if (!lookupPolicy.allowGenerateFallback) {
+      // This branch should currently be unreachable because the proxy-mode
+      // policy already returned through the persisted-lazy-discovery path
+      // above. Keeping the explicit guard here makes the lookup contract easy
+      // to follow if future policy variants are added.
+      return createHeavyRouteLookupFromPathKeys({
+        targetId,
+        heavyRoutePathKeys: new Set()
+      });
+    }
+
     const freshResult = await executeRouteHandlerNextPipeline({
       routeHandlersConfig: effectiveRouteHandlersConfig,
       nextConfig,
       mode: 'generate'
     });
 
-    return createHeavyRouteLookup({
+    return createHeavyRouteLookupFromResult({
       targetId,
       result: freshResult
     });
   }
 
-  return createHeavyRouteLookup({
+  return createHeavyRouteLookupFromPathKeys({
     targetId,
-    result: cachedRecord.result
+    heavyRoutePathKeys: sharedHeavyRoutePathKeys
   });
 };
