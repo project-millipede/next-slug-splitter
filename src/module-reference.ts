@@ -167,45 +167,42 @@ export const absoluteFileModule = (
 });
 
 /**
- * Determine whether a value is a package module reference.
+ * Create a type guard for a module reference kind.
  *
- * @param value Candidate value.
- * @returns `true` when the value matches the package module reference shape.
+ * Each module reference variant shares the same validation shape: an object
+ * record with a `kind` discriminator and one required string property. This
+ * factory eliminates the three near-identical guard implementations.
+ *
+ * @param kind Expected `kind` discriminator value.
+ * @param property Name of the required non-empty string property.
+ * @returns Type guard for the corresponding module reference type.
  */
-export const isPackageModuleReference = (
-  value: unknown
-): value is PackageModuleReference =>
-  isObjectRecord(value) &&
-  readObjectProperty(value, 'kind') === 'package' &&
-  isNonEmptyString(readObjectProperty(value, 'specifier'));
+const createModuleReferenceGuard = <T extends ModuleReference>(
+  kind: T['kind'],
+  property: string
+) =>
+  (value: unknown): value is T =>
+    isObjectRecord(value) &&
+    readObjectProperty(value, 'kind') === kind &&
+    isNonEmptyString(readObjectProperty(value, property));
+
+/**
+ * Determine whether a value is a package module reference.
+ */
+export const isPackageModuleReference =
+  createModuleReferenceGuard<PackageModuleReference>('package', 'specifier');
 
 /**
  * Determine whether a value is an app-root-relative module reference.
- *
- * @param value Candidate value.
- * @returns `true` when the value matches the app-relative module reference
- * shape.
  */
-export const isAppRelativeModuleReference = (
-  value: unknown
-): value is AppRelativeModuleReference =>
-  isObjectRecord(value) &&
-  readObjectProperty(value, 'kind') === 'app-relative' &&
-  isNonEmptyString(readObjectProperty(value, 'path'));
+export const isAppRelativeModuleReference =
+  createModuleReferenceGuard<AppRelativeModuleReference>('app-relative', 'path');
 
 /**
  * Determine whether a value is an absolute-file module reference.
- *
- * @param value Candidate value.
- * @returns `true` when the value matches the absolute-file module reference
- * shape.
  */
-export const isAbsoluteFileModuleReference = (
-  value: unknown
-): value is AbsoluteFileModuleReference =>
-  isObjectRecord(value) &&
-  readObjectProperty(value, 'kind') === 'absolute-file' &&
-  isNonEmptyString(readObjectProperty(value, 'path'));
+export const isAbsoluteFileModuleReference =
+  createModuleReferenceGuard<AbsoluteFileModuleReference>('absolute-file', 'path');
 
 /**
  * Determine whether a value matches any supported module reference shape.

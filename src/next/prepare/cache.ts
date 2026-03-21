@@ -24,9 +24,10 @@ import { hashSync, HashAlgorithm } from '@cacheable/utils';
 import fileEntryCache, { type FileEntryCache } from 'file-entry-cache';
 import globFiles from 'fast-glob';
 
-import { isArray, isString } from '../../utils/type-guards';
+import { isString } from '../../utils/type-guards';
 import {
-  isObjectRecord,
+  isObjectRecordOf,
+  isStringArray,
   readObjectProperty
 } from '../../utils/type-guards-custom';
 import { toCanonicalJson } from '../../utils/json-serializer';
@@ -110,17 +111,14 @@ const createPreparationFileCache = ({
 const isPreparationCacheSnapshot = (
   value: unknown
 ): value is PreparationCacheSnapshot => {
-  if (!isObjectRecord(value)) {
+  if (!isObjectRecordOf<PreparationCacheSnapshot>(value)) {
     return false;
   }
 
   return (
     readObjectProperty(value, 'version') === PREPARATION_CACHE_SNAPSHOT_VERSION &&
     isString(readObjectProperty(value, 'identity')) &&
-    isArray(readObjectProperty(value, 'inputFilePaths')) &&
-    (readObjectProperty(value, 'inputFilePaths') as Array<unknown>).every(
-      isString
-    ) &&
+    isStringArray(readObjectProperty(value, 'inputFilePaths')) &&
     isString(readObjectProperty(value, 'updatedAt'))
   );
 };

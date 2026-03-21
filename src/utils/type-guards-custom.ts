@@ -24,6 +24,19 @@ const isUnknownValue = (_value: unknown): _value is unknown => true;
 export const isObjectRecord = isObjectOf(isUnknownValue);
 
 /**
+ * Generic object-record guard that narrows to `Partial<T>`.
+ *
+ * After this guard passes, `readObjectProperty` constrains its key parameter
+ * to `keyof T` — a typo in a property name becomes a compile-time error.
+ *
+ * @param value Candidate runtime value.
+ * @returns `true` when the value is a non-null, non-array object.
+ */
+export const isObjectRecordOf = <T extends object>(
+  value: unknown
+): value is Partial<T> => isObjectRecord(value);
+
+/**
  * Utility to safely read a property from a record-like object.
  *
  * This function performs two critical operations:

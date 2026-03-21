@@ -31,9 +31,9 @@ import {
 } from '../protocol/output-lifecycle';
 import type { RenderedHandlerPage } from '../protocol/rendered-page';
 
-import { isArray, isString } from '../../utils/type-guards';
+import { isArrayOf, isString } from '../../utils/type-guards';
 import {
-  isObjectRecord,
+  isObjectRecordOf,
   readObjectProperty
 } from '../../utils/type-guards-custom';
 
@@ -76,27 +76,32 @@ const resolveHandlerEmissionManifestPath = ({
   );
 };
 
+const isHandlerEmissionManifestEntry = (
+  value: unknown
+): value is HandlerEmissionManifestEntry => {
+  if (!isObjectRecordOf<HandlerEmissionManifestEntry>(value)) {
+    return false;
+  }
+
+  return (
+    isString(readObjectProperty(value, 'relativePath')) &&
+    isString(readObjectProperty(value, 'outputHash'))
+  );
+};
+
 const isHandlerEmissionManifest = (
   value: unknown
 ): value is HandlerEmissionManifest => {
-  if (!isObjectRecord(value)) {
+  if (!isObjectRecordOf<HandlerEmissionManifest>(value)) {
     return false;
   }
 
   return (
     readObjectProperty(value, 'version') === HANDLER_EMISSION_MANIFEST_VERSION &&
     isString(readObjectProperty(value, 'handlersDir')) &&
-    isArray(readObjectProperty(value, 'entries')) &&
-    (readObjectProperty(value, 'entries') as Array<unknown>).every(entry => {
-      if (!isObjectRecord(entry)) {
-        return false;
-      }
-
-      return (
-        isString(readObjectProperty(entry, 'relativePath')) &&
-        isString(readObjectProperty(entry, 'outputHash'))
-      );
-    })
+    isArrayOf(isHandlerEmissionManifestEntry)(
+      readObjectProperty(value, 'entries')
+    )
   );
 };
 

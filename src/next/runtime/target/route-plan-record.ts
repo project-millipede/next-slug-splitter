@@ -14,9 +14,9 @@ import type {
   LocalizedRoutePath,
   PlannedHeavyRoute
 } from '../../../core/types';
-import { isArray, isString } from '../../../utils/type-guards';
+import { isArrayOf, isString } from '../../../utils/type-guards';
 import {
-  isObjectRecord,
+  isObjectRecordOf,
   readObjectProperty
 } from '../../../utils/type-guards-custom';
 import { isJsonObject } from '../../../utils/type-guards-json';
@@ -60,7 +60,7 @@ export type PersistedRoutePlanRecord = {
 const isComponentImportSpec = (
   value: unknown
 ): value is ComponentImportSpec => {
-  if (!isObjectRecord(value)) {
+  if (!isObjectRecordOf<ComponentImportSpec>(value)) {
     return false;
   }
 
@@ -81,7 +81,7 @@ const isComponentImportSpec = (
 const isLoadableComponentEntry = (
   value: unknown
 ): value is LoadableComponentEntry => {
-  if (!isObjectRecord(value)) {
+  if (!isObjectRecordOf<LoadableComponentEntry>(value)) {
     return false;
   }
 
@@ -99,25 +99,21 @@ const isLoadableComponentEntry = (
  * @returns `true` when the value matches the expected persisted shape.
  */
 const isPlannedHeavyRoute = (value: unknown): value is PlannedHeavyRoute => {
-  if (!isObjectRecord(value)) {
+  if (!isObjectRecordOf<PlannedHeavyRoute>(value)) {
     return false;
   }
 
+  const isStringArray = isArrayOf(isString);
+  const isComponentEntryArray = isArrayOf(isLoadableComponentEntry);
+
   return (
     isString(readObjectProperty(value, 'locale')) &&
-    isArray(readObjectProperty(value, 'slugArray')) &&
-    (readObjectProperty(value, 'slugArray') as Array<unknown>).every(isString) &&
+    isStringArray(readObjectProperty(value, 'slugArray')) &&
     isString(readObjectProperty(value, 'handlerId')) &&
     isString(readObjectProperty(value, 'handlerRelativePath')) &&
-    isArray(readObjectProperty(value, 'usedLoadableComponentKeys')) &&
-    (
-      readObjectProperty(value, 'usedLoadableComponentKeys') as Array<unknown>
-    ).every(isString) &&
+    isStringArray(readObjectProperty(value, 'usedLoadableComponentKeys')) &&
     isString(readObjectProperty(value, 'factoryVariant')) &&
-    isArray(readObjectProperty(value, 'componentEntries')) &&
-    (readObjectProperty(value, 'componentEntries') as Array<unknown>).every(
-      isLoadableComponentEntry
-    )
+    isComponentEntryArray(readObjectProperty(value, 'componentEntries'))
   );
 };
 
@@ -136,7 +132,7 @@ const isPlannedHeavyRoute = (value: unknown): value is PlannedHeavyRoute => {
 export const readPersistedRoutePlanRecord = (
   value: unknown
 ): PersistedRoutePlanRecord | null => {
-  if (!isObjectRecord(value)) {
+  if (!isObjectRecordOf<PersistedRoutePlanRecord>(value)) {
     return null;
   }
 

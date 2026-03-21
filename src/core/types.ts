@@ -10,12 +10,7 @@ import type {
   ResolvedModuleReference
 } from '../module-reference';
 import type { PluggableList } from 'unified';
-import {
-  isJsonObject,
-  JsonObject,
-  JsonPrimitive,
-  JsonValue
-} from '../utils/type-guards-json';
+import { JsonObject, JsonPrimitive } from '../utils/type-guards-json';
 
 export type PipelineMode = 'analyze' | 'generate';
 
