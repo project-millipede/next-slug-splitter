@@ -1,3 +1,4 @@
+import type { GetStaticPaths } from 'next';
 import { createConfigMissingError, createLookupError } from '../utils/errors';
 import { toHeavyRoutePathKey } from './heavy-route-path-key';
 import {
@@ -134,18 +135,36 @@ const createHeavyRouteLookupFromResult = ({
  * discovery. `getStaticPaths` should therefore return the full public path set
  * and must not treat page-time heavy lookup as an exact owner partition.
  */
-export const shouldFilterHeavyRoutesInStaticPaths = ({
-  routeHandlersConfig
-}: {
-  routeHandlersConfig: RouteHandlersConfig;
-}): boolean => {
+export const shouldFilterHeavyRoutesInStaticPaths = async (options?: {
+  routeHandlersConfig?: RouteHandlersConfig;
+}): Promise<boolean> => {
+  // Explicit config provided by the caller.
+  const routeHandlersConfig = options?.routeHandlersConfig;
+
+  if (routeHandlersConfig != null) {
+    const appConfig = resolveRouteHandlersAppConfig({
+      routeHandlersConfig
+    });
+    const lookupPolicy = resolveRouteHandlerLookupPolicy({
+      routingPolicy: appConfig.routing
+    });
+    return !lookupPolicy.readPersistedLazyDiscoveries;
+  }
+
+  // Fall back to the process-local registration from withSlugSplitter(...).
+  const registeredConfig = await loadRegisteredSlugSplitterConfig();
+
+  if (registeredConfig == null) {
+    // No config available — default to filtering (rewrite mode behavior).
+    return true;
+  }
+
   const appConfig = resolveRouteHandlersAppConfig({
-    routeHandlersConfig
+    routeHandlersConfig: registeredConfig
   });
   const lookupPolicy = resolveRouteHandlerLookupPolicy({
     routingPolicy: appConfig.routing
   });
-
   return !lookupPolicy.readPersistedLazyDiscoveries;
 };
 
@@ -323,4 +342,128 @@ export const loadRouteHandlerCacheLookup = async ({
     targetId,
     heavyRoutePathKeys: sharedHeavyRoutePathKeys
   });
+};
+
+/**
+ * Normalize a slug value to an array for heavy-route lookup.
+ *
+ * Handles both single-segment routes (`[slug]`) where the slug is a string
+ * and catch-all routes (`[...slug]`) where the slug is already an array.
+ */
+const normalizeSlugArray = (slug: string | Array<string>): Array<string> =>
+  Array.isArray(slug) ? slug : [slug];
+
+/**
+ * Create a `getStaticPaths` function that automatically filters heavy routes.
+ *
+ * Wraps a user-owned path provider so the catch-all page excludes heavy
+ * routes in rewrite mode and returns all paths in proxy mode — without
+ * the page needing to understand policy, cache loading, or slug encoding.
+ *
+ * When `routeHandlersConfig` is omitted, the wrapper attempts to load it
+ * from the process-local registration created by `withSlugSplitter(...)`.
+ * In environments where the page worker runs in a separate process (e.g.
+ * Turbopack dev mode), pass the config explicitly.
+ *
+ * @example
+ * ```typescript
+ * // pages/docs/[...slug].tsx
+ * import { withHeavyRouteFilter } from 'next-slug-splitter/next/lookup';
+ * import { routeHandlersConfig } from '../../route-handlers-config';
+ * import { getPath, PageVariant } from '@content/assembler';
+ *
+ * export const getStaticPaths = withHeavyRouteFilter({
+ *   targetId: 'docs',
+ *   routeHandlersConfig,
+ *   getStaticPaths: async () => {
+ *     const paths = await getPath(PageVariant.Doc);
+ *     return { paths, fallback: false };
+ *   },
+ * });
+ * ```
+ *
+ * @param options - Wrapper configuration.
+ * @returns An async function matching the `getStaticPaths` contract.
+ */
+/**
+ * Options for `withHeavyRouteFilter`.
+ */
+export type WithHeavyRouteFilterOptions = {
+  /**
+   * Target identifier for cache lookup scoping.
+   */
+  targetId: string;
+
+  /**
+   * App-owned route-handlers configuration.
+   *
+   * When omitted, resolved from the process-local registration.
+   */
+  routeHandlersConfig?: RouteHandlersConfig;
+
+  /**
+   * Name of the slug parameter in the path entries.
+   *
+   * Defaults to `'slug'`.
+   */
+  slugParam?: string;
+
+  /**
+   * User-owned `getStaticPaths` implementation.
+   *
+   * The wrapper calls this function, intercepts the result, and filters
+   * heavy routes from `paths` before returning. The `fallback` value is
+   * preserved as-is.
+   */
+  getStaticPaths: GetStaticPaths;
+};
+
+export const withHeavyRouteFilter = ({
+  targetId,
+  routeHandlersConfig,
+  slugParam = 'slug',
+  getStaticPaths
+}: WithHeavyRouteFilterOptions): GetStaticPaths => {
+  return async context => {
+    // Run the user-owned getStaticPaths implementation.
+    const result = await getStaticPaths(context);
+    const allPaths = result.paths;
+    const fallback = result.fallback;
+
+    // Proxy mode skips filtering — request-time routing owns heavy discovery.
+    const shouldFilter = await shouldFilterHeavyRoutesInStaticPaths({
+      routeHandlersConfig
+    });
+
+    if (!shouldFilter) {
+      return { paths: allPaths, fallback };
+    }
+
+    // Rewrite mode — load the heavy-route lookup and filter.
+    const heavyRouteLookup = await loadRouteHandlerCacheLookup({
+      routeHandlersConfig,
+      targetId
+    });
+
+    const paths = allPaths.filter(entry => {
+      // Next.js allows plain string entries in paths — these are not
+      // parameterized and cannot be heavy routes.
+      if (typeof entry === 'string') {
+        return true;
+      }
+
+      const locale = entry.locale;
+      const slug = entry.params?.[slugParam];
+
+      // Entries without a locale or slug cannot be matched against
+      // the heavy-route lookup which requires both — keep them as-is.
+      if (!locale || !slug) {
+        return true;
+      }
+
+      return !heavyRouteLookup.isHeavyRoute(locale, normalizeSlugArray(slug));
+    });
+
+    return { paths, fallback };
+  };
 };

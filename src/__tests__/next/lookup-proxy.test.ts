@@ -109,7 +109,7 @@ describe('route handler cache lookup proxy behavior', () => {
 
     await withTempDir('next-slug-splitter-static-path-policy-proxy-', async rootDir => {
       expect(
-        shouldFilterHeavyRoutesInStaticPaths({
+        await shouldFilterHeavyRoutesInStaticPaths({
           routeHandlersConfig: createSingleTargetConfig({
             rootDir
           })
@@ -165,7 +165,7 @@ describe('route handler cache lookup proxy behavior', () => {
       'next-slug-splitter-static-path-policy-rewrites-',
       async rootDir => {
         expect(
-          shouldFilterHeavyRoutesInStaticPaths({
+          await shouldFilterHeavyRoutesInStaticPaths({
             routeHandlersConfig: createSingleTargetConfig({
               rootDir,
               developmentRoutingMode: 'rewrites'
