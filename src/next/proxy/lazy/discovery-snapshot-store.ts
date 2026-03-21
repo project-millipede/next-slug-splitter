@@ -1,9 +1,10 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { isArray, isString } from '../../../utils/type-guards';
+import { isArrayOf, isString } from '../../../utils/type-guards';
 import {
-  isObjectRecord,
+  isObjectRecordOf,
+  isStringArray,
   readObjectProperty
 } from '../../../utils/type-guards-custom';
 
@@ -54,7 +55,8 @@ const resolveRouteHandlerLazyDiscoverySnapshotRecordPath = ({
   rootDir
 }: {
   rootDir: string;
-}): string => path.join(rootDir, ROUTE_HANDLER_LAZY_DISCOVERY_SNAPSHOT_RECORD_PATH);
+}): string =>
+  path.join(rootDir, ROUTE_HANDLER_LAZY_DISCOVERY_SNAPSHOT_RECORD_PATH);
 
 /**
  * Runtime validator for one localized route path.
@@ -63,14 +65,13 @@ const resolveRouteHandlerLazyDiscoverySnapshotRecordPath = ({
  * @returns `true` when the value matches the expected route-path shape.
  */
 const isLocalizedRoutePath = (value: unknown): value is LocalizedRoutePath => {
-  if (!isObjectRecord(value)) {
+  if (!isObjectRecordOf<LocalizedRoutePath>(value)) {
     return false;
   }
 
   return (
     isString(readObjectProperty(value, 'locale')) &&
-    isArray(readObjectProperty(value, 'slugArray')) &&
-    (readObjectProperty(value, 'slugArray') as Array<unknown>).every(isString) &&
+    isStringArray(readObjectProperty(value, 'slugArray')) &&
     isString(readObjectProperty(value, 'filePath'))
   );
 };
@@ -84,7 +85,7 @@ const isLocalizedRoutePath = (value: unknown): value is LocalizedRoutePath => {
 const isRouteHandlerLazyDiscoverySnapshotEntry = (
   value: unknown
 ): value is RouteHandlerLazyDiscoverySnapshotEntry => {
-  if (!isObjectRecord(value)) {
+  if (!isObjectRecordOf<RouteHandlerLazyDiscoverySnapshotEntry>(value)) {
     return false;
   }
 
@@ -108,16 +109,17 @@ const isRouteHandlerLazyDiscoverySnapshotEntry = (
 const isPersistedRouteHandlerLazyDiscoverySnapshotRecord = (
   value: unknown
 ): value is PersistedRouteHandlerLazyDiscoverySnapshotRecord => {
-  if (!isObjectRecord(value)) {
+  if (
+    !isObjectRecordOf<PersistedRouteHandlerLazyDiscoverySnapshotRecord>(value)
+  ) {
     return false;
   }
 
   return (
     readObjectProperty(value, 'version') ===
       ROUTE_HANDLER_LAZY_DISCOVERY_SNAPSHOT_RECORD_VERSION &&
-    isArray(readObjectProperty(value, 'entries')) &&
-    (readObjectProperty(value, 'entries') as Array<unknown>).every(
-      isRouteHandlerLazyDiscoverySnapshotEntry
+    isArrayOf(isRouteHandlerLazyDiscoverySnapshotEntry)(
+      readObjectProperty(value, 'entries')
     )
   );
 };
@@ -198,9 +200,5 @@ export const writePersistedRouteHandlerLazyDiscoverySnapshotEntries = async ({
   await mkdir(path.dirname(recordPath), {
     recursive: true
   });
-  await writeFile(
-    recordPath,
-    `${JSON.stringify(record, null, 2)}\n`,
-    'utf8'
-  );
+  await writeFile(recordPath, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
 };

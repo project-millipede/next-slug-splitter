@@ -29,21 +29,18 @@ import fileEntryCache, {
   type FileDescriptor
 } from 'file-entry-cache';
 
-import {
-  discoverLocalizedContentRoutes
-} from '../../../core/discovery';
-import {
-  createRouteHandlerRoutePlanner
-} from '../../../core/processor-runner';
+import { discoverLocalizedContentRoutes } from '../../../core/discovery';
+import { createRouteHandlerRoutePlanner } from '../../../core/processor-runner';
 import type {
   LocalizedRoutePath,
   PlannedHeavyRoute,
   RouteHandlerPipelineResult
 } from '../../../core/types';
 import { createCacheError } from '../../../utils/errors';
-import { isArray, isString } from '../../../utils/type-guards';
+import { isString } from '../../../utils/type-guards';
 import {
-  isObjectRecord,
+  isObjectRecordOf,
+  isStringArray,
   readObjectProperty
 } from '../../../utils/type-guards-custom';
 import { computeTargetStaticCacheIdentity } from '../../cache';
@@ -171,17 +168,14 @@ const createTargetFileCache = ({
 const isTargetCacheSnapshot = (
   value: unknown
 ): value is TargetCacheSnapshot => {
-  if (!isObjectRecord(value)) {
+  if (!isObjectRecordOf<TargetCacheSnapshot>(value)) {
     return false;
   }
 
   return (
     readObjectProperty(value, 'version') === TARGET_CACHE_SNAPSHOT_VERSION &&
     isString(readObjectProperty(value, 'identity')) &&
-    isArray(readObjectProperty(value, 'routeFilePaths')) &&
-    (readObjectProperty(value, 'routeFilePaths') as Array<unknown>).every(
-      isString
-    ) &&
+    isStringArray(readObjectProperty(value, 'routeFilePaths')) &&
     isString(readObjectProperty(value, 'updatedAt'))
   );
 };
@@ -208,7 +202,11 @@ const writeTargetCacheSnapshot = async ({
   snapshot: TargetCacheSnapshot;
 }): Promise<void> => {
   await mkdir(path.dirname(snapshotPath), { recursive: true });
-  await writeFile(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+  await writeFile(
+    snapshotPath,
+    `${JSON.stringify(snapshot, null, 2)}\n`,
+    'utf8'
+  );
 };
 
 /**
@@ -320,7 +318,9 @@ export const buildIncrementalRouteHandlerPipelineResult = async (
     config.contentLocaleMode
   );
   const currentRouteFilePaths = routePaths.map(routePath => routePath.filePath);
-  const existingRouteFilePaths = new Set(existingSnapshot?.routeFilePaths ?? []);
+  const existingRouteFilePaths = new Set(
+    existingSnapshot?.routeFilePaths ?? []
+  );
   const currentRouteFilePathSet = new Set(currentRouteFilePaths);
   const hasMatchingTargetIdentity =
     existingSnapshot?.identity === targetIdentity;

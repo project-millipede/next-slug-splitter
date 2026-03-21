@@ -24,6 +24,7 @@ import { resolveRouteHandlerProcessorCacheInfo } from '../core/processor-runner'
 import { isArray, isNumber, isString } from '../utils/type-guards';
 import {
   isObjectRecord,
+  isObjectRecordOf,
   readObjectProperty
 } from '../utils/type-guards-custom';
 import { isDefined } from '../utils/type-guards-extended';
@@ -336,15 +337,22 @@ export const computePipelineFingerprintForConfigs = async ({
 };
 
 /**
+ * Determine whether a value is a supported emit format.
+ */
+const isEmitFormat = (value: unknown): value is 'js' | 'ts' =>
+  value === 'js' || value === 'ts';
+
+/**
  * Determine whether a parsed value matches the persisted Next result shape.
  *
- * @param value - Candidate parsed cache result.
- * @returns `true` when the value matches the expected Next result contract.
+ * `isObjectRecordOf<T>` narrows to `Partial<T>` so `readObjectProperty`
+ * constrains its key parameter to actual property names — a typo like
+ * `'analayzedCount'` becomes a compile-time error.
  */
 const isRouteHandlerNextResult = (
   value: unknown
 ): value is RouteHandlerNextResult => {
-  if (!isObjectRecord(value)) {
+  if (!isObjectRecordOf<RouteHandlerNextResult>(value)) {
     return false;
   }
 
@@ -358,23 +366,19 @@ const isRouteHandlerNextResult = (
 
 /**
  * Determine whether a parsed value matches the persistent cache-record shape.
- *
- * @param value - Candidate parsed cache record.
- * @returns `true` when the value matches the persistent cache-record contract.
  */
 const isPipelineCacheRecord = (
   value: unknown
 ): value is PipelineCacheRecord => {
-  if (!isObjectRecord(value)) {
+  if (!isObjectRecordOf<PipelineCacheRecord>(value)) {
     return false;
   }
 
-  const emitFormat = readObjectProperty(value, 'emitFormat');
   return (
     isNumber(readObjectProperty(value, 'version')) &&
     isString(readObjectProperty(value, 'fingerprint')) &&
     isString(readObjectProperty(value, 'generatedAt')) &&
-    (emitFormat === 'js' || emitFormat === 'ts') &&
+    isEmitFormat(readObjectProperty(value, 'emitFormat')) &&
     isRouteHandlerNextResult(readObjectProperty(value, 'result'))
   );
 };

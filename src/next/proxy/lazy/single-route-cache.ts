@@ -7,7 +7,7 @@ import {
   type PersistedRoutePlanRecord
 } from '../../runtime/route-plan-record';
 import {
-  isObjectRecord,
+  isObjectRecordOf,
   readObjectProperty
 } from '../../../utils/type-guards-custom';
 import { isString } from '../../../utils/type-guards';
@@ -76,7 +76,7 @@ const createLazySingleRouteFileCache = ({
 const readLazySingleRouteCacheRecord = (
   value: unknown
 ): LazySingleRouteCacheRecord | null => {
-  if (!isObjectRecord(value)) {
+  if (!isObjectRecordOf<LazySingleRouteCacheRecord>(value)) {
     return null;
   }
 
@@ -86,7 +86,8 @@ const readLazySingleRouteCacheRecord = (
   );
 
   if (
-    readObjectProperty(value, 'version') !== LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION ||
+    readObjectProperty(value, 'version') !==
+      LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION ||
     !isString(targetIdentity) ||
     routePlanRecord == null
   ) {
@@ -130,10 +131,7 @@ export const readLazySingleRouteCachedPlanRecord = ({
   });
   const analysis = fileCache.analyzeFiles([routePath.filePath]);
 
-  if (
-    analysis.changedFiles.length > 0 ||
-    analysis.notFoundFiles.length > 0
-  ) {
+  if (analysis.changedFiles.length > 0 || analysis.notFoundFiles.length > 0) {
     // Content changed or checksum data is unavailable, so the route must be
     // re-analyzed before the cache can be trusted again.
     return null;
