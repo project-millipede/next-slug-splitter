@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { withRouteHandlerRewrites } from '../../next/plugin';
+import { withRouteHandlerRewrites } from '../../../next/plugin';
 
 import type {
   RouteHandlerRewrite,
   RouteHandlerRewritePhases
-} from '../../next/types';
+} from '../../../next/types';
 
 describe('rewrite plugin', () => {
   it('prepends nested route-handler rewrites into beforeFiles preserving existing rewrites', async () => {

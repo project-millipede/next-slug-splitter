@@ -1,4 +1,4 @@
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { describe, expect, it } from 'vitest';
@@ -7,19 +7,19 @@ import {
   appRelativeModule,
   createCatchAllRouteHandlersPreset,
   packageModule
-} from '../../next';
-import { prepareRouteHandlersFromConfig } from '../../next/prepare';
-import { loadResolvedRouteHandlersConfigs } from '../../next/runtime/config';
+} from '../../../next';
+import { prepareRouteHandlersFromConfig } from '../../../next/prepare';
+import { loadResolvedRouteHandlersConfigs } from '../../../next/runtime/config';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   TEST_PRIMARY_CONTENT_PAGES_DIR,
   TEST_PRIMARY_ROUTE_SEGMENT,
   writeTestBaseStaticPropsPage,
   writeTestModule
-} from '../helpers/fixtures';
-import { withTempDir } from '../helpers/temp-dir';
+} from '../../helpers/fixtures';
+import { withTempDir } from '../../helpers/temp-dir';
 
-import type { RouteHandlersConfig } from '../../next/types';
+import type { RouteHandlersConfig } from '../../../next/types';
 
 describe('route handler preparation', () => {
   it('runs command preparation in the resolved cwd', async () => {
@@ -189,6 +189,83 @@ describe('route handler preparation', () => {
       expect(await readFile(processorOutputPath, 'utf8')).toContain(
         'routeHandlerProcessor'
       );
+    });
+  });
+
+  it('skips unchanged tsc-project preparation inputs and reruns when project inputs change', async () => {
+    await withTempDir('next-slug-splitter-prepare-', async rootDir => {
+      const invocationLogPath = path.join(rootDir, 'tsc-invocations.log');
+      const tsconfigPath = path.join(
+        rootDir,
+        'packages',
+        'site-route-handlers',
+        'tsconfig.route-handlers.json'
+      );
+      const sourcePath = path.join(
+        rootDir,
+        'packages',
+        'site-route-handlers',
+        'src',
+        'index.ts'
+      );
+
+      await writeTestModule(path.join(rootDir, 'package.json'), '{}\n');
+      await writeTestModule(tsconfigPath, '{}\n');
+      await writeTestModule(sourcePath, 'export const value = 1;\n');
+      await writeTestModule(
+        path.join(rootDir, 'node_modules', 'typescript', 'lib', 'tsc.js'),
+        [
+          "const { appendFileSync } = require('node:fs');",
+          `appendFileSync(${JSON.stringify(invocationLogPath)}, 'run\\n');`,
+          ''
+        ].join('\n')
+      );
+
+      const routeHandlersConfig: RouteHandlersConfig = {
+        app: {
+          rootDir,
+          nextConfigPath: path.join(rootDir, 'next.config.mjs'),
+          prepare: [
+            {
+              id: 'route-handler-runtime',
+              kind: 'tsc-project',
+              tsconfigPath: appRelativeModule(
+                'packages/site-route-handlers/tsconfig.route-handlers.json'
+              )
+            }
+          ]
+        }
+      };
+
+      await prepareRouteHandlersFromConfig({
+        rootDir,
+        routeHandlersConfig
+      });
+      await prepareRouteHandlersFromConfig({
+        rootDir,
+        routeHandlersConfig
+      });
+
+      const initialInvocations = (
+        await readFile(invocationLogPath, 'utf8')
+      )
+        .split('\n')
+        .filter(entry => entry.length > 0);
+      expect(initialInvocations).toHaveLength(1);
+
+      await writeFile(sourcePath, 'export const value = 2;\n', 'utf8');
+
+      await prepareRouteHandlersFromConfig({
+        rootDir,
+        routeHandlersConfig
+      });
+
+      const updatedInvocations = (
+        await readFile(invocationLogPath, 'utf8')
+      )
+        .split('\n')
+        .filter(entry => entry.length > 0);
+      expect(updatedInvocations).toHaveLength(2);
     });
   });
 });

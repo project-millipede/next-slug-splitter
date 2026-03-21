@@ -38,7 +38,10 @@ const createResolvedConfig = ({
 }): ResolvedRouteHandlersConfig => ({
   app: {
     rootDir,
-    nextConfigPath: path.join(rootDir, 'next.config.mjs')
+    nextConfigPath: path.join(rootDir, 'next.config.mjs'),
+    routing: {
+      development: 'proxy'
+    }
   },
   targetId: TEST_PRIMARY_ROUTE_SEGMENT,
   localeConfig: {

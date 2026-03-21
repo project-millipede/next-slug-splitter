@@ -2,8 +2,8 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { createCatchAllRouteHandlersPreset } from '../../next/config';
-import { loadResolvedRouteHandlersConfigs } from '../../next/runtime/config';
+import { createCatchAllRouteHandlersPreset } from '../../../next/config';
+import { loadResolvedRouteHandlersConfigs } from '../../../next/runtime/config';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   TEST_PRIMARY_CONTENT_PAGES_DIR,
@@ -11,10 +11,10 @@ import {
   createTestHandlerBinding,
   writeTestBaseStaticPropsPage,
   writeTestRouteHandlerPackage
-} from '../helpers/fixtures';
-import { withTempDir } from '../helpers/temp-dir';
+} from '../../helpers/fixtures';
+import { withTempDir } from '../../helpers/temp-dir';
 
-import type { RouteHandlersConfig } from '../../next/types';
+import type { RouteHandlersConfig } from '../../../next/types';
 
 describe('runtime config loading', () => {
   it('uses the provided nextConfig object without loading app.nextConfigPath', async () => {
