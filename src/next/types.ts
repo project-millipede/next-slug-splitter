@@ -212,6 +212,45 @@ export type RouteHandlerPreparation =
   | RouteHandlerCommandPreparation;
 
 /**
+ * Development-only routing mode for the Next adapter entrypoint.
+ *
+ * @remarks
+ * The library currently has two routing executors in development:
+ * - `proxy`: request-time lazy routing through a generated root `proxy.ts`
+ * - `rewrites`: the historical eager rewrite-generation path
+ *
+ * Production and build still stay on rewrites regardless of this setting.
+ */
+export type RouteHandlerDevelopmentRoutingMode = 'proxy' | 'rewrites';
+
+/**
+ * User-facing app-level routing policy.
+ *
+ * @remarks
+ * This policy exists so routing mode can be decided once, very high in the
+ * integration chain, instead of leaking strategy conditionals into many deeper
+ * modules.
+ */
+export type RouteHandlersRoutingPolicy = {
+  /**
+   * Development-server routing mode.
+   *
+   * Defaults to `'proxy'` when omitted.
+   */
+  development?: RouteHandlerDevelopmentRoutingMode;
+};
+
+/**
+ * Fully resolved app-level routing policy.
+ */
+export type ResolvedRouteHandlersRoutingPolicy = {
+  /**
+   * Development-server routing mode after defaults are applied.
+   */
+  development: RouteHandlerDevelopmentRoutingMode;
+};
+
+/**
  * Resolved TypeScript-project preparation.
  */
 export type ResolvedRouteHandlerTscProjectPreparation = {
@@ -252,12 +291,21 @@ export type RouteHandlersAppConfig = AppConfigBase & {
    * Optional app-owned preparation tasks executed before processor loading.
    */
   prepare?: Array<RouteHandlerPreparation>;
+  /**
+   * Optional high-level routing policy for development mode.
+   */
+  routing?: RouteHandlersRoutingPolicy;
 };
 
 /**
  * Fully resolved app-level configuration.
  */
-export type ResolvedRouteHandlersAppConfig = Required<AppConfigBase>;
+export type ResolvedRouteHandlersAppConfig = Required<AppConfigBase> & {
+  /**
+   * Resolved app-level routing policy.
+   */
+  routing: ResolvedRouteHandlersRoutingPolicy;
+};
 
 /**
  * Kind discriminator for dynamic route parameter segments.

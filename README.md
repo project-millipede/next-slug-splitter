@@ -1,50 +1,55 @@
 # next-slug-splitter
 
-> Build-time Next.js route handler generation and rewrite integration for large content trees
+> Next.js route handler generation with build-time rewrites and dev-time request routing
 
 A configuration-driven package for analyzing content page trees, generating
-route-specific handlers, and wiring the resulting rewrites into a Next.js app.
+route-specific handlers, and routing traffic into those handlers — either
+through build-time rewrites (production) or a request-time proxy (development).
 
 ## Table of Contents
 
 1. [Overview](#overview)
 2. [Getting Started](#getting-started)
 3. [Quick Start](#quick-start)
-4. [Usage](#usage)
-5. [Reference](#reference)
-6. [Capabilities](#capabilities)
+4. [Operation Modes](#operation-modes)
+5. [Usage](#usage)
+6. [Configuration Reference](#configuration-reference)
+7. [Architecture](#architecture)
+8. [Capabilities](#capabilities)
 
 ## Overview
 
 ### Features
 
-- **Next.js Integration:** `withSlugSplitter(...)` installs the adapter entry
-  and connects one app-owned route handlers config file.
+- **Two Operation Modes:** Rewrite mode for production builds, proxy mode for
+  development — each optimized for its environment.
 - **Config-Driven Targets:** Declare one or more route spaces such as `docs`
   and `blog` with app-level and target-level settings.
-- **Build-Time Analysis:** Discover content pages, resolve component metadata,
-  and classify heavy routes before the app build.
-- **Generated Route Handlers:** Emit dedicated handler pages and supporting
-  artifacts for the configured route targets.
-- **Rewrite Injection:** Prepend generated rewrites ahead of existing
-  `beforeFiles` rewrites during the relevant Next.js phases.
-- **Locale-Aware Routing:** Support locale detection based on filenames or a
-  default-locale routing model.
+- **Build-Time Generation:** Discover content pages, resolve component metadata,
+  classify heavy routes, and emit dedicated handler pages before the app build.
+- **Dev-Time Proxy Routing:** A generated `proxy.ts` intercepts requests and
+  makes heavy/light routing decisions on demand — no upfront generation needed.
+- **Lazy Discovery:** In proxy mode, heavy routes are classified on first
+  request via a worker process and cached for subsequent requests.
+- **Locale-Aware Routing:** Support for locale detection based on filenames or
+  a default-locale routing model.
+- **Multi-Target:** Support multi-target setups such as `docs` plus `blog` in
+  one configuration file.
 
 ### Why Use It?
 
-Content-heavy route spaces such as docs and blogs often benefit from an extra
-build-time pass that can:
+Content-heavy route spaces such as docs and blogs often benefit from splitting
+"heavy" routes (pages with interactive components) from "light" routes (pages
+with only standard markdown elements). `next-slug-splitter` manages that split:
 
-1. Inspect the available content pages
-2. Generate dedicated route handlers for selected routes
-3. Install rewrites that route matching traffic into those generated handlers
+- **In production:** The CLI generates dedicated handler pages for heavy routes
+  and installs rewrites that route matching traffic into those handlers.
+- **In development:** A proxy discovers heavy routes lazily on first request,
+  avoiding regeneration on every content change and enabling instant dev startup.
 
-`next-slug-splitter` keeps that work explicit and app-owned:
-
-- Next config integration lives in `withSlugSplitter(...)`
-- target declarations live in `route-handlers-config.mjs`
-- generation can run as a separate CLI step before `next build`
+The configuration lives in one app-owned file, the integration is a single
+`withSlugSplitter(...)` wrapper, and the routing strategy adapts automatically
+to the current Next.js phase.
 
 ## Getting Started
 
@@ -56,22 +61,14 @@ npm install next-slug-splitter next
 pnpm add next-slug-splitter next
 ```
 
-This package is intended for Next.js applications that own one or more large
-content route spaces and want build-time handler generation plus rewrite
-installation.
+`next-slug-splitter` requires Next.js `16.2.0` or newer and installs the
+stable top-level `adapterPath` option.
 
 ## Quick Start
 
-If the goal is the shortest path to adoption:
-
-1. Wrap the Next config with `withSlugSplitter(...)`
-2. Add `route-handlers-config.mjs`
-3. Run the CLI before `next build`
-
-### Minimal Next Config
+### 1. Wrap the Next Config
 
 ```js
-/** @type {import('next').NextConfig} */
 import { withSlugSplitter } from 'next-slug-splitter/next';
 
 const nextConfig = {
@@ -86,9 +83,10 @@ export default withSlugSplitter(nextConfig, {
 });
 ```
 
-### Minimal Route Handlers Config
+### 2. Declare Route Targets
 
 ```js
+// route-handlers-config.mjs
 // @ts-check
 
 import process from 'node:process';
@@ -115,7 +113,11 @@ const blogRouteParam = {
 export const routeHandlersConfig = {
   app: {
     rootDir,
-    nextConfigPath
+    nextConfigPath,
+    routing: {
+      // Default: 'proxy' in development, rewrites in production
+      development: 'proxy'
+    }
   },
   targets: [
     createCatchAllRouteHandlersPreset({
@@ -135,7 +137,7 @@ export const routeHandlersConfig = {
 };
 ```
 
-### Minimal Build Step
+### 3. Generate Before Build (Production Only)
 
 ```json
 {
@@ -146,25 +148,148 @@ export const routeHandlersConfig = {
 }
 ```
 
-## Usage
+> **Note:** In development, proxy mode is the default. No generation step is
+> needed — routes are discovered on demand when first requested.
 
-This package has three main pieces.
+## Operation Modes
+
+### Rewrite Mode (Production Default)
+
+Used during `PHASE_PRODUCTION_BUILD` and `PHASE_PRODUCTION_SERVER`.
+
+1. The CLI analyzes content pages and generates dedicated handler page files
+2. The adapter injects rewrites into the Next config (`beforeFiles`)
+3. Next.js routes matching traffic to the generated handler pages
+
+All routes are resolved upfront at build time. The generated handler pages and
+rewrites are static artifacts.
+
+### Proxy Mode (Development Default)
+
+Used during `PHASE_DEVELOPMENT_SERVER`.
+
+1. The adapter generates a thin `proxy.ts` file at the app root
+2. This proxy intercepts page requests matching configured route base paths
+3. On first request for an unknown route, a worker process classifies it as
+   heavy or light
+4. Heavy routes are rewritten to their generated handler pages; light routes
+   pass through to the catch-all page
+5. Discoveries are cached in `lazy-discovery.json` for subsequent requests
+
+Benefits over rewrite mode in development:
+
+- **Instant startup** — no upfront generation pass
+- **On-demand discovery** — only routes actually visited are classified
+- **Automatic caching** — subsequent requests resolve instantly from cache
+
+#### Dev-Mode Cold-Start 404
+
+On the very first request to a heavy route, the proxy rewrites to the generated
+handler page. Because Turbopack compiles pages on demand, the handler page may
+not be compiled yet — producing a transient 404. Subsequent requests succeed
+because the handler is compiled by then.
+
+To handle this gracefully, create a `pages/404.tsx` that auto-retries for
+routes owned by your configured targets:
+
+```tsx
+import type { NextPage } from 'next';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/router';
+
+/**
+ * Route prefixes that match your configured targets.
+ * Adjust these to match your routeSegment values.
+ */
+const RETRY_ROUTE_PREFIXES = ['/docs/', '/blog/'];
+
+const isRetryableRoute = (pathname: string): boolean =>
+  RETRY_ROUTE_PREFIXES.some(prefix => pathname.includes(prefix));
+
+const NotFound: NextPage = () => {
+  const router = useRouter();
+  const hasRetried = useRef(false);
+  const [showNotFound, setShowNotFound] = useState(false);
+
+  useEffect(() => {
+    if (hasRetried.current) return;
+
+    if (!isRetryableRoute(window.location.pathname)) {
+      setShowNotFound(true);
+      return;
+    }
+
+    hasRetried.current = true;
+
+    const timer = setTimeout(() => {
+      router.replace(router.asPath).catch(() => {
+        setShowNotFound(true);
+      });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [router]);
+
+  if (!showNotFound) return null;
+
+  return <h1>Page Not Found</h1>;
+};
+
+export default NotFound;
+```
+
+This renders nothing while retrying (the user sees a blank page for ~500ms),
+then shows the real 404 only if the retry also fails. In production this never
+triggers because all handler pages are pre-compiled.
+
+### Configuring the Routing Policy
+
+The development routing mode defaults to `'proxy'`. To override:
+
+```js
+// In route-handlers-config.mjs
+export const routeHandlersConfig = {
+  app: {
+    routing: {
+      development: 'rewrites' // Use rewrite mode even in development
+    }
+  },
+  targets: [...]
+};
+```
+
+Environment variable override (takes precedence over config):
+
+```bash
+NEXT_SLUG_SPLITTER_DEV_ROUTING=proxy     # Force proxy mode
+NEXT_SLUG_SPLITTER_DEV_ROUTING=rewrites  # Force rewrite mode
+```
+
+## Usage
 
 ### 1. Wrap the Next Config
 
-`withSlugSplitter(nextConfig, { configPath })` resolves the app-owned route
-handlers config and installs the published adapter entry into
-`experimental.adapterPath`.
+`withSlugSplitter(nextConfigExport, options)` resolves the app-owned route
+handlers config and installs the adapter entry into `adapterPath`.
 
-Use this when the app should automatically apply generated rewrites during the
-relevant Next.js phases.
+Two registration modes:
+
+```js
+// File-based (recommended for most apps)
+withSlugSplitter(nextConfig, {
+  configPath: './route-handlers-config.mjs'
+});
+
+// Direct object (useful for monorepos or programmatic setups)
+withSlugSplitter(nextConfig, {
+  routeHandlersConfig: myConfig
+});
+```
 
 ### 2. Declare Route Targets
 
-`route-handlers-config.mjs` is the app-owned source of truth for route handler
-generation.
-
-A target typically describes:
+The route handlers config is the app-owned source of truth for route handler
+generation. A target typically describes:
 
 - the public route segment such as `docs` or `blog`
 - the dynamic route parameter kind
@@ -174,65 +299,123 @@ A target typically describes:
 `createCatchAllRouteHandlersPreset(...)` is the shortest way to configure
 catch-all targets without hand-assembling all path values.
 
-### 3. Generate or Analyze
+### 3. Generate or Analyze (Production)
 
-The CLI can either generate outputs or run analysis only.
+The CLI generates handler artifacts or runs analysis only.
 
 ```bash
-next-slug-splitter
-next-slug-splitter --analyze-only
-next-slug-splitter --analyze-only --json
+next-slug-splitter                    # Generate handlers and artifacts
+next-slug-splitter --analyze-only     # Analyze without generating
+next-slug-splitter --analyze-only --json  # JSON output for tooling
 ```
 
 Without `--config`, the CLI falls back to discovering one of the standard Next
 config filenames in the current working directory.
 
-## Reference
+> In development with proxy mode, the CLI step is not needed. The proxy
+> discovers routes on demand.
+
+## Configuration Reference
 
 ### `withSlugSplitter(nextConfigExport, options)`
 
-Wrap one Next config export and register the route handlers config file.
+Wrap one Next config export and register the route handlers config.
 
-Important option:
+| Option | Description |
+|--------|-------------|
+| `configPath` | Path to the app-owned `route-handlers-config` module |
+| `routeHandlersConfig` | Direct config object (alternative to `configPath`) |
 
-- `configPath`: path to the app-owned `route-handlers-config` module
+### `RouteHandlersConfig`
+
+Top-level configuration shape.
+
+| Property | Description |
+|----------|-------------|
+| `app.rootDir` | Application root directory |
+| `app.nextConfigPath` | Path to the Next config file |
+| `app.routing.development` | Development routing mode: `'proxy'` (default) or `'rewrites'` |
+| `app.prepare` | Optional preparation steps run before route planning |
+| `targets` | Array of target configurations |
 
 ### `createCatchAllRouteHandlersPreset(options)`
 
 Create one catch-all target with normalized route and path values.
 
-Common options:
-
-- `routeSegment`
-- `handlerRouteParam`
-- `contentPagesDir`
-- `handlerBinding`
-- `contentLocaleMode`
+| Option | Description |
+|--------|-------------|
+| `routeSegment` | Public route segment (e.g. `'docs'`, `'blog'`) |
+| `handlerRouteParam` | Dynamic route parameter configuration |
+| `contentPagesDir` | Directory containing content pages |
+| `handlerBinding` | Component imports and runtime factory references |
+| `contentLocaleMode` | Locale detection mode (see below) |
 
 ### `DynamicRouteParam`
 
 Supported `kind` values:
 
-- `single`
-- `catch-all`
-- `optional-catch-all`
+- `single` — matches a single path segment
+- `catch-all` — matches one or more path segments
+- `optional-catch-all` — matches zero or more path segments
 
 ### `contentLocaleMode`
 
 Supported modes:
 
-- `filename`
-- `default-locale`
+- `filename` — locale is encoded in the content file naming scheme
+- `default-locale` — the default locale omits the locale prefix in the
+  public route space
 
-Use `filename` when locale is encoded in the content file naming scheme.
-Use `default-locale` when the default locale omits the locale prefix in the
-public route space.
+## Architecture
+
+### Adapter
+
+The adapter (`adapterPath`) is the entry point for Next.js integration. It
+runs during the relevant Next.js phases and coordinates:
+
+- Routing strategy selection (rewrite vs. proxy)
+- Cache management across generation runs
+- Rewrite injection or proxy file generation
+
+### Cache System
+
+Multiple cache groups work together to avoid redundant work:
+
+- **Preparation cache** — runs app-owned setup steps (e.g. TypeScript compilation)
+- **Process-local cache** — deduplicates generation within one Node process
+- **Persistent shared cache** — on-disk cache keyed by pipeline fingerprint
+- **Incremental planning** — per-target selective emission when configs match
+- **Lazy discovery snapshots** — proxy-mode request-time discoveries persisted to disk
+
+### Proxy File Lifecycle
+
+In proxy mode, the adapter generates a thin `proxy.ts` bridge file at the app
+root. This file:
+
+- Imports the library-owned proxy runtime
+- Embeds static matchers for configured route base paths and locales
+- Is automatically created when entering proxy mode and cleaned up when leaving
+
+The generated file is marked with an ownership marker so it can be distinguished
+from user-authored proxy files.
+
+### Worker Process
+
+In proxy mode, route classification happens in a child worker process. This is
+necessary because the proxy runtime environment cannot dynamically import
+app-owned configuration modules. The worker loads the config, classifies the
+route, and returns the result to the proxy runtime.
 
 ## Capabilities
 
+- Two operation modes optimized for their respective environments
+- Lazy on-demand route discovery in development
+- Multi-level caching for fast rebuilds and instant dev restarts
 - Install rewrite integration without mutating the incoming Next config object
 - Resolve app-level and target-level route handler config in one shared shape
 - Discover content pages and generate handler artifacts per target
 - Reuse handler bindings for component imports and runtime factory selection
 - Support multi-target setups such as `docs` plus `blog`
 - Offer both generation and analyze-only CLI modes
+- Locale-aware routing with configurable detection modes
+- Phase-aware behavior — only active during development, build, and production server phases

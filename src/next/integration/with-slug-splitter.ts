@@ -65,7 +65,7 @@ export type WithSlugSplitterOptions =
  * Integration steps:
  * 1. Resolve and validate the app-owned config file path.
  * 2. Register that path for later adapter-side loading.
- * 3. Install the published adapter entrypoint into `experimental.adapterPath`.
+ * 3. Install the published adapter entrypoint into `adapterPath`.
  *
  * @param nextConfigExport - Next config object or config factory.
  * @param options - next-slug-splitter integration options.
@@ -93,7 +93,9 @@ export function withSlugSplitter(
             configPath: options.configPath
           });
 
-          registerSlugSplitterConfigPath(resolvedConfigPath);
+          registerSlugSplitterConfigPath(resolvedConfigPath, {
+            rootDir
+          });
 
           return resolveSlugSplitterAdapterEntry(rootDir);
         })();
@@ -118,22 +120,26 @@ export function withSlugSplitter(
       );
     }
 
-    const existingAdapterPath =
+    const existingAdapterPath = readObjectProperty(nextConfig, 'adapterPath');
+    if (existingAdapterPath != null) {
+      throw createConfigError(
+        'withSlugSplitter(...) cannot be combined with an existing adapterPath.'
+      );
+    }
+
+    const existingExperimentalAdapterPath =
       configuredExperimental == null
         ? undefined
         : readObjectProperty(configuredExperimental, 'adapterPath');
-    if (existingAdapterPath != null) {
+    if (existingExperimentalAdapterPath != null) {
       throw createConfigError(
-        'withSlugSplitter(...) cannot be combined with an existing experimental.adapterPath.'
+        'withSlugSplitter(...) now installs the stable adapterPath option. Move any existing experimental.adapterPath to adapterPath before applying withSlugSplitter(...).'
       );
     }
 
     return {
       ...nextConfig,
-      experimental: {
-        ...(configuredExperimental ?? {}),
-        adapterPath: resolvedAdapterPath
-      }
+      adapterPath: resolvedAdapterPath
     };
   };
 

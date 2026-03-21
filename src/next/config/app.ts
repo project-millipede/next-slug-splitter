@@ -18,6 +18,7 @@ import type {
 } from '../types';
 
 import { resolveConfiguredPathOption } from './paths';
+import { resolveRouteHandlersRoutingPolicy } from './routing-policy';
 import {
   isNonEmptyString,
   isObjectRecord,
@@ -37,10 +38,9 @@ import {
 const readConfiguredRouteHandlersApp = (
   routeHandlersConfig: RouteHandlersConfig | undefined
 ): Record<string, unknown> => {
-  const configuredApp =
-    isUndefined(routeHandlersConfig)
-      ? undefined
-      : readObjectProperty(routeHandlersConfig, 'app');
+  const configuredApp = isUndefined(routeHandlersConfig)
+    ? undefined
+    : readObjectProperty(routeHandlersConfig, 'app');
 
   if (isUndefined(configuredApp)) {
     return {};
@@ -185,14 +185,13 @@ export const resolveRouteHandlerPreparations = ({
       }
 
       const configuredCwd = readObjectProperty(preparation, 'cwd');
-      const cwd =
-        isUndefined(configuredCwd)
-          ? rootDir
-          : resolveConfiguredPathOption({
-              rootDir,
-              value: configuredCwd,
-              label: `routeHandlersConfig.app.prepare[${index}].cwd`
-            });
+      const cwd = isUndefined(configuredCwd)
+        ? rootDir
+        : resolveConfiguredPathOption({
+            rootDir,
+            value: configuredCwd,
+            label: `routeHandlersConfig.app.prepare[${index}].cwd`
+          });
       if (!isNonEmptyString(cwd)) {
         throw createConfigError(
           `routeHandlersConfig.app.prepare[${index}].cwd must resolve to a non-empty string path.`
@@ -262,6 +261,13 @@ export const resolveRouteHandlersAppConfig = ({
 
   return {
     rootDir: resolvedRootDir,
-    nextConfigPath: resolvedNextConfigPath
+    nextConfigPath: resolvedNextConfigPath,
+    // The app-level routing policy is resolved here so the rest of the
+    // integration stack can consume one already-validated contract instead of
+    // re-reading raw `routeHandlersConfig.app.routing` shape in multiple
+    // places.
+    routing: resolveRouteHandlersRoutingPolicy({
+      configuredApp
+    })
   };
 };

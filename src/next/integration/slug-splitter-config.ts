@@ -7,6 +7,21 @@ import { isNonEmptyString } from '../../utils/type-guards-extended';
 import type { RouteHandlersConfig } from '../types';
 
 const SLUG_SPLITTER_CONFIG_PATH_ENV = 'SLUG_SPLITTER_CONFIG_PATH';
+const SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV = 'SLUG_SPLITTER_CONFIG_ROOT_DIR';
+const SLUG_SPLITTER_CONVENTIONAL_CONFIG_FILE_NAMES = [
+  'route-handlers-config.ts',
+  'route-handlers-config.mts',
+  'route-handlers-config.cts',
+  'route-handlers-config.js',
+  'route-handlers-config.mjs',
+  'route-handlers-config.cjs',
+  'route-handlers.config.ts',
+  'route-handlers.config.mts',
+  'route-handlers.config.cts',
+  'route-handlers.config.js',
+  'route-handlers.config.mjs',
+  'route-handlers.config.cjs'
+] as const;
 
 /**
  * Resolve and validate the app-owned next-slug-splitter config module path.
@@ -56,12 +71,23 @@ export const resolveSlugSplitterConfigPath = ({
  * the same process.
  *
  * @param configPath - Absolute path to the config module.
+ * @param options - Additional app-registration context.
+ * @param options.rootDir - True app root captured during `next.config.*`
+ * evaluation.
  * @returns The same config path after registration.
  */
 export const registerSlugSplitterConfigPath = (
-  configPath: string
+  configPath: string,
+  options?: {
+    rootDir?: string;
+  }
 ): string => {
   process.env[SLUG_SPLITTER_CONFIG_PATH_ENV] = configPath;
+
+  if (isNonEmptyString(options?.rootDir)) {
+    process.env[SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV] = options.rootDir;
+  }
+
   return configPath;
 };
 
@@ -78,4 +104,86 @@ export const readRegisteredSlugSplitterConfigPath = (): string | undefined => {
   }
 
   return configPath;
+};
+
+/**
+ * Read the registered app root directory captured during `next.config.*`
+ * evaluation.
+ *
+ * @returns Absolute app root when registered, otherwise `undefined`.
+ */
+export const readRegisteredSlugSplitterConfigRootDir = ():
+  | string
+  | undefined => {
+  const rootDir = process.env[SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV];
+
+  if (!isNonEmptyString(rootDir)) {
+    return undefined;
+  }
+
+  return rootDir;
+};
+
+/**
+ * Resolve the strongest config-registration information available for later
+ * adapter or proxy bridging work.
+ *
+ * @param input - Resolution input.
+ * @param input.rootDir - True app root directory.
+ * @returns Explicit registration when available, otherwise a conventional
+ * root-level config file guess for direct-object integrations.
+ *
+ * @remarks
+ * There are two ways apps register splitter config:
+ *
+ * 1. `withSlugSplitter({ configPath })`
+ *    We know the exact config module path and can persist it directly.
+ *
+ * 2. `withSlugSplitter({ routeHandlersConfig })`
+ *    We receive only the already materialized config object. That is enough
+ *    for the main adapter process, but the dev-only proxy worker later needs a
+ *    concrete module path so a fresh child Node process can reload the app's
+ *    config-heavy planning stack.
+ *
+ * In that direct-object case we cannot faithfully reconstruct arbitrary module
+ * provenance from the object itself, so we intentionally fall back to a narrow
+ * set of conventional root-level filenames. This keeps the heuristic small and
+ * explicit while supporting the common app layout used by local workspaces like
+ * Millipede.
+ */
+export const resolveRegisteredSlugSplitterConfigRegistration = ({
+  rootDir
+}: {
+  rootDir: string;
+}): {
+  configPath?: string;
+  rootDir: string;
+} => {
+  const registeredConfigPath = readRegisteredSlugSplitterConfigPath();
+  const registeredRootDir = readRegisteredSlugSplitterConfigRootDir();
+
+  if (registeredConfigPath != null) {
+    return {
+      configPath: registeredConfigPath,
+      rootDir: registeredRootDir ?? rootDir
+    };
+  }
+
+  for (const fileName of SLUG_SPLITTER_CONVENTIONAL_CONFIG_FILE_NAMES) {
+    const candidatePath = path.join(rootDir, fileName);
+    const configStats = statSync(candidatePath, {
+      throwIfNoEntry: false
+    });
+
+    if (configStats?.isFile()) {
+      return {
+        configPath: candidatePath,
+        rootDir
+      };
+    }
+  }
+
+  return {
+    rootDir: registeredRootDir ?? rootDir
+  };
 };

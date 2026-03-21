@@ -1,0 +1,70 @@
+diff --git a/dist/client/page-loader.js b/dist/client/page-loader.js
+index 5a88c5f356523e2f6f4f844ad275096577b438be..8fc31d93f49d8bcd17dc973e27d09255b1edd788 100644
+--- a/dist/client/page-loader.js
++++ b/dist/client/page-loader.js
+@@ -34,26 +34,34 @@ class PageLoader {
+             }
+         });
+     }
+-    getPageList() {
++    getPageList(refresh = false) {
+         if (process.env.NODE_ENV === 'production') {
+             return (0, _routeloader.getClientBuildManifest)().then((manifest)=>manifest.sortedPages);
+         } else {
+-            if (window.__DEV_PAGES_MANIFEST) {
++            // Reuse the current dev page list unless the caller explicitly refreshes it.
++            if (window.__DEV_PAGES_MANIFEST && !refresh) {
+                 return window.__DEV_PAGES_MANIFEST.pages;
+             } else {
+-                this.promisedDevPagesManifest ||= fetch(`${this.assetPrefix}/_next/static/development/${_constants.DEV_CLIENT_PAGES_MANIFEST}`, {
+-                    credentials: 'same-origin'
+-                }).then((res)=>res.json()).then((manifest)=>{
+-                    window.__DEV_PAGES_MANIFEST = manifest;
+-                    return manifest.pages;
+-                }).catch((err)=>{
+-                    console.log(`Failed to fetch devPagesManifest:`, err);
+-                    throw Object.defineProperty(new Error(`Failed to fetch _devPagesManifest.json. Is something blocking that network request?\n` + 'Read more: https://nextjs.org/docs/messages/failed-to-fetch-devpagesmanifest'), "__NEXT_ERROR_CODE", {
+-                        value: "E423",
+-                        enumerable: false,
+-                        configurable: true
++                // A refresh should not reuse the cached manifest or an existing fetch promise.
++                if (!this.promisedDevPagesManifest || refresh) {
++                    this.promisedDevPagesManifest = fetch(`${this.assetPrefix}/_next/static/development/${_constants.DEV_CLIENT_PAGES_MANIFEST}`, // A refresh should fetch the latest dev manifest instead of a cached response.
++                    refresh ? {
++                        credentials: 'same-origin',
++                        cache: 'no-store'
++                    } : {
++                        credentials: 'same-origin'
++                    }).then((res)=>res.json()).then((manifest)=>{
++                        window.__DEV_PAGES_MANIFEST = manifest;
++                        return manifest.pages;
++                    }).catch((err)=>{
++                        console.log(`Failed to fetch devPagesManifest:`, err);
++                        throw Object.defineProperty(new Error(`Failed to fetch _devPagesManifest.json. Is something blocking that network request?\n` + 'Read more: https://nextjs.org/docs/messages/failed-to-fetch-devpagesmanifest'), "__NEXT_ERROR_CODE", {
++                            value: "E423",
++                            enumerable: false,
++                            configurable: true
++                        });
+                     });
+-                });
++                }
+                 return this.promisedDevPagesManifest;
+             }
+         }
+diff --git a/dist/shared/lib/router/router.js b/dist/shared/lib/router/router.js
+index abba744dda7ca908a4897f42cd733bdc629860ff..a4569daf73ddceb09ae6b9335cf658dab72e7e6f 100644
+--- a/dist/shared/lib/router/router.js
++++ b/dist/shared/lib/router/router.js
+@@ -146,7 +146,11 @@ function getMiddlewareData(source, response, options) {
+             return Promise.all([
+                 options.router.pageLoader.getPageList(),
+                 (0, _routeloader.getClientBuildManifest)()
+-            ]).then(([pages, { __rewrites: rewrites }])=>{
++            ]).then(async ([pages, { __rewrites: rewrites }])=>{
++                // Refresh once if the rewritten target is missing from the current page list.
++                if (rewriteHeader && !pages.includes(fsPathname)) {
++                    pages = await options.router.pageLoader.getPageList(true);
++                }
+                 let as = (0, _addlocale.addLocale)(pathnameInfo.pathname, pathnameInfo.locale);
+                 if ((0, _isdynamic.isDynamicRoute)(as) || !rewriteHeader && pages.includes((0, _normalizelocalepath.normalizeLocalePath)((0, _removebasepath.removeBasePath)(as), options.router.locales).pathname)) {
+                     const parsedSource = (0, _getnextpathnameinfo.getNextPathnameInfo)((0, _parserelativeurl.parseRelativeUrl)(source).pathname, {
