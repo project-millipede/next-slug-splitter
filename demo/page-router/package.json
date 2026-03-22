@@ -1,0 +1,38 @@
+{
+  "name": "next-slug-splitter-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "use-config:js": "node scripts/use-config.mjs javascript",
+    "use-config:ts": "node scripts/use-config.mjs typescript",
+    "generate:ballast": "node scripts/generate-ballast.mjs",
+    "clean:handlers": "node scripts/clean-handlers.mjs",
+    "dev": "pnpm use-config:js && pnpm generate:ballast && pnpm clean:handlers && next dev",
+    "dev:ts": "pnpm use-config:ts && pnpm generate:ballast && pnpm clean:handlers && next dev",
+    "build": "pnpm use-config:js && pnpm generate:ballast && pnpm clean:handlers && next build",
+    "build:ts": "pnpm use-config:ts && pnpm generate:ballast && pnpm clean:handlers && next build",
+    "start": "next start",
+    "analyze:turbo": "pnpm next experimental-analyze"
+  },
+  "dependencies": {
+    "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
+    "@mdx-js/esbuild": "^3.1.1",
+    "esbuild": "^0.27.4",
+    "next": "16.2.0",
+    "next-slug-splitter": "file:../..",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "6.0.0-beta"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "next@16.2.0": "../../patches/next@16.2.0.patch"
+    }
+  }
+}
