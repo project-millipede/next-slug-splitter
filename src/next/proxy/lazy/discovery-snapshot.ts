@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+
 import { computeTargetStaticCacheIdentity } from '../../cache';
 import { resolveRenderedHandlerPageLocation } from '../../../generator/rendered-page';
 import { removeRouteHandlerLazyOutputAtKnownLocation } from './stale-output-cleanup';
@@ -344,9 +346,25 @@ export const invalidateRouteHandlerLazyDiscoverySnapshot = async ({
  * - the latest resolved target config from the current routing-state load
  * - the latest target static identity for that config
  * - the latest lazy single-route cache record for the backing content file
+ * - the physical existence of the emitted handler file on disk
  *
  * Only when all of those checks still agree do we skip the slower lazy miss
  * workflow and return a rewrite directly.
+ *
+ * The file existence check makes the lazy proxy system self-healing after
+ * handler files are deleted externally (e.g. by a clean script or manual
+ * removal between dev server restarts). This function runs inside the worker
+ * process, and returning `null` causes the caller in `resolve-lazy-miss.ts`
+ * to fall through to the full lazy-miss path:
+ *
+ * 1. Request arrives for a heavy route (e.g. `/docs/interactive`).
+ * 2. Proxy delegates to the worker process.
+ * 3. Worker checks this snapshot — entry exists, route is still heavy.
+ * 4. `existsSync` sees the handler file is missing → returns `null`.
+ * 5. Worker falls through to the full lazy-miss path → re-analyzes the
+ *    content file → re-emits the handler page to disk.
+ * 6. Worker returns the rewrite destination to the proxy.
+ * 7. Proxy rewrites to the handler — the file now exists → 200.
  */
 export const readRouteHandlerLazyDiscoverySnapshotRewrite = async ({
   pathname,
@@ -433,6 +451,14 @@ export const readRouteHandlerLazyDiscoverySnapshotRewrite = async ({
       rootDir,
       pathname
     });
+    return null;
+  }
+
+  // The snapshot may reference a handler file that was deleted externally
+  // (e.g. by a clean script or manual removal). If the file no longer exists,
+  // return null so the request falls through to the full lazy-miss path which
+  // will re-analyze the content and re-emit the handler file on demand.
+  if (!existsSync(snapshotEntry.pageFilePath)) {
     return null;
   }
 

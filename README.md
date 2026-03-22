@@ -182,65 +182,41 @@ Benefits over rewrite mode in development:
 - **On-demand discovery** — only routes actually visited are classified
 - **Automatic caching** — subsequent requests resolve instantly from cache
 
-#### Dev-Mode Cold-Start 404
+#### Dev-Mode Cold-Start Behavior
 
-On the very first request to a heavy route, the proxy rewrites to the generated
-handler page. Because Turbopack compiles pages on demand, the handler page may
-not be compiled yet — producing a transient 404. Subsequent requests succeed
-because the handler is compiled by then.
+The lazy proxy system is self-healing: when handler files are missing (e.g.
+after a clean script or fresh checkout), the first request to a heavy route
+triggers on-demand re-emission within the same request cycle. The discovery
+snapshot validates that the handler file exists on disk before returning a
+cached rewrite destination. If the file is missing, the request falls through
+to the full lazy-miss path which re-analyzes the content, re-emits the handler,
+and returns the rewrite — all before the proxy response is sent.
 
-To handle this gracefully, create a `pages/404.tsx` that auto-retries for
-routes owned by your configured targets:
+**No custom 404 page is required** for handler generation to work correctly.
 
-```tsx
-import type { NextPage } from 'next';
-import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/router';
+##### Next.js Client-Side Page Manifest Patch
 
-/**
- * Route prefixes that match your configured targets.
- * Adjust these to match your routeSegment values.
- */
-const RETRY_ROUTE_PREFIXES = ['/docs/', '/blog/'];
+In dev mode, Next.js caches the page manifest on the client side. When a handler
+page is lazily emitted after the manifest was cached, the client-side router does
+not know the page exists and may fail the navigation. To fix this, apply the
+included patch that adds manifest refresh on rewrite miss:
 
-const isRetryableRoute = (pathname: string): boolean =>
-  RETRY_ROUTE_PREFIXES.some(prefix => pathname.includes(prefix));
-
-const NotFound: NextPage = () => {
-  const router = useRouter();
-  const hasRetried = useRef(false);
-  const [showNotFound, setShowNotFound] = useState(false);
-
-  useEffect(() => {
-    if (hasRetried.current) return;
-
-    if (!isRetryableRoute(window.location.pathname)) {
-      setShowNotFound(true);
-      return;
+```json
+{
+  "pnpm": {
+    "patchedDependencies": {
+      "next@16.2.0": "patches/next@16.2.0.patch"
     }
-
-    hasRetried.current = true;
-
-    const timer = setTimeout(() => {
-      router.replace(router.asPath).catch(() => {
-        setShowNotFound(true);
-      });
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [router]);
-
-  if (!showNotFound) return null;
-
-  return <h1>Page Not Found</h1>;
-};
-
-export default NotFound;
+  }
+}
 ```
 
-This renders nothing while retrying (the user sees a blank page for ~500ms),
-then shows the real 404 only if the retry also fails. In production this never
-triggers because all handler pages are pre-compiled.
+The patch modifies `page-loader.js` to accept a `refresh` parameter and
+`router.js` to re-fetch the dev pages manifest when a proxy rewrite targets
+a page not yet in the cached page list. This fix has been proposed upstream
+in [vercel/next.js#91760](https://github.com/vercel/next.js/pull/91760) and
+the local patch can be removed once it lands. This is only relevant in
+development; production builds pre-compile all handler pages.
 
 ### Configuring the Routing Policy
 
