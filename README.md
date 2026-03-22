@@ -16,6 +16,7 @@ through build-time rewrites (production) or a request-time proxy (development).
 6. [Configuration Reference](#configuration-reference)
 7. [Architecture](#architecture)
 8. [Capabilities](#capabilities)
+9. [Next.js Integration Points](#nextjs-integration-points)
 
 ## Overview
 
@@ -42,14 +43,21 @@ Content-heavy route spaces such as docs and blogs often benefit from splitting
 "heavy" routes (pages with interactive components) from "light" routes (pages
 with only standard markdown elements). `next-slug-splitter` manages that split:
 
-- **In production:** The CLI generates dedicated handler pages for heavy routes
-  and installs rewrites that route matching traffic into those handlers.
+- **In production:** `next build` generates dedicated handler pages for heavy
+  routes and installs rewrites that route matching traffic into those handlers.
 - **In development:** A proxy discovers heavy routes lazily on first request,
   avoiding regeneration on every content change and enabling instant dev startup.
 
 The configuration lives in one app-owned file, the integration is a single
 `withSlugSplitter(...)` wrapper, and the routing strategy adapts automatically
 to the current Next.js phase.
+
+### Limitations
+
+- **MDX only** — content pages must be `.mdx` files. Standard `.tsx` / `.jsx`
+  pages are not analyzed. Support for non-MDX content sources may be added later.
+- **Pages Router only** — relies on `getStaticProps`, `getStaticPaths`, and
+  file-system routing under `pages/`. App Router support is planned.
 
 ## Getting Started
 
@@ -157,7 +165,7 @@ export const routeHandlersConfig = {
 
 Used during `PHASE_PRODUCTION_BUILD` and `PHASE_PRODUCTION_SERVER`.
 
-1. The CLI analyzes content pages and generates dedicated handler page files
+1. The build analyzes content pages and generates dedicated handler page files
 2. The adapter injects rewrites into the Next config (`beforeFiles`)
 3. Next.js routes matching traffic to the generated handler pages
 
@@ -395,3 +403,13 @@ route, and returns the result to the proxy runtime.
 - Offer both generation and analyze-only CLI modes
 - Locale-aware routing with configurable detection modes
 - Phase-aware behavior — only active during development, build, and production server phases
+
+## Next.js Integration Points
+
+| Next.js API | Purpose |
+|---|---|
+| `adapterPath` | Adapter entry point — hooks into Next.js config resolution |
+| `rewrites()` → `beforeFiles` | Routes heavy-page traffic to generated handlers in production |
+| `proxy.ts` (root file) | Intercepts and classifies requests on demand in development |
+| Phase constants | Selects rewrite mode (build/serve) or proxy mode (dev) |
+
