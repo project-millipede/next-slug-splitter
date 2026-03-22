@@ -1,2 +1,2 @@
 patchedDependencies:
-  next@16.2.0: patches/next@16.2.0.patch
+  next@>=16.2.0 <17: patches/next@16.2.0.patch
