@@ -14,8 +14,63 @@ import { JsonObject, JsonPrimitive } from '../utils/type-guards-json';
 
 export type PipelineMode = 'analyze' | 'generate';
 
-/** @deprecated Use JsonPrimitive instead */
-export type SerializableMetadataPrimitive = JsonPrimitive;
+/**
+ * Kind discriminator for dynamic route parameter segments.
+ *
+ * Determines the bracket syntax used in the route file path.
+ *
+ * Variants:
+ * - 'single': Single dynamic segment `[param]`.
+ * - 'catch-all': Catch-all segment `[...param]`.
+ * - 'optional-catch-all': Optional catch-all `[[...param]]`.
+ */
+export type DynamicRouteParamKind =
+  | 'single'
+  | 'catch-all'
+  | 'optional-catch-all';
+
+/**
+ * Descriptor for a Next.js dynamic route parameter segment.
+ *
+ * Discriminates by `kind` to determine the parameter pattern syntax.
+ */
+export type DynamicRouteParam =
+  | {
+      /**
+       * Single dynamic segment matching one path part.
+       *
+       * Renders as: `[name]`
+       */
+      kind: 'single';
+      /**
+       * Parameter name used in the route file and as a prop key.
+       */
+      name: string;
+    }
+  | {
+      /**
+       * Catch-all dynamic segment matching one or more path parts.
+       *
+       * Renders as: `[...name]`
+       */
+      kind: 'catch-all';
+      /**
+       * Parameter name used in the route file and as a prop key.
+       */
+      name: string;
+    }
+  | {
+      /**
+       * Optional catch-all dynamic segment matching zero or more path parts.
+       *
+       * Renders as: `[[...name]]`
+       */
+      kind: 'optional-catch-all';
+      /**
+       * Parameter name used in the route file and as a prop key.
+       */
+      name: string;
+    };
 
 /**
  * MDX compile plugins forwarded into route analysis builds.
@@ -196,7 +251,25 @@ export type RouteHandlerPipelineOptions = {
   baseStaticPropsImport: ResolvedModuleReference;
 
   /**
-   * Resolved import path for components used in MDX content.
+   * Module reference used as the default import source for components
+   * in generated handler files.
+   *
+   * The specifier (or path) is written verbatim into the generated
+   * `import` statement — no resolution or evaluation happens at
+   * config time.
+   *
+   * For example,
+   *  `packageModule('@content/mdx')` produces
+   *  `import { Counter } from '@content/mdx';` in the generated handler.
+   *
+   * This serves as the **default** source. The processor's `egress` may
+   * override the import source per component by returning an explicit
+   * `source` in each component entry — in that case the default is
+   * bypassed for those components.
+   *
+   * A barrel re-exporting all components works here because the code
+   * generator emits only the specific named imports each handler needs,
+   * allowing the bundler to tree-shake the rest.
    */
   componentsImport: ResolvedModuleReference;
 
@@ -210,6 +283,11 @@ export type RouteHandlerPipelineOptions = {
    * MDX compile plugins forwarded into the capture build.
    */
   mdxCompileOptions?: RouteHandlerMdxCompileOptions;
+
+  /**
+   * Dynamic route parameter descriptor for the handler page.
+   */
+  handlerRouteParam: DynamicRouteParam;
 
   /**
    * Base path prefix for public routes in this target.

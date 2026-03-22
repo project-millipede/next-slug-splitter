@@ -17,6 +17,7 @@ import { renderRouteHandlerPage } from '../protocol/rendered-page';
 import { syncEmittedHandlerPages } from './selective-emission';
 
 import type {
+  DynamicRouteParam,
   EmitFormat,
   PlannedHeavyRoute,
   ResolvedRouteHandlerModuleReference,
@@ -36,6 +37,7 @@ export const emitRouteHandlerPages = async ({
   emitFormat,
   runtimeHandlerFactoryImportBase,
   baseStaticPropsImport,
+  handlerRouteParam,
   routeBasePath
 }: {
   /**
@@ -59,6 +61,10 @@ export const emitRouteHandlerPages = async ({
    */
   baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
   /**
+   * Dynamic route parameter descriptor for the handler page.
+   */
+  handlerRouteParam: DynamicRouteParam;
+  /**
    * Base path for public routes in this target.
    */
   routeBasePath: string;
@@ -76,6 +82,7 @@ export const emitRouteHandlerPages = async ({
         emitFormat,
         runtimeHandlerFactoryImportBase,
         baseStaticPropsImport,
+        handlerRouteParam,
         routeBasePath
       })
     );

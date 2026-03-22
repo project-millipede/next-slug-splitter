@@ -1,6 +1,6 @@
 {
   "name": "next-slug-splitter",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Build-time Next.js route handler generation and rewrite integration for large content trees.",
   "files": [
@@ -35,6 +35,11 @@
       "import": "./dist/next/lookup.js",
       "default": "./dist/next/lookup.js"
     },
+    "./next/handler": {
+      "types": "./dist/next/handler.d.ts",
+      "import": "./dist/next/handler.js",
+      "default": "./dist/next/handler.js"
+    },
     "./next/proxy": {
       "types": "./dist/next/proxy.d.ts",
       "import": "./dist/next/proxy.js",
@@ -68,7 +73,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --environment node",
     "test:watch": "vitest --environment node",
-    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build",
+    "reset:dependencies": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
   },
   "dependencies": {
     "@cacheable/utils": "^2.4.0",
@@ -91,10 +97,5 @@
     "tsup": "^8.5.0",
     "typescript": "6.0.0-beta",
     "vitest": "^3.2.4"
-  },
-  "pnpm": {
-    "patchedDependencies": {
-      "next@>=16.2.0 <17": "patches/next@16.2.0.patch"
-    }
   }
 }

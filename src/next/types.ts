@@ -1,6 +1,8 @@
 import type {
   ComponentImportSpec,
   ContentLocaleMode,
+  DynamicRouteParam,
+  DynamicRouteParamKind,
   EmitFormat,
   LocaleConfig,
   ProcessorEgressDefaults,
@@ -307,63 +309,78 @@ export type ResolvedRouteHandlersAppConfig = Required<AppConfigBase> & {
   routing: ResolvedRouteHandlersRoutingPolicy;
 };
 
-/**
- * Kind discriminator for dynamic route parameter segments.
- *
- * Determines the bracket syntax used in the route file path.
- *
- * Variants:
- * - 'single': Single dynamic segment `[param]`.
- * - 'catch-all': Catch-all segment `[...param]`.
- * - 'optional-catch-all': Optional catch-all `[[...param]]`.
- */
-export type DynamicRouteParamKind =
-  | 'single'
-  | 'catch-all'
-  | 'optional-catch-all';
+// DynamicRouteParamKind and DynamicRouteParam are defined in core/types.ts
+// and re-exported here for public API consumers.
+export type {
+  DynamicRouteParamKind,
+  DynamicRouteParam
+} from '../core/types';
+
+// ---------------------------------------------------------------------------
+// Route-param value resolution
+// ---------------------------------------------------------------------------
+//
+// Each resolver corresponds to a {@link DynamicRouteParamKind} variant and
+// converts a fixed slug array into the value shape Next.js expects in
+// `params`.  See the variant comments on {@link DynamicRouteParam} for the
+// routing semantics — the resolvers here only handle the value transform.
+// ---------------------------------------------------------------------------
 
 /**
- * Descriptor for a Next.js dynamic route parameter segment.
+ * Resolver for kind `'single'`.
  *
- * Discriminates by `kind` to determine the parameter pattern syntax.
+ * Extracts the sole segment via destructuring.
  */
-export type DynamicRouteParam =
-  | {
-      /**
-       * Single dynamic segment matching one path part.
-       *
-       * Renders as: `[name]`
-       */
-      kind: 'single';
-      /**
-       * Parameter name used in the route file and as a prop key.
-       */
-      name: string;
-    }
-  | {
-      /**
-       * Catch-all dynamic segment matching one or more path parts.
-       *
-       * Renders as: `[...name]`
-       */
-      kind: 'catch-all';
-      /**
-       * Parameter name used in the route file and as a prop key.
-       */
-      name: string;
-    }
-  | {
-      /**
-       * Optional catch-all dynamic segment matching zero or more path parts.
-       *
-       * Renders as: `[[...name]]`
-       */
-      kind: 'optional-catch-all';
-      /**
-       * Parameter name used in the route file and as a prop key.
-       */
-      name: string;
-    };
+function extractSingleSegment([segment]: string[]): string {
+  return segment;
+}
+
+/**
+ * Resolver for kind `'catch-all'`.
+ *
+ * Returns a shallow copy of all segments.
+ */
+function copySegments(segments: string[]): string[] {
+  return Array.from(segments);
+}
+
+/**
+ * Resolver for kind `'optional-catch-all'`.
+ *
+ * Returns `undefined` when no segments are present (param key absent
+ * from `params`), otherwise a shallow copy.
+ */
+function copySegmentsIfPresent(segments: string[]): string[] | undefined {
+  if (segments.length === 0) return undefined;
+  return Array.from(segments);
+}
+
+/**
+ * Resolver map keyed by {@link DynamicRouteParamKind}.
+ *
+ * The `Record` type ensures every variant is covered.
+ */
+const routeParamResolvers: Record<
+  DynamicRouteParamKind,
+  (segments: string[]) => string | string[] | undefined
+> = {
+  single: extractSingleSegment,
+  'catch-all': copySegments,
+  'optional-catch-all': copySegmentsIfPresent
+};
+
+/**
+ * Resolve a fixed slug array into the `params` value shape for the
+ * given {@link DynamicRouteParam}.
+ *
+ * Single source of truth for the slug → param-value transformation,
+ * used by {@link createHandlerGetStaticProps} to inject the correct
+ * `params` into the catch-all page's `getStaticProps`.
+ */
+export const resolveRouteParamValue = (
+  param: DynamicRouteParam,
+  slug: string[]
+): string | string[] | undefined => routeParamResolvers[param.kind](slug);
 
 /**
  * Runtime handler factory binding for one target.

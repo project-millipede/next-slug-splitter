@@ -84,7 +84,6 @@ const createComponentModuleSource = (): string =>
 const createFactoryModuleSource = (): string =>
   [
     'export const createHandlerPage = input => input;',
-    'export const createHandlerGetStaticProps = input => input;',
     ''
   ].join('\n');
 

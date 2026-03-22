@@ -23,6 +23,7 @@ import { renderHandlerPageSource } from './emitters';
 
 import type {
   ComponentImportKind,
+  DynamicRouteParam,
   EmitFormat,
   LoadableComponentEntry
 } from '../../core/types';
@@ -365,6 +366,10 @@ export type PreparedHandlerRenderConfig = {
    */
   baseStaticPropsImport: string;
   /**
+   * Dynamic route parameter descriptor for the handler page.
+   */
+  handlerRouteParam: DynamicRouteParam;
+  /**
    * Base path for public routes in this target.
    */
   routeBasePath: string;
@@ -444,6 +449,7 @@ export const renderRouteHandlerModules = ({
     usedLoadableComponentKeys,
     runtimeHandlerFactoryImport: renderConfig.runtimeHandlerFactoryImport,
     baseStaticPropsImport: renderConfig.baseStaticPropsImport,
+    handlerRouteParam: renderConfig.handlerRouteParam,
     routeBasePath: renderConfig.routeBasePath,
     componentImports,
     componentEntries,

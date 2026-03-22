@@ -66,10 +66,14 @@ describe('generator handlers', () => {
           '../../../../../../test-runtime/factory/selection',
         baseStaticPropsImport: '../../../../[...entry]',
         routeBasePath: '/content',
-        emitFormat: 'ts'
+        emitFormat: 'ts',
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
       }
     });
 
+    expect(pageSource).toContain(
+      "from 'next-slug-splitter/next/handler';"
+    );
     expect(pageSource).toContain(
       "from '../../../../../../test-runtime/factory/selection';"
     );
@@ -103,7 +107,8 @@ describe('generator handlers', () => {
         runtimeHandlerFactoryImport: '@next-slug-splitter-test/factory/none',
         baseStaticPropsImport: TEST_STATIC_PROPS_IMPORT,
         routeBasePath: '/content',
-        emitFormat: 'ts'
+        emitFormat: 'ts',
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
       }
     }).pageSource;
 
@@ -130,10 +135,14 @@ describe('generator handlers', () => {
         runtimeHandlerFactoryImport: `${TEST_PRIMARY_FACTORY_IMPORT}/selection`,
         baseStaticPropsImport: TEST_STATIC_PROPS_IMPORT,
         routeBasePath: '/content',
-        emitFormat: 'ts'
+        emitFormat: 'ts',
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
       }
     }).pageSource;
 
+    expect(defaultFactorySource).toContain(
+      "from 'next-slug-splitter/next/handler';"
+    );
     expect(defaultFactorySource).toMatch(
       /from ["']@next-slug-splitter-test\/factory\/none["'];/
     );
@@ -186,7 +195,8 @@ describe('generator handlers', () => {
         runtimeHandlerFactoryImport: '../../../../../test-runtime/factory/none',
         baseStaticPropsImport: '../../../[...entry]',
         routeBasePath: '/content',
-        emitFormat: 'ts'
+        emitFormat: 'ts',
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
       }
     });
 
@@ -222,7 +232,8 @@ describe('generator handlers', () => {
         runtimeHandlerFactoryImport: '../../../../../test-runtime/factory/none',
         baseStaticPropsImport: '../../../[...entry]',
         routeBasePath: '/content',
-        emitFormat: 'ts'
+        emitFormat: 'ts',
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
       }
     });
 
@@ -261,6 +272,7 @@ describe('generator handlers', () => {
         runtimeHandlerFactoryImportBase:
           contentHandlerModuleInput.runtimeHandlerFactoryImportBase,
         baseStaticPropsImport: contentHandlerModuleInput.baseStaticPropsImport,
+        handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
         routeBasePath: contentHandlerModuleInput.routeBasePath
       });
 
@@ -340,6 +352,7 @@ describe('generator handlers', () => {
         runtimeHandlerFactoryImportBase:
           contentHandlerModuleInput.runtimeHandlerFactoryImportBase,
         baseStaticPropsImport: contentHandlerModuleInput.baseStaticPropsImport,
+        handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
         routeBasePath: contentHandlerModuleInput.routeBasePath
       });
 
@@ -376,6 +389,7 @@ describe('generator handlers', () => {
         runtimeHandlerFactoryImportBase:
           contentHandlerModuleInput.runtimeHandlerFactoryImportBase,
         baseStaticPropsImport: contentHandlerModuleInput.baseStaticPropsImport,
+        handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
         routeBasePath: contentHandlerModuleInput.routeBasePath
       });
 

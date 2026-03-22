@@ -4,6 +4,7 @@ export type {
   AppRelativeModuleReference,
   ComponentImportSpec,
   DynamicRouteParam,
+  DynamicRouteParamKind,
   ModuleReference,
   PackageModuleReference,
   ResolvedModuleReference,

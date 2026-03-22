@@ -8,6 +8,7 @@ import type {
 } from '../../core/types';
 import { absoluteFileModule, packageModule } from '../../module-reference';
 import type {
+  DynamicRouteParam,
   ResolvedModuleReference,
   RouteHandlerNextPaths,
   RouteHandlerNextResult
@@ -24,6 +25,7 @@ type ContentHandlerModuleInput = {
   routeBasePath: string;
   baseStaticPropsImport: ResolvedModuleReference;
   runtimeHandlerFactoryImportBase: ResolvedModuleReference;
+  handlerRouteParam: DynamicRouteParam;
 };
 
 const DEFAULT_COMPONENT_IMPORT: ComponentImportSpec = {
@@ -142,5 +144,6 @@ export const createContentHandlerModuleInput = (
   baseStaticPropsImport: absoluteFileModule(
     path.join(rootDir, 'pages', 'content', '[...entry]')
   ),
-  runtimeHandlerFactoryImportBase: packageModule(TEST_PRIMARY_FACTORY_IMPORT)
+  runtimeHandlerFactoryImportBase: packageModule(TEST_PRIMARY_FACTORY_IMPORT),
+  handlerRouteParam: { name: 'entry', kind: 'catch-all' }
 });

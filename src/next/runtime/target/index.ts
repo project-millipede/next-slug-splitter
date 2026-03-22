@@ -72,6 +72,7 @@ export const executeRouteHandlerTarget = async ({
       emitFormat,
       runtimeHandlerFactoryImportBase: config.runtimeHandlerFactoryImportBase,
       baseStaticPropsImport: config.baseStaticPropsImport,
+      handlerRouteParam: config.handlerRouteParam,
       routeBasePath: config.routeBasePath
     });
   }

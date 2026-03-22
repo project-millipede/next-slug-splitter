@@ -19,7 +19,22 @@ import type {
  */
 export type ResolvedRouteHandlerBinding = {
   /**
-   * Resolved import path for components used in MDX content.
+   * Module reference used as the default import source for components
+   * in generated handler files.
+   *
+   * The specifier (or path) is written verbatim into the generated
+   * `import` statement — no resolution or evaluation happens at
+   * config time. For example, `packageModule('@content/mdx')` produces
+   * `import { Counter } from '@content/mdx';` in the generated handler.
+   *
+   * This serves as the **default** source. The processor's `egress` may
+   * override the import source per component by returning an explicit
+   * `source` in each component entry — in that case the default is
+   * bypassed for those components.
+   *
+   * A barrel re-exporting all components works here because the code
+   * generator emits only the specific named imports each handler needs,
+   * allowing the bundler to tree-shake the rest.
    */
   componentsImport: ResolvedModuleReference;
 

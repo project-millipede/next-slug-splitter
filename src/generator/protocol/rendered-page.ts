@@ -24,6 +24,7 @@ import {
 } from './render-modules';
 
 import type {
+  DynamicRouteParam,
   EmitFormat,
   PlannedHeavyRoute,
   ResolvedRouteHandlerModuleReference,
@@ -123,7 +124,8 @@ const createPreparedHandlerRenderConfig = ({
   routeBasePath,
   baseStaticPropsImport,
   runtimeHandlerFactoryImportBase,
-  factoryVariant
+  factoryVariant,
+  handlerRouteParam
 }: {
   pageFilePath: string;
   emitFormat: EmitFormat;
@@ -131,6 +133,7 @@ const createPreparedHandlerRenderConfig = ({
   baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
   runtimeHandlerFactoryImportBase: ResolvedRouteHandlerModuleReference;
   factoryVariant: string;
+  handlerRouteParam: DynamicRouteParam;
 }): PreparedHandlerRenderConfig => {
   const runtimeHandlerFactoryImport = toEmittedImportSpecifier({
     pageFilePath,
@@ -147,6 +150,7 @@ const createPreparedHandlerRenderConfig = ({
       pageFilePath,
       reference: baseStaticPropsImport
     }),
+    handlerRouteParam,
     routeBasePath,
     emitFormat
   };
@@ -171,6 +175,7 @@ export const renderRouteHandlerPage = ({
   emitFormat,
   runtimeHandlerFactoryImportBase,
   baseStaticPropsImport,
+  handlerRouteParam,
   routeBasePath
 }: {
   paths: RouteHandlerPaths;
@@ -178,6 +183,7 @@ export const renderRouteHandlerPage = ({
   emitFormat: EmitFormat;
   runtimeHandlerFactoryImportBase: ResolvedRouteHandlerModuleReference;
   baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
+  handlerRouteParam: DynamicRouteParam;
   routeBasePath: string;
 }): RenderedHandlerPage => {
   const { relativePath, pageFilePath } = resolveRenderedHandlerPageLocation({
@@ -191,7 +197,8 @@ export const renderRouteHandlerPage = ({
     routeBasePath,
     baseStaticPropsImport,
     runtimeHandlerFactoryImportBase,
-    factoryVariant: heavyRoute.factoryVariant
+    factoryVariant: heavyRoute.factoryVariant,
+    handlerRouteParam
   });
 
   const { pageSource } = renderRouteHandlerModules({

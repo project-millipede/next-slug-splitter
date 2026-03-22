@@ -57,6 +57,7 @@ export const emitRouteHandlerLazySingleHandler = async ({
     runtimeHandlerFactoryImportBase:
       analysisResult.config.runtimeHandlerFactoryImportBase,
     baseStaticPropsImport: analysisResult.config.baseStaticPropsImport,
+    handlerRouteParam: analysisResult.config.handlerRouteParam,
     routeBasePath: analysisResult.config.routeBasePath
   });
   const status = await synchronizeRenderedRouteHandlerPage({

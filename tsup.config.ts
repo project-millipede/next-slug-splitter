@@ -8,6 +8,7 @@ export default defineConfig([
       'next/config': 'src/next/config/index.ts',
       'next/adapter': 'src/next/adapter.ts',
       'next/lookup': 'src/next/lookup.ts',
+      'next/handler': 'src/next/handler-static-props.ts',
       'next/proxy': 'src/next/proxy/index.ts',
       cli: 'src/cli/index.ts'
     },

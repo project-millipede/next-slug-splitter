@@ -14,7 +14,7 @@
  */
 import { VariableDeclarationKind, type WriterFunction } from 'ts-morph';
 import { toRoutePath } from '../../core/discovery';
-import type { EmitFormat, LoadableComponentEntry } from '../../core/types';
+import type { DynamicRouteParam, EmitFormat, LoadableComponentEntry } from '../../core/types';
 import { createGeneratorError } from '../../utils/errors';
 import { isNonEmptyString } from '../../utils/type-guards-extended';
 import {
@@ -74,6 +74,10 @@ type HandlerPageEmitInput = {
    * Import path for the base static props module.
    */
   baseStaticPropsImport: string;
+  /**
+   * Dynamic route parameter descriptor for the handler page.
+   */
+  handlerRouteParam: DynamicRouteParam;
   /**
    * Base path for public routes in this target.
    */
@@ -193,17 +197,28 @@ const createHandlerPageInitializer = (
 /**
  * Creates the initializer for the generated `getStaticProps` export.
  *
+ * Emits a call to the library's `createHandlerGetStaticProps` with the
+ * route-param descriptor inlined from the target config, the handler's
+ * fixed slug, and a lazy import of the catch-all page's static props.
+ *
+ * @param handlerRouteParam - Route parameter descriptor from the target config.
  * @param baseStaticPropsImport - Import specifier of the source page module.
- * @returns A writer function that emits the `createHandlerGetStaticProps(...)`
- * call.
+ * @returns A writer function that emits the `createHandlerGetStaticProps(...)` call.
  */
 const createHandlerGetStaticPropsInitializer = (
+  handlerRouteParam: DynamicRouteParam,
   baseStaticPropsImport: string
 ): WriterFunction => {
   return writer => {
     writer.write('createHandlerGetStaticProps(');
     writer.newLine();
     writer.indent(() => {
+      writer.write('{ name: ');
+      writeStringLiteral(writer, handlerRouteParam.name);
+      writer.write(', kind: ');
+      writeStringLiteral(writer, handlerRouteParam.kind);
+      writer.write(' },');
+      writer.newLine();
       writer.write('handlerSlug,');
       writer.newLine();
       writer.write('() => import(');
@@ -263,6 +278,7 @@ export const renderHandlerPageSource = ({
   usedLoadableComponentKeys,
   runtimeHandlerFactoryImport,
   baseStaticPropsImport,
+  handlerRouteParam,
   routeBasePath,
   componentImports,
   componentEntries,
@@ -280,9 +296,18 @@ export const renderHandlerPageSource = ({
 
   const importDeclarations: Array<HandlerImportDeclarationRecord> = [];
 
+  // Static props binding comes from the library — it's pure plumbing that
+  // doesn't depend on the app's component wiring.
+  importDeclarations.push({
+    source: 'next-slug-splitter/next/handler',
+    namedImports: ['createHandlerGetStaticProps']
+  });
+
+  // Page component factory comes from the app — it's the genuinely
+  // app-specific part that knows how to wire components into the page.
   importDeclarations.push({
     source: runtimeHandlerFactoryImport,
-    namedImports: ['createHandlerPage', 'createHandlerGetStaticProps']
+    namedImports: ['createHandlerPage']
   });
 
   for (const componentImport of groupComponentImports(componentImports)) {
@@ -315,7 +340,10 @@ export const renderHandlerPageSource = ({
     declarations: [
       {
         name: 'getStaticProps',
-        initializer: createHandlerGetStaticPropsInitializer(baseStaticPropsImport)
+        initializer: createHandlerGetStaticPropsInitializer(
+          handlerRouteParam,
+          baseStaticPropsImport
+        )
       }
     ]
   });

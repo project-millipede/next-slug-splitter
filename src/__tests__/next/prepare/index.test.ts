@@ -93,11 +93,11 @@ describe('route handler preparation', () => {
       );
       await writeTestModule(
         path.join(packageDirectory, 'factory', 'index.js'),
-        'export const createHandlerPage = input => input;\nexport const createHandlerGetStaticProps = input => input;\n'
+        'export const createHandlerPage = input => input;\n'
       );
       await writeTestModule(
         path.join(packageDirectory, 'factory', 'none.js'),
-        'export const createHandlerPage = input => input;\nexport const createHandlerGetStaticProps = input => input;\n'
+        'export const createHandlerPage = input => input;\n'
       );
       await writeTestModule(
         path.join(rootDir, 'packages', 'site-route-handlers', 'tsconfig.route-handlers.json'),
