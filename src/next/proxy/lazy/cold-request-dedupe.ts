@@ -1,10 +1,9 @@
 import { analyzeRouteHandlerLazyMatchedRoute } from './single-route-analysis';
 import { emitRouteHandlerLazySingleHandler } from './single-handler-emission';
+import { composeKey } from './key-builder';
 
-import type {
-  RouteHandlerLazyMatchedRoutePreparationResult,
-  RouteHandlerLazyRequestResolution
-} from './types';
+import type { LocaleConfig, LocalizedRoutePath } from '../../../core/types';
+import type { RouteHandlerLazyMatchedRoutePreparationResult } from './types';
 
 /**
  * Process-local dedupe map for concurrent cold lazy-route requests.
@@ -26,123 +25,92 @@ const inFlightLazyMatchedRoutePreparations = new Map<
 >();
 
 /**
- * Build the dedupe key for one matched lazy-route preparation unit.
- *
- * @param resolution - Already matched lazy request resolution.
- * @returns Stable process-local dedupe key.
+ * Analyze one matched route and emit its handler file if heavy.
  *
  * @remarks
- * The key is based on:
- * - target id
- * - concrete content file path
+ * This is the shared work unit for a cold lazy request:
+ * 1. Analyze exactly one matched content file (heavy or light).
+ * 2. If heavy, emit the generated handler file to disk so the subsequent
+ *    rewrite has a valid target.
  *
- * That means concurrent requests for:
- * - `/blog/post`
- * - `/en/blog/post`
- *
- * can still share one underlying analysis/emission run when they resolve to
- * the same target and source file.
+ * The result carries the route truth (`light` or `heavy`) plus the fully
+ * planned analysis result needed for rewrite destination resolution and
+ * lazy discovery publication. Returns `null` when the target can no longer
+ * be resolved (e.g. config changed between request resolution and analysis).
  */
-const createLazyMatchedRoutePreparationKey = (
-  resolution: Extract<
-    RouteHandlerLazyRequestResolution,
-    {
-      kind: 'matched-route-file';
-    }
-  >
-): string =>
-  JSON.stringify([resolution.config.targetId, resolution.routePath.filePath]);
+const analyzeAndEmit = async (
+  targetId: string,
+  localeConfig: LocaleConfig,
+  routePath: LocalizedRoutePath
+): Promise<RouteHandlerLazyMatchedRoutePreparationResult | null> => {
+  const analysisResult = await analyzeRouteHandlerLazyMatchedRoute(
+    targetId,
+    localeConfig,
+    routePath
+  );
+
+  if (analysisResult?.kind === 'heavy') {
+    // Lazy single-route emission: render and write exactly one handler file
+    // to disk so the subsequent rewrite has a valid target. Unlike build-mode
+    // batch emission, this only ensures the one requested route is ready and
+    // never removes other handler files.
+    await emitRouteHandlerLazySingleHandler({
+      analysisResult
+    });
+
+    return {
+      kind: 'heavy',
+      analysisResult
+    };
+  }
+
+  if (analysisResult?.kind === 'light') {
+    return {
+      kind: 'light',
+      analysisResult
+    };
+  }
+
+  return null;
+};
 
 /**
  * Prepare one matched lazy route for request-time rewriting with process-local
- * cold-request dedupe.
+ * cold-request deduplication.
  *
- * @param input - Preparation input.
- * @param input.resolution - Already matched lazy request resolution.
- * @returns One-file lazy analysis result after any required emission, or `null`
- * when the target can no longer be analyzed.
+ * Concurrent requests for the same target/file pair share a single in-flight
+ * {@link analyzeAndEmit} promise. The dedupe slot is cleared after the promise
+ * settles so subsequent requests can observe content or cache changes.
  *
- * @remarks
- * This helper owns the shared work unit for a cold lazy request:
- * 1. analyze exactly one matched content file
- * 2. if heavy, ensure exactly one generated handler file exists
- *
- * Historically, this helper returned only the heavy/light analysis result.
- * That turned out not to be enough for correct first-request routing in dev.
- *
- * Why not?
- * - The analysis result can correctly say "heavy".
- * - The single-handler emitter can correctly write the generated page file.
- * - Yet a same-request rewrite can still fail once after a totally clean
- *   start, because Next/Turbopack may need one more discovery/compile turn
- *   before that new page is actually routable.
- *
- * So this helper now returns a richer preparation result:
- * - the route truth (`light` or `heavy`)
- * - plus the fully planned heavy analysis result needed for rewrite
- *   destination resolution and lazy discovery publication
- *
- * That lets request routing react semantically instead of reverse-engineering
- * meaning from low-level file-write status in multiple places.
+ * @param targetId - Target identifier for dedupe key and analysis.
+ * @param localeConfig - Shared locale config for analysis.
+ * @param routePath - Concrete localized content route file.
+ * @returns Preparation result from {@link analyzeAndEmit}, or `null` when the
+ * target can no longer be analyzed.
  */
-export const prepareRouteHandlerLazyMatchedRoute = async ({
-  resolution
-}: {
-  resolution: Extract<
-    RouteHandlerLazyRequestResolution,
-    {
-      kind: 'matched-route-file';
-    }
-  >;
-}): Promise<RouteHandlerLazyMatchedRoutePreparationResult | null> => {
-  const preparationKey = createLazyMatchedRoutePreparationKey(resolution);
-  const existingPreparation = inFlightLazyMatchedRoutePreparations.get(
-    preparationKey
-  );
+export const prepareRouteHandlerLazyMatchedRoute = async (
+  targetId: string,
+  localeConfig: LocaleConfig,
+  routePath: LocalizedRoutePath
+): Promise<RouteHandlerLazyMatchedRoutePreparationResult | null> => {
+  const preparationKey = composeKey(targetId, routePath.filePath);
+  const existingPreparation =
+    inFlightLazyMatchedRoutePreparations.get(preparationKey);
 
   if (existingPreparation != null) {
-    // This is the core cold-request dedupe branch. A concurrent request already
-    // started the shared one-file analysis/emission workflow for the same
-    // target/file pair, so this request simply waits for that work to finish.
+    // A concurrent request already started the shared analysis/emission
+    // workflow for the same target/file pair — wait for that work to finish.
     return existingPreparation;
   }
 
-  const preparationPromise = (async () => {
-    const analysisResult = await analyzeRouteHandlerLazyMatchedRoute({
-      resolution
-    });
-
-    if (analysisResult?.kind === 'heavy') {
-      // Heavy routes need a concrete generated handler file before request-time
-      // rewriting can be correct. The emission itself is still isolated in its
-      // own module; this dedupe layer only coordinates whether that module
-      // should run once or many times for concurrent callers.
-      const emissionResult = await emitRouteHandlerLazySingleHandler({
-        analysisResult
-      });
-
-      return {
-        kind: 'heavy',
-        analysisResult,
-        // The dedupe layer deliberately translates low-level file sync status
-        // into the higher-level routing concept that the request layer
-        // actually cares about.
-        //
-      } satisfies RouteHandlerLazyMatchedRoutePreparationResult;
-    }
-
-    if (analysisResult?.kind === 'light') {
-      return {
-        kind: 'light',
-        analysisResult
-      } satisfies RouteHandlerLazyMatchedRoutePreparationResult;
-    }
-
-    return null;
-  })().finally(() => {
-    // The dedupe slot is intentionally cleared after completion so later
-    // requests can observe content changes or cache invalidations instead of
-    // being pinned to one long-lived in-memory snapshot.
+  // Cleanup is attached to the promise itself via .finally() so the dedupe
+  // slot is cleared exactly once when the work settles, regardless of which
+  // caller awaits it first.
+  const preparationPromise = analyzeAndEmit(
+    targetId,
+    localeConfig,
+    routePath
+  ).finally(() => {
     inFlightLazyMatchedRoutePreparations.delete(preparationKey);
   });
 

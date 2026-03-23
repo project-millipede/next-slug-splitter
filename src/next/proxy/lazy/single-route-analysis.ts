@@ -13,8 +13,8 @@ import {
   writeLazySingleRouteCachedPlanRecord
 } from './single-route-cache';
 
+import type { LocaleConfig, LocalizedRoutePath } from '../../../core/types';
 import type {
-  RouteHandlerLazyRequestResolution,
   RouteHandlerLazySingleRouteAnalysisResult
 } from './types';
 import type { ResolvedRouteHandlersConfig } from '../../types';
@@ -131,25 +131,20 @@ const toLazySingleRouteAnalysisResult = ({
 /**
  * Analyze one lazy matched route file and return the one-file planning result.
  *
- * @param input - Analysis input.
- * @param input.resolution - Lazy request resolution that already matched one
- * concrete route file.
+ * @param targetId - Target identifier selected by lazy request resolution.
+ * @param localeConfig - Shared locale config captured at adapter time.
+ * @param routePath - Concrete localized content route file to analyze.
  * @returns One-file lazy analysis result, or `null` when the target can no
  * longer be resolved by the time analysis begins.
  */
-export const analyzeRouteHandlerLazyMatchedRoute = async ({
-  resolution
-}: {
-  resolution: Extract<
-    RouteHandlerLazyRequestResolution,
-    {
-      kind: 'matched-route-file';
-    }
-  >;
-}): Promise<RouteHandlerLazySingleRouteAnalysisResult | null> => {
+export const analyzeRouteHandlerLazyMatchedRoute = async (
+  targetId: string,
+  localeConfig: LocaleConfig,
+  routePath: LocalizedRoutePath
+): Promise<RouteHandlerLazySingleRouteAnalysisResult | null> => {
   const config = await resolveLazyAnalysisTargetConfig({
-    targetId: resolution.config.targetId,
-    localeConfig: resolution.config.localeConfig
+    targetId,
+    localeConfig
   });
 
   if (config == null) {
@@ -165,14 +160,14 @@ export const analyzeRouteHandlerLazyMatchedRoute = async ({
   const cachedRoutePlanRecord = readLazySingleRouteCachedPlanRecord({
     config,
     targetIdentity,
-    routePath: resolution.routePath
+    routePath
   });
 
   if (cachedRoutePlanRecord != null) {
     return toLazySingleRouteAnalysisResult({
       source: 'cache',
       config,
-      routePath: resolution.routePath,
+      routePath,
       routePlanRecord: cachedRoutePlanRecord
     });
   }
@@ -187,7 +182,7 @@ export const analyzeRouteHandlerLazyMatchedRoute = async ({
     runtimeHandlerFactoryImportBase: config.runtimeHandlerFactoryImportBase
   });
   const routePlanRecord = await createPersistedRoutePlanRecord({
-    routePath: resolution.routePath,
+    routePath,
     config,
     planRoute
   });
@@ -195,14 +190,14 @@ export const analyzeRouteHandlerLazyMatchedRoute = async ({
   writeLazySingleRouteCachedPlanRecord({
     config,
     targetIdentity,
-    routePath: resolution.routePath,
+    routePath,
     routePlanRecord
   });
 
   return toLazySingleRouteAnalysisResult({
     source: 'fresh',
     config,
-    routePath: resolution.routePath,
+    routePath,
     routePlanRecord
   });
 };

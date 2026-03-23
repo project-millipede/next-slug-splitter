@@ -98,9 +98,11 @@ describe('proxy lazy single-handler emission', () => {
           throw new Error('Expected matched-route-file resolution.');
         }
 
-        const analysisResult = await analyzeRouteHandlerLazyMatchedRoute({
-          resolution
-        });
+        const analysisResult = await analyzeRouteHandlerLazyMatchedRoute(
+          resolution.config.targetId,
+          resolution.config.localeConfig,
+          resolution.routePath
+        );
         if (analysisResult?.kind !== 'heavy') {
           throw new Error('Expected heavy single-route analysis.');
         }

@@ -83,9 +83,11 @@ export const resolveRouteHandlerProxyLazyMiss = async ({
 
   if (lazyRequestResolution.kind === 'matched-route-file') {
     const lazyMatchedRoutePreparation =
-      await prepareRouteHandlerLazyMatchedRoute({
-        resolution: lazyRequestResolution
-      });
+      await prepareRouteHandlerLazyMatchedRoute(
+        lazyRequestResolution.config.targetId,
+        lazyRequestResolution.config.localeConfig,
+        lazyRequestResolution.routePath
+      );
 
     if (lazyMatchedRoutePreparation?.kind === 'heavy') {
       const rewriteDestination = resolveRouteHandlerLazyRewriteDestination({

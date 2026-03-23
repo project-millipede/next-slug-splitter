@@ -150,12 +150,16 @@ describe('proxy lazy single-route analysis', () => {
           throw new Error('Expected matched-route-file resolution.');
         }
 
-        const firstResult = await analyzeRouteHandlerLazyMatchedRoute({
-          resolution
-        });
-        const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
-          resolution
-        });
+        const firstResult = await analyzeRouteHandlerLazyMatchedRoute(
+          resolution.config.targetId,
+          resolution.config.localeConfig,
+          resolution.routePath
+        );
+        const secondResult = await analyzeRouteHandlerLazyMatchedRoute(
+          resolution.config.targetId,
+          resolution.config.localeConfig,
+          resolution.routePath
+        );
 
         expect(firstResult?.kind).toBe('heavy');
         expect(firstResult?.source).toBe('fresh');
@@ -220,12 +224,16 @@ describe('proxy lazy single-route analysis', () => {
           throw new Error('Expected matched-route-file resolution.');
         }
 
-        const firstResult = await analyzeRouteHandlerLazyMatchedRoute({
-          resolution
-        });
-        const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
-          resolution
-        });
+        const firstResult = await analyzeRouteHandlerLazyMatchedRoute(
+          resolution.config.targetId,
+          resolution.config.localeConfig,
+          resolution.routePath
+        );
+        const secondResult = await analyzeRouteHandlerLazyMatchedRoute(
+          resolution.config.targetId,
+          resolution.config.localeConfig,
+          resolution.routePath
+        );
 
         expect(firstResult?.kind).toBe('light');
         expect(firstResult?.source).toBe('fresh');
@@ -296,9 +304,11 @@ describe('proxy lazy single-route analysis', () => {
           throw new Error('Expected matched-route-file resolution.');
         }
 
-        await analyzeRouteHandlerLazyMatchedRoute({
-          resolution: firstResolution
-        });
+        await analyzeRouteHandlerLazyMatchedRoute(
+          firstResolution.config.targetId,
+          firstResolution.config.localeConfig,
+          firstResolution.routePath
+        );
 
         loadRegisteredSlugSplitterConfigMock.mockResolvedValue(invalidatedConfig);
 
@@ -313,9 +323,11 @@ describe('proxy lazy single-route analysis', () => {
           throw new Error('Expected matched-route-file resolution.');
         }
 
-        const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
-          resolution: secondResolution
-        });
+        const secondResult = await analyzeRouteHandlerLazyMatchedRoute(
+          secondResolution.config.targetId,
+          secondResolution.config.localeConfig,
+          secondResolution.routePath
+        );
 
         expect(secondResult?.kind).toBe('heavy');
         expect(secondResult?.source).toBe('fresh');
