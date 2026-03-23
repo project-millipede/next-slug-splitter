@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const existsSyncMock = vi.hoisted(() => vi.fn());
 const computeTargetStaticCacheIdentityMock = vi.hoisted(() => vi.fn());
 const readLazySingleRouteCachedPlanRecordMock = vi.hoisted(() => vi.fn());
 const resolveRouteHandlerHeavyRewriteDestinationMock = vi.hoisted(() =>
@@ -40,6 +41,10 @@ vi.mock('../../../../next/proxy/lazy/discovery-snapshot-store', () => ({
     writePersistedRouteHandlerLazyDiscoverySnapshotEntriesMock
 }));
 
+vi.mock('node:fs', () => ({
+  existsSync: existsSyncMock
+}));
+
 import {
   invalidateRouteHandlerLazyDiscoverySnapshot,
   publishRouteHandlerLazyDiscoverySnapshotEntry,
@@ -65,6 +70,7 @@ describe('proxy lazy discovery snapshot', () => {
       undefined
     );
     computeTargetStaticCacheIdentityMock.mockResolvedValue('target-identity');
+    existsSyncMock.mockReturnValue(true);
     resolveRouteHandlerHeavyRewriteDestinationMock.mockReturnValue(
       '/en/blog/_handlers/application-extensibility'
     );
