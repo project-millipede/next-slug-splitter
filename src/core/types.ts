@@ -356,6 +356,22 @@ export type RouteHandlerModuleReference = ModuleReference;
 export type ResolvedRouteHandlerModuleReference = ResolvedModuleReference;
 
 /**
+ * Input for constructing a {@link RouteHandlerRouteContext}.
+ *
+ * Accepts the raw `routeBasePath` instead of the computed `routePath`,
+ * which is derived automatically via `toRoutePath`.
+ */
+export type CreateRouteContextInput = {
+  filePath: string;
+  handlerId: string;
+  handlerRelativePath: string;
+  locale: string;
+  routeBasePath: string;
+  slugArray: Array<string>;
+  targetId?: string;
+};
+
+/**
  * Route-local context exposed to processors.
  */
 export type RouteHandlerRouteContext = {

@@ -19,6 +19,7 @@ import { toRoutePath } from './discovery';
 import type { ResolvedModuleReference } from '../module-reference';
 import type {
   ComponentImportSpec,
+  CreateRouteContextInput,
   LoadableComponentEntry,
   ResolvedRouteHandlerProcessorConfig,
   RouteHandlerGeneratorComponent,
@@ -534,15 +535,7 @@ export const createRouteContext = ({
   routeBasePath,
   slugArray,
   targetId
-}: {
-  filePath: string;
-  handlerId: string;
-  handlerRelativePath: string;
-  locale: string;
-  routeBasePath: string;
-  slugArray: Array<string>;
-  targetId?: string;
-}): RouteHandlerRouteContext => ({
+}: CreateRouteContextInput): RouteHandlerRouteContext => ({
   targetId,
   locale,
   slugArray,
@@ -551,3 +544,4 @@ export const createRouteContext = ({
   handlerId,
   handlerRelativePath
 });
+
