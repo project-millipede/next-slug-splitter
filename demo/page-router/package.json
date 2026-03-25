@@ -8,7 +8,7 @@
     "use-config:ts": "node scripts/use-config.mjs typescript",
     "generate:ballast": "node scripts/generate-ballast.mjs",
     "clean:handlers": "node scripts/clean-handlers.mjs",
-    "dev": "pnpm use-config:js && pnpm generate:ballast && pnpm clean:handlers && next dev",
+    "dev": "pnpm use-config:js && next dev",
     "dev:ts": "pnpm use-config:ts && pnpm generate:ballast && pnpm clean:handlers && next dev",
     "build": "pnpm use-config:js && pnpm generate:ballast && pnpm clean:handlers && next build",
     "build:ts": "pnpm use-config:ts && pnpm generate:ballast && pnpm clean:handlers && next build",
