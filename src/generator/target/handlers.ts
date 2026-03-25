@@ -7,14 +7,20 @@
  * file persistence. Generated source text continues to come from the renderer
  * layer.
  *
- * In the cache architecture this file is the bridge into the selective
- * emission group. It does not decide whether a route is heavy; that decision
- * already happened in the target-local incremental planning cache. Instead it
- * turns planned heavy routes into deterministic page outputs and then asks the
- * selective emission layer to synchronize those outputs to disk.
+ * In the current phase-local architecture this module rebuilds one target's
+ * handler output directory from the current heavy-route set:
+ * 1. clear the target handlers directory
+ * 2. render one page for each current heavy route
+ * 3. write those rendered pages to disk
+ *
+ * This module does not decide whether a route is heavy. It assumes
+ * `heavyRoutes` is already the final generation set for the target.
  */
+import {
+  clearRouteHandlerOutputDirectory,
+  synchronizeRenderedRouteHandlerPage
+} from '../protocol/output-lifecycle';
 import { renderRouteHandlerPage } from '../protocol/rendered-page';
-import { syncEmittedHandlerPages } from './selective-emission';
 
 import type {
   DynamicRouteParam,
@@ -69,9 +75,11 @@ export const emitRouteHandlerPages = async ({
    */
   routeBasePath: string;
 }): Promise<void> => {
-  // Consumer entry into the render-and-sync side of generation. The caller has
-  // already chosen the heavy routes, so this function's responsibility is to
-  // derive stable emitted source text and output hashes for the emission layer.
+  // Generate mode is intentionally phase-local and fresh. Clearing the target
+  // handlers directory up front keeps build/generate independent from prior
+  // dev artifacts before the current heavy-route set is written back to disk.
+  await clearRouteHandlerOutputDirectory(paths.handlersDir);
+
   const renderedPages = [];
 
   for (const entry of heavyRoutes) {
@@ -88,8 +96,9 @@ export const emitRouteHandlerPages = async ({
     );
   }
 
-  await syncEmittedHandlerPages({
-    paths,
-    pages: renderedPages
-  });
+  for (const page of renderedPages) {
+    await synchronizeRenderedRouteHandlerPage({
+      page
+    });
+  }
 };
