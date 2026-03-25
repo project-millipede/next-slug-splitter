@@ -1,8 +1,12 @@
 import {
+  doesRouteHandlerOutputFileExist,
   synchronizeRenderedRouteHandlerPage,
   type RenderedHandlerPageSynchronizationStatus
 } from '../../../generator/output-lifecycle';
-import { renderRouteHandlerPage } from '../../../generator/rendered-page';
+import {
+  renderRouteHandlerPage,
+  resolveRenderedHandlerPageLocation
+} from '../../../generator/rendered-page';
 
 import type {
   RenderedHandlerPage
@@ -68,4 +72,42 @@ export const emitRouteHandlerLazySingleHandler = async ({
     status,
     renderedPage
   };
+};
+
+/**
+ * Check whether a cached heavy route still has its emitted handler file.
+ *
+ * @remarks
+ * This helper does not decide whether a route is heavy. That decision already
+ * came from the lazy one-file cache or from fresh one-file analysis.
+ *
+ * Its job is narrower:
+ * 1. derive the expected emitted handler file path from `analysisResult`
+ * 2. check whether that file currently exists on disk
+ *
+ * The caller combines this filesystem check with plan reuse from cached heavy
+ * analysis. Emission may be skipped only when both are true:
+ * - analysis says the route is already known to be heavy
+ * - the corresponding emitted handler file still exists on disk
+ *
+ * @param analysisResult - Cached heavy-route analysis result whose emitted
+ * handler file should be checked.
+ * @returns `true` when the emitted handler file currently exists on disk,
+ * otherwise `false`.
+ */
+export const doesRouteHandlerLazySingleHandlerExist = async (
+  analysisResult: Extract<
+    RouteHandlerLazySingleRouteAnalysisResult,
+    {
+      kind: 'heavy';
+    }
+  >
+): Promise<boolean> => {
+  const { pageFilePath } = resolveRenderedHandlerPageLocation({
+    paths: analysisResult.config.paths,
+    emitFormat: analysisResult.config.emitFormat,
+    handlerRelativePath: analysisResult.plannedHeavyRoute.handlerRelativePath
+  });
+
+  return doesRouteHandlerOutputFileExist(pageFilePath);
 };
