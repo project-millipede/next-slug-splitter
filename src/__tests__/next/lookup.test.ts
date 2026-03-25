@@ -1,21 +1,22 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import {
-  PIPELINE_CACHE_VERSION,
-  computePipelineFingerprintForConfigs,
-  resolvePersistentCachePath,
-  writePersistentCacheRecord
-} from '../../next/cache';
-import {
-  createCatchAllRouteHandlersPreset,
-  packageModule,
-  resolveRouteHandlersConfigBases
-} from '../../next/config/index';
+const captureReferencedComponentNamesMock = vi.hoisted(() =>
+  vi.fn(async ({ filePath }: { filePath: string }) =>
+    filePath.endsWith('/content/src/pages/example/en.mdx')
+      ? ['CustomComponent']
+      : []
+  )
+);
+
+vi.mock('../../core/capture', () => ({
+  captureReferencedComponentNames: captureReferencedComponentNamesMock
+}));
+
+import { createCatchAllRouteHandlersPreset, packageModule } from '../../next/config/index';
 import { loadRouteHandlerCacheLookup } from '../../next/lookup';
-import { createHeavyRoute } from '../helpers/builders';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   TEST_PRIMARY_CONTENT_PAGES_DIR,
@@ -27,14 +28,15 @@ import {
   TEST_SINGLE_ROUTE_PARAM_NAME,
   createTestHandlerBinding,
   writeTestBaseStaticPropsPage,
+  writeTestModule,
   writeTestRouteHandlerPackage
 } from '../helpers/fixtures';
 import { withTempDir } from '../helpers/temp-dir';
 
-import type { PipelineCacheRecord, RouteHandlersConfig } from '../../next/types';
+import type { RouteHandlersConfig } from '../../next/types';
 
 describe('route-handler cache lookup', () => {
-  it('returns heavy-route membership scoped to one target', async () => {
+  it('returns heavy-route membership scoped to one target from a fresh analyze pass', async () => {
     await withTempDir('next-slug-splitter-lookup-', async rootDir => {
       const mockedNextConfigPath = path.join(rootDir, 'mocked-app-config.js');
       const primaryPagesDir = path.join(rootDir, TEST_PRIMARY_CONTENT_PAGES_DIR);
@@ -60,6 +62,14 @@ describe('route-handler cache lookup', () => {
           kind: 'single'
         }
       });
+      await writeTestModule(
+        path.join(primaryPagesDir, 'example', 'en.mdx'),
+        "import { CustomComponent } from 'test-route-handlers/primary/components';\n\n# Example\n\n<CustomComponent />\n"
+      );
+      await writeTestModule(
+        path.join(secondaryPagesDir, 'secondary-item.mdx'),
+        '# Secondary\n'
+      );
 
       const routeHandlersConfig: RouteHandlersConfig = {
         app: {
@@ -92,52 +102,18 @@ describe('route-handler cache lookup', () => {
         ]
       };
 
-      const resolvedConfigs = resolveRouteHandlersConfigBases({
-        routeHandlersConfig
-      });
-      const fingerprint = await computePipelineFingerprintForConfigs({
-        configs: resolvedConfigs,
-        mode: 'generate'
-      });
-
-      const cachePath = resolvePersistentCachePath({ rootDir });
-      const record: PipelineCacheRecord = {
-        version: PIPELINE_CACHE_VERSION,
-        fingerprint,
-        emitFormat: 'ts',
-        generatedAt: '2026-03-12T12:00:00.000Z',
-        result: {
-          analyzedCount: 2,
-          heavyCount: 2,
-          heavyPaths: [
-            createHeavyRoute({
-              targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-              locale: 'en',
-              slugArray: ['example'],
-              handlerId: 'en-example',
-              handlerRelativePath: 'example/en'
-            }),
-            createHeavyRoute({
-              targetId: TEST_SECONDARY_ROUTE_SEGMENT,
-              locale: 'en',
-              slugArray: ['secondary-item'],
-              handlerId: 'en-secondary-item',
-              handlerRelativePath: 'secondary-item'
-            })
-          ],
-          rewrites: []
-        }
-      };
-      await writePersistentCacheRecord({
-        cachePath,
-        record
-      });
-
       const lookup = await loadRouteHandlerCacheLookup({
         routeHandlersConfig,
+        nextConfig: {
+          i18n: {
+            locales: ['en'],
+            defaultLocale: 'en'
+          }
+        },
         targetId: TEST_PRIMARY_ROUTE_SEGMENT
       });
 
+      expect(captureReferencedComponentNamesMock).toHaveBeenCalled();
       expect(lookup.targetId).toBe(TEST_PRIMARY_ROUTE_SEGMENT);
       expect(lookup.isHeavyRoute('en', ['example'])).toBe(true);
       expect(lookup.isHeavyRoute('en', ['secondary-item'])).toBe(false);

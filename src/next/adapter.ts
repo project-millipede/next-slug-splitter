@@ -27,9 +27,7 @@ import { resolveRouteHandlersAppConfig } from './config/app';
 import type { NextConfigLike } from './config/load-next-config';
 import { resolveRouteHandlersConfigs } from './config/resolve-configs';
 import { loadRegisteredSlugSplitterConfig } from './integration/slug-splitter-config-loader';
-import {
-  resolveRegisteredSlugSplitterConfigRegistration
-} from './integration/slug-splitter-config';
+import { resolveRegisteredSlugSplitterConfigRegistration } from './integration/slug-splitter-config';
 import { withRouteHandlerRewrites } from './plugin';
 import {
   createRouteHandlerProcessCacheIdentity,
@@ -39,7 +37,6 @@ import {
 import { prepareRouteHandlersFromConfig } from './prepare';
 import { applyRouteHandlerProxyNextConfigPolicy } from './policy/proxy-next-config';
 import { synchronizeRouteHandlerProxyFile } from './proxy/file-lifecycle';
-import { reconcileRouteHandlerLazyDiscoverySnapshotStartupState } from './proxy/lazy/discovery-snapshot';
 import { resolveRouteHandlerRoutingStrategy } from './routing-strategy';
 import { executeResolvedRouteHandlerNextPipeline } from './runtime';
 
@@ -225,15 +222,6 @@ const routeHandlersAdapter: NextAdapter = {
     });
 
     if (routingStrategy.kind === 'proxy') {
-      // Proxy mode now has one additional startup-maintenance group:
-      // persisted lazy discovery snapshots. This hook reconciles persisted
-      // request-time discoveries against the current resolved target set so
-      // orphaned one-file lazy outputs can be removed before the next request
-      // reaches the proxy runtime.
-      await reconcileRouteHandlerLazyDiscoverySnapshotStartupState({
-        resolvedConfigs
-      });
-
       // Proxy mode is intentionally a distinct routing path. The adapter does
       // not generate or install route-handler rewrites up front in this branch.
       //

@@ -19,22 +19,33 @@ import type { ResolvedRouteHandlersRoutingPolicy } from '../types';
  * - adapter decides whether dev boot installs rewrites or proxy
  * - proxy decides request-time rewrite vs pass-through
  * - lookup decides whether page-time heavy-route inspection may trigger a
- *   full generate fallback when shared cache is stale
+ *   fresh analyze pass when rewrite/build mode needs an exact answer
  *
  * That last decision is the important one for fully lazy dev behavior. In
  * proxy development mode, page-time lookup must become read-only and must not
- * re-enter whole-target generation just to answer `getStaticPaths`.
+ * re-enter target-wide analysis just to answer `getStaticPaths`.
  */
 export type RouteHandlerLookupPolicy = {
   /**
-   * Whether page-time lookup may consult persisted lazy discoveries and merge
-   * them into the heavy-route answer.
+   * Whether page-time lookup is in the proxy-mode best-effort branch.
+   *
+   * @remarks
+   * The property name is historical. In the current simplified architecture it
+   * acts as the "proxy dev mode" flag that tells page-time lookup to stay
+   * read-only and return an empty heavy-route set.
    */
   readPersistedLazyDiscoveries: boolean;
 
   /**
-   * Whether page-time lookup may fall back to full `mode: 'generate'` runtime
-   * execution when shared persistent cache is missing or stale.
+   * Whether page-time lookup may fall back to a fresh runtime analyze pass
+   * when rewrite/build mode needs an exact heavy-route answer.
+   *
+   * @remarks
+   * The property name is historical. In the current simplified architecture
+   * the fallback is a fresh `analyze` pass, not `generate`.
+   *
+   * This remains `false` in proxy development mode because request-time proxy
+   * routing is the authority for cold heavy-route discovery there.
    */
   allowGenerateFallback: boolean;
 };
@@ -79,17 +90,24 @@ export const resolveRouteHandlerLookupPolicy = ({
 
   if (routingStrategy.kind === 'proxy') {
     // In proxy development mode, page-time lookup becomes best-effort and
-    // read-only. Request-time routing is the authority for cold heavy-route
-    // discovery, so `getStaticPaths` must not trigger whole-target generation.
+    // read-only.
+    //
+    // That means:
+    // 1. request-time routing is the authority for cold heavy-route discovery
+    // 2. `getStaticPaths` must not trigger target-wide analysis
+    // 3. page-time lookup must not act as an exact owner split
     return {
       readPersistedLazyDiscoveries: true,
       allowGenerateFallback: false
     };
   }
 
-  // Rewrite mode preserves the historical contract: page-time lookup may
-  // repair missing shared cache by running one full generate pass, because the
-  // rewrite/build path still needs an exact heavy/light split up front.
+  // Rewrite/build mode still needs an exact heavy/light split up front.
+  //
+  // That means:
+  // 1. static path generation must know which routes belong to generated
+  //    handlers
+  // 2. page-time lookup may run a fresh analyze pass when necessary
   return {
     readPersistedLazyDiscoveries: false,
     allowGenerateFallback: true

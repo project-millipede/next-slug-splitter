@@ -3,16 +3,9 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const executeRouteHandlerNextPipelineMock = vi.hoisted(() => vi.fn());
-const readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeysMock =
-  vi.hoisted(() => vi.fn());
 
 vi.mock('../../next/runtime', () => ({
   executeRouteHandlerNextPipeline: executeRouteHandlerNextPipelineMock
-}));
-
-vi.mock('../../next/proxy/lazy/lookup', () => ({
-  readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeys:
-    readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeysMock
 }));
 
 import { createHeavyRoute } from '../helpers/builders';
@@ -66,9 +59,6 @@ const createPathEntries = () => [
 describe('withHeavyRouteFilter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeysMock.mockResolvedValue(
-      new Set()
-    );
   });
 
   afterEach(() => {

@@ -4,11 +4,6 @@ const loadRegisteredSlugSplitterConfigMock = vi.hoisted(() => vi.fn());
 const resolveRouteHandlersAppConfigMock = vi.hoisted(() => vi.fn());
 const resolveRouteHandlersConfigBasesMock = vi.hoisted(() => vi.fn());
 const prepareRouteHandlersFromConfigMock = vi.hoisted(() => vi.fn());
-const computePipelineFingerprintForConfigsMock = vi.hoisted(() => vi.fn());
-const resolvePersistentCachePathMock = vi.hoisted(() => vi.fn());
-const resolveSharedEmitFormatMock = vi.hoisted(() => vi.fn());
-const readReusablePipelineCacheResultMock = vi.hoisted(() => vi.fn());
-const executeResolvedRouteHandlerNextPipelineMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../../../../next/integration/slug-splitter-config-loader', () => ({
   loadRegisteredSlugSplitterConfig: loadRegisteredSlugSplitterConfigMock
@@ -24,24 +19,6 @@ vi.mock('../../../../next/config/resolve-configs', () => ({
 
 vi.mock('../../../../next/prepare', () => ({
   prepareRouteHandlersFromConfig: prepareRouteHandlersFromConfigMock
-}));
-
-vi.mock('../../../../next/cache', () => ({
-  computePipelineFingerprintForConfigs: computePipelineFingerprintForConfigsMock,
-  resolvePersistentCachePath: resolvePersistentCachePathMock
-}));
-
-vi.mock('../../../../next/emit-format', () => ({
-  resolveSharedEmitFormat: resolveSharedEmitFormatMock
-}));
-
-vi.mock('../../../../next/runtime/cache', () => ({
-  readReusablePipelineCacheResult: readReusablePipelineCacheResultMock
-}));
-
-vi.mock('../../../../next/runtime', () => ({
-  executeResolvedRouteHandlerNextPipeline:
-    executeResolvedRouteHandlerNextPipelineMock
 }));
 
 import { getRouteHandlerProxyRoutingState } from '../../../../next/proxy/routing-state';
@@ -74,16 +51,9 @@ describe('proxy routing state', () => {
       }
     ]);
     prepareRouteHandlersFromConfigMock.mockResolvedValue(undefined);
-    computePipelineFingerprintForConfigsMock.mockResolvedValue('fingerprint');
-    resolvePersistentCachePathMock.mockReturnValue(
-      '/tmp/app/.next/cache/route-handlers.json'
-    );
-    resolveSharedEmitFormatMock.mockReturnValue('ts');
   });
 
-  it('returns empty rewrites on a shared-cache miss instead of triggering whole-target generation', async () => {
-    readReusablePipelineCacheResultMock.mockResolvedValue(undefined);
-
+  it('returns resolved target metadata with no persisted rewrite map', async () => {
     const state = await getRouteHandlerProxyRoutingState({
       localeConfig: {
         locales: ['en'],
@@ -94,18 +64,10 @@ describe('proxy routing state', () => {
     expect(state.rewriteBySourcePath.size).toBe(0);
     expect(state.targetRouteBasePaths).toEqual(['/blog']);
     expect(state.resolvedConfigsByTargetId.has('blog')).toBe(true);
-    expect(executeResolvedRouteHandlerNextPipelineMock).not.toHaveBeenCalled();
   });
 
-  it('reuses shared-cache rewrites when the persistent runtime record is fresh', async () => {
-    readReusablePipelineCacheResultMock.mockResolvedValue({
-      rewrites: [
-        {
-          source: '/blog/post',
-          destination: '/en/blog/_handlers/post'
-        }
-      ]
-    });
+  it('returns a no-op state when no registered config is available', async () => {
+    loadRegisteredSlugSplitterConfigMock.mockResolvedValue(null);
 
     const state = await getRouteHandlerProxyRoutingState({
       localeConfig: {
@@ -114,9 +76,9 @@ describe('proxy routing state', () => {
       }
     });
 
-    expect(state.rewriteBySourcePath.get('/blog/post')).toBe(
-      '/en/blog/_handlers/post'
-    );
-    expect(executeResolvedRouteHandlerNextPipelineMock).not.toHaveBeenCalled();
+    expect(state.rewriteBySourcePath.size).toBe(0);
+    expect(state.targetRouteBasePaths).toEqual([]);
+    expect(state.resolvedConfigsByTargetId.size).toBe(0);
+    expect(prepareRouteHandlersFromConfigMock).not.toHaveBeenCalled();
   });
 });

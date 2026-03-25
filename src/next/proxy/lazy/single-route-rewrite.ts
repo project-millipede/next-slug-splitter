@@ -17,11 +17,10 @@ import type { RouteHandlerLazySingleRouteAnalysisResult } from './types';
  * when no rewrite matches the pathname.
  *
  * @remarks
- * This helper exists because two isolated callers now need the same rewrite
+ * This helper exists because multiple isolated callers need the same rewrite
  * translation logic:
  * - the immediate lazy request path after one-file analysis
- * - the longer-lived lazy discovery snapshot when it revalidates and reuses a
- *   previously published heavy-route discovery
+ * - any route-local caller that already has a planned heavy route
  */
 export const resolveRouteHandlerHeavyRewriteDestination = ({
   pathname,
