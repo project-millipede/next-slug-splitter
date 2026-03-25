@@ -1,5 +1,4 @@
 import { createRouteHandlerRoutePlanner } from '../../../core/processor-runner';
-import { computeTargetStaticCacheIdentity } from '../../cache';
 import { resolveRouteHandlersAppConfig } from '../../config/app';
 import { resolveRouteHandlersConfigBases } from '../../config/resolve-configs';
 import { loadRegisteredSlugSplitterConfig } from '../../integration/slug-splitter-config-loader';
@@ -14,9 +13,7 @@ import {
 } from './single-route-cache';
 
 import type { LocaleConfig, LocalizedRoutePath } from '../../../core/types';
-import type {
-  RouteHandlerLazySingleRouteAnalysisResult
-} from './types';
+import type { RouteHandlerLazySingleRouteAnalysisResult } from './types';
 import type { ResolvedRouteHandlersConfig } from '../../types';
 
 /**
@@ -27,7 +24,7 @@ import type { ResolvedRouteHandlersConfig } from '../../types';
  *
  * Responsibilities:
  * - re-resolve the full target config required for real route planning
- * - consult the lazy single-route cache
+ * - consult the lazy single-route cache for reusable one-file results
  * - run capture + processor planning for exactly one content file on a miss
  *
  * Non-responsibilities:
@@ -86,8 +83,9 @@ const resolveLazyAnalysisTargetConfig = async ({
   }));
 
   return (
-    resolvedConfigs.find(resolvedConfig => resolvedConfig.targetId === targetId) ??
-    null
+    resolvedConfigs.find(
+      resolvedConfig => resolvedConfig.targetId === targetId
+    ) ?? null
   );
 };
 
@@ -154,12 +152,8 @@ export const analyzeRouteHandlerLazyMatchedRoute = async (
     return null;
   }
 
-  const targetIdentity = await computeTargetStaticCacheIdentity({
-    config
-  });
   const cachedRoutePlanRecord = readLazySingleRouteCachedPlanRecord({
     config,
-    targetIdentity,
     routePath
   });
 
@@ -189,7 +183,6 @@ export const analyzeRouteHandlerLazyMatchedRoute = async (
 
   writeLazySingleRouteCachedPlanRecord({
     config,
-    targetIdentity,
     routePath,
     routePlanRecord
   });
