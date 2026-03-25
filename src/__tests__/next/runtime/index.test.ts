@@ -2,28 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createPipelineResult } from '../../helpers/builders';
 
-const computePipelineFingerprintMock = vi.hoisted(() => vi.fn());
-const computePipelineFingerprintForConfigsMock = vi.hoisted(() => vi.fn());
-const resolvePersistentCachePathMock = vi.hoisted(() => vi.fn());
-const resolveSharedEmitFormatMock = vi.hoisted(() => vi.fn());
-const readReusablePipelineCacheResultMock = vi.hoisted(() => vi.fn());
-const writePipelineCacheResultMock = vi.hoisted(() => vi.fn());
 const mergeRouteHandlerNextResultsMock = vi.hoisted(() => vi.fn());
+const synchronizeRouteHandlerPhaseArtifactsMock = vi.hoisted(() => vi.fn());
 const executeRouteHandlerTargetMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../next/cache', () => ({
-  computePipelineFingerprint: computePipelineFingerprintMock,
-  computePipelineFingerprintForConfigs: computePipelineFingerprintForConfigsMock,
-  resolvePersistentCachePath: resolvePersistentCachePathMock
-}));
-
-vi.mock('../../../next/emit-format', () => ({
-  resolveSharedEmitFormat: resolveSharedEmitFormatMock
-}));
-
-vi.mock('../../../next/runtime/cache', () => ({
-  readReusablePipelineCacheResult: readReusablePipelineCacheResultMock,
-  writePipelineCacheResult: writePipelineCacheResultMock
+vi.mock('../../../next/phase-artifacts', () => ({
+  synchronizeRouteHandlerPhaseArtifacts:
+    synchronizeRouteHandlerPhaseArtifactsMock
 }));
 
 vi.mock('../../../next/runtime/results', () => ({
@@ -56,104 +41,78 @@ const createResolvedConfig = ({
     }
   }) as any;
 
-describe('runtime index shared cache policy', () => {
+describe('runtime index fresh execution', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-
-    resolvePersistentCachePathMock.mockReturnValue(
-      '/tmp/app/.next/cache/route-handlers.json'
-    );
-    resolveSharedEmitFormatMock.mockReturnValue('ts');
-    computePipelineFingerprintMock.mockResolvedValue('single-fingerprint');
-    computePipelineFingerprintForConfigsMock.mockResolvedValue(
-      'multi-fingerprint'
-    );
-    writePipelineCacheResultMock.mockResolvedValue(undefined);
+    synchronizeRouteHandlerPhaseArtifactsMock.mockResolvedValue(undefined);
   });
 
-  it('still executes the single-target generate path instead of returning early from shared cache', async () => {
-    const cachedResult = createPipelineResult({
-      analyzedCount: 99,
-      heavyCount: 99
-    });
+  it('executes the single-target path directly and marks generate runs as build-owned', async () => {
     const freshResult = createPipelineResult({
       analyzedCount: 2,
       heavyCount: 2
     });
+    const resolvedConfig = createResolvedConfig({
+      rootDir: '/tmp/app',
+      targetId: 'docs'
+    });
 
-    readReusablePipelineCacheResultMock.mockResolvedValue(cachedResult);
     executeRouteHandlerTargetMock.mockResolvedValue(freshResult);
 
     const result = await executeResolvedRouteHandlerNextPipeline({
-      resolvedConfigs: [
-        createResolvedConfig({
-          rootDir: '/tmp/app',
-          targetId: 'docs'
-        })
-      ],
+      resolvedConfigs: [resolvedConfig],
       mode: 'generate'
     });
 
     expect(result).toEqual(freshResult);
-    expect(readReusablePipelineCacheResultMock).not.toHaveBeenCalled();
-    expect(executeRouteHandlerTargetMock).toHaveBeenCalledTimes(1);
-    expect(writePipelineCacheResultMock).toHaveBeenCalledWith({
-      cachePath: '/tmp/app/.next/cache/route-handlers.json',
-      fingerprint: 'single-fingerprint',
-      emitFormat: 'ts',
-      result: freshResult
+    expect(synchronizeRouteHandlerPhaseArtifactsMock).toHaveBeenCalledWith({
+      resolvedConfigs: [resolvedConfig],
+      phase: 'build'
     });
+    expect(executeRouteHandlerTargetMock).toHaveBeenCalledWith({
+      config: resolvedConfig,
+      mode: 'generate'
+    });
+    expect(mergeRouteHandlerNextResultsMock).not.toHaveBeenCalled();
   });
 
-  it('still executes every multi-target generate path instead of returning early from shared cache', async () => {
-    const cachedResult = createPipelineResult({
-      analyzedCount: 99,
-      heavyCount: 99
+  it('merges fresh multi-target results without consulting a persisted cache', async () => {
+    const docsConfig = createResolvedConfig({
+      rootDir: '/tmp/app',
+      targetId: 'docs'
     });
-    const freshDocsResult = createPipelineResult({
+    const blogConfig = createResolvedConfig({
+      rootDir: '/tmp/app',
+      targetId: 'blog'
+    });
+    const docsResult = createPipelineResult({
       analyzedCount: 3,
       heavyCount: 1
     });
-    const freshBlogResult = createPipelineResult({
+    const blogResult = createPipelineResult({
       analyzedCount: 4,
       heavyCount: 2
     });
-    const mergedFreshResult = createPipelineResult({
+    const mergedResult = createPipelineResult({
       analyzedCount: 7,
       heavyCount: 3
     });
 
-    readReusablePipelineCacheResultMock.mockResolvedValue(cachedResult);
     executeRouteHandlerTargetMock
-      .mockResolvedValueOnce(freshDocsResult)
-      .mockResolvedValueOnce(freshBlogResult);
-    mergeRouteHandlerNextResultsMock.mockReturnValue(mergedFreshResult);
+      .mockResolvedValueOnce(docsResult)
+      .mockResolvedValueOnce(blogResult);
+    mergeRouteHandlerNextResultsMock.mockReturnValue(mergedResult);
 
     const result = await executeResolvedRouteHandlerNextPipeline({
-      resolvedConfigs: [
-        createResolvedConfig({
-          rootDir: '/tmp/app',
-          targetId: 'docs'
-        }),
-        createResolvedConfig({
-          rootDir: '/tmp/app',
-          targetId: 'blog'
-        })
-      ],
-      mode: 'generate'
+      resolvedConfigs: [docsConfig, blogConfig],
+      mode: 'analyze'
     });
 
-    expect(result).toEqual(mergedFreshResult);
-    expect(readReusablePipelineCacheResultMock).not.toHaveBeenCalled();
+    expect(result).toEqual(mergedResult);
+    expect(synchronizeRouteHandlerPhaseArtifactsMock).not.toHaveBeenCalled();
     expect(executeRouteHandlerTargetMock).toHaveBeenCalledTimes(2);
     expect(mergeRouteHandlerNextResultsMock).toHaveBeenCalledWith({
-      results: [freshDocsResult, freshBlogResult]
-    });
-    expect(writePipelineCacheResultMock).toHaveBeenCalledWith({
-      cachePath: '/tmp/app/.next/cache/route-handlers.json',
-      fingerprint: 'multi-fingerprint',
-      emitFormat: 'ts',
-      result: mergedFreshResult
+      results: [docsResult, blogResult]
     });
   });
 });

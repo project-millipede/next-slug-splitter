@@ -140,6 +140,14 @@ pnpm use-config:ts    # activate TypeScript config
 
 The `dev`/`build` scripts handle this automatically — use `dev:ts`/`build:ts` for the TypeScript variant.
 
+## Dev 404 Retry Workaround
+
+The demo also includes `pages/404.tsx`, which is a dev-only workaround for a remaining Next/Turbopack race.
+
+When a heavy route is emitted lazily on first request, the proxy can already know the correct rewrite target while Next is still warming that page up. In that narrow window the same request may still land on a transient 404. The demo's 404 page probes the route for readiness and retries once instead of immediately showing a not-found page.
+
+This is not part of the core route-classification logic, and production builds do not need it. It exists only to make the demo smoother while the underlying Next/Turbopack readiness behavior remains.
+
 ## Project Structure
 
 ```
@@ -158,11 +166,13 @@ demo/
 ├── pages/
 │   ├── _app.tsx             ← shared layout shell
 │   ├── index.tsx            ← landing page with page listing
+│   ├── 404.tsx              ← dev-only retry workaround for transient lazy-route 404s
 │   └── docs/
 │       ├── [...slug].tsx    ← catch-all for light pages
 │       └── _handlers/       ← auto-generated heavy page handlers
 └── scripts/
     ├── generate-ballast.mjs ← creates simulated heavy dependencies
     ├── clean-handlers.mjs   ← removes generated handlers before rebuild
+    ├── erase-generated-dev-state.mjs ← full demo reset for generated dev artifacts
     └── use-config.mjs       ← activates a config variant
 ```

@@ -4,6 +4,7 @@ import { createDeferred } from '../../../helpers/deferred';
 import { composeKey } from '../../../../next/proxy/lazy/key-builder';
 
 const analyzeRouteHandlerLazyMatchedRouteMock = vi.hoisted(() => vi.fn());
+const doesRouteHandlerLazySingleHandlerExistMock = vi.hoisted(() => vi.fn());
 const emitRouteHandlerLazySingleHandlerMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../../../../next/proxy/lazy/single-route-analysis', () => ({
@@ -11,6 +12,8 @@ vi.mock('../../../../next/proxy/lazy/single-route-analysis', () => ({
 }));
 
 vi.mock('../../../../next/proxy/lazy/single-handler-emission', () => ({
+  doesRouteHandlerLazySingleHandlerExist:
+    doesRouteHandlerLazySingleHandlerExistMock,
   emitRouteHandlerLazySingleHandler: emitRouteHandlerLazySingleHandlerMock
 }));
 
@@ -51,6 +54,7 @@ describe('composeKey', () => {
 describe('prepareRouteHandlerLazyMatchedRoute deduplication', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    doesRouteHandlerLazySingleHandlerExistMock.mockResolvedValue(false);
   });
 
   it('deduplicates concurrent calls with same target and file', async () => {
@@ -70,6 +74,19 @@ describe('prepareRouteHandlerLazyMatchedRoute deduplication', () => {
 
     await prepareRouteHandlerLazyMatchedRoute('blog', localeConfig, routePath);
 
+    expect(emitRouteHandlerLazySingleHandlerMock).not.toHaveBeenCalled();
+  });
+
+  it('skips emission when a cached heavy route already has a handler on disk', async () => {
+    const analysisResult = { kind: 'heavy', source: 'cache' };
+    analyzeRouteHandlerLazyMatchedRouteMock.mockResolvedValue(analysisResult);
+    doesRouteHandlerLazySingleHandlerExistMock.mockResolvedValue(true);
+
+    await prepareRouteHandlerLazyMatchedRoute('blog', localeConfig, routePath);
+
+    expect(doesRouteHandlerLazySingleHandlerExistMock).toHaveBeenCalledWith(
+      analysisResult
+    );
     expect(emitRouteHandlerLazySingleHandlerMock).not.toHaveBeenCalled();
   });
 });

@@ -1,19 +1,11 @@
 import type { GetStaticPaths } from 'next';
 import { createConfigMissingError, createLookupError } from '../utils/errors';
 import { toHeavyRoutePathKey } from './heavy-route-path-key';
-import {
-  computePipelineFingerprintForConfigs,
-  PIPELINE_CACHE_VERSION,
-  readPersistentCacheRecord,
-  resolvePersistentCachePath
-} from './cache';
 import type { NextConfigLike } from './config/load-next-config';
 import { resolveRouteHandlersConfigBases } from './config/resolve-configs';
-import { resolveSharedEmitFormat } from './emit-format';
 import { loadRegisteredSlugSplitterConfig } from './integration/slug-splitter-config-loader';
 import { prepareRouteHandlersFromConfig } from './prepare';
 import { resolveRouteHandlerLookupPolicy } from './policy/lookup-policy';
-import { readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeys } from './proxy/lazy/lookup';
 import { resolveRouteHandlersAppConfig } from './config/app';
 import { executeRouteHandlerNextPipeline } from './runtime';
 
@@ -32,20 +24,18 @@ import type {
  * light catch-all page, or is it owned by a generated heavy handler?" before
  * static paths are finalized.
  *
- * This module answers that question from the persistent splitter cache
- * whenever possible instead of:
+ * This module answers that question from fresh route planning when an exact
+ * answer is required instead of:
  *
- * - re-running route analysis from page code
- * - importing generated helper source that might not exist yet
- * - loading the configured Next config file from the page graph
+ * - depending on persisted build-side cache artifacts
+ * - importing generated handler-side helper code that may not exist yet
+ * - pushing route-ownership logic into the page graph itself
  *
  * That keeps page code on a narrow, deterministic contract:
  *
- * - generation writes a cache record for all configured targets
- * - page code reads the already-generated result for one target when it is
- *   available
- * - one fallback generation pass repairs missing or stale cache state during
- *   build-time `getStaticPaths`
+ * - build/rewrite lookup runs fresh analysis when it needs an exact answer
+ * - dev proxy lookup stays best-effort and intentionally does not try to be
+ *   exact at page time
  */
 
 /**
@@ -169,21 +159,17 @@ export const shouldFilterHeavyRoutesInStaticPaths = async (options?: {
 };
 
 /**
- * Read heavy-route membership for a single target from the persistent cache.
+ * Read heavy-route membership for a single target.
  *
  * @remarks
- * This loader prefers the persistent cache. It resolves the configured
- * targets, recomputes the expected pipeline fingerprint, validates the stored
- * cache record, and then exposes a semantic lookup for the requested target.
+ * Rewrite/build lookup answers this question from a fresh internal analyze
+ * pass when an exact answer is required. Development proxy lookup remains
+ * intentionally best-effort and never tries to recover exact heavy-route
+ * membership at page time.
  *
- * When the persistent cache is missing or stale, one internal generation pass
- * is executed so `withSlugSplitter(...)` remains sufficient during build-time
- * `getStaticPaths` execution.
- *
- * Generated handler files on disk are not validated here. Heavy-route
- * membership comes from the persistent cache record exclusively so
- * `getStaticPaths` does not reintroduce filesystem-based output inspection
- * into the page-time path.
+ * Generated handler files on disk are not validated here. Page-time lookup is
+ * a planning question only: "is this public path owned by a heavy route for
+ * this target right now?"
  *
  * @param options - Route-handler lookup inputs.
  * @returns A semantic heavy-route lookup scoped to one configured target.
@@ -202,7 +188,7 @@ export const loadRouteHandlerCacheLookup = async ({
    */
   routeHandlersConfig?: RouteHandlersConfig;
   /**
-   * Already-loaded Next config object to reuse during fallback generation.
+   * Already-loaded Next config object to reuse during fallback analysis.
    */
   nextConfig?: NextConfigLike;
   /**
@@ -229,8 +215,8 @@ export const loadRouteHandlerCacheLookup = async ({
 
   // Consumer entry into the preparation-cache group from the lookup path.
   // `getStaticPaths`-style callers need the same app-owned prerequisites as
-  // the adapter path before they can trust cache identities or fallback
-  // generation.
+  // the adapter path before they can trust exact page-time lookup or fall
+  // back to fresh analysis.
   await prepareRouteHandlersFromConfig({
     rootDir: appConfig.rootDir,
     routeHandlersConfig: effectiveRouteHandlersConfig
@@ -248,99 +234,48 @@ export const loadRouteHandlerCacheLookup = async ({
     throw createLookupError(`Unknown targetId "${targetId}".`, { targetId });
   }
 
-  const emitFormat = resolveSharedEmitFormat({
-    configs: resolvedConfigs,
-    createError: createLookupError
-  });
-
-  const [referenceResolvedTarget] = resolvedConfigs;
-
-  const cachePath = resolvePersistentCachePath({
-    rootDir: referenceResolvedTarget.app.rootDir
-  });
-
-  // This fingerprint belongs to the shared persistent runtime-cache group. The
-  // lookup path uses it only to decide whether the merged cache artifact is
-  // fresh enough to answer directly, not to skip target execution within the
-  // generate pipeline itself.
-  const fingerprint = await computePipelineFingerprintForConfigs({
-    configs: resolvedConfigs,
-    mode: 'generate'
-  });
-
-  const cachedRecord = await readPersistentCacheRecord(cachePath);
-  const hasFreshCache =
-    cachedRecord != null &&
-    cachedRecord.version === PIPELINE_CACHE_VERSION &&
-    cachedRecord.fingerprint === fingerprint &&
-    cachedRecord.emitFormat === emitFormat;
-  const sharedHeavyRoutePathKeys = hasFreshCache
-    ? createHeavyRouteLookupFromResult({
-        targetId,
-        result: cachedRecord.result
-      }).heavyRoutePathKeys
-    : new Set<string>();
-
   if (lookupPolicy.readPersistedLazyDiscoveries) {
-    // Proxy-mode page-time lookup is intentionally read-only and best-effort.
-    // It may merge:
-    // - exact heavy routes from a fresh shared cache record
-    // - exact heavy routes that were lazily discovered earlier in proxy mode
+    // Proxy-mode page-time lookup is intentionally best-effort and read-only.
+    // Request-time proxy routing owns exact cold heavy-route discovery in
+    // development, so `getStaticPaths` should not:
+    // - trigger target-wide analysis just to make page-time answers exact
+    // - trust persisted artifacts as an ownership partition for the page graph
     //
-    // What it may not do is trigger a whole-target generate pass just to make
-    // `getStaticPaths` exact. Request-time proxy routing now owns cold heavy
-    // discovery in development.
-    const lazyDiscoveryHeavyRoutePathKeys =
-      await readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeys({
-        rootDir: appConfig.rootDir,
-        targetId
-      });
-
+    // The safe answer in this branch is therefore "no exact heavy-route view
+    // is available here."
     return createHeavyRouteLookupFromPathKeys({
       targetId,
-      heavyRoutePathKeys: new Set([
-        ...sharedHeavyRoutePathKeys,
-        ...lazyDiscoveryHeavyRoutePathKeys
-      ])
+      heavyRoutePathKeys: new Set()
     });
   }
 
-  /**
-   * Missing or stale cache records trigger one internal generation pass so
-   * `getStaticPaths` can recover without a manual pre-step.
-   *
-   * That fallback generation call enters the full runtime stack:
-   * preparation caching may already be warm, shared-cache policy is applied,
-   * target-local incremental planning runs, and generate mode can resync
-   * emitted handler files before the new shared cache record is written.
-   */
-  if (!hasFreshCache) {
-    if (!lookupPolicy.allowGenerateFallback) {
-      // This branch should currently be unreachable because the proxy-mode
-      // policy already returned through the persisted-lazy-discovery path
-      // above. Keeping the explicit guard here makes the lookup contract easy
-      // to follow if future policy variants are added.
-      return createHeavyRouteLookupFromPathKeys({
-        targetId,
-        heavyRoutePathKeys: new Set()
-      });
-    }
-
-    const freshResult = await executeRouteHandlerNextPipeline({
-      routeHandlersConfig: effectiveRouteHandlersConfig,
-      nextConfig,
-      mode: 'generate'
-    });
-
-    return createHeavyRouteLookupFromResult({
+  if (!lookupPolicy.allowGenerateFallback) {
+    // Keeping this guard explicit makes the lookup contract easy to follow if
+    // future policy variants are added. Today rewrite/build mode is the only
+    // branch that reaches the analyze fallback below.
+    return createHeavyRouteLookupFromPathKeys({
       targetId,
-      result: freshResult
+      heavyRoutePathKeys: new Set()
     });
   }
 
-  return createHeavyRouteLookupFromPathKeys({
+  // Build/rewrite mode still needs an exact heavy-route answer, but page-time
+  // lookup is only a planning question.
+  //
+  // That means:
+  // 1. `mode: 'analyze'` is enough to compute heavy-route membership
+  // 2. page-time lookup does not need to emit handlers or refresh build output
+  // 3. `getStaticPaths` can recover an exact answer without requiring a
+  //    separate pre-generation step
+  const freshResult = await executeRouteHandlerNextPipeline({
+    routeHandlersConfig: effectiveRouteHandlersConfig,
+    nextConfig,
+    mode: 'analyze'
+  });
+
+  return createHeavyRouteLookupFromResult({
     targetId,
-    heavyRoutePathKeys: sharedHeavyRoutePathKeys
+    result: freshResult
   });
 };
 

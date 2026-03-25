@@ -12,7 +12,7 @@
  * The active copies are gitignored so the repository always stays clean.
  */
 
-import { copyFileSync, rmSync, existsSync } from 'node:fs';
+import { copyFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -79,17 +79,25 @@ if (!variantName || !variants[variantName]) {
 
 const variant = variants[variantName];
 const sourceDir = join(variantsDir, variantName);
+const activeDestinations = new Set(variant.files.map(file => file.dest));
 
 // ---------------------------------------------------------------------------
 // Clean stale active files
 //
-// Remove all known active file locations so switching from one variant to
-// another does not leave orphaned files from the previous variant.
+// Remove only files that are inactive for the selected variant.
+// This still cleans up leftovers from the previously active variant, but it
+// keeps current destinations in place so unchanged files are not deleted and
+// recreated just to activate the same variant again.
+//
+// That preservation matters because the current library still observes changes
+// in active config inputs such as `next.config.*`; rewriting an unchanged file
+// would bump its mtime, look like a real config change, and trigger needless
+// handler invalidation/regeneration on the next dev request.
 // ---------------------------------------------------------------------------
 
 for (const relativePath of allActiveFiles) {
   const target = join(demoRoot, relativePath);
-  if (existsSync(target)) {
+  if (!activeDestinations.has(relativePath) && existsSync(target)) {
     rmSync(target);
   }
 }
@@ -101,6 +109,17 @@ for (const relativePath of allActiveFiles) {
 for (const { src, dest } of variant.files) {
   const from = join(sourceDir, src);
   const to = join(demoRoot, dest);
+
+  if (existsSync(to)) {
+    const sourceContents = readFileSync(from);
+    const targetContents = readFileSync(to);
+
+    if (sourceContents.equals(targetContents)) {
+      console.log(`[use-config] ${dest} (unchanged)`);
+      continue;
+    }
+  }
+
   copyFileSync(from, to);
   console.log(`[use-config] ${dest}`);
 }

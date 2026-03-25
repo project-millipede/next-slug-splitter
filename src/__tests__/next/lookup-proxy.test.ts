@@ -3,16 +3,9 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const executeRouteHandlerNextPipelineMock = vi.hoisted(() => vi.fn());
-const readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeysMock =
-  vi.hoisted(() => vi.fn());
 
 vi.mock('../../next/runtime', () => ({
   executeRouteHandlerNextPipeline: executeRouteHandlerNextPipelineMock
-}));
-
-vi.mock('../../next/proxy/lazy/lookup', () => ({
-  readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeys:
-    readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeysMock
 }));
 
 import { createHeavyRoute } from '../helpers/builders';
@@ -61,22 +54,16 @@ const createSingleTargetConfig = ({
 describe('route handler cache lookup proxy behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeysMock.mockResolvedValue(
-      new Set()
-    );
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it('does not trigger full generate fallback in development proxy mode when shared cache is stale', async () => {
+  it('returns a best-effort empty lookup in development proxy mode', async () => {
     vi.stubEnv('NODE_ENV', 'development');
 
     await withTempDir('next-slug-splitter-lookup-proxy-', async rootDir => {
-      readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeysMock.mockResolvedValue(
-        new Set(['en:known/heavy'])
-      );
       await writeTestRouteHandlerPackage(rootDir);
       await writeTestBaseStaticPropsPage(rootDir, {
         routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
@@ -92,14 +79,8 @@ describe('route handler cache lookup proxy behavior', () => {
         targetId: TEST_PRIMARY_ROUTE_SEGMENT
       });
 
-      expect(
-        readPersistedRouteHandlerLazyDiscoveryHeavyRoutePathKeysMock
-      ).toHaveBeenCalledWith({
-        rootDir,
-        targetId: TEST_PRIMARY_ROUTE_SEGMENT
-      });
       expect(executeRouteHandlerNextPipelineMock).not.toHaveBeenCalled();
-      expect(lookup.isHeavyRoute('en', ['known', 'heavy'])).toBe(true);
+      expect(lookup.isHeavyRoute('en', ['known', 'heavy'])).toBe(false);
       expect(lookup.isHeavyRoute('en', ['unknown'])).toBe(false);
     });
   });
@@ -118,7 +99,7 @@ describe('route handler cache lookup proxy behavior', () => {
     });
   });
 
-  it('still triggers full generate fallback when development explicitly uses rewrites', async () => {
+  it('runs a fresh analyze pass when development explicitly uses rewrites', async () => {
     vi.stubEnv('NODE_ENV', 'development');
 
     await withTempDir('next-slug-splitter-lookup-rewrites-', async rootDir => {
@@ -150,10 +131,29 @@ describe('route handler cache lookup proxy behavior', () => {
           rootDir,
           developmentRoutingMode: 'rewrites'
         }),
+        nextConfig: {
+          i18n: {
+            locales: ['en'],
+            defaultLocale: 'en'
+          }
+        },
         targetId: TEST_PRIMARY_ROUTE_SEGMENT
       });
 
       expect(executeRouteHandlerNextPipelineMock).toHaveBeenCalledTimes(1);
+      expect(executeRouteHandlerNextPipelineMock).toHaveBeenCalledWith({
+        routeHandlersConfig: createSingleTargetConfig({
+          rootDir,
+          developmentRoutingMode: 'rewrites'
+        }),
+        nextConfig: {
+          i18n: {
+            locales: ['en'],
+            defaultLocale: 'en'
+          }
+        },
+        mode: 'analyze'
+      });
       expect(lookup.isHeavyRoute('en', ['generated'])).toBe(true);
     });
   });

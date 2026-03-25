@@ -10,7 +10,6 @@ import {
   isObjectRecordOf,
   readObjectProperty
 } from '../../../utils/type-guards-custom';
-import { isString } from '../../../utils/type-guards';
 
 import type { LocalizedRoutePath } from '../../../core/types';
 import type { ResolvedRouteHandlersConfig } from '../../types';
@@ -20,22 +19,19 @@ const LAZY_SINGLE_ROUTE_CACHE_DIRECTORY = path.join(
   'cache',
   'route-handlers-lazy-single-routes'
 );
-const LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION = 1;
+const LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION = 2;
 
 /**
  * Persisted lazy single-route cache entry stored in `file-entry-cache`
  * descriptor metadata.
  *
  * @remarks
- * This wraps the shared one-file route-plan record with the target static
- * identity that produced it. That lets the lazy single-route cache reuse one
- * file confidently only when:
- * - the file contents are unchanged
- * - the non-content target environment is unchanged
+ * This is the data stored for one cached route file:
+ * - `version` identifies the lazy-cache metadata format
+ * - `routePlanRecord` stores the reusable one-file planning result
  */
 type LazySingleRouteCacheRecord = {
   version: number;
-  targetIdentity: string;
   routePlanRecord: PersistedRoutePlanRecord;
 };
 
@@ -80,7 +76,6 @@ const readLazySingleRouteCacheRecord = (
     return null;
   }
 
-  const targetIdentity = readObjectProperty(value, 'targetIdentity');
   const routePlanRecord = readPersistedRoutePlanRecord(
     readObjectProperty(value, 'routePlanRecord')
   );
@@ -88,7 +83,6 @@ const readLazySingleRouteCacheRecord = (
   if (
     readObjectProperty(value, 'version') !==
       LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION ||
-    !isString(targetIdentity) ||
     routePlanRecord == null
   ) {
     return null;
@@ -96,7 +90,6 @@ const readLazySingleRouteCacheRecord = (
 
   return {
     version: LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION,
-    targetIdentity,
     routePlanRecord
   };
 };
@@ -105,24 +98,22 @@ const readLazySingleRouteCacheRecord = (
  * Try to reuse the cached single-route analysis for one file.
  *
  * @param input - Cache-read input.
- * @param input.config - Fully resolved target config.
- * @param input.targetIdentity - Current non-content target identity.
- * @param input.routePath - Localized route file to check.
+ * @param input.config - Fully resolved target config for the route's target.
+ * @param input.routePath - Localized route file whose cached record should be checked.
  * @returns Cached route-plan record when reusable, otherwise `null`.
  *
  * @remarks
  * Reuse is allowed only when all three checks pass:
- * - the file still exists
- * - the file's content checksum is unchanged
- * - the cached record was produced under the same target static identity
+ * - `routePath.filePath` still exists
+ * - the content checksum for `routePath.filePath` is unchanged
+ * - the stored descriptor metadata can still be decoded as a
+ *   `LazySingleRouteCacheRecord` for the current cache version
  */
 export const readLazySingleRouteCachedPlanRecord = ({
   config,
-  targetIdentity,
   routePath
 }: {
   config: ResolvedRouteHandlersConfig;
-  targetIdentity: string;
   routePath: LocalizedRoutePath;
 }): PersistedRoutePlanRecord | null => {
   const fileCache = createLazySingleRouteFileCache({
@@ -140,7 +131,7 @@ export const readLazySingleRouteCachedPlanRecord = ({
   const descriptor = fileCache.getFileDescriptor(routePath.filePath);
   const cachedRecord = readLazySingleRouteCacheRecord(descriptor.meta.data);
 
-  if (cachedRecord == null || cachedRecord.targetIdentity !== targetIdentity) {
+  if (cachedRecord == null) {
     return null;
   }
 
@@ -151,19 +142,16 @@ export const readLazySingleRouteCachedPlanRecord = ({
  * Persist the freshly computed one-file route-plan record for lazy reuse.
  *
  * @param input - Cache-write input.
- * @param input.config - Fully resolved target config.
- * @param input.targetIdentity - Current non-content target identity.
- * @param input.routePath - Localized route file being cached.
- * @param input.routePlanRecord - Freshly computed one-file plan record.
+ * @param input.config - Fully resolved target config for the route's target.
+ * @param input.routePath - Localized route file whose cache entry should be updated.
+ * @param input.routePlanRecord - Freshly computed one-file route-plan record for `routePath`.
  */
 export const writeLazySingleRouteCachedPlanRecord = ({
   config,
-  targetIdentity,
   routePath,
   routePlanRecord
 }: {
   config: ResolvedRouteHandlersConfig;
-  targetIdentity: string;
   routePath: LocalizedRoutePath;
   routePlanRecord: PersistedRoutePlanRecord;
 }): void => {
@@ -172,13 +160,11 @@ export const writeLazySingleRouteCachedPlanRecord = ({
     targetId: config.targetId
   });
   const descriptor = fileCache.getFileDescriptor(routePath.filePath);
-
   // The descriptor metadata is the persistence slot owned by this cache layer.
-  // Writing both target identity and route-plan record keeps the cache
+  // Writing the one-file route-plan record keeps the cache
   // self-contained and cheaply reusable on the next request.
   descriptor.meta.data = {
     version: LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION,
-    targetIdentity,
     routePlanRecord
   } satisfies LazySingleRouteCacheRecord;
 

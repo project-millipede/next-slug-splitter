@@ -6,11 +6,12 @@
  * architecture. When a Next app uses `withSlugSplitter(...)`, Next eventually
  * reaches this adapter and asks it to modify the effective config.
  *
- * The adapter touches several cache groups in sequence:
- * - first, the preparation-cache group so app-owned prerequisites are ready
+ * The adapter touches several phase-local groups in sequence:
+ * - first, app preparation so app-owned prerequisites are ready
+ * - then phase-artifact ownership so dev and build do not trust each other's
+ *   generated handler state
  * - then the in-process rewrite cache local to this Node process
- * - then the deeper runtime pipeline which can use shared persistent cache,
- *   target-local incremental planning reuse, and selective emission
+ * - then the deeper fresh runtime pipeline
  *
  * Documenting the grouping here is useful because this is where many readers
  * start when asking "what cache do consumers actually hit when Next boots?"
@@ -38,8 +39,8 @@ import {
 } from './process-cache-identity';
 import { prepareRouteHandlersFromConfig } from './prepare';
 import { applyRouteHandlerProxyNextConfigPolicy } from './policy/proxy-next-config';
+import { synchronizeRouteHandlerPhaseArtifacts } from './phase-artifacts';
 import { synchronizeRouteHandlerProxyFile } from './proxy/file-lifecycle';
-import { reconcileRouteHandlerLazyDiscoverySnapshotStartupState } from './proxy/lazy/discovery-snapshot';
 import { resolveRouteHandlerRoutingStrategy } from './routing-strategy';
 import { executeResolvedRouteHandlerNextPipeline } from './runtime';
 
@@ -85,8 +86,8 @@ const generateRewrites = async ({
   resolvedConfigs: Array<ResolvedRouteHandlersConfig>;
 }): Promise<Array<RewriteRecord>> => {
   // This is the main hand-off from the adapter layer into the deeper runtime
-  // pipeline. Everything below this call is allowed to consult persistent
-  // caches, target-local incremental planning state, and selective emission.
+  // pipeline. Everything below this call now executes fresh target work and,
+  // in generate mode, rebuilds the emitted handler directories.
   const result = await executeResolvedRouteHandlerNextPipeline({
     resolvedConfigs,
     mode: 'generate'
@@ -211,6 +212,11 @@ const routeHandlersAdapter: NextAdapter = {
       routingPolicy: appConfig.routing
     });
 
+    await synchronizeRouteHandlerPhaseArtifacts({
+      resolvedConfigs,
+      phase: routingStrategy.kind === 'proxy' ? 'dev' : 'build'
+    });
+
     // This is the first routing-strategy split in the adapter. Before the
     // plugin decides whether it will install rewrites or rely on a generated
     // root Proxy file, it synchronizes the filesystem artifact that must match
@@ -225,15 +231,6 @@ const routeHandlersAdapter: NextAdapter = {
     });
 
     if (routingStrategy.kind === 'proxy') {
-      // Proxy mode now has one additional startup-maintenance group:
-      // persisted lazy discovery snapshots. This hook reconciles persisted
-      // request-time discoveries against the current resolved target set so
-      // orphaned one-file lazy outputs can be removed before the next request
-      // reaches the proxy runtime.
-      await reconcileRouteHandlerLazyDiscoverySnapshotStartupState({
-        resolvedConfigs
-      });
-
       // Proxy mode is intentionally a distinct routing path. The adapter does
       // not generate or install route-handler rewrites up front in this branch.
       //
@@ -246,10 +243,10 @@ const routeHandlersAdapter: NextAdapter = {
       });
     }
 
-    // This call is the consumer-facing entrance into the adapter-side cache
-    // stack. From here the request can travel through preparation caching,
-    // process-local rewrite caching, runtime shared-cache policy, target-local
-    // planning reuse, and selective emission before rewrites come back.
+    // This call is the consumer-facing entrance into the adapter-side
+    // execution stack. From here the request can travel through preparation,
+    // phase-artifact ownership, process-local rewrite caching, and fresh
+    // runtime execution before rewrites come back.
     const rewrites = await getRewritesWithProcessCache({
       phase,
       rootDir: appConfig.rootDir,

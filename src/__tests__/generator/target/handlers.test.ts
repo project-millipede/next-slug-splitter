@@ -285,7 +285,7 @@ describe('generator handlers', () => {
     });
   });
 
-  it('selectively rewrites changed handlers and removes stale generated files', async () => {
+  it('rebuilds the handler directory from the current heavy-route set', async () => {
     await withTempDir('next-slug-splitter-', async rootDir => {
       const paths = createTestPaths(rootDir);
       const contentHandlerModuleInput = createContentHandlerModuleInput(rootDir);
@@ -359,7 +359,7 @@ describe('generator handlers', () => {
       const unchangedPath = path.join(paths.handlersDir, 'stable', 'en.tsx');
       const changedPath = path.join(paths.handlersDir, 'changed', 'en.tsx');
       const stalePath = path.join(paths.handlersDir, 'stale', 'en.tsx');
-      const unchangedStatBefore = await stat(unchangedPath);
+      const unchangedSourceBefore = await readFile(unchangedPath, 'utf8');
       const changedSourceBefore = await readFile(changedPath, 'utf8');
 
       await new Promise(resolve => setTimeout(resolve, 25));
@@ -393,10 +393,10 @@ describe('generator handlers', () => {
         routeBasePath: contentHandlerModuleInput.routeBasePath
       });
 
-      const unchangedStatAfter = await stat(unchangedPath);
+      const unchangedSourceAfter = await readFile(unchangedPath, 'utf8');
       const changedSourceAfter = await readFile(changedPath, 'utf8');
 
-      expect(unchangedStatAfter.mtimeMs).toBe(unchangedStatBefore.mtimeMs);
+      expect(unchangedSourceAfter).toBe(unchangedSourceBefore);
       expect(changedSourceAfter).not.toBe(changedSourceBefore);
       expect(changedSourceAfter).toContain('/selection');
       expect(await fileExists(stalePath)).toBe(false);

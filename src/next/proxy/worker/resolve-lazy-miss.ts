@@ -1,7 +1,3 @@
-import {
-  publishRouteHandlerLazyDiscoverySnapshotEntry,
-  readRouteHandlerLazyDiscoverySnapshotRewrite
-} from '../lazy/discovery-snapshot';
 import { resolveRouteHandlerLazyRequest } from '../lazy/request-resolution';
 import { removeRouteHandlerLazyOutputForIdentity } from '../lazy/stale-output-cleanup';
 import { resolveRouteHandlerLazyRewriteDestination } from '../lazy/single-route-rewrite';
@@ -21,13 +17,13 @@ import type { LocaleConfig } from '../../../core/types';
  * @returns Serialized semantic result for the thin proxy runtime.
  *
  * @remarks
- * This worker owns all cold lazy-miss responsibilities that would otherwise
- * drag the heavy MDX-analysis graph into the main proxy bundle:
- * - validated lazy discovery reuse
- * - request-to-file resolution
- * - one-file heavy/light analysis
- * - on-demand single-handler emission
- * - stale lazy-output cleanup on light/deleted routes
+ * This worker owns the full cold lazy-miss protocol that would otherwise drag
+ * the heavy MDX-analysis graph into the main proxy bundle:
+ * - resolve the request pathname to one concrete route file when possible
+ * - prepare that one matched route as light or heavy
+ * - resolve the rewrite destination for heavy routes
+ * - emit one handler on demand when heavy preparation requires it
+ * - remove stale lazy output when the route is light or missing
  *
  * The parent proxy runtime intentionally receives only a compact semantic
  * result so it can stay focused on request transport, warm-up, and response
@@ -52,24 +48,8 @@ export const resolveRouteHandlerProxyLazyMiss = async ({
   debugRouteHandlerProxyWorker('lazy-miss:routing-state', {
     pathname,
     targetRouteBasePaths: routingState.targetRouteBasePaths,
-    rewriteCount: routingState.rewriteBySourcePath.size,
-    resolvedTargetCount: routingState.resolvedConfigsByTargetId.size
+    rewriteCount: routingState.rewriteBySourcePath.size
   });
-
-  const publishedLazyRewriteDestination =
-    await readRouteHandlerLazyDiscoverySnapshotRewrite({
-      pathname,
-      routingState
-    });
-
-  if (publishedLazyRewriteDestination != null) {
-    return {
-      kind: 'heavy',
-      source: 'discovery',
-      rewriteDestination: publishedLazyRewriteDestination,
-      routeBasePath: routingState.targetRouteBasePaths[0] ?? '/'
-    };
-  }
 
   const lazyRequestResolution = await resolveRouteHandlerLazyRequest({
     pathname,
@@ -96,11 +76,6 @@ export const resolveRouteHandlerProxyLazyMiss = async ({
       });
 
       if (rewriteDestination != null) {
-        await publishRouteHandlerLazyDiscoverySnapshotEntry({
-          pathname,
-          analysisResult: lazyMatchedRoutePreparation.analysisResult
-        });
-
         return {
           kind: 'heavy',
           source: lazyMatchedRoutePreparation.analysisResult.source,

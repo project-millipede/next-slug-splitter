@@ -19,10 +19,12 @@ import type {
  * @returns Removal status for the file path.
  *
  * @remarks
- * This is the narrowest cleanup primitive used when a caller already knows the
- * exact file path that was previously emitted. The lazy discovery-snapshot
- * layer uses this form because it remembers the last emitted output location
- * even if the owning target later disappears.
+ * This is the narrowest cleanup primitive.
+ *
+ * Use it when:
+ * 1. a caller already knows the exact emitted file path
+ * 2. cleanup should target that one file directly, even if the owning target
+ *    later disappears
  */
 export const removeRouteHandlerLazyOutputAtKnownLocation = ({
   handlersDir,

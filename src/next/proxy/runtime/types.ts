@@ -9,9 +9,11 @@ import type { ResolvedRouteHandlersConfig } from '../../types';
  * request reaches the proxy runtime:
  * - exact-path heavy-route rewrite lookups
  * - configured target route bases for diagnostics
- * - the current resolved target configs, but only so a separate lazy
- *   discovery-snapshot layer can validate request-time discoveries against
- *   the newest target identity without re-resolving app config itself
+ * - the current resolved target configs for worker-side request handling
+ *
+ * The key boundary is that request-time routing should not re-resolve app
+ * config for itself. If a later worker-side step needs the fully resolved
+ * target config, it has to come through this routing-state bridge.
  *
  * Keeping the shape narrow makes it easier to reason about what the request
  * layer is allowed to know. Anything more expensive or configuration-heavy
@@ -31,10 +33,13 @@ export type RouteHandlerProxyRoutingState = {
    *
    * @remarks
    * The direct request-routing layer should continue to ignore this field
-   * unless it is delegating to another isolated subsystem. Right now that
-   * subsystem is the lazy discovery snapshot, which needs the newest resolved
-   * config to validate whether a previously published lazy rewrite is still
-   * trustworthy.
+   * unless it is delegating to another isolated subsystem.
+   *
+   * Right now:
+   * 1. the worker path may still need the fully resolved target config
+   * 2. request routing should not re-resolve app config for that later step
+   * 3. publishing the map here keeps that worker-side step isolated from
+   *    config loading
    */
   resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
 };

@@ -244,7 +244,7 @@ describe('proxy lazy single-route analysis', () => {
     );
   });
 
-  it('invalidates the lazy single-route cache when the target static identity changes', async () => {
+  it('keeps using the cached one-file result when only non-content target config changes', async () => {
     await withTempDir(
       'next-slug-splitter-proxy-lazy-single-route-',
       async rootDir => {
@@ -329,6 +329,81 @@ describe('proxy lazy single-route analysis', () => {
           secondResolution.routePath
         );
 
+        expect(secondResult?.kind).toBe('heavy');
+        expect(secondResult?.source).toBe('cache');
+        expect(await readLogEntries(processorLogPath)).toEqual([routeFilePath]);
+      }
+    );
+  });
+
+  it('re-analyzes the route when the backing content file changes even if it stays heavy', async () => {
+    await withTempDir(
+      'next-slug-splitter-proxy-lazy-single-route-',
+      async rootDir => {
+        const processorLogPath = path.join(rootDir, 'processor-calls.log');
+        const routeHandlersConfig = createSingleTargetConfig({
+          rootDir
+        });
+        const routeFilePath = path.join(
+          rootDir,
+          TEST_PRIMARY_CONTENT_PAGES_DIR,
+          'guides',
+          'en.mdx'
+        );
+
+        captureReferencedComponentNamesMock.mockResolvedValue(['CustomComponent']);
+        await writeTestRouteHandlerPackage(rootDir);
+        await writeTestBaseStaticPropsPage(rootDir, {
+          routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
+          handlerRouteParam: {
+            name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+            kind: 'catch-all'
+          }
+        });
+        await writeTestModule(
+          path.join(rootDir, 'next.config.mjs'),
+          'export default {};\n'
+        );
+        await writeTestModule(
+          path.join(
+            rootDir,
+            'node_modules',
+            'test-route-handlers',
+            'primary',
+            'processor.js'
+          ),
+          createCountedProcessorSource(processorLogPath)
+        );
+        await writeTestModule(routeFilePath, '# Guides\n');
+        loadRegisteredSlugSplitterConfigMock.mockResolvedValue(routeHandlersConfig);
+
+        const resolution = await resolveRouteHandlerLazyRequest({
+          pathname: '/content/guides',
+          localeConfig: {
+            locales: ['en'],
+            defaultLocale: 'en'
+          }
+        });
+        if (resolution.kind !== 'matched-route-file') {
+          throw new Error('Expected matched-route-file resolution.');
+        }
+
+        const firstResult = await analyzeRouteHandlerLazyMatchedRoute(
+          resolution.config.targetId,
+          resolution.config.localeConfig,
+          resolution.routePath
+        );
+
+        await writeTestModule(routeFilePath, '# Guides updated\n');
+
+        const secondResult = await analyzeRouteHandlerLazyMatchedRoute(
+          resolution.config.targetId,
+          resolution.config.localeConfig,
+          resolution.routePath
+        );
+
+        expect(firstResult?.kind).toBe('heavy');
+        expect(firstResult?.source).toBe('fresh');
         expect(secondResult?.kind).toBe('heavy');
         expect(secondResult?.source).toBe('fresh');
         expect(await readLogEntries(processorLogPath)).toEqual([
