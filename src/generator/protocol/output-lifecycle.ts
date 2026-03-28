@@ -19,12 +19,12 @@
  * should happen. This module is only about *how* the transition is performed.
  */
 import {
-  access,
   mkdir,
   readFile,
   readdir,
   rm,
   rmdir,
+  stat,
   unlink,
   writeFile
 } from 'node:fs/promises';
@@ -83,7 +83,7 @@ export const doesRouteHandlerOutputFileExist = async (
   pageFilePath: string
 ): Promise<boolean> => {
   try {
-    await access(pageFilePath);
+    await stat(pageFilePath);
     return true;
   } catch {
     return false;

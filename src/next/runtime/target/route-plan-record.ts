@@ -8,11 +8,12 @@ import {
   createRouteContext,
   createRouteHandlerRoutePlanner
 } from '../../../core/processor-runner';
+import { isModuleReference } from '../../../module-reference';
 import type {
-  ComponentImportSpec,
   LoadableComponentEntry,
   LocalizedRoutePath,
-  PlannedHeavyRoute
+  PlannedHeavyRoute,
+  ResolvedComponentImportSpec
 } from '../../../core/types';
 import { isArrayOf, isString } from '../../../utils/type-guards';
 import {
@@ -57,16 +58,16 @@ export type PersistedRoutePlanRecord = {
  * @param value - Candidate persisted value.
  * @returns `true` when the value matches the expected persisted shape.
  */
-const isComponentImportSpec = (
+const isResolvedComponentImportSpec = (
   value: unknown
-): value is ComponentImportSpec => {
-  if (!isObjectRecordOf<ComponentImportSpec>(value)) {
+): value is ResolvedComponentImportSpec => {
+  if (!isObjectRecordOf<ResolvedComponentImportSpec>(value)) {
     return false;
   }
 
   const kind = readObjectProperty(value, 'kind');
   return (
-    isString(readObjectProperty(value, 'source')) &&
+    isModuleReference(readObjectProperty(value, 'source')) &&
     (kind === 'default' || kind === 'named') &&
     isString(readObjectProperty(value, 'importedName'))
   );
@@ -87,7 +88,9 @@ const isLoadableComponentEntry = (
 
   return (
     isString(readObjectProperty(value, 'key')) &&
-    isComponentImportSpec(readObjectProperty(value, 'componentImport')) &&
+    isResolvedComponentImportSpec(
+      readObjectProperty(value, 'componentImport')
+    ) &&
     isJsonObject(readObjectProperty(value, 'metadata'))
   );
 };
@@ -112,7 +115,7 @@ const isPlannedHeavyRoute = (value: unknown): value is PlannedHeavyRoute => {
     isString(readObjectProperty(value, 'handlerId')) &&
     isString(readObjectProperty(value, 'handlerRelativePath')) &&
     isStringArray(readObjectProperty(value, 'usedLoadableComponentKeys')) &&
-    isString(readObjectProperty(value, 'factoryVariant')) &&
+    isModuleReference(readObjectProperty(value, 'factoryImport')) &&
     isComponentEntryArray(readObjectProperty(value, 'componentEntries'))
   );
 };
@@ -192,7 +195,7 @@ export const createPersistedRoutePlanRecord = async ({
 
   const plannedRouteBase: Omit<
     PlannedHeavyRoute,
-    'factoryVariant' | 'componentEntries'
+    'factoryImport' | 'componentEntries'
   > = {
     locale: routePath.locale,
     slugArray: routePath.slugArray,
@@ -216,16 +219,17 @@ export const createPersistedRoutePlanRecord = async ({
     slugArray: routePath.slugArray,
     targetId: config.targetId
   });
-  const { factoryVariant, componentEntries } = await planRoute({
+
+  const { factoryImport, componentEntries } = await planRoute({
     route,
-    capturedKeys: usedLoadableComponentKeys
+    capturedComponentKeys: usedLoadableComponentKeys
   });
 
   return {
     version: ROUTE_PLAN_RECORD_VERSION,
     plannedHeavyRoute: {
       ...plannedRouteBase,
-      factoryVariant,
+      factoryImport,
       componentEntries
     }
   };

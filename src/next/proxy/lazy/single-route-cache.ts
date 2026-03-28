@@ -13,13 +13,18 @@ import {
 
 import type { LocalizedRoutePath } from '../../../core/types';
 import type { ResolvedRouteHandlersConfig } from '../../types';
+import type { BootstrapGenerationToken } from '../runtime/types';
 
 const LAZY_SINGLE_ROUTE_CACHE_DIRECTORY = path.join(
   '.next',
   'cache',
   'route-handlers-lazy-single-routes'
 );
-const LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION = 2;
+const LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION = 3;
+
+// Cache-policy note: this is the main persisted semantic cache still used by
+// the dev proxy path. It stores one-file route-plan records, not emitted
+// handler artifacts themselves. See `docs/architecture/cache-policy.md`.
 
 /**
  * Persisted lazy single-route cache entry stored in `file-entry-cache`
@@ -32,6 +37,7 @@ const LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION = 2;
  */
 type LazySingleRouteCacheRecord = {
   version: number;
+  bootstrapGenerationToken: BootstrapGenerationToken;
   routePlanRecord: PersistedRoutePlanRecord;
 };
 
@@ -90,6 +96,10 @@ const readLazySingleRouteCacheRecord = (
 
   return {
     version: LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION,
+    bootstrapGenerationToken: readObjectProperty(
+      value,
+      'bootstrapGenerationToken'
+    ) as BootstrapGenerationToken,
     routePlanRecord
   };
 };
@@ -106,15 +116,18 @@ const readLazySingleRouteCacheRecord = (
  * Reuse is allowed only when all three checks pass:
  * - `routePath.filePath` still exists
  * - the content checksum for `routePath.filePath` is unchanged
+ * - the cached record was written for the current bootstrap generation
  * - the stored descriptor metadata can still be decoded as a
  *   `LazySingleRouteCacheRecord` for the current cache version
  */
 export const readLazySingleRouteCachedPlanRecord = ({
   config,
-  routePath
+  routePath,
+  bootstrapGenerationToken
 }: {
   config: ResolvedRouteHandlersConfig;
   routePath: LocalizedRoutePath;
+  bootstrapGenerationToken: BootstrapGenerationToken;
 }): PersistedRoutePlanRecord | null => {
   const fileCache = createLazySingleRouteFileCache({
     rootDir: config.app.rootDir,
@@ -131,7 +144,10 @@ export const readLazySingleRouteCachedPlanRecord = ({
   const descriptor = fileCache.getFileDescriptor(routePath.filePath);
   const cachedRecord = readLazySingleRouteCacheRecord(descriptor.meta.data);
 
-  if (cachedRecord == null) {
+  if (
+    cachedRecord == null ||
+    cachedRecord.bootstrapGenerationToken !== bootstrapGenerationToken
+  ) {
     return null;
   }
 
@@ -149,11 +165,13 @@ export const readLazySingleRouteCachedPlanRecord = ({
 export const writeLazySingleRouteCachedPlanRecord = ({
   config,
   routePath,
-  routePlanRecord
+  routePlanRecord,
+  bootstrapGenerationToken
 }: {
   config: ResolvedRouteHandlersConfig;
   routePath: LocalizedRoutePath;
   routePlanRecord: PersistedRoutePlanRecord;
+  bootstrapGenerationToken: BootstrapGenerationToken;
 }): void => {
   const fileCache = createLazySingleRouteFileCache({
     rootDir: config.app.rootDir,
@@ -165,6 +183,7 @@ export const writeLazySingleRouteCachedPlanRecord = ({
   // self-contained and cheaply reusable on the next request.
   descriptor.meta.data = {
     version: LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION,
+    bootstrapGenerationToken,
     routePlanRecord
   } satisfies LazySingleRouteCacheRecord;
 

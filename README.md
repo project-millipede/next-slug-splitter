@@ -11,8 +11,8 @@ through build-time rewrites (production) or a request-time proxy (development).
 1. [Overview](#overview)
 2. [Getting Started](#getting-started)
 3. [Quick Start](#quick-start)
-4. [Operation Modes](#operation-modes)
-5. [Usage](#usage)
+4. [Usage](#usage)
+5. [Operation Modes](#operation-modes)
 6. [Configuration Reference](#configuration-reference)
 7. [Architecture](#architecture)
 8. [Capabilities](#capabilities)
@@ -103,7 +103,6 @@ import { createCatchAllRouteHandlersPreset } from 'next-slug-splitter/next/confi
 import { routeHandlerBindings } from 'site-route-handlers/config';
 
 const rootDir = process.cwd();
-const nextConfigPath = path.resolve(rootDir, 'next.config.mjs');
 
 /** @type {import('next-slug-splitter/next').DynamicRouteParam} */
 const docsRouteParam = {
@@ -121,7 +120,6 @@ const blogRouteParam = {
 export const routeHandlersConfig = {
   app: {
     rootDir,
-    nextConfigPath,
     routing: {
       // Default: 'proxy' in development, rewrites in production
       development: 'proxy'
@@ -145,19 +143,155 @@ export const routeHandlersConfig = {
 };
 ```
 
-### 3. Generate Before Build (Production Only)
+No separate generation command is required for the standard integration path.
+`next build` runs route-handler generation automatically through the installed
+adapter.
 
-```json
+## Usage
+
+### Module References for Shared Packages
+
+If your processors, factories, or component registries already live behind
+package exports, use `packageModule(...)` early instead of building manual
+filesystem paths into your route-handler config.
+
+This is especially useful in processors:
+
+- the package manager and Node resolve the shared package through
+  `node_modules`
+- the processor does not need to maintain app-specific absolute or relative
+  paths for shared component modules
+- the same package export can be reused from both `handlerBinding` and
+  `componentImport.source`
+
+For workspace packages, `packageModule(...)` only works when the package is
+reachable through the app's `node_modules` resolution path, which usually means
+declaring it in the root app `package.json` so the workspace package is hoisted
+or otherwise installed where Node can resolve it. A complete processor example
+appears in Step 3 below.
+
+### 1. Wrap the Next Config
+
+`withSlugSplitter(nextConfigExport, options)` resolves the app-owned route
+handlers config and installs the adapter entry into `adapterPath`.
+
+Two registration modes:
+
+```js
+// File-based (recommended for most apps)
+withSlugSplitter(nextConfig, {
+  configPath: './route-handlers-config.mjs'
+});
+
+// Direct object (useful for monorepos or programmatic setups)
+withSlugSplitter(nextConfig, {
+  routeHandlersConfig: myConfig
+});
+```
+
+### 2. Declare Route Targets
+
+The route handlers config is the app-owned source of truth for route handler
+generation. A target typically describes:
+
+- the public route segment such as `docs` or `blog`
+- the dynamic route parameter kind
+- the content page directory
+- the binding that provides the processor module for route planning
+
+`createCatchAllRouteHandlersPreset(...)` is the shortest way to configure
+catch-all targets without hand-assembling all path values.
+
+### 3. Wire `handlerBinding` and the Processor
+
+The handler binding tells the library which processor module to load:
+
+```ts
 {
-  "scripts": {
-    "route:handlers:generate": "next-slug-splitter",
-    "build": "pnpm route:handlers:generate && next build"
+  handlerBinding: {
+    processorImport: relativeModule('lib/handler-processor')
   }
 }
 ```
 
-> **Note:** In development, proxy mode is the default. No generation step is
-> needed — routes are discovered on demand when first requested.
+The processor is the single source of truth for component imports and factory
+selection. It is exported from the module referenced by `processorImport`.
+
+This is also a common place to use `packageModule(...)` for shared component
+registries or UI packages, because the processor can rely on package exports
+instead of maintaining manual filesystem paths to those component modules.
+
+```ts
+import { packageModule, relativeModule } from 'next-slug-splitter/next';
+
+const componentsModule = packageModule('@demo/components');
+
+export const routeHandlersConfig = {
+  app: {
+    rootDir
+  },
+  targets: [
+    {
+      handlerBinding: {
+        processorImport: packageModule('site-route-handlers/docs/processor')
+      }
+    }
+  ]
+};
+
+export const routeHandlerProcessor = {
+  resolve({ capturedComponentKeys }) {
+    // Gather what you need — registry lookups, metadata, etc. — and return
+    // the final generation plan directly.
+    const componentEntriesByKey =
+      resolveComponentsByCapturedKey(capturedComponentKeys);
+
+    return {
+      factoryImport: relativeModule('lib/handler-factory/none'),
+      components: capturedComponentKeys.map(key => {
+        const entry = componentEntriesByKey[key];
+        return {
+          key,
+          componentImport: {
+            source: componentsModule,
+            kind: 'named',
+            importedName: entry.exportName
+          }
+        };
+      })
+    };
+  }
+};
+```
+
+- **`resolve`** — produce the generation plan for one heavy route. Implementations can still use private local helpers to gather registry data, metadata, or config before returning the final plan.
+
+A TypeScript helper `defineRouteHandlerProcessor(...)` is available for
+type inference:
+
+```ts
+import { defineRouteHandlerProcessor } from 'next-slug-splitter/next';
+
+export const routeHandlerProcessor = defineRouteHandlerProcessor({
+  resolve({ capturedComponentKeys, route }) { ... }
+});
+```
+
+### 4. Generate or Analyze (Optional CLI)
+
+The CLI generates handler artifacts or runs analysis only.
+
+```bash
+next-slug-splitter                    # Generate handlers and artifacts
+next-slug-splitter --analyze-only     # Analyze without generating
+next-slug-splitter --analyze-only --json  # JSON output for tooling
+```
+
+Without `--config`, the CLI falls back to discovering one of the standard Next
+config filenames in the current working directory.
+
+> In development with proxy mode, the CLI step is not needed. The proxy
+> discovers routes on demand.
 
 ## Operation Modes
 
@@ -192,15 +326,49 @@ Benefits over rewrite mode in development:
 
 #### Dev-Mode Cold-Start Behavior
 
-The lazy proxy system is self-healing: when handler files are missing (e.g.
-after a clean script or fresh checkout), the first request to a heavy route
-triggers on-demand re-emission within the same request cycle. The discovery
-snapshot validates that the handler file exists on disk before returning a
-cached rewrite destination. If the file is missing, the request falls through
-to the full lazy-miss path which re-analyzes the content, re-emits the handler,
-and returns the rewrite — all before the proxy response is sent.
+The lazy proxy path is self-healing in development:
 
-**No custom 404 page is required** for handler generation to work correctly.
+1. The worker determines whether the requested route is light or heavy.
+2. If the route is heavy, it checks whether the emitted handler file already exists.
+3. If the file already exists, it is reused and not regenerated.
+4. If the file is missing, the worker emits that single handler on demand.
+5. The rewrite is then resolved within the same request cycle.
+
+This means a missing heavy-route handler can be recreated on first request
+without a separate generation step, while an existing handler is reused as-is.
+
+Handler generation is therefore self-healing, but development can still hit a
+narrow Next/Turbopack warm-up window where the proxy already knows the correct
+handler destination while the emitted page is not fully ready yet. During that
+window, the browser can briefly land on a transient 404 for a catch-all route.
+
+To smooth that development-only case, add a custom `pages/404.*` page that uses
+the dedicated not-found helper:
+
+```tsx
+import type { NextPage } from 'next';
+
+import { useSlugSplitterNotFoundRetry } from 'next-slug-splitter/next/not-found';
+
+const CATCH_ALL_ROUTE_PREFIXES = ['/docs/', '/blog/'];
+
+const NotFound: NextPage = () => {
+  const isNotFoundConfirmed = useSlugSplitterNotFoundRetry({
+    catchAllRoutePrefixes: CATCH_ALL_ROUTE_PREFIXES
+  });
+
+  if (!isNotFoundConfirmed) {
+    return null;
+  }
+
+  return <h1>Page Not Found</h1>;
+};
+
+export default NotFound;
+```
+
+This hook is a no-op outside development, so production builds still render
+their normal 404 page immediately.
 
 ##### Next.js Client-Side Page Manifest Patch
 
@@ -249,56 +417,6 @@ NEXT_SLUG_SPLITTER_DEV_ROUTING=proxy     # Force proxy mode
 NEXT_SLUG_SPLITTER_DEV_ROUTING=rewrites  # Force rewrite mode
 ```
 
-## Usage
-
-### 1. Wrap the Next Config
-
-`withSlugSplitter(nextConfigExport, options)` resolves the app-owned route
-handlers config and installs the adapter entry into `adapterPath`.
-
-Two registration modes:
-
-```js
-// File-based (recommended for most apps)
-withSlugSplitter(nextConfig, {
-  configPath: './route-handlers-config.mjs'
-});
-
-// Direct object (useful for monorepos or programmatic setups)
-withSlugSplitter(nextConfig, {
-  routeHandlersConfig: myConfig
-});
-```
-
-### 2. Declare Route Targets
-
-The route handlers config is the app-owned source of truth for route handler
-generation. A target typically describes:
-
-- the public route segment such as `docs` or `blog`
-- the dynamic route parameter kind
-- the content page directory
-- the binding that provides component imports and runtime factory imports
-
-`createCatchAllRouteHandlersPreset(...)` is the shortest way to configure
-catch-all targets without hand-assembling all path values.
-
-### 3. Generate or Analyze (Production)
-
-The CLI generates handler artifacts or runs analysis only.
-
-```bash
-next-slug-splitter                    # Generate handlers and artifacts
-next-slug-splitter --analyze-only     # Analyze without generating
-next-slug-splitter --analyze-only --json  # JSON output for tooling
-```
-
-Without `--config`, the CLI falls back to discovering one of the standard Next
-config filenames in the current working directory.
-
-> In development with proxy mode, the CLI step is not needed. The proxy
-> discovers routes on demand.
-
 ## Configuration Reference
 
 ### `withSlugSplitter(nextConfigExport, options)`
@@ -317,10 +435,26 @@ Top-level configuration shape.
 | Property | Description |
 |----------|-------------|
 | `app.rootDir` | Application root directory |
-| `app.nextConfigPath` | Path to the Next config file |
 | `app.routing.development` | Development routing mode: `'proxy'` (default) or `'rewrites'` |
-| `app.prepare` | Optional preparation steps run before route planning |
+| `app.prepare` | Optional TypeScript prepare step or steps run before route planning |
 | `targets` | Array of target configurations |
+
+When a processor or registry needs a local TypeScript build before runtime
+loading, configure `app.prepare` as one object or an ordered array of objects:
+
+```js
+app: {
+  rootDir,
+  prepare: [
+    {
+      tsconfigPath: relativeModule('tsconfig.processor.json')
+    }
+  ]
+}
+```
+
+If you only need one prepare step, a single object is also accepted. If no
+pre-build is needed, omit `app.prepare`.
 
 ### `createCatchAllRouteHandlersPreset(options)`
 
@@ -331,7 +465,7 @@ Create one catch-all target with normalized route and path values.
 | `routeSegment` | Public route segment (e.g. `'docs'`, `'blog'`) |
 | `handlerRouteParam` | Dynamic route parameter configuration |
 | `contentPagesDir` | Directory containing content pages |
-| `handlerBinding` | Component imports and runtime factory references |
+| `handlerBinding` | Binding with processor module for route planning |
 | `contentLocaleMode` | Locale detection mode (see below) |
 
 ### `DynamicRouteParam`
@@ -341,6 +475,49 @@ Supported `kind` values:
 - `single` — matches a single path segment
 - `catch-all` — matches one or more path segments
 - `optional-catch-all` — matches zero or more path segments
+
+### Module References
+
+Several config fields use module-reference helpers instead of raw strings.
+
+| Helper | Use when |
+|--------|----------|
+| `relativeModule('lib/handler-processor')` | The file lives under the app root and should resolve relative to `app.rootDir` |
+| `packageModule('site-route-handlers/docs/processor')` | The module is exposed through package exports in `node_modules`, including hoisted workspace packages |
+| `absoluteModule('/abs/path/to/module')` | The file lives outside the app root and outside reachable package exports |
+
+See the Usage section above for a complete `packageModule(...)` example in both
+`handlerBinding.processorImport` and processor-side component imports.
+
+### `handlerBinding`
+
+The handler binding tells the library which processor module to load.
+
+```ts
+{
+  processorImport: relativeModule('lib/handler-processor')
+}
+```
+
+See the Usage section above for a worked processor example.
+
+### Processor (`RouteHandlerProcessor`)
+
+A processor is a route-local transformer the library calls once per heavy route.
+It is exported from the module referenced by `processorImport`.
+
+- **`resolve`** — produce the generation plan for one heavy route. Implementations can still use private local helpers to gather registry data, metadata, or config before returning the final plan.
+
+A TypeScript helper `defineRouteHandlerProcessor(...)` is available for
+type inference:
+
+```ts
+import { defineRouteHandlerProcessor } from 'next-slug-splitter/next';
+
+export const routeHandlerProcessor = defineRouteHandlerProcessor({
+  resolve({ capturedComponentKeys, route }) { ... }
+});
+```
 
 ### `contentLocaleMode`
 
@@ -361,13 +538,10 @@ runs during the relevant Next.js phases and coordinates:
 - Cache management across generation runs
 - Rewrite injection or proxy file generation
 
-### Cache System
+### Runtime Reuse
 
-Multiple cache groups work together to avoid redundant work:
+The runtime keeps reuse narrowly scoped to the artifacts it actually owns:
 
-- **Preparation cache** — runs app-owned setup steps (e.g. TypeScript compilation)
-- **Process-local cache** — deduplicates generation within one Node process
-- **Persistent shared cache** — on-disk cache keyed by pipeline fingerprint
 - **Incremental planning** — per-target selective emission when configs match
 - **Lazy discovery snapshots** — proxy-mode request-time discoveries persisted to disk
 
@@ -398,7 +572,7 @@ route, and returns the result to the proxy runtime.
 - Install rewrite integration without mutating the incoming Next config object
 - Resolve app-level and target-level route handler config in one shared shape
 - Discover content pages and generate handler artifacts per target
-- Reuse handler bindings for component imports and runtime factory selection
+- Reuse handler bindings for processor-driven route planning
 - Support multi-target setups such as `docs` plus `blog`
 - Offer both generation and analyze-only CLI modes
 - Locale-aware routing with configurable detection modes
@@ -412,4 +586,3 @@ route, and returns the result to the proxy runtime.
 | `rewrites()` → `beforeFiles` | Routes heavy-page traffic to generated handlers in production |
 | `proxy.ts` (root file) | Intercepts and classifies requests on demand in development |
 | Phase constants | Selects rewrite mode (build/serve) or proxy mode (dev) |
-

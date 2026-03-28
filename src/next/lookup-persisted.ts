@@ -1,0 +1,181 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+
+import { isObjectRecord, readObjectProperty } from './config/shared';
+import { toHeavyRoutePathKey } from './heavy-route-path-key';
+
+import type { RouteHandlerNextResult } from './types';
+
+const ROUTE_HANDLER_LOOKUP_SNAPSHOT_VERSION = 1;
+const DEFAULT_ROUTE_HANDLER_LOOKUP_SNAPSHOT_PATH = path.join(
+  '.next',
+  'cache',
+  'route-handlers-lookup.json'
+);
+
+export type PersistedRouteHandlerLookupTarget = {
+  targetId: string;
+  heavyRoutePathKeys: Array<string>;
+};
+
+export type PersistedRouteHandlerLookupSnapshot = {
+  version: number;
+  filterHeavyRoutesInStaticPaths: boolean;
+  targets: Array<PersistedRouteHandlerLookupTarget>;
+};
+
+const isPersistedRouteHandlerLookupTarget = (
+  value: unknown
+): value is PersistedRouteHandlerLookupTarget => {
+  if (!isObjectRecord(value)) {
+    return false;
+  }
+
+  const targetId = readObjectProperty(value, 'targetId');
+  const heavyRoutePathKeys = readObjectProperty(value, 'heavyRoutePathKeys');
+
+  return (
+    typeof targetId === 'string' &&
+    targetId.length > 0 &&
+    Array.isArray(heavyRoutePathKeys) &&
+    heavyRoutePathKeys.every(entry => typeof entry === 'string')
+  );
+};
+
+export const resolveRouteHandlerLookupSnapshotPath = (
+  rootDir: string
+): string =>
+  path.resolve(rootDir, DEFAULT_ROUTE_HANDLER_LOOKUP_SNAPSHOT_PATH);
+
+export const createRouteHandlerLookupSnapshot = (
+  filterHeavyRoutesInStaticPaths: boolean,
+  targetIds: Array<string>,
+  result?: RouteHandlerNextResult
+): PersistedRouteHandlerLookupSnapshot => {
+  const heavyRoutePathKeysByTargetId = new Map<string, Set<string>>();
+
+  for (const targetId of targetIds) {
+    heavyRoutePathKeysByTargetId.set(targetId, new Set());
+  }
+
+  for (const heavyRoute of result?.heavyPaths ?? []) {
+    const targetId = heavyRoute.targetId;
+
+    if (typeof targetId !== 'string' || targetId.length === 0) {
+      continue;
+    }
+
+    if (!heavyRoutePathKeysByTargetId.has(targetId)) {
+      heavyRoutePathKeysByTargetId.set(targetId, new Set());
+    }
+
+    heavyRoutePathKeysByTargetId.get(targetId)!.add(
+      toHeavyRoutePathKey(heavyRoute.locale, heavyRoute.slugArray)
+    );
+  }
+
+  return {
+    version: ROUTE_HANDLER_LOOKUP_SNAPSHOT_VERSION,
+    filterHeavyRoutesInStaticPaths,
+    targets: Array.from(heavyRoutePathKeysByTargetId.entries())
+      .sort(([leftTargetId], [rightTargetId]) =>
+        leftTargetId.localeCompare(rightTargetId)
+      )
+      .map(([targetId, heavyRoutePathKeys]) => ({
+        targetId,
+        heavyRoutePathKeys: [...heavyRoutePathKeys].sort((left, right) =>
+          left.localeCompare(right)
+        )
+      }))
+  };
+};
+
+export const serializeRouteHandlerLookupSnapshot = (
+  snapshot: PersistedRouteHandlerLookupSnapshot
+): string =>
+  JSON.stringify(
+    {
+      version: ROUTE_HANDLER_LOOKUP_SNAPSHOT_VERSION,
+      filterHeavyRoutesInStaticPaths: snapshot.filterHeavyRoutesInStaticPaths,
+      targets: snapshot.targets.map(target => ({
+        targetId: target.targetId,
+        heavyRoutePathKeys: [...target.heavyRoutePathKeys]
+      }))
+    },
+    null,
+    2
+  ) + '\n';
+
+export const parseRouteHandlerLookupSnapshot = (
+  raw: string
+): PersistedRouteHandlerLookupSnapshot | null => {
+  try {
+    const parsed = JSON.parse(raw);
+
+    if (!isObjectRecord(parsed)) {
+      return null;
+    }
+
+    if (
+      readObjectProperty(parsed, 'version') !==
+        ROUTE_HANDLER_LOOKUP_SNAPSHOT_VERSION ||
+      typeof readObjectProperty(parsed, 'filterHeavyRoutesInStaticPaths') !==
+        'boolean'
+    ) {
+      return null;
+    }
+
+    const targets = readObjectProperty(parsed, 'targets');
+
+    if (
+      !Array.isArray(targets) ||
+      !targets.every(isPersistedRouteHandlerLookupTarget)
+    ) {
+      return null;
+    }
+
+    return {
+      version: ROUTE_HANDLER_LOOKUP_SNAPSHOT_VERSION,
+      filterHeavyRoutesInStaticPaths: readObjectProperty(
+        parsed,
+        'filterHeavyRoutesInStaticPaths'
+      ) as boolean,
+      targets: targets.map(target => ({
+        targetId: target.targetId,
+        heavyRoutePathKeys: [...target.heavyRoutePathKeys]
+      }))
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const readRouteHandlerLookupSnapshot = async (
+  rootDir: string
+): Promise<PersistedRouteHandlerLookupSnapshot | null> => {
+  const snapshotPath = resolveRouteHandlerLookupSnapshotPath(rootDir);
+
+  try {
+    return parseRouteHandlerLookupSnapshot(
+      await readFile(snapshotPath, 'utf8')
+    );
+  } catch {
+    return null;
+  }
+};
+
+export const writeRouteHandlerLookupSnapshot = async (
+  rootDir: string,
+  snapshot: PersistedRouteHandlerLookupSnapshot
+): Promise<void> => {
+  const snapshotPath = resolveRouteHandlerLookupSnapshotPath(rootDir);
+
+  await mkdir(path.dirname(snapshotPath), {
+    recursive: true
+  });
+  await writeFile(
+    snapshotPath,
+    serializeRouteHandlerLookupSnapshot(snapshot),
+    'utf8'
+  );
+};

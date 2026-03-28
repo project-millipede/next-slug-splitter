@@ -1,55 +1,65 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import { resolveRouteHandlerLookupPolicy } from '../../../next/policy/lookup-policy';
 
 describe('route handler lookup policy', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
+  type Scenario = {
+    id: string;
+    description: string;
+    nodeEnv: 'development' | 'production';
+    developmentRoutingMode: 'proxy' | 'rewrites';
+    expected: {
+      readPersistedLazyDiscoveries: boolean;
+      allowGenerateFallback: boolean;
+    };
+  };
 
-  it('makes development proxy lookup read-only by default', () => {
-    vi.stubEnv('NODE_ENV', 'development');
+  const scenarios: ReadonlyArray<Scenario> = [
+    {
+      id: 'Dev-Proxy',
+      description: 'development proxy lookup stays read-only and best-effort',
+      nodeEnv: 'development',
+      developmentRoutingMode: 'proxy',
+      expected: {
+        readPersistedLazyDiscoveries: true,
+        allowGenerateFallback: false
+      }
+    },
+    {
+      id: 'Dev-Rewrites',
+      description: 'development rewrite lookup keeps the exact analyze-fallback contract',
+      nodeEnv: 'development',
+      developmentRoutingMode: 'rewrites',
+      expected: {
+        readPersistedLazyDiscoveries: false,
+        allowGenerateFallback: true
+      }
+    },
+    {
+      id: 'Prod',
+      description: 'non-development lookup keeps the stable exact analyze-fallback contract',
+      nodeEnv: 'production',
+      developmentRoutingMode: 'proxy',
+      expected: {
+        readPersistedLazyDiscoveries: false,
+        allowGenerateFallback: true
+      }
+    }
+  ];
+
+  test.for(scenarios)('[$id] $description', ({
+    nodeEnv,
+    developmentRoutingMode,
+    expected
+  }) => {
+    vi.stubEnv('NODE_ENV', nodeEnv);
 
     expect(
       resolveRouteHandlerLookupPolicy({
         routingPolicy: {
-          development: 'proxy'
+          development: developmentRoutingMode
         }
       })
-    ).toEqual({
-      readPersistedLazyDiscoveries: true,
-      allowGenerateFallback: false
-    });
-  });
-
-  it('keeps development rewrite lookup on the exact generate-fallback contract', () => {
-    vi.stubEnv('NODE_ENV', 'development');
-
-    expect(
-      resolveRouteHandlerLookupPolicy({
-        routingPolicy: {
-          development: 'rewrites'
-        }
-      })
-    ).toEqual({
-      readPersistedLazyDiscoveries: false,
-      allowGenerateFallback: true
-    });
-  });
-
-  it('keeps non-development lookup on the stable generate-fallback contract', () => {
-    vi.stubEnv('NODE_ENV', 'production');
-
-    expect(
-      resolveRouteHandlerLookupPolicy({
-        routingPolicy: {
-          development: 'proxy'
-        }
-      })
-    ).toEqual({
-      readPersistedLazyDiscoveries: false,
-      allowGenerateFallback: true
-    });
+    ).toEqual(expected);
   });
 });

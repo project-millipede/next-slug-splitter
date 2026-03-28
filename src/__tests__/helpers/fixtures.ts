@@ -1,14 +1,10 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import {
-  appRelativeModule,
-  packageModule
-} from '../../module-reference';
-import type {
-  ModuleReference,
-  RouteHandlerBinding
-} from '../../next/types';
+import { packageModule } from '../../module-reference';
+import type { ModuleReference } from '../../module-reference';
+import type { RouteHandlerBinding } from '../../next/types';
+import type { LocaleConfig } from '../../core/types';
 
 export const TEST_PRIMARY_ROUTE_SEGMENT = 'content';
 export const TEST_SECONDARY_ROUTE_SEGMENT = 'secondary';
@@ -18,25 +14,21 @@ export const TEST_SINGLE_ROUTE_PARAM_NAME = 'item';
 export const TEST_PRIMARY_CONTENT_PAGES_DIR = 'content/src/pages';
 export const TEST_SECONDARY_CONTENT_PAGES_DIR = 'secondary/src/pages';
 
-export const TEST_PRIMARY_COMPONENTS_IMPORT =
-  'test-route-handlers/primary/components';
-export const TEST_SECONDARY_COMPONENTS_IMPORT =
-  'test-route-handlers/secondary/components';
-
 export const TEST_PRIMARY_FACTORY_IMPORT =
   'test-route-handlers/primary/factory';
-export const TEST_SECONDARY_FACTORY_IMPORT =
-  'test-route-handlers/secondary/factory';
 export const TEST_PRIMARY_PROCESSOR_IMPORT =
   'test-route-handlers/primary/processor';
 export const TEST_SECONDARY_PROCESSOR_IMPORT =
   'test-route-handlers/secondary/processor';
 
-export const TEST_STATIC_PROPS_IMPORT =
-  '@next-slug-splitter-test/static-props';
+export const TEST_STATIC_PROPS_IMPORT = '@next-slug-splitter-test/static-props';
 export const TEST_COMPONENT_IMPORT_SOURCE =
   '@next-slug-splitter-test/components';
 export const TEST_COMPONENT_IMPORT_NAME = 'CustomComponent';
+export const TEST_LOCALE_CONFIG: LocaleConfig = {
+  locales: ['en'],
+  defaultLocale: 'en'
+};
 
 const DEFAULT_TEST_FACTORY_VARIANTS = ['none', 'selection', 'wrapper'];
 
@@ -82,21 +74,15 @@ const createComponentModuleSource = (): string =>
   ].join('\n');
 
 const createFactoryModuleSource = (): string =>
-  [
-    'export const createHandlerPage = input => input;',
-    ''
-  ].join('\n');
+  ['export const createHandlerPage = input => input;', ''].join('\n');
 
 const createProcessorModuleSource = (): string =>
   [
     'export const routeHandlerProcessor = {',
-    '  ingress({ capturedKeys }) {',
-    '    return Object.fromEntries(capturedKeys.map(key => [key, {}]));',
-    '  },',
-    '  egress({ capturedKeys }) {',
+    '  resolve({ capturedComponentKeys }) {',
     '    return {',
-    "      factoryVariant: 'none',",
-    '      components: capturedKeys.map(key => ({ key }))',
+    "      factoryImport: { kind: 'package', specifier: 'none' },",
+    "      components: capturedComponentKeys.map(key => ({ key, componentImport: { source: { kind: 'package', specifier: './components' }, kind: 'named', importedName: key } }))",
     '    };',
     '  }',
     '};',
@@ -124,27 +110,15 @@ const createFactoryExports = ({
 };
 
 export const createTestHandlerBinding = ({
-  componentsImport = packageModule(TEST_PRIMARY_COMPONENTS_IMPORT),
-  importBase = packageModule(TEST_PRIMARY_FACTORY_IMPORT),
   processorImport
 }: {
-  componentsImport?: ModuleReference;
-  importBase?: ModuleReference;
   processorImport?: ModuleReference;
 } = {}): RouteHandlerBinding => {
   const resolvedProcessorImport =
-    processorImport ??
-    (componentsImport.kind === 'package' &&
-    componentsImport.specifier === TEST_SECONDARY_COMPONENTS_IMPORT
-      ? packageModule(TEST_SECONDARY_PROCESSOR_IMPORT)
-      : packageModule(TEST_PRIMARY_PROCESSOR_IMPORT));
+    processorImport ?? packageModule(TEST_PRIMARY_PROCESSOR_IMPORT);
 
   return {
-    componentsImport,
-    processorImport: resolvedProcessorImport,
-    runtimeFactory: {
-      importBase
-    }
+    processorImport: resolvedProcessorImport
   };
 };
 
@@ -258,6 +232,3 @@ export const writeTestBaseStaticPropsPage = async (
     ].join('\n')
   );
 };
-
-export const createTestBaseStaticPropsReference = (): ModuleReference =>
-  appRelativeModule('pages/content/[...entry]');

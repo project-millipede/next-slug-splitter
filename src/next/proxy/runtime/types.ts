@@ -1,23 +1,28 @@
 import type { LocaleConfig } from '../../../core/types';
-import type { ResolvedRouteHandlersConfig } from '../../types';
+
+/**
+ * Stable generation token for one bootstrapped proxy session.
+ *
+ * @remarks
+ * Token aspects:
+ * - Identity: one token represents one coherent parent-side bootstrap result.
+ * - Reuse: matching tokens allow the worker session to keep its current
+ *   bootstrapped state.
+ * - Restart: token changes require a worker restart and re-bootstrap.
+ */
+export type BootstrapGenerationToken = string;
 
 /**
  * Request-time routing state consumed by the dev proxy path.
  *
  * @remarks
- * This state intentionally contains only the minimum data needed once a
- * request reaches the proxy runtime:
- * - exact-path heavy-route rewrite lookups
- * - configured target route bases for diagnostics
- * - the current resolved target configs for worker-side request handling
- *
- * The key boundary is that request-time routing should not re-resolve app
- * config for itself. If a later worker-side step needs the fully resolved
- * target config, it has to come through this routing-state bridge.
- *
- * Keeping the shape narrow makes it easier to reason about what the request
- * layer is allowed to know. Anything more expensive or configuration-heavy
- * belongs in the routing-state loader, not in the per-request decision layer.
+ * State aspects:
+ * - Scope: this state contains only the values needed by the thin request-time
+ *   runtime.
+ * - Boundary: request-time routing does not re-resolve app config or heavy
+ *   planning data for itself.
+ * - Coordination: the bootstrap generation token is the parent-side handle for
+ *   the current long-lived worker session.
  */
 export type RouteHandlerProxyRoutingState = {
   /**
@@ -29,19 +34,18 @@ export type RouteHandlerProxyRoutingState = {
    */
   targetRouteBasePaths: Array<string>;
   /**
-   * Current fully resolved target configs keyed by stable target id.
+   * Whether any splitter config is currently available in the parent process.
    *
    * @remarks
-   * The direct request-routing layer should continue to ignore this field
-   * unless it is delegating to another isolated subsystem.
-   *
-   * Right now:
-   * 1. the worker path may still need the fully resolved target config
-   * 2. request routing should not re-resolve app config for that later step
-   * 3. publishing the map here keeps that worker-side step isolated from
-   *    config loading
+   * This lets request routing skip the worker entirely when no registered
+   * splitter config exists, while still allowing a conservative worker-only
+   * fallback when the thin proxy runtime could not load config in-process.
    */
-  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
+  hasConfiguredTargets: boolean;
+  /**
+   * Current bootstrap generation token for the lazy worker session.
+   */
+  bootstrapGenerationToken: BootstrapGenerationToken;
 };
 
 /**

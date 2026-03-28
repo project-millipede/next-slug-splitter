@@ -2,7 +2,7 @@ import { access, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD } from 'next/constants.js';
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 
 import { createCatchAllRouteHandlersPreset } from '../../../next/config';
 import { synchronizeRouteHandlerProxyFile } from '../../../next/proxy/file-lifecycle';
@@ -23,8 +23,7 @@ const SYNTHETIC_PROXY_MARKER =
 
 const createMultiTargetConfig = (rootDir: string): RouteHandlersConfig => ({
   app: {
-    rootDir,
-    nextConfigPath: path.join(rootDir, 'next.config.mjs')
+    rootDir
   },
   targets: [
     createCatchAllRouteHandlersPreset({
@@ -298,22 +297,6 @@ describe('generated proxy file lifecycle', () => {
           resolvedConfigs
         })
       ).rejects.toThrow(/existing app-owned middleware file/i);
-    });
-  });
-
-  it('falls back to rewrite strategy outside development even when development policy prefers proxy', () => {
-    vi.stubEnv('NODE_ENV', 'production');
-
-    expect(
-      resolveRouteHandlerRoutingStrategy({
-        phase: PHASE_PRODUCTION_BUILD,
-        routingPolicy: {
-          development: 'proxy'
-        }
-      })
-    ).toEqual({
-      kind: 'rewrites',
-      reason: 'proxy-disabled-in-production'
     });
   });
 });

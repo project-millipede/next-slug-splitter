@@ -5,8 +5,10 @@ import {
 } from './single-handler-emission';
 import { composeKey } from './key-builder';
 
-import type { LocaleConfig, LocalizedRoutePath } from '../../../core/types';
+import type { LocalizedRoutePath } from '../../../core/types';
+import type { ResolvedRouteHandlersConfig } from '../../types';
 import type { RouteHandlerLazyMatchedRoutePreparationResult } from './types';
+import type { BootstrapGenerationToken } from '../runtime/types';
 
 /**
  * Process-local dedupe map for concurrent cold lazy-route requests.
@@ -67,22 +69,27 @@ const inFlightLazyMatchedRoutePreparations = new Map<
  * In the heavy case, `analysisResult` carries the planned heavy-route data
  * needed to resolve the rewrite destination.
  *
- * @param targetId - Target identifier used for one-file analysis.
- * @param localeConfig - Locale settings shared by the lazy proxy path.
- * @param routePath - Concrete localized content route file being prepared.
+ * @param input - Analysis/emission input.
  * @returns Preparation result for the matched route, or `null` when the target
  * can no longer be resolved.
  */
-const analyzeAndPrepare = async (
-  targetId: string,
-  localeConfig: LocaleConfig,
-  routePath: LocalizedRoutePath
-): Promise<RouteHandlerLazyMatchedRoutePreparationResult | null> => {
-  const analysisResult = await analyzeRouteHandlerLazyMatchedRoute(
+const analyzeAndPrepare = async ({
+  targetId,
+  routePath,
+  bootstrapGenerationToken,
+  resolvedConfigsByTargetId
+}: {
+  targetId: string;
+  routePath: LocalizedRoutePath;
+  bootstrapGenerationToken: BootstrapGenerationToken;
+  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
+}): Promise<RouteHandlerLazyMatchedRoutePreparationResult | null> => {
+  const analysisResult = await analyzeRouteHandlerLazyMatchedRoute({
     targetId,
-    localeConfig,
-    routePath
-  );
+    routePath,
+    bootstrapGenerationToken,
+    resolvedConfigsByTargetId
+  });
 
   if (analysisResult?.kind === 'heavy') {
     const hasCachedHeavyResult = analysisResult.source === 'cache';
@@ -138,17 +145,21 @@ const analyzeAndPrepare = async (
  * {@link analyzeAndPrepare} promise. The dedupe slot is cleared after the promise
  * settles so subsequent requests can observe content or cache changes.
  *
- * @param targetId - Target identifier for dedupe key and analysis.
- * @param localeConfig - Shared locale config for analysis.
- * @param routePath - Concrete localized content route file.
+ * @param input - Preparation input.
  * @returns Preparation result from {@link analyzeAndPrepare}, or `null` when the
  * target can no longer be analyzed.
  */
-export const prepareRouteHandlerLazyMatchedRoute = async (
-  targetId: string,
-  localeConfig: LocaleConfig,
-  routePath: LocalizedRoutePath
-): Promise<RouteHandlerLazyMatchedRoutePreparationResult | null> => {
+export const prepareRouteHandlerLazyMatchedRoute = async ({
+  targetId,
+  routePath,
+  bootstrapGenerationToken,
+  resolvedConfigsByTargetId
+}: {
+  targetId: string;
+  routePath: LocalizedRoutePath;
+  bootstrapGenerationToken: BootstrapGenerationToken;
+  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
+}): Promise<RouteHandlerLazyMatchedRoutePreparationResult | null> => {
   const preparationKey = composeKey(targetId, routePath.filePath);
   const existingPreparation =
     inFlightLazyMatchedRoutePreparations.get(preparationKey);
@@ -162,11 +173,12 @@ export const prepareRouteHandlerLazyMatchedRoute = async (
   // Cleanup is attached to the promise itself via .finally() so the dedupe
   // slot is cleared exactly once when the work settles, regardless of which
   // caller awaits it first.
-  const preparationPromise = analyzeAndPrepare(
+  const preparationPromise = analyzeAndPrepare({
     targetId,
-    localeConfig,
-    routePath
-  ).finally(() => {
+    routePath,
+    bootstrapGenerationToken,
+    resolvedConfigsByTargetId
+  }).finally(() => {
     inFlightLazyMatchedRoutePreparations.delete(preparationKey);
   });
 

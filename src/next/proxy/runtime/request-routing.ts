@@ -68,7 +68,8 @@ const createEmptyRouteHandlerProxyRoutingState =
   (): RouteHandlerProxyRoutingState => ({
     rewriteBySourcePath: new Map(),
     targetRouteBasePaths: [],
-    resolvedConfigsByTargetId: new Map()
+    hasConfiguredTargets: true,
+    bootstrapGenerationToken: 'route-handler-proxy-worker-only-fallback'
   });
 
 /**
@@ -81,11 +82,13 @@ const createEmptyRouteHandlerProxyRoutingState =
  * Proxy process is not allowed to load app-owned config dynamically.
  */
 const getRouteHandlerProxyRoutingStateWithFallback = async ({
-  localeConfig
+  localeConfig,
+  configRegistration
 }: RouteHandlerProxyOptions): Promise<RouteHandlerProxyRoutingState> => {
   try {
     return await getRouteHandlerProxyRoutingState({
-      localeConfig
+      localeConfig,
+      ...(configRegistration == null ? {} : { configRegistration })
     });
   } catch (error) {
     if (!shouldUseWorkerOnlyProxyFallback(error)) {
@@ -175,7 +178,12 @@ const resolveRouteHandlerProxyDecision = async ({
   });
 
   const routingState = await getRouteHandlerProxyRoutingStateWithFallback({
-    localeConfig: options.localeConfig
+    localeConfig: options.localeConfig,
+    ...(options.configRegistration == null
+      ? {}
+      : {
+          configRegistration: options.configRegistration
+        })
   });
   const knownRewriteDestination =
     routingState.rewriteBySourcePath.get(pathname);
@@ -185,12 +193,22 @@ const resolveRouteHandlerProxyDecision = async ({
       pathname,
       requestKind: requestShape.kind
     });
+
+    if (!routingState.hasConfiguredTargets) {
+      return {
+        kind: 'pass-through',
+        pathname,
+        routeBasePaths: []
+      };
+    }
+
     // Cold lazy misses are now delegated to the dedicated worker boundary.
     // That keeps the main proxy bundle free of the heavy MDX-analysis graph
     // while preserving the same semantic request-routing contract.
     const lazyWorkerResult = await resolveRouteHandlerProxyLazyMissWithWorker({
       pathname,
       localeConfig: options.localeConfig,
+      bootstrapGenerationToken: routingState.bootstrapGenerationToken,
       ...(options.configRegistration == null
         ? {}
         : {

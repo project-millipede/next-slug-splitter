@@ -22,7 +22,6 @@ import { resolveRouteHandlersRoutingPolicy } from './routing-policy';
 import {
   isNonEmptyString,
   isObjectRecord,
-  isStringArray,
   readObjectProperty
 } from './shared';
 
@@ -104,10 +103,10 @@ const resolveConfiguredAppRootDir = ({
 export type ResolveRouteHandlersAppConfigInput = RouteHandlersEntrypointInput;
 
 /**
- * Resolve app-owned preparation tasks.
+ * Resolve the optional app-owned preparation step or steps.
  *
  * @param input - Resolver input.
- * @returns Fully resolved preparation tasks.
+ * @returns Fully resolved preparation steps.
  */
 export const resolveRouteHandlerPreparations = ({
   rootDir,
@@ -123,93 +122,47 @@ export const resolveRouteHandlerPreparations = ({
     return [];
   }
 
-  if (!Array.isArray(configuredPrepare)) {
+  if (!Array.isArray(configuredPrepare) && !isObjectRecord(configuredPrepare)) {
     throw createConfigError(
-      'routeHandlersConfig.app.prepare must be an array when provided.'
+      'routeHandlersConfig.app.prepare must be an object or array when provided.'
     );
   }
 
+  const configuredPreparations = Array.isArray(configuredPrepare)
+    ? configuredPrepare
+    : [configuredPrepare];
   const resolvedPreparations: Array<ResolvedRouteHandlerPreparation> = [];
 
-  for (const [index, preparation] of configuredPrepare.entries()) {
+  for (const [index, preparation] of configuredPreparations.entries()) {
     if (!isObjectRecord(preparation)) {
       throw createConfigError(
         `routeHandlersConfig.app.prepare[${index}] must be an object.`
       );
     }
 
-    const id = readObjectProperty(preparation, 'id');
-    if (!isNonEmptyString(id)) {
-      throw createConfigError(
-        `routeHandlersConfig.app.prepare[${index}].id must be a non-empty string.`
-      );
-    }
-
-    const kind = readObjectProperty(preparation, 'kind');
-    if (kind === 'tsc-project') {
-      const tsconfigPathReference = readObjectProperty(
-        preparation,
-        'tsconfigPath'
-      );
-
-      if (!isModuleReference(tsconfigPathReference)) {
-        throw createConfigError(
-          `routeHandlersConfig.app.prepare[${index}].tsconfigPath must be a module reference object.`
-        );
-      }
-
-      try {
-        resolvedPreparations.push({
-          id,
-          kind,
-          tsconfigPath: resolveModuleReferenceToFilePath({
-            rootDir,
-            reference: tsconfigPathReference
-          })
-        });
-      } catch {
-        throw createConfigError(
-          `routeHandlersConfig.app.prepare[${index}].tsconfigPath could not be resolved from "${rootDir}".`
-        );
-      }
-
-      continue;
-    }
-
-    if (kind === 'command') {
-      const command = readObjectProperty(preparation, 'command');
-      if (!isStringArray(command) || command.length === 0) {
-        throw createConfigError(
-          `routeHandlersConfig.app.prepare[${index}].command must be a non-empty string array.`
-        );
-      }
-
-      const configuredCwd = readObjectProperty(preparation, 'cwd');
-      const cwd = isUndefined(configuredCwd)
-        ? rootDir
-        : resolveConfiguredPathOption({
-            rootDir,
-            value: configuredCwd,
-            label: `routeHandlersConfig.app.prepare[${index}].cwd`
-          });
-      if (!isNonEmptyString(cwd)) {
-        throw createConfigError(
-          `routeHandlersConfig.app.prepare[${index}].cwd must resolve to a non-empty string path.`
-        );
-      }
-
-      resolvedPreparations.push({
-        id,
-        kind,
-        command: [...command],
-        cwd
-      });
-      continue;
-    }
-
-    throw createConfigError(
-      `routeHandlersConfig.app.prepare[${index}].kind must be "tsc-project" or "command".`
+    const tsconfigPathReference = readObjectProperty(
+      preparation,
+      'tsconfigPath'
     );
+
+    if (!isModuleReference(tsconfigPathReference)) {
+      throw createConfigError(
+        `routeHandlersConfig.app.prepare[${index}].tsconfigPath must be a module reference object.`
+      );
+    }
+
+    try {
+      resolvedPreparations.push({
+        tsconfigPath: resolveModuleReferenceToFilePath(
+          rootDir,
+          tsconfigPathReference
+        )
+      });
+    } catch {
+      throw createConfigError(
+        `routeHandlersConfig.app.prepare[${index}].tsconfigPath could not be resolved from "${rootDir}".`
+      );
+    }
   }
 
   return resolvedPreparations;
@@ -224,7 +177,6 @@ export const resolveRouteHandlerPreparations = ({
  */
 export const resolveRouteHandlersAppConfig = ({
   rootDir,
-  nextConfigPath,
   routeHandlersConfig
 }: ResolveRouteHandlersAppConfigInput): ResolvedRouteHandlersAppConfig => {
   const configuredApp = readConfiguredRouteHandlersApp(routeHandlersConfig);
@@ -244,24 +196,8 @@ export const resolveRouteHandlersAppConfig = ({
     );
   }
 
-  let resolvedNextConfigPath = nextConfigPath;
-  if (resolvedNextConfigPath == null) {
-    resolvedNextConfigPath = resolveConfiguredPathOption({
-      rootDir: resolvedRootDir,
-      value: readObjectProperty(configuredApp, 'nextConfigPath'),
-      label: 'app.nextConfigPath'
-    });
-  }
-
-  if (!isNonEmptyResolvedString(resolvedNextConfigPath)) {
-    throw createConfigMissingError(
-      'Missing routeHandlersConfig.app.nextConfigPath. Provide it in routeHandlersConfig.app or pass nextConfigPath explicitly.'
-    );
-  }
-
   return {
     rootDir: resolvedRootDir,
-    nextConfigPath: resolvedNextConfigPath,
     // The app-level routing policy is resolved here so the rest of the
     // integration stack can consume one already-validated contract instead of
     // re-reading raw `routeHandlersConfig.app.routing` shape in multiple

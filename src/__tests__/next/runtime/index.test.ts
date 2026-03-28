@@ -2,24 +2,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createPipelineResult } from '../../helpers/builders';
 
-const mergeRouteHandlerNextResultsMock = vi.hoisted(() => vi.fn());
-const synchronizeRouteHandlerPhaseArtifactsMock = vi.hoisted(() => vi.fn());
-const executeRouteHandlerTargetMock = vi.hoisted(() => vi.fn());
-
-vi.mock('../../../next/phase-artifacts', () => ({
-  synchronizeRouteHandlerPhaseArtifacts:
-    synchronizeRouteHandlerPhaseArtifactsMock
+vi.mock(import('../../../next/phase-artifacts'), () => ({
+  synchronizeRouteHandlerPhaseArtifacts: vi.fn()
 }));
 
-vi.mock('../../../next/runtime/results', () => ({
-  mergeRouteHandlerNextResults: mergeRouteHandlerNextResultsMock
+vi.mock(import('../../../next/runtime/results'), () => ({
+  mergeRouteHandlerNextResults: vi.fn()
 }));
 
-vi.mock('../../../next/runtime/target', () => ({
-  executeRouteHandlerTarget: executeRouteHandlerTargetMock
+vi.mock(import('../../../next/runtime/target'), () => ({
+  executeRouteHandlerTarget: vi.fn()
 }));
 
+import * as phaseArtifacts from '../../../next/phase-artifacts';
+import * as runtimeResults from '../../../next/runtime/results';
+import * as runtimeTarget from '../../../next/runtime/target';
 import { executeResolvedRouteHandlerNextPipeline } from '../../../next/runtime';
+
+import type { ResolvedRouteHandlersConfig } from '../../../next/types';
+
+const TEST_ROOT_DIR = '/tmp/app';
 
 const createResolvedConfig = ({
   rootDir,
@@ -27,23 +29,59 @@ const createResolvedConfig = ({
 }: {
   rootDir: string;
   targetId: string;
-}) =>
-  ({
+}): ResolvedRouteHandlersConfig => ({
     targetId,
     app: {
       rootDir,
-      nextConfigPath: `${rootDir}/next.config.mjs`
+      routing: {
+        development: 'proxy'
+      }
     },
+    localeConfig: {
+      locales: ['en'],
+      defaultLocale: 'en'
+    },
+    emitFormat: 'ts',
+    contentLocaleMode: 'filename',
+    handlerRouteParam: {
+      name: 'slug',
+      kind: 'catch-all'
+    },
+    baseStaticPropsImport: {
+      kind: 'absolute-file',
+      path: `${rootDir}/pages/content/[...slug].tsx`
+    },
+    processorConfig: {
+      kind: 'module',
+      processorImport: {
+        kind: 'package',
+        specifier: 'test-route-handlers/processor'
+      }
+    },
+    mdxCompileOptions: {},
+    routeBasePath: '/content',
     paths: {
       rootDir,
       contentPagesDir: `${rootDir}/content`,
       handlersDir: `${rootDir}/pages/content/_handlers`
-    }
-  }) as any;
+    },
+  });
 
 describe('runtime index fresh execution', () => {
+  const synchronizeRouteHandlerPhaseArtifactsMock = vi.mocked(
+    phaseArtifacts.synchronizeRouteHandlerPhaseArtifacts
+  );
+  const mergeRouteHandlerNextResultsMock = vi.mocked(
+    runtimeResults.mergeRouteHandlerNextResults
+  );
+  const executeRouteHandlerTargetMock = vi.mocked(
+    runtimeTarget.executeRouteHandlerTarget
+  );
+
   beforeEach(() => {
-    vi.clearAllMocks();
+    synchronizeRouteHandlerPhaseArtifactsMock.mockReset();
+    mergeRouteHandlerNextResultsMock.mockReset();
+    executeRouteHandlerTargetMock.mockReset();
     synchronizeRouteHandlerPhaseArtifactsMock.mockResolvedValue(undefined);
   });
 
@@ -53,7 +91,7 @@ describe('runtime index fresh execution', () => {
       heavyCount: 2
     });
     const resolvedConfig = createResolvedConfig({
-      rootDir: '/tmp/app',
+      rootDir: TEST_ROOT_DIR,
       targetId: 'docs'
     });
 
@@ -78,11 +116,11 @@ describe('runtime index fresh execution', () => {
 
   it('merges fresh multi-target results without consulting a persisted cache', async () => {
     const docsConfig = createResolvedConfig({
-      rootDir: '/tmp/app',
+      rootDir: TEST_ROOT_DIR,
       targetId: 'docs'
     });
     const blogConfig = createResolvedConfig({
-      rootDir: '/tmp/app',
+      rootDir: TEST_ROOT_DIR,
       targetId: 'blog'
     });
     const docsResult = createPipelineResult({

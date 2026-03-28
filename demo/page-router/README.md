@@ -68,7 +68,7 @@ The ballast files in this demo simulate realistic dependency sizes (visualizatio
 pnpm install
 
 # Start the demo with JavaScript config (default)
-cd demo
+cd demo/page-router
 pnpm dev
 
 # Or with TypeScript config
@@ -76,7 +76,7 @@ pnpm dev:ts
 ```
 
 The `dev` script automatically:
-1. Activates the selected config variant (JavaScript or TypeScript)
+1. Selects the active config variant through a tiny manifest file
 2. Generates ballast files (simulated heavy dependencies)
 3. Cleans any previously generated handlers
 4. Starts the Next.js dev server
@@ -113,7 +113,11 @@ These files are auto-generated and gitignored. Each one imports exactly the comp
 
 ## Config Variants
 
-The demo supports two configuration styles to show how next-slug-splitter integrates with different project setups.
+The demo supports four variants across two configuration styles:
+- `javascript`
+- `typescript`
+- `javascript-package`
+- `typescript-package`
 
 Source files live in `config-variants/`:
 
@@ -124,25 +128,53 @@ config-variants/
 │   ├── route-handlers-config.mjs
 │   ├── component-registry.mjs
 │   └── handler-processor.mjs
-└── typescript/          ← .ts files with native types
-    ├── next.config.ts
-    ├── route-handlers-config.ts
-    ├── component-registry.ts
-    └── handler-processor.ts
+├── javascript-package/  ← .mjs package-exports variant
+├── typescript/          ← .ts files with native types
+│   ├── next.config.ts
+│   ├── route-handlers-config.ts
+│   ├── component-registry.ts
+│   └── handler-processor.ts
+└── typescript-package/  ← .ts package-exports variant
 ```
 
-Switch variants manually:
+Use the ready-made scripts:
 
 ```bash
-pnpm use-config:js    # activate JavaScript config
-pnpm use-config:ts    # activate TypeScript config
+pnpm dev         # JavaScript module-map variant
+pnpm dev:ts      # TypeScript module-map variant
+pnpm dev:js-pkg  # JavaScript package-exports variant
+pnpm dev:ts-pkg  # TypeScript package-exports variant
+
+pnpm build       # Build the JavaScript module-map variant
+pnpm build:ts    # Build the TypeScript module-map variant
+pnpm build:js-pkg  # Build the JavaScript package-exports variant
+pnpm build:ts-pkg  # Build the TypeScript package-exports variant
+
+pnpm start       # Start the JavaScript module-map variant
+pnpm start:ts    # Start the TypeScript module-map variant
+pnpm start:js-pkg  # Start the JavaScript package-exports variant
+pnpm start:ts-pkg  # Start the TypeScript package-exports variant
 ```
 
-The `dev`/`build` scripts handle this automatically — use `dev:ts`/`build:ts` for the TypeScript variant.
+The root `next.config.ts` and `route-handlers-config.ts` stay stable. The active variant is derived from the current package script name through `npm_lifecycle_event`, so matching `dev:*`, `build:*`, and `start:*` scripts share the same variant suffix.
+
+Important: `npm_lifecycle_event` is the script key that was invoked from
+`package.json`, not the command body. So `build` and `build:ts` can both run
+`next build`, while the stable root config still resolves different active
+variants from the script name.
+
+Example mapping:
+
+```txt
+pnpm build         -> npm_lifecycle_event = "build"         -> javascript
+pnpm build:ts      -> npm_lifecycle_event = "build:ts"      -> typescript
+pnpm start:js-pkg  -> npm_lifecycle_event = "start:js-pkg"  -> javascript-package
+pnpm start:ts-pkg  -> npm_lifecycle_event = "start:ts-pkg"  -> typescript-package
+```
 
 ## Dev 404 Retry Workaround
 
-The demo also includes `pages/404.tsx`, which is a dev-only workaround for a remaining Next/Turbopack race.
+The demo also includes `pages/404.tsx`, which uses `useSlugSplitterNotFoundRetry(...)` from `next-slug-splitter/next/not-found` as a dev-only workaround for a remaining Next/Turbopack race.
 
 When a heavy route is emitted lazily on first request, the proxy can already know the correct rewrite target while Next is still warming that page up. In that narrow window the same request may still land on a transient 404. The demo's 404 page probes the route for readiness and retries once instead of immediately showing a not-found page.
 
@@ -173,6 +205,5 @@ demo/
 └── scripts/
     ├── generate-ballast.mjs ← creates simulated heavy dependencies
     ├── clean-handlers.mjs   ← removes generated handlers before rebuild
-    ├── erase-generated-dev-state.mjs ← full demo reset for generated dev artifacts
-    └── use-config.mjs       ← activates a config variant
+    └── erase-generated-dev-state.mjs ← full demo reset for generated dev artifacts
 ```

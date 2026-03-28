@@ -1,116 +1,172 @@
-import { writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { createCatchAllRouteHandlersPreset } from '../../../next/config';
+const loadRouteHandlersConfigOrRegisteredMock = vi.hoisted(() => vi.fn());
+const resolveLocaleConfigFromInputOrRuntimeSemanticsMock = vi.hoisted(() =>
+  vi.fn()
+);
+const resolveRouteHandlersAppContextMock = vi.hoisted(() => vi.fn());
+const prepareRouteHandlersFromConfigMock = vi.hoisted(() => vi.fn());
+const resolveRouteHandlersConfigsFromAppConfigMock = vi.hoisted(() => vi.fn());
+
+vi.mock(import('../../../next/internal/route-handlers-bootstrap'), () => ({
+  loadRouteHandlersConfigOrRegistered: loadRouteHandlersConfigOrRegisteredMock,
+  resolveLocaleConfigFromInputOrRuntimeSemantics:
+    resolveLocaleConfigFromInputOrRuntimeSemanticsMock,
+  resolveRouteHandlersAppContext: resolveRouteHandlersAppContextMock
+}));
+
+vi.mock(import('../../../next/prepare'), () => ({
+  prepareRouteHandlersFromConfig: prepareRouteHandlersFromConfigMock
+}));
+
+vi.mock(import('../../../next/config/resolve-configs'), () => ({
+  resolveRouteHandlersConfigsFromAppConfig:
+    resolveRouteHandlersConfigsFromAppConfigMock
+}));
+
 import { loadResolvedRouteHandlersConfigs } from '../../../next/runtime/config';
-import {
-  TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-  TEST_PRIMARY_CONTENT_PAGES_DIR,
-  TEST_PRIMARY_ROUTE_SEGMENT,
-  createTestHandlerBinding,
-  writeTestBaseStaticPropsPage,
-  writeTestRouteHandlerPackage
-} from '../../helpers/fixtures';
-import { withTempDir } from '../../helpers/temp-dir';
 
-import type { RouteHandlersConfig } from '../../../next/types';
+const TEST_ROUTE_HANDLERS_CONFIG = {
+  app: {
+    rootDir: '/repo/app'
+  }
+} as const;
+
+const TEST_APP_CONFIG = {
+  rootDir: TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
+  routing: {
+    development: 'proxy' as const
+  }
+};
+
+const TEST_APP_CONTEXT = {
+  routeHandlersConfig: TEST_ROUTE_HANDLERS_CONFIG,
+  appConfig: TEST_APP_CONFIG
+};
 
 describe('runtime config loading', () => {
-  it('uses the provided nextConfig object without loading app.nextConfigPath', async () => {
-    await withTempDir('next-slug-splitter-runtime-config-', async rootDir => {
-      await writeTestRouteHandlerPackage(rootDir);
-      await writeTestBaseStaticPropsPage(rootDir, {
-        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-        handlerRouteParam: {
-          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-          kind: 'catch-all'
-        }
-      });
+  beforeEach(() => {
+    vi.clearAllMocks();
 
-      const routeHandlersConfig: RouteHandlersConfig = {
-        app: {
-          rootDir,
-          nextConfigPath: path.join(rootDir, 'missing-next.config.mjs')
-        },
-        ...createCatchAllRouteHandlersPreset({
-          routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-          handlerRouteParam: {
-            name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-            kind: 'catch-all'
-          },
-          contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
-          handlerBinding: createTestHandlerBinding()
-        })
-      };
+    loadRouteHandlersConfigOrRegisteredMock.mockResolvedValue(
+      TEST_ROUTE_HANDLERS_CONFIG
+    );
+    resolveRouteHandlersAppContextMock.mockReturnValue(TEST_APP_CONTEXT);
+    prepareRouteHandlersFromConfigMock.mockResolvedValue(undefined);
+    resolveRouteHandlersConfigsFromAppConfigMock.mockReturnValue([
+      {
+        targetId: 'docs'
+      }
+    ]);
+  });
 
-      const [resolvedConfig] = await loadResolvedRouteHandlersConfigs({
-        routeHandlersConfig,
-        nextConfig: {
-          i18n: {
-            locales: ['en', 'de'],
-            defaultLocale: 'en'
-          }
-        }
-      });
+  type Scenario = {
+    id: string;
+    description: string;
+    inputLocaleConfig?: {
+      locales: Array<string>;
+      defaultLocale: string;
+    };
+    resolvedLocaleConfig: {
+      locales: Array<string>;
+      defaultLocale: string;
+    };
+  };
 
-      expect(resolvedConfig.localeConfig).toEqual({
+  const scenarios: ReadonlyArray<Scenario> = [
+    {
+      id: 'Input-Locale',
+      description: 'uses the provided localeConfig without requiring a persisted semantics snapshot',
+      inputLocaleConfig: {
         locales: ['en', 'de'],
         defaultLocale: 'en'
-      });
+      },
+      resolvedLocaleConfig: {
+        locales: ['en', 'de'],
+        defaultLocale: 'en'
+      }
+    },
+    {
+      id: 'Persisted-Snapshot',
+      description: 'loads localeConfig from the persisted runtime semantics snapshot when localeConfig is not provided',
+      resolvedLocaleConfig: {
+        locales: ['en', 'fr'],
+        defaultLocale: 'fr'
+      }
+    }
+  ];
+
+  test.for(scenarios)('[$id] $description', async ({
+    inputLocaleConfig,
+    resolvedLocaleConfig
+  }) => {
+    resolveLocaleConfigFromInputOrRuntimeSemanticsMock.mockResolvedValue(
+      resolvedLocaleConfig
+    );
+
+    const result = await loadResolvedRouteHandlersConfigs({
+      routeHandlersConfig: TEST_ROUTE_HANDLERS_CONFIG,
+      localeConfig: inputLocaleConfig
+    });
+
+    expect(result).toEqual([
+      {
+        targetId: 'docs'
+      }
+    ]);
+    expect(
+      resolveLocaleConfigFromInputOrRuntimeSemanticsMock
+    ).toHaveBeenCalledWith(
+      TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
+      inputLocaleConfig
+    );
+    expect(resolveRouteHandlersConfigsFromAppConfigMock).toHaveBeenCalledWith({
+      appConfig: TEST_APP_CONFIG,
+      localeConfig: resolvedLocaleConfig,
+      routeHandlersConfig: TEST_ROUTE_HANDLERS_CONFIG
     });
   });
 
-  it('loads the next config from app.nextConfigPath when nextConfig is not provided', async () => {
-    await withTempDir('next-slug-splitter-runtime-config-', async rootDir => {
-      await writeTestRouteHandlerPackage(rootDir);
-      await writeTestBaseStaticPropsPage(rootDir, {
-        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-        handlerRouteParam: {
-          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-          kind: 'catch-all'
-        }
-      });
+  test('fails when neither localeConfig nor a persisted runtime semantics snapshot is available', async () => {
+    resolveLocaleConfigFromInputOrRuntimeSemanticsMock.mockResolvedValue(
+      undefined
+    );
 
-      const nextConfigPath = path.join(rootDir, 'next.config.mjs');
-      await writeFile(
-        nextConfigPath,
-        [
-          'export default {',
-          '  i18n: {',
-          "    locales: ['en', 'fr'],",
-          "    defaultLocale: 'fr'",
-          '  }',
-          '};',
-          ''
-        ].join('\n'),
-        'utf8'
-      );
+    await expect(
+      loadResolvedRouteHandlersConfigs({
+        routeHandlersConfig: TEST_ROUTE_HANDLERS_CONFIG
+      })
+    ).rejects.toThrow(
+      'Missing route-handler runtime semantics snapshot.'
+    );
+    expect(prepareRouteHandlersFromConfigMock).not.toHaveBeenCalled();
+    expect(resolveRouteHandlersConfigsFromAppConfigMock).not.toHaveBeenCalled();
+  });
 
-      const routeHandlersConfig: RouteHandlersConfig = {
-        app: {
-          rootDir,
-          nextConfigPath
-        },
-        ...createCatchAllRouteHandlersPreset({
-          routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-          handlerRouteParam: {
-            name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-            kind: 'catch-all'
-          },
-          contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
-          handlerBinding: createTestHandlerBinding()
-        })
-      };
+  test('runs prepare before resolving target configs', async () => {
+    const callOrder: Array<string> = [];
 
-      const [resolvedConfig] = await loadResolvedRouteHandlersConfigs({
-        routeHandlersConfig
-      });
-
-      expect(resolvedConfig.localeConfig).toEqual({
-        locales: ['en', 'fr'],
-        defaultLocale: 'fr'
-      });
+    resolveLocaleConfigFromInputOrRuntimeSemanticsMock.mockResolvedValue({
+      locales: ['en'],
+      defaultLocale: 'en'
     });
+    prepareRouteHandlersFromConfigMock.mockImplementation(async () => {
+      callOrder.push('prepare');
+    });
+    resolveRouteHandlersConfigsFromAppConfigMock.mockImplementation(() => {
+      callOrder.push('resolve-configs');
+      return [
+        {
+          targetId: 'docs'
+        }
+      ];
+    });
+
+    await loadResolvedRouteHandlersConfigs({
+      rootDir: TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
+      routeHandlersConfig: TEST_ROUTE_HANDLERS_CONFIG
+    });
+
+    expect(callOrder).toEqual(['prepare', 'resolve-configs']);
   });
 });

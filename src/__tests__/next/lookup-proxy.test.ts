@@ -1,178 +1,98 @@
-import path from 'node:path';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+const readRouteHandlerLookupSnapshotMock = vi.hoisted(() => vi.fn());
 
-const executeRouteHandlerNextPipelineMock = vi.hoisted(() => vi.fn());
-
-vi.mock('../../next/runtime', () => ({
-  executeRouteHandlerNextPipeline: executeRouteHandlerNextPipelineMock
+vi.mock(import('../../next/lookup-persisted'), () => ({
+  readRouteHandlerLookupSnapshot: readRouteHandlerLookupSnapshotMock
 }));
 
-import { createHeavyRoute } from '../helpers/builders';
-import {
-  TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-  TEST_PRIMARY_CONTENT_PAGES_DIR,
-  TEST_PRIMARY_ROUTE_SEGMENT,
-  createTestHandlerBinding,
-  writeTestBaseStaticPropsPage,
-  writeTestRouteHandlerPackage
-} from '../helpers/fixtures';
-import { withTempDir } from '../helpers/temp-dir';
-import { createCatchAllRouteHandlersPreset } from '../../next/config';
 import {
   loadRouteHandlerCacheLookup,
   shouldFilterHeavyRoutesInStaticPaths
 } from '../../next/lookup';
-
-import type { RouteHandlersConfig } from '../../next/types';
-
-const createSingleTargetConfig = ({
-  rootDir,
-  developmentRoutingMode = 'proxy'
-}: {
-  rootDir: string;
-  developmentRoutingMode?: 'proxy' | 'rewrites';
-}): RouteHandlersConfig => ({
-  app: {
-    rootDir,
-    nextConfigPath: path.join(rootDir, 'next.config.mjs'),
-    routing: {
-      development: developmentRoutingMode
-    }
-  },
-  ...createCatchAllRouteHandlersPreset({
-    routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-    handlerRouteParam: {
-      name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-      kind: 'catch-all'
-    },
-    contentPagesDir: path.join(rootDir, TEST_PRIMARY_CONTENT_PAGES_DIR),
-    handlerBinding: createTestHandlerBinding()
-  })
-});
+import { TEST_PRIMARY_ROUTE_SEGMENT } from '../helpers/fixtures';
 
 describe('route handler cache lookup proxy behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it('returns a best-effort empty lookup in development proxy mode', async () => {
-    vi.stubEnv('NODE_ENV', 'development');
-
-    await withTempDir('next-slug-splitter-lookup-proxy-', async rootDir => {
-      await writeTestRouteHandlerPackage(rootDir);
-      await writeTestBaseStaticPropsPage(rootDir, {
-        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-        handlerRouteParam: {
-          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-          kind: 'catch-all'
+    readRouteHandlerLookupSnapshotMock.mockResolvedValue({
+      version: 1,
+      filterHeavyRoutesInStaticPaths: false,
+      targets: [
+        {
+          targetId: TEST_PRIMARY_ROUTE_SEGMENT,
+          heavyRoutePathKeys: []
         }
-      });
-      const lookup = await loadRouteHandlerCacheLookup({
-        routeHandlersConfig: createSingleTargetConfig({
-          rootDir
-        }),
-        targetId: TEST_PRIMARY_ROUTE_SEGMENT
-      });
-
-      expect(executeRouteHandlerNextPipelineMock).not.toHaveBeenCalled();
-      expect(lookup.isHeavyRoute('en', ['known', 'heavy'])).toBe(false);
-      expect(lookup.isHeavyRoute('en', ['unknown'])).toBe(false);
+      ]
     });
   });
 
-  it('tells getStaticPaths to skip heavy-route filtering in development proxy mode', async () => {
-    vi.stubEnv('NODE_ENV', 'development');
+  describe('shouldFilterHeavyRoutesInStaticPaths', () => {
+    test('reads the persisted lookup snapshot', async () => {
+      readRouteHandlerLookupSnapshotMock.mockResolvedValue({
+        version: 1,
+        filterHeavyRoutesInStaticPaths: true,
+        targets: []
+      });
 
-    await withTempDir('next-slug-splitter-static-path-policy-proxy-', async rootDir => {
-      expect(
-        await shouldFilterHeavyRoutesInStaticPaths({
-          routeHandlersConfig: createSingleTargetConfig({
-            rootDir
-          })
-        })
-      ).toBe(false);
+      await expect(
+        shouldFilterHeavyRoutesInStaticPaths()
+      ).resolves.toBe(true);
+    });
+
+    test('fails with a targeted bootstrap error when the lookup snapshot is missing', async () => {
+      readRouteHandlerLookupSnapshotMock.mockResolvedValue(null);
+
+      await expect(
+        shouldFilterHeavyRoutesInStaticPaths()
+      ).rejects.toThrow('Missing route-handler lookup snapshot.');
     });
   });
 
-  it('runs a fresh analyze pass when development explicitly uses rewrites', async () => {
-    vi.stubEnv('NODE_ENV', 'development');
-
-    await withTempDir('next-slug-splitter-lookup-rewrites-', async rootDir => {
-      executeRouteHandlerNextPipelineMock.mockResolvedValue({
-        analyzedCount: 1,
-        heavyCount: 1,
-        heavyPaths: [
-          createHeavyRoute({
+  describe('loadRouteHandlerCacheLookup', () => {
+    test('reads heavy-route ownership from the persisted lookup snapshot', async () => {
+      readRouteHandlerLookupSnapshotMock.mockResolvedValue({
+        version: 1,
+        filterHeavyRoutesInStaticPaths: true,
+        targets: [
+          {
             targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-            locale: 'en',
-            slugArray: ['generated'],
-            handlerId: 'en-generated',
-            handlerRelativePath: 'generated/en'
-          })
-        ],
-        rewrites: []
-      });
-      await writeTestRouteHandlerPackage(rootDir);
-      await writeTestBaseStaticPropsPage(rootDir, {
-        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-        handlerRouteParam: {
-          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-          kind: 'catch-all'
-        }
+            heavyRoutePathKeys: ['en:generated']
+          }
+        ]
       });
 
-      const lookup = await loadRouteHandlerCacheLookup({
-        routeHandlersConfig: createSingleTargetConfig({
-          rootDir,
-          developmentRoutingMode: 'rewrites'
-        }),
-        nextConfig: {
-          i18n: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          }
-        },
-        targetId: TEST_PRIMARY_ROUTE_SEGMENT
-      });
+      const lookup = await loadRouteHandlerCacheLookup(
+        TEST_PRIMARY_ROUTE_SEGMENT
+      );
 
-      expect(executeRouteHandlerNextPipelineMock).toHaveBeenCalledTimes(1);
-      expect(executeRouteHandlerNextPipelineMock).toHaveBeenCalledWith({
-        routeHandlersConfig: createSingleTargetConfig({
-          rootDir,
-          developmentRoutingMode: 'rewrites'
-        }),
-        nextConfig: {
-          i18n: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          }
-        },
-        mode: 'analyze'
-      });
       expect(lookup.isHeavyRoute('en', ['generated'])).toBe(true);
+      expect(lookup.isHeavyRoute('en', ['other'])).toBe(false);
     });
-  });
 
-  it('tells getStaticPaths to keep heavy-route filtering outside development proxy mode', async () => {
-    vi.stubEnv('NODE_ENV', 'development');
+    test('fails with a targeted bootstrap error when no snapshot is available', async () => {
+      readRouteHandlerLookupSnapshotMock.mockResolvedValue(null);
 
-    await withTempDir(
-      'next-slug-splitter-static-path-policy-rewrites-',
-      async rootDir => {
-        expect(
-          await shouldFilterHeavyRoutesInStaticPaths({
-            routeHandlersConfig: createSingleTargetConfig({
-              rootDir,
-              developmentRoutingMode: 'rewrites'
-            })
-          })
-        ).toBe(true);
-      }
-    );
+      await expect(
+        loadRouteHandlerCacheLookup(TEST_PRIMARY_ROUTE_SEGMENT)
+      ).rejects.toThrow('Missing route-handler lookup snapshot.');
+    });
+
+    test('fails when the requested target does not exist', async () => {
+      readRouteHandlerLookupSnapshotMock.mockResolvedValue({
+        version: 1,
+        filterHeavyRoutesInStaticPaths: true,
+        targets: [
+          {
+            targetId: 'blog',
+            heavyRoutePathKeys: []
+          }
+        ]
+      });
+
+      await expect(
+        loadRouteHandlerCacheLookup(TEST_PRIMARY_ROUTE_SEGMENT)
+      ).rejects.toThrow(`Unknown targetId "${TEST_PRIMARY_ROUTE_SEGMENT}".`);
+    });
   });
 });

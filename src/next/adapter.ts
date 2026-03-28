@@ -10,11 +10,10 @@
  * - first, app preparation so app-owned prerequisites are ready
  * - then phase-artifact ownership so dev and build do not trust each other's
  *   generated handler state
- * - then the in-process rewrite cache local to this Node process
  * - then the deeper fresh runtime pipeline
  *
  * Documenting the grouping here is useful because this is where many readers
- * start when asking "what cache do consumers actually hit when Next boots?"
+ * start when asking "what execution path do consumers actually hit when Next boots?"
  */
 import type { NextAdapter } from 'next';
 import {
@@ -24,36 +23,33 @@ import {
 } from 'next/constants.js';
 
 import { createConfigMissingError } from '../utils/errors';
-import { resolveRouteHandlersAppConfig } from './config/app';
-import type { NextConfigLike } from './config/load-next-config';
-import { resolveRouteHandlersConfigs } from './config/resolve-configs';
-import { loadRegisteredSlugSplitterConfig } from './integration/slug-splitter-config-loader';
+import { resolveRouteHandlersConfigsFromAppConfig } from './config/resolve-configs';
+import {
+  loadRouteHandlersConfigOrRegistered,
+  resolveRouteHandlersAppContext
+} from './internal/route-handlers-bootstrap';
 import {
   resolveRegisteredSlugSplitterConfigRegistration
 } from './integration/slug-splitter-config';
-import { withRouteHandlerRewrites } from './plugin';
 import {
-  createRouteHandlerProcessCacheIdentity,
-  isSameRouteHandlerProcessCacheIdentity,
-  type RouteHandlerProcessCacheIdentity
-} from './process-cache-identity';
+  createRouteHandlerLookupSnapshot,
+  writeRouteHandlerLookupSnapshot
+} from './lookup-persisted';
+import { withRouteHandlerRewrites } from './plugin';
 import { prepareRouteHandlersFromConfig } from './prepare';
 import { applyRouteHandlerProxyNextConfigPolicy } from './policy/proxy-next-config';
 import { synchronizeRouteHandlerPhaseArtifacts } from './phase-artifacts';
 import { synchronizeRouteHandlerProxyFile } from './proxy/file-lifecycle';
 import { resolveRouteHandlerRoutingStrategy } from './routing-strategy';
+import { deriveRouteHandlerRuntimeSemantics } from './runtime-semantics/derive';
+import { writeRouteHandlerRuntimeSemantics } from './runtime-semantics/write';
 import { executeResolvedRouteHandlerNextPipeline } from './runtime';
 
 import type {
   ResolvedRouteHandlersConfig,
-  RewriteRecord,
-  RouteHandlersConfig
+  RouteHandlerNextResult,
+  RewriteRecord
 } from './types';
-
-let cacheIdentity: RouteHandlerProcessCacheIdentity | null = null;
-let generationIdentity: RouteHandlerProcessCacheIdentity | null = null;
-let cachedRewrites: Array<RewriteRecord> | null = null;
-let generationPromise: Promise<Array<RewriteRecord>> | null = null;
 
 /**
  * Determine whether the current Next phase should run route-handler
@@ -74,114 +70,19 @@ const isRouteOptimizedPhase = (phase: string): boolean =>
 /**
  * Generate route-handler rewrites for the current app configuration.
  *
- * @param input Rewrite generation input.
- * @param input.rootDir Application root directory.
- * @param input.nextConfigPath Absolute Next config path.
- * @param input.nextConfig Loaded Next config object for the current phase.
+ * @param resolvedConfigs - Fully resolved target configs for generation.
  * @returns Generated route-handler rewrites.
  */
-const generateRewrites = async ({
-  resolvedConfigs
-}: {
-  resolvedConfigs: Array<ResolvedRouteHandlersConfig>;
-}): Promise<Array<RewriteRecord>> => {
+const generateRewrites = async (
+  resolvedConfigs: Array<ResolvedRouteHandlersConfig>
+): Promise<RouteHandlerNextResult> => {
   // This is the main hand-off from the adapter layer into the deeper runtime
   // pipeline. Everything below this call now executes fresh target work and,
   // in generate mode, rebuilds the emitted handler directories.
-  const result = await executeResolvedRouteHandlerNextPipeline({
+  return executeResolvedRouteHandlerNextPipeline({
     resolvedConfigs,
     mode: 'generate'
   });
-
-  return result.rewrites;
-};
-
-/**
- * Reuse or compute generated rewrites within the current process.
- *
- * @param input Process-cache input.
- * @param input.phase Current Next phase.
- * @param input.rootDir Application root directory.
- * @param input.nextConfigPath Absolute Next config path.
- * @param input.nextConfig Loaded Next config object for the current phase.
- * @returns Generated rewrite records for the phase and resolved target set.
- *
- * @remarks
- * The in-process cache avoids repeating the same generation work when Next asks
- * for the effective config multiple times during one process lifetime.
- */
-const getRewritesWithProcessCache = async ({
-  phase,
-  rootDir,
-  nextConfigPath,
-  nextConfig,
-  routeHandlersConfig
-}: {
-  phase: string;
-  rootDir: string;
-  nextConfigPath: string;
-  nextConfig: NextConfigLike;
-  routeHandlersConfig: RouteHandlersConfig;
-}): Promise<Array<RewriteRecord>> => {
-  // Consumer entry into the preparation-cache group from the Next adapter.
-  // This makes rewrite generation safe for apps that need build steps such as
-  // TypeScript project compilation before route planning begins.
-  await prepareRouteHandlersFromConfig({
-    rootDir,
-    routeHandlersConfig
-  });
-
-  const resolvedConfigs = resolveRouteHandlersConfigs({
-    rootDir,
-    nextConfigPath,
-    nextConfig,
-    routeHandlersConfig
-  });
-  const nextIdentity = await createRouteHandlerProcessCacheIdentity({
-    phase,
-    configs: resolvedConfigs
-  });
-
-  if (
-    cacheIdentity &&
-    isSameRouteHandlerProcessCacheIdentity(cacheIdentity, nextIdentity) &&
-    cachedRewrites
-  ) {
-    // Warm process-local cache hit: the adapter already generated rewrites for
-    // the exact same resolved config identity in this Node process.
-    return cachedRewrites;
-  }
-
-  if (
-    generationPromise &&
-    generationIdentity &&
-    isSameRouteHandlerProcessCacheIdentity(generationIdentity, nextIdentity)
-  ) {
-    // In-flight dedupe hit: another caller already triggered generation for the
-    // same identity, so this caller simply joins that promise.
-    return generationPromise;
-  }
-
-  generationIdentity = nextIdentity;
-  generationPromise = (async () => {
-    // Cache the in-flight promise before starting the async work so concurrent
-    // callers for the same identity share one generation run.
-    //
-    // This in-process cache group is intentionally separate from the on-disk
-    // shared runtime cache. Its only job is to dedupe repeated adapter calls
-    // inside one Node process lifetime.
-    const rewrites = await generateRewrites({
-      resolvedConfigs
-    });
-    cacheIdentity = nextIdentity;
-    cachedRewrites = rewrites;
-    return rewrites;
-  })().finally(() => {
-    generationPromise = null;
-    generationIdentity = null;
-  });
-
-  return generationPromise;
 };
 
 const routeHandlersAdapter: NextAdapter = {
@@ -191,25 +92,40 @@ const routeHandlersAdapter: NextAdapter = {
       return config;
     }
 
-    const routeHandlersConfig = await loadRegisteredSlugSplitterConfig();
+    const routeHandlersConfig = await loadRouteHandlersConfigOrRegistered();
     if (routeHandlersConfig == null) {
       throw createConfigMissingError(
         'Missing registered routeHandlersConfig. Call withSlugSplitter(...) or createRouteHandlersAdapterPath(...) before exporting the Next config.'
       );
     }
 
-    const appConfig = resolveRouteHandlersAppConfig({
-      routeHandlersConfig
+    const appContext = resolveRouteHandlersAppContext(routeHandlersConfig);
+    const runtimeSemantics = deriveRouteHandlerRuntimeSemantics(config);
+    await writeRouteHandlerRuntimeSemantics(
+      appContext.appConfig.rootDir,
+      runtimeSemantics
+    );
+
+    // Preparation must run before config resolution. The `prepare` contract
+    // exists so that app-owned build steps — such as compiling a TypeScript
+    // processor to JavaScript — can materialize artifacts that the rest of the
+    // pipeline depends on. Config resolution validates that referenced modules
+    // (e.g. `processorImport`) exist on disk, so any preparation that produces
+    // those modules must complete first. Without this ordering, a cold build
+    // (no prior `dist/`) would fail validation before `prepare` ever ran.
+    await prepareRouteHandlersFromConfig({
+      rootDir: appContext.appConfig.rootDir,
+      routeHandlersConfig: appContext.routeHandlersConfig
     });
-    const resolvedConfigs = resolveRouteHandlersConfigs({
-      rootDir: appConfig.rootDir,
-      nextConfigPath: appConfig.nextConfigPath,
-      nextConfig: config,
-      routeHandlersConfig
+
+    const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig({
+      appConfig: appContext.appConfig,
+      localeConfig: runtimeSemantics.localeConfig,
+      routeHandlersConfig: appContext.routeHandlersConfig
     });
     const routingStrategy = resolveRouteHandlerRoutingStrategy({
       phase,
-      routingPolicy: appConfig.routing
+      routingPolicy: appContext.appConfig.routing
     });
 
     await synchronizeRouteHandlerPhaseArtifacts({
@@ -222,15 +138,23 @@ const routeHandlersAdapter: NextAdapter = {
     // root Proxy file, it synchronizes the filesystem artifact that must match
     // the selected strategy.
     await synchronizeRouteHandlerProxyFile({
-      rootDir: appConfig.rootDir,
+      rootDir: appContext.appConfig.rootDir,
       strategy: routingStrategy,
       resolvedConfigs,
       configRegistration: resolveRegisteredSlugSplitterConfigRegistration({
-        rootDir: appConfig.rootDir
+        rootDir: appContext.appConfig.rootDir
       })
     });
 
     if (routingStrategy.kind === 'proxy') {
+      await writeRouteHandlerLookupSnapshot(
+        appContext.appConfig.rootDir,
+        createRouteHandlerLookupSnapshot(
+          false,
+          resolvedConfigs.map(config => config.targetId)
+        )
+      );
+
       // Proxy mode is intentionally a distinct routing path. The adapter does
       // not generate or install route-handler rewrites up front in this branch.
       //
@@ -245,19 +169,21 @@ const routeHandlersAdapter: NextAdapter = {
 
     // This call is the consumer-facing entrance into the adapter-side
     // execution stack. From here the request can travel through preparation,
-    // phase-artifact ownership, process-local rewrite caching, and fresh
-    // runtime execution before rewrites come back.
-    const rewrites = await getRewritesWithProcessCache({
-      phase,
-      rootDir: appConfig.rootDir,
-      nextConfigPath: appConfig.nextConfigPath,
-      nextConfig: config,
-      routeHandlersConfig
-    });
+    // phase-artifact ownership, and fresh runtime execution before rewrites
+    // come back.
+    const rewrites = await generateRewrites(resolvedConfigs);
+    await writeRouteHandlerLookupSnapshot(
+      appContext.appConfig.rootDir,
+      createRouteHandlerLookupSnapshot(
+        true,
+        resolvedConfigs.map(config => config.targetId),
+        rewrites
+      )
+    );
 
     // The returned value is the effective config for the current phase.
     // A wrapped copy is returned so the incoming config object stays unchanged.
-    return withRouteHandlerRewrites(config, rewrites);
+    return withRouteHandlerRewrites(config, rewrites.rewrites);
   }
 };
 

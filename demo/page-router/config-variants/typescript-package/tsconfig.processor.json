@@ -1,0 +1,8 @@
+{
+  "extends": "../tsconfig.processor.base.json",
+  "compilerOptions": {
+    "outDir": "../../dist",
+    "rootDir": "."
+  },
+  "include": ["handler-processor.ts"]
+}

@@ -6,11 +6,11 @@ const analyzeRouteHandlerLazyMatchedRouteMock = vi.hoisted(() => vi.fn());
 const doesRouteHandlerLazySingleHandlerExistMock = vi.hoisted(() => vi.fn());
 const emitRouteHandlerLazySingleHandlerMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../../next/proxy/lazy/single-route-analysis', () => ({
+vi.mock(import('../../../../next/proxy/lazy/single-route-analysis'), () => ({
   analyzeRouteHandlerLazyMatchedRoute: analyzeRouteHandlerLazyMatchedRouteMock
 }));
 
-vi.mock('../../../../next/proxy/lazy/single-handler-emission', () => ({
+vi.mock(import('../../../../next/proxy/lazy/single-handler-emission'), () => ({
   doesRouteHandlerLazySingleHandlerExist:
     doesRouteHandlerLazySingleHandlerExistMock,
   emitRouteHandlerLazySingleHandler: emitRouteHandlerLazySingleHandlerMock
@@ -18,7 +18,8 @@ vi.mock('../../../../next/proxy/lazy/single-handler-emission', () => ({
 
 import { prepareRouteHandlerLazyMatchedRoute } from '../../../../next/proxy/lazy/cold-request-dedupe';
 
-const localeConfig = { locales: ['en'], defaultLocale: 'en' };
+const bootstrapGenerationToken = 'bootstrap-1';
+const resolvedConfigsByTargetId = new Map();
 const routePath = { locale: 'en', slugArray: ['post'], filePath: '/tmp/post.mdx' };
 
 describe('cold-request dedupe — unit', () => {
@@ -30,8 +31,18 @@ describe('cold-request dedupe — unit', () => {
   it('starts independent analysis for different target/file keys', async () => {
     analyzeRouteHandlerLazyMatchedRouteMock.mockResolvedValue({ kind: 'light' });
 
-    await prepareRouteHandlerLazyMatchedRoute('blog', localeConfig, routePath);
-    await prepareRouteHandlerLazyMatchedRoute('docs', localeConfig, routePath);
+    await prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
+    await prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'docs',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
 
     expect(analyzeRouteHandlerLazyMatchedRouteMock).toHaveBeenCalledTimes(2);
   });
@@ -39,8 +50,18 @@ describe('cold-request dedupe — unit', () => {
   it('clears dedupe slot after settlement so next call starts fresh', async () => {
     analyzeRouteHandlerLazyMatchedRouteMock.mockResolvedValue({ kind: 'light' });
 
-    await prepareRouteHandlerLazyMatchedRoute('blog', localeConfig, routePath);
-    await prepareRouteHandlerLazyMatchedRoute('blog', localeConfig, routePath);
+    await prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
+    await prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
 
     expect(analyzeRouteHandlerLazyMatchedRouteMock).toHaveBeenCalledTimes(2);
   });
@@ -52,15 +73,21 @@ describe('cold-request dedupe — unit', () => {
     analyzeRouteHandlerLazyMatchedRouteMock.mockResolvedValue({ kind: 'light' });
 
     await expect(
-      prepareRouteHandlerLazyMatchedRoute('blog', localeConfig, routePath)
+      prepareRouteHandlerLazyMatchedRoute({
+        targetId: 'blog',
+        routePath,
+        bootstrapGenerationToken,
+        resolvedConfigsByTargetId
+      })
     ).rejects.toThrow('analysis failed');
 
     // Slot was cleared — second call starts a fresh analysis
-    const result = await prepareRouteHandlerLazyMatchedRoute(
-      'blog',
-      localeConfig,
-      routePath
-    );
+    const result = await prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
 
     expect(analyzeRouteHandlerLazyMatchedRouteMock).toHaveBeenCalledTimes(2);
     expect(result?.kind).toBe('light');
@@ -81,11 +108,12 @@ describe('cold-request dedupe — composite', () => {
     const analysisResult = { kind: 'light', source: 'fresh' };
     analyzeRouteHandlerLazyMatchedRouteMock.mockResolvedValue(analysisResult);
 
-    const result = await prepareRouteHandlerLazyMatchedRoute(
-      'blog',
-      localeConfig,
-      routePath
-    );
+    const result = await prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
 
     expect(result).toEqual({ kind: 'light', analysisResult });
     expect(emitRouteHandlerLazySingleHandlerMock).not.toHaveBeenCalled();
@@ -95,11 +123,12 @@ describe('cold-request dedupe — composite', () => {
     const analysisResult = { kind: 'heavy', source: 'fresh' };
     analyzeRouteHandlerLazyMatchedRouteMock.mockResolvedValue(analysisResult);
 
-    const result = await prepareRouteHandlerLazyMatchedRoute(
-      'blog',
-      localeConfig,
-      routePath
-    );
+    const result = await prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
 
     expect(result).toEqual({ kind: 'heavy', analysisResult });
     expect(emitRouteHandlerLazySingleHandlerMock).toHaveBeenCalledWith({
@@ -112,11 +141,12 @@ describe('cold-request dedupe — composite', () => {
     analyzeRouteHandlerLazyMatchedRouteMock.mockResolvedValue(analysisResult);
     doesRouteHandlerLazySingleHandlerExistMock.mockResolvedValue(true);
 
-    const result = await prepareRouteHandlerLazyMatchedRoute(
-      'blog',
-      localeConfig,
-      routePath
-    );
+    const result = await prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
 
     expect(result).toEqual({ kind: 'heavy', analysisResult });
     expect(doesRouteHandlerLazySingleHandlerExistMock).toHaveBeenCalledWith(
@@ -130,11 +160,12 @@ describe('cold-request dedupe — composite', () => {
     analyzeRouteHandlerLazyMatchedRouteMock.mockResolvedValue(analysisResult);
     doesRouteHandlerLazySingleHandlerExistMock.mockResolvedValue(false);
 
-    const result = await prepareRouteHandlerLazyMatchedRoute(
-      'blog',
-      localeConfig,
-      routePath
-    );
+    const result = await prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
 
     expect(result).toEqual({ kind: 'heavy', analysisResult });
     expect(doesRouteHandlerLazySingleHandlerExistMock).toHaveBeenCalledWith(
@@ -148,11 +179,12 @@ describe('cold-request dedupe — composite', () => {
   it('returns null without emission when analysis returns null', async () => {
     analyzeRouteHandlerLazyMatchedRouteMock.mockResolvedValue(null);
 
-    const result = await prepareRouteHandlerLazyMatchedRoute(
-      'blog',
-      localeConfig,
-      routePath
-    );
+    const result = await prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
 
     expect(result).toBeNull();
     expect(emitRouteHandlerLazySingleHandlerMock).not.toHaveBeenCalled();
@@ -162,16 +194,18 @@ describe('cold-request dedupe — composite', () => {
     const deferred = createDeferred<{ kind: 'heavy'; source: 'fresh' }>();
     analyzeRouteHandlerLazyMatchedRouteMock.mockReturnValue(deferred.promise);
 
-    const first = prepareRouteHandlerLazyMatchedRoute(
-      'blog',
-      localeConfig,
-      routePath
-    );
-    const second = prepareRouteHandlerLazyMatchedRoute(
-      'blog',
-      localeConfig,
-      routePath
-    );
+    const first = prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
+    const second = prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
 
     deferred.resolve({ kind: 'heavy', source: 'fresh' });
 
@@ -185,16 +219,18 @@ describe('cold-request dedupe — composite', () => {
     const deferred = createDeferred<never>();
     analyzeRouteHandlerLazyMatchedRouteMock.mockReturnValue(deferred.promise);
 
-    const first = prepareRouteHandlerLazyMatchedRoute(
-      'blog',
-      localeConfig,
-      routePath
-    );
-    const second = prepareRouteHandlerLazyMatchedRoute(
-      'blog',
-      localeConfig,
-      routePath
-    );
+    const first = prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
+    const second = prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
 
     deferred.reject(new Error('analysis failed'));
 

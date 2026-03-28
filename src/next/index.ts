@@ -1,26 +1,23 @@
 export type {
-  AbsoluteFileModuleReference,
+  AbsoluteModuleReference,
   AppConfigBase,
-  AppRelativeModuleReference,
+  RelativeModuleReference,
   ComponentImportSpec,
   DynamicRouteParam,
   DynamicRouteParamKind,
   ModuleReference,
   PackageModuleReference,
   ResolvedModuleReference,
-  ResolvedRouteHandlerCommandPreparation,
   ResolvedRouteHandlerPreparation,
   ResolvedRouteHandlerTscProjectPreparation,
   RouteHandlerDevelopmentRoutingMode,
   RewriteRecord,
   RouteHandlerBinding,
   RouteHandlerBindingMap,
-  RouteHandlerCommandPreparation,
   RouteHandlerGeneratorComponent,
   RouteHandlerGeneratorPlan,
   RouteHandlerPreparation,
   RouteHandlerProcessor,
-  RouteHandlerProcessorCacheConfig,
   RouteHandlerRewrite,
   RouteHandlerRewritePhaseConfig,
   RouteHandlerRewritePhases,
@@ -36,8 +33,8 @@ export type {
 } from './types';
 
 export {
-  absoluteFileModule,
-  appRelativeModule,
+  absoluteModule,
+  relativeModule,
   packageModule
 } from '../module-reference';
 export { defineRouteHandlerProcessor } from '../core/processor';

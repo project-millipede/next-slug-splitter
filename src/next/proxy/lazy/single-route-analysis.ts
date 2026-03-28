@@ -1,8 +1,4 @@
 import { createRouteHandlerRoutePlanner } from '../../../core/processor-runner';
-import { resolveRouteHandlersAppConfig } from '../../config/app';
-import { resolveRouteHandlersConfigBases } from '../../config/resolve-configs';
-import { loadRegisteredSlugSplitterConfig } from '../../integration/slug-splitter-config-loader';
-import { prepareRouteHandlersFromConfig } from '../../prepare';
 import {
   createPersistedRoutePlanRecord,
   type PersistedRoutePlanRecord
@@ -12,9 +8,10 @@ import {
   writeLazySingleRouteCachedPlanRecord
 } from './single-route-cache';
 
-import type { LocaleConfig, LocalizedRoutePath } from '../../../core/types';
+import type { LocalizedRoutePath } from '../../../core/types';
 import type { RouteHandlerLazySingleRouteAnalysisResult } from './types';
 import type { ResolvedRouteHandlersConfig } from '../../types';
+import type { BootstrapGenerationToken } from '../runtime/types';
 
 /**
  * Single-file heavy/light analysis for the lazy dev proxy path.
@@ -23,7 +20,7 @@ import type { ResolvedRouteHandlersConfig } from '../../types';
  * This module is the second major lazy seam after request resolution.
  *
  * Responsibilities:
- * - re-resolve the full target config required for real route planning
+ * - read the already-bootstrapped target config required for real route planning
  * - consult the lazy single-route cache for reusable one-file results
  * - run capture + processor planning for exactly one content file on a miss
  *
@@ -36,58 +33,28 @@ import type { ResolvedRouteHandlersConfig } from '../../types';
  */
 
 /**
- * Re-resolve the full target config needed for one-file planning.
+ * Read the already-bootstrapped target config needed for one-file planning.
  *
  * @param input - Target-resolution input.
  * @param input.targetId - Target identifier selected by lazy request resolution.
- * @param input.localeConfig - Shared locale config captured at adapter time.
+ * @param input.resolvedConfigsByTargetId - Bootstrapped target configs keyed by
+ * stable target id.
  * @returns Fully resolved target config, or `null` when the target is no
  * longer present.
  *
  * @remarks
- * Lazy request resolution intentionally uses a lightweight target shape. Once
- * we cross into real analysis, we are allowed to pay the cost of resolving the
- * processor binding and related planning inputs, because they are now actually
- * required.
+ * Worker bootstrap intentionally pays the heavy config-resolution cost once up
+ * front. The request-time analysis path then reads the bootstrapped config
+ * from memory instead of reloading config or running prepare again.
  */
-const resolveLazyAnalysisTargetConfig = async ({
+const resolveLazyAnalysisTargetConfig = ({
   targetId,
-  localeConfig
+  resolvedConfigsByTargetId
 }: {
   targetId: string;
-  localeConfig: ResolvedRouteHandlersConfig['localeConfig'];
-}): Promise<ResolvedRouteHandlersConfig | null> => {
-  const routeHandlersConfig = await loadRegisteredSlugSplitterConfig();
-
-  if (routeHandlersConfig == null) {
-    return null;
-  }
-
-  const appConfig = resolveRouteHandlersAppConfig({
-    routeHandlersConfig
-  });
-
-  // Preparation belongs here rather than in request resolution because the
-  // lightweight request-to-file seam should stay purely structural. Once we are
-  // about to perform real planning work, preparation side effects are fair game.
-  await prepareRouteHandlersFromConfig({
-    rootDir: appConfig.rootDir,
-    routeHandlersConfig
-  });
-
-  const resolvedConfigs = resolveRouteHandlersConfigBases({
-    routeHandlersConfig
-  }).map(resolvedConfig => ({
-    ...resolvedConfig,
-    localeConfig
-  }));
-
-  return (
-    resolvedConfigs.find(
-      resolvedConfig => resolvedConfig.targetId === targetId
-    ) ?? null
-  );
-};
+  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
+}): ResolvedRouteHandlersConfig | null =>
+  resolvedConfigsByTargetId.get(targetId) ?? null;
 
 /**
  * Convert a persisted one-file route-plan record into the public lazy-analysis
@@ -130,19 +97,29 @@ const toLazySingleRouteAnalysisResult = ({
  * Analyze one lazy matched route file and return the one-file planning result.
  *
  * @param targetId - Target identifier selected by lazy request resolution.
- * @param localeConfig - Shared locale config captured at adapter time.
  * @param routePath - Concrete localized content route file to analyze.
+ * @param bootstrapGenerationToken - Current worker bootstrap generation token.
+ * @param resolvedConfigsByTargetId - Bootstrapped heavy target configs keyed by
+ * target id.
  * @returns One-file lazy analysis result, or `null` when the target can no
  * longer be resolved by the time analysis begins.
  */
 export const analyzeRouteHandlerLazyMatchedRoute = async (
-  targetId: string,
-  localeConfig: LocaleConfig,
-  routePath: LocalizedRoutePath
-): Promise<RouteHandlerLazySingleRouteAnalysisResult | null> => {
-  const config = await resolveLazyAnalysisTargetConfig({
+  {
     targetId,
-    localeConfig
+    routePath,
+    bootstrapGenerationToken,
+    resolvedConfigsByTargetId
+  }: {
+    targetId: string;
+    routePath: LocalizedRoutePath;
+    bootstrapGenerationToken: BootstrapGenerationToken;
+    resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
+  }
+): Promise<RouteHandlerLazySingleRouteAnalysisResult | null> => {
+  const config = resolveLazyAnalysisTargetConfig({
+    targetId,
+    resolvedConfigsByTargetId
   });
 
   if (config == null) {
@@ -154,7 +131,8 @@ export const analyzeRouteHandlerLazyMatchedRoute = async (
 
   const cachedRoutePlanRecord = readLazySingleRouteCachedPlanRecord({
     config,
-    routePath
+    routePath,
+    bootstrapGenerationToken
   });
 
   if (cachedRoutePlanRecord != null) {
@@ -171,9 +149,7 @@ export const analyzeRouteHandlerLazyMatchedRoute = async (
   // just-in-time design goal of the lazy proxy flow.
   const planRoute = await createRouteHandlerRoutePlanner({
     rootDir: config.paths.rootDir,
-    componentsImport: config.componentsImport,
-    processorConfig: config.processorConfig,
-    runtimeHandlerFactoryImportBase: config.runtimeHandlerFactoryImportBase
+    processorConfig: config.processorConfig
   });
   const routePlanRecord = await createPersistedRoutePlanRecord({
     routePath,
@@ -184,7 +160,8 @@ export const analyzeRouteHandlerLazyMatchedRoute = async (
   writeLazySingleRouteCachedPlanRecord({
     config,
     routePath,
-    routePlanRecord
+    routePlanRecord,
+    bootstrapGenerationToken
   });
 
   return toLazySingleRouteAnalysisResult({

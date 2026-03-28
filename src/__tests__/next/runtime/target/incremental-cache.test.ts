@@ -7,7 +7,7 @@ const captureReferencedComponentNamesMock = vi.hoisted(() =>
   vi.fn(async () => ['CustomComponent'])
 );
 
-vi.mock('../../../../core/capture', () => ({
+vi.mock(import('../../../../core/capture'), () => ({
   captureReferencedComponentNames: captureReferencedComponentNamesMock
 }));
 
@@ -42,14 +42,11 @@ const createCountedProcessorSource = (logPath: string): string =>
     "import { appendFileSync } from 'node:fs';",
     `const logPath = ${JSON.stringify(logPath)};`,
     'export const routeHandlerProcessor = {',
-    '  ingress({ route, capturedKeys }) {',
+    '  resolve({ route, capturedComponentKeys }) {',
     "    appendFileSync(logPath, `${route.filePath}\\n`);",
-    '    return Object.fromEntries(capturedKeys.map(key => [key, {}]));',
-    '  },',
-    '  egress({ capturedKeys }) {',
     '    return {',
-    "      factoryVariant: 'none',",
-    '      components: capturedKeys.map(key => ({ key }))',
+    "      factoryImport: { kind: 'package', specifier: 'none' },",
+    "      components: capturedComponentKeys.map(key => ({ key, componentImport: { source: { kind: 'package', specifier: './components' }, kind: 'named', importedName: key } }))",
     '    };',
     '  }',
     '};',
@@ -86,8 +83,7 @@ const createSingleTargetConfig = ({
   targetOverrides?: Partial<RouteHandlersTargetConfig>;
 }): RouteHandlersConfig => ({
   app: {
-    rootDir,
-    nextConfigPath: path.join(rootDir, 'next.config.mjs')
+    rootDir
   },
   ...createCatchAllRouteHandlersPreset({
     routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,

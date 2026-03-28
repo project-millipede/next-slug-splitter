@@ -1,19 +1,71 @@
 import { emitRouteHandlerPages } from '../generator/handlers';
-import { planRouteHandlers } from './plan';
+import { createPipelineError } from '../utils/errors';
+import { isDefined, isNonEmptyArray } from '../utils/type-guards-extended';
+import { captureReferencedComponentNames } from './capture';
+import {
+  compareLocalizedRouteIdentity,
+  discoverLocalizedContentRoutes,
+  sortStringArray,
+  toHandlerId,
+  toHandlerRelativePath
+} from './discovery';
+import {
+  createRouteContext,
+  createRouteHandlerRoutePlanner
+} from './processor-runner';
 
 import type {
-  PipelineMode,
-  RouteHandlerPipelineOptions,
-  RouteHandlerPipelineResult
+  ContentLocaleMode,
+  DynamicRouteParam,
+  EmitFormat,
+  LocaleConfig,
+  PlannedHeavyRoute,
+  ResolvedRouteHandlerModuleReference,
+  ResolvedRouteHandlerProcessorConfig,
+  RouteHandlerMdxCompileOptions,
+  RouteHandlerPaths,
+  RouteHandlerPipelineResult,
+  PipelineMode
 } from './types';
+
+type RouteHandlerPipelineOptions = {
+  localeConfig: LocaleConfig;
+  contentLocaleMode?: ContentLocaleMode;
+  emitFormat?: EmitFormat;
+  baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
+  processorConfig: ResolvedRouteHandlerProcessorConfig;
+  mdxCompileOptions?: RouteHandlerMdxCompileOptions;
+  handlerRouteParam: DynamicRouteParam;
+  routeBasePath: string;
+  paths: RouteHandlerPaths;
+  targetId?: string;
+};
+
+const assertLocaleConfig = (
+  options: RouteHandlerPipelineOptions
+): LocaleConfig => {
+  const localeConfig = options.localeConfig;
+
+  if (!isDefined(localeConfig) || !isNonEmptyArray(localeConfig.locales)) {
+    throw createPipelineError('localeConfig.locales must be configured.');
+  }
+
+  if (!localeConfig.locales.includes(localeConfig.defaultLocale)) {
+    throw createPipelineError(
+      `defaultLocale "${localeConfig.defaultLocale}" is not in localeConfig.locales.`
+    );
+  }
+
+  return localeConfig;
+};
 
 /**
  * Execute the next-slug-splitter pipeline for one resolved target.
  *
  * Pipeline phases:
  * 1. Analysis
- *    Discover localized content routes, execute the configured processor for
- *    each heavy route, and build route-local generation plans.
+ *    Discover localized content routes, capture referenced components, and
+ *    build route-local generation plans for heavy routes.
  * 2. Generation
  *    When `mode === 'generate'`, emit one handler page for each heavy route
  *    selected during analysis.
@@ -34,19 +86,70 @@ export const executeRouteHandlerPipeline = async (
   config: RouteHandlerPipelineOptions,
   mode: PipelineMode = 'generate'
 ): Promise<RouteHandlerPipelineResult> => {
-  const plan = await planRouteHandlers(config);
+  const localeConfig = assertLocaleConfig(config);
+  const routePaths = await discoverLocalizedContentRoutes(
+    config.paths.contentPagesDir,
+    localeConfig,
+    config.contentLocaleMode
+  );
+  const planRoute = await createRouteHandlerRoutePlanner({
+    rootDir: config.paths.rootDir,
+    processorConfig: config.processorConfig
+  });
 
-  if (mode === 'generate') {
-    let emitFormat = config.emitFormat;
-    if (emitFormat == null) {
-      emitFormat = 'ts';
+  const plannedHeavyRoutes: Array<PlannedHeavyRoute> = [];
+  for (const routePath of routePaths) {
+    const usedLoadableComponentKeys = sortStringArray(
+      await captureReferencedComponentNames({
+        filePath: routePath.filePath,
+        mdxCompileOptions: config.mdxCompileOptions
+      })
+    );
+
+    if (usedLoadableComponentKeys.length === 0) {
+      continue;
     }
 
+    const handlerId = toHandlerId(routePath.locale, routePath.slugArray);
+    const handlerRelativePath = toHandlerRelativePath(
+      routePath.locale,
+      routePath.slugArray,
+      {
+        includeLocaleLeaf: config.contentLocaleMode !== 'default-locale'
+      }
+    );
+    const route = createRouteContext({
+      filePath: routePath.filePath,
+      handlerId,
+      handlerRelativePath,
+      locale: routePath.locale,
+      routeBasePath: config.routeBasePath,
+      slugArray: routePath.slugArray,
+      targetId: config.targetId
+    });
+    const { factoryImport, componentEntries } = await planRoute({
+      route,
+      capturedComponentKeys: usedLoadableComponentKeys
+    });
+
+    plannedHeavyRoutes.push({
+      locale: routePath.locale,
+      slugArray: routePath.slugArray,
+      handlerId,
+      handlerRelativePath,
+      usedLoadableComponentKeys,
+      factoryImport,
+      componentEntries
+    });
+  }
+
+  plannedHeavyRoutes.sort(compareLocalizedRouteIdentity);
+
+  if (mode === 'generate') {
     await emitRouteHandlerPages({
       paths: config.paths,
-      heavyRoutes: plan.heavyRoutes,
-      emitFormat,
-      runtimeHandlerFactoryImportBase: config.runtimeHandlerFactoryImportBase,
+      heavyRoutes: plannedHeavyRoutes,
+      emitFormat: config.emitFormat ?? 'ts',
       baseStaticPropsImport: config.baseStaticPropsImport,
       handlerRouteParam: config.handlerRouteParam,
       routeBasePath: config.routeBasePath
@@ -54,8 +157,8 @@ export const executeRouteHandlerPipeline = async (
   }
 
   return {
-    analyzedCount: plan.analyzedCount,
-    heavyCount: plan.heavyRoutes.length,
-    heavyPaths: plan.heavyRoutes
+    analyzedCount: routePaths.length,
+    heavyCount: plannedHeavyRoutes.length,
+    heavyPaths: plannedHeavyRoutes
   };
 };

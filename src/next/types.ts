@@ -5,14 +5,12 @@ import type {
   DynamicRouteParamKind,
   EmitFormat,
   LocaleConfig,
-  ProcessorEgressDefaults,
-  ProcessorIngressInput,
+  ProcessorResolveInput,
   ResolvedRouteHandlerProcessorConfig,
   RouteHandlerGeneratorComponent,
   RouteHandlerGeneratorPlan,
   RouteHandlerMdxCompileOptions,
   RouteHandlerProcessor,
-  RouteHandlerProcessorCacheConfig,
   RouteHandlerRouteContext,
   ResolvedRouteHandlerModuleReference,
   RouteHandlerModuleReference,
@@ -20,8 +18,8 @@ import type {
   RouteHandlerPipelineResult
 } from '../core/types';
 export type {
-  AbsoluteFileModuleReference,
-  AppRelativeModuleReference,
+  AbsoluteModuleReference,
+  RelativeModuleReference,
   ModuleReference,
   PackageModuleReference,
   ResolvedModuleReference
@@ -154,27 +152,12 @@ export type AppConfigBase = {
    * Application root directory.
    */
   rootDir?: string;
-
-  /**
-   * Path to the Next.js configuration file.
-   */
-  nextConfigPath?: string;
 };
 
 /**
- * App-owned TypeScript project build preparation.
+ * Optional app-owned TypeScript preparation executed before route planning.
  */
-export type RouteHandlerTscProjectPreparation = {
-  /**
-   * Stable task identifier used in diagnostics.
-   */
-  id: string;
-
-  /**
-   * Discriminator for TypeScript-project preparation.
-   */
-  kind: 'tsc-project';
-
+export type RouteHandlerPreparation = {
   /**
    * App-owned tsconfig project file compiled before processor loading.
    */
@@ -182,36 +165,13 @@ export type RouteHandlerTscProjectPreparation = {
 };
 
 /**
- * App-owned arbitrary command preparation.
+ * App-owned preparation input accepted at the app-config boundary.
+ *
+ * Accepts either one prepare step or an ordered list of prepare steps.
  */
-export type RouteHandlerCommandPreparation = {
-  /**
-   * Stable task identifier used in diagnostics.
-   */
-  id: string;
-
-  /**
-   * Discriminator for generic command preparation.
-   */
-  kind: 'command';
-
-  /**
-   * Command argv executed without a shell.
-   */
-  command: readonly string[];
-
-  /**
-   * Optional working directory. Relative paths are resolved from app.rootDir.
-   */
-  cwd?: string;
-};
-
-/**
- * Optional app-owned prepare task executed before route planning.
- */
-export type RouteHandlerPreparation =
-  | RouteHandlerTscProjectPreparation
-  | RouteHandlerCommandPreparation;
+export type RouteHandlerPreparationsInput =
+  | RouteHandlerPreparation
+  | Array<RouteHandlerPreparation>;
 
 /**
  * Development-only routing mode for the Next adapter entrypoint.
@@ -253,46 +213,33 @@ export type ResolvedRouteHandlersRoutingPolicy = {
 };
 
 /**
- * Resolved TypeScript-project preparation.
+ * Resolved app-owned TypeScript preparation.
  */
-export type ResolvedRouteHandlerTscProjectPreparation = {
-  /** Stable task identifier used in diagnostics. */
-  id: string;
-  /** Discriminator for TypeScript-project preparation. */
-  kind: 'tsc-project';
+export type ResolvedRouteHandlerPreparation = {
   /** Absolute path to the resolved tsconfig project file. */
   tsconfigPath: string;
 };
 
 /**
- * Resolved arbitrary command preparation.
+ * Backwards-compatible alias for one prepare-step shape.
  */
-export type ResolvedRouteHandlerCommandPreparation = {
-  /** Stable task identifier used in diagnostics. */
-  id: string;
-  /** Discriminator for generic command preparation. */
-  kind: 'command';
-  /** Command argv executed without a shell. */
-  command: Array<string>;
-  /** Resolved absolute working directory. */
-  cwd: string;
-};
+export type RouteHandlerTscProjectPreparation = RouteHandlerPreparation;
 
 /**
- * Resolved app-owned prepare task.
+ * Backwards-compatible alias for one resolved prepare-step shape.
  */
-export type ResolvedRouteHandlerPreparation =
-  | ResolvedRouteHandlerTscProjectPreparation
-  | ResolvedRouteHandlerCommandPreparation;
+export type ResolvedRouteHandlerTscProjectPreparation =
+  ResolvedRouteHandlerPreparation;
 
 /**
  * User-facing app configuration.
  */
 export type RouteHandlersAppConfig = AppConfigBase & {
   /**
-   * Optional app-owned preparation tasks executed before processor loading.
+   * Optional app-owned TypeScript preparation step or steps executed before
+   * processor loading.
    */
-  prepare?: Array<RouteHandlerPreparation>;
+  prepare?: RouteHandlerPreparationsInput;
   /**
    * Optional high-level routing policy for development mode.
    */
@@ -397,13 +344,11 @@ export type RuntimeHandlerFactoryBinding = {
  */
 export type {
   ComponentImportSpec,
-  ProcessorEgressDefaults,
-  ProcessorIngressInput,
+  ProcessorResolveInput,
   ResolvedRouteHandlerProcessorConfig,
   RouteHandlerGeneratorComponent,
   RouteHandlerGeneratorPlan,
   RouteHandlerProcessor,
-  RouteHandlerProcessorCacheConfig,
   RouteHandlerRouteContext
 };
 
@@ -412,22 +357,10 @@ export type {
  */
 export type ProcessorRouteHandlerBinding = {
   /**
-   * Import path for components used in MDX content.
-   * Components are imported by name from this module.
-   * Example: '@/components/mdx' or 'site-components'
-   */
-  componentsImport: RouteHandlerModuleReference;
-  /**
    * App-owned processor module used to transform captured keys into a
    * route-local generation plan.
    */
   processorImport: RouteHandlerModuleReference;
-  /**
-   * Runtime factory binding configuration.
-   */
-  runtimeFactory: {
-    importBase: RouteHandlerModuleReference;
-  };
 };
 
 export type RouteHandlerBinding = ProcessorRouteHandlerBinding;
@@ -460,7 +393,7 @@ export type TargetConfigBase = {
    */
   handlerRouteParam?: DynamicRouteParam;
   /**
-   * Binding that provides component-import and factory configuration.
+   * Binding that provides the processor module for route planning.
    */
   handlerBinding: RouteHandlerBinding;
   /**
@@ -511,13 +444,19 @@ export type RouteHandlersEntrypointInput = {
    */
   rootDir?: string;
   /**
-   * Path to the Next.js configuration file.
-   */
-  nextConfigPath?: string;
-  /**
    * Route handlers configuration.
    */
   routeHandlersConfig?: RouteHandlersConfig;
+};
+
+/**
+ * Next-derived runtime semantics consumed by downstream route-handler code.
+ */
+export type RouteHandlerRuntimeSemantics = {
+  /**
+   * Shared locale configuration extracted from Next.js once at the entrypoint.
+   */
+  localeConfig: LocaleConfig;
 };
 
 /**
@@ -553,17 +492,9 @@ type ResolvedTargetConfigBase = Omit<
   'handlerBinding' | 'baseStaticPropsImport' | 'paths'
 > & {
   /**
-   * Resolved import path for the runtime handler factory.
-   */
-  runtimeHandlerFactoryImportBase: ResolvedRouteHandlerModuleReference;
-  /**
    * Resolved import path for the base static props module.
    */
   baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
-  /**
-   * Resolved import path for components used in MDX content.
-   */
-  componentsImport: ResolvedRouteHandlerModuleReference;
   /**
    * Resolved processor configuration used during planning.
    */
@@ -624,30 +555,4 @@ export type RouteHandlerHeavyRouteLookup = {
    * Check if a specific route is classified as heavy.
    */
   isHeavyRoute: (locale: string, slugArray: Array<string>) => boolean;
-};
-
-/**
- * Persistent cache record for route handler results.
- */
-export type PipelineCacheRecord = {
-  /**
-   * Cache format version.
-   */
-  version: number;
-  /**
-   * Content fingerprint for cache validation.
-   */
-  fingerprint: string;
-  /**
-   * Output format of cached results.
-   */
-  emitFormat: EmitFormat;
-  /**
-   * ISO timestamp when the cache entry was generated.
-   */
-  generatedAt: string;
-  /**
-   * Cached pipeline result.
-   */
-  result: RouteHandlerNextResult;
 };

@@ -12,7 +12,6 @@ import { withHeavyRouteFilter } from 'next-slug-splitter/next/lookup';
 
 import { createHandlerPage } from '../../lib/handler-factory/none';
 import { getAllContentSlugs, compileContentForSlug } from '../../lib/content';
-import { routeHandlersConfig } from '../../route-handlers-config.mjs';
 
 /**
  * Created with an empty `loadableRegistrySubset` — no heavy components
@@ -48,7 +47,6 @@ export const getStaticProps: GetStaticProps = async ctx => {
  */
 export const getStaticPaths = withHeavyRouteFilter({
   targetId: 'docs',
-  routeHandlersConfig,
   getStaticPaths: async () => {
     const paths = await getAllContentSlugs();
     return { paths, fallback: false };

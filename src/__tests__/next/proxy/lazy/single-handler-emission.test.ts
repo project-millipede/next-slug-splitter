@@ -4,19 +4,19 @@ import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const captureReferencedComponentNamesMock = vi.hoisted(() => vi.fn());
-const loadRegisteredSlugSplitterConfigMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../../core/capture', () => ({
+vi.mock(import('../../../../core/capture'), () => ({
   captureReferencedComponentNames: captureReferencedComponentNamesMock
 }));
 
-vi.mock('../../../../next/integration/slug-splitter-config-loader', () => ({
-  loadRegisteredSlugSplitterConfig: loadRegisteredSlugSplitterConfigMock
-}));
-
 import { createCatchAllRouteHandlersPreset } from '../../../../next/config';
+import { resolveRouteHandlersConfigsFromAppConfig } from '../../../../next/config/resolve-configs';
+import { resolveRouteHandlersAppContext } from '../../../../next/internal/route-handlers-bootstrap';
+import {
+  resolveRouteHandlerLazyRequest,
+  resolveRouteHandlerLazyResolvedTargetsFromAppConfig
+} from '../../../../next/proxy/lazy/request-resolution';
 import { emitRouteHandlerLazySingleHandler } from '../../../../next/proxy/lazy/single-handler-emission';
-import { resolveRouteHandlerLazyRequest } from '../../../../next/proxy/lazy/request-resolution';
 import { analyzeRouteHandlerLazyMatchedRoute } from '../../../../next/proxy/lazy/single-route-analysis';
 import { resolveRouteHandlerLazyRewriteDestination } from '../../../../next/proxy/lazy/single-route-rewrite';
 import {
@@ -30,7 +30,17 @@ import {
 } from '../../../helpers/fixtures';
 import { withTempDir } from '../../../helpers/temp-dir';
 
-import type { RouteHandlersConfig } from '../../../../next/types';
+import type {
+  ResolvedRouteHandlersConfig,
+  RouteHandlersConfig
+} from '../../../../next/types';
+import type { RouteHandlerLazyResolvedTarget } from '../../../../next/proxy/lazy/types';
+
+const TEST_LOCALE_CONFIG = {
+  locales: ['en'],
+  defaultLocale: 'en'
+};
+const TEST_BOOTSTRAP_GENERATION_TOKEN = 'bootstrap-1';
 
 const createSingleTargetConfig = ({
   rootDir
@@ -38,8 +48,7 @@ const createSingleTargetConfig = ({
   rootDir: string;
 }): RouteHandlersConfig => ({
   app: {
-    rootDir,
-    nextConfigPath: path.join(rootDir, 'next.config.mjs')
+    rootDir
   },
   ...createCatchAllRouteHandlersPreset({
     routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
@@ -51,6 +60,43 @@ const createSingleTargetConfig = ({
     handlerBinding: createTestHandlerBinding()
   })
 });
+
+const createBootstrappedLazyAnalysisState = ({
+  rootDir,
+  routeHandlersConfig
+}: {
+  rootDir: string;
+  routeHandlersConfig: RouteHandlersConfig;
+}): {
+  resolvedTargets: Array<RouteHandlerLazyResolvedTarget>;
+  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
+} => {
+  const appContext = resolveRouteHandlersAppContext(
+    routeHandlersConfig,
+    rootDir
+  );
+  const bootstrappedRouteHandlersConfig =
+    appContext.routeHandlersConfig ?? routeHandlersConfig;
+  const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig({
+    appConfig: appContext.appConfig,
+    localeConfig: TEST_LOCALE_CONFIG,
+    routeHandlersConfig: bootstrappedRouteHandlersConfig
+  });
+
+  return {
+    resolvedTargets: resolveRouteHandlerLazyResolvedTargetsFromAppConfig({
+      appConfig: appContext.appConfig,
+      localeConfig: TEST_LOCALE_CONFIG,
+      routeHandlersConfig: bootstrappedRouteHandlersConfig
+    }),
+    resolvedConfigsByTargetId: new Map(
+      resolvedConfigs.map(resolvedConfig => [
+        resolvedConfig.targetId,
+        resolvedConfig
+      ])
+    )
+  };
+};
 
 describe('proxy lazy single-handler emission', () => {
   beforeEach(() => {
@@ -80,29 +126,26 @@ describe('proxy lazy single-handler emission', () => {
             kind: 'catch-all'
           }
         });
-        await writeTestModule(
-          path.join(rootDir, 'next.config.mjs'),
-          'export default {};\n'
-        );
         await writeTestModule(routeFilePath, '# Guides\n');
-        loadRegisteredSlugSplitterConfigMock.mockResolvedValue(routeHandlersConfig);
+        const bootstrapState = createBootstrappedLazyAnalysisState({
+          rootDir,
+          routeHandlersConfig
+        });
 
         const resolution = await resolveRouteHandlerLazyRequest({
           pathname: '/content/guides',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          }
+          resolvedTargets: bootstrapState.resolvedTargets
         });
         if (resolution.kind !== 'matched-route-file') {
           throw new Error('Expected matched-route-file resolution.');
         }
 
-        const analysisResult = await analyzeRouteHandlerLazyMatchedRoute(
-          resolution.config.targetId,
-          resolution.config.localeConfig,
-          resolution.routePath
-        );
+        const analysisResult = await analyzeRouteHandlerLazyMatchedRoute({
+          targetId: resolution.config.targetId,
+          routePath: resolution.routePath,
+          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+        });
         if (analysisResult?.kind !== 'heavy') {
           throw new Error('Expected heavy single-route analysis.');
         }

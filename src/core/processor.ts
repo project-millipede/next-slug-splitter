@@ -1,4 +1,4 @@
-import { JsonObject } from '../utils/type-guards-json';
+import type { JsonObject } from '../utils/type-guards-json';
 import type { RouteHandlerProcessor } from './types';
 
 /**
@@ -7,6 +7,8 @@ import type { RouteHandlerProcessor } from './types';
  * The function intentionally preserves the exact generic types inferred from
  * the passed processor object.
  */
-export const defineRouteHandlerProcessor = <TResolved, TMeta = JsonObject>(
-  processor: RouteHandlerProcessor<TResolved, TMeta>
-): RouteHandlerProcessor<TResolved, TMeta> => processor;
+export function defineRouteHandlerProcessor<TMeta = JsonObject>(
+  processor: RouteHandlerProcessor<TMeta>
+): RouteHandlerProcessor<TMeta> {
+  return processor;
+}

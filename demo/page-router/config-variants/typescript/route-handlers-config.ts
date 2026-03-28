@@ -1,24 +1,16 @@
 /**
- * Route handler configuration for the demo.
+ * Route handler configuration for the demo (TypeScript module-map variant).
  *
  * Defines a single catch-all target under the `/docs/` route segment.
- * The configuration tells next-slug-splitter:
- *
- * - Where content pages live on disk (`contentPagesDir`).
- * - How the catch-all route parameter is shaped (`handlerRouteParam`).
- * - Where to find the component registry, the handler processor, and the
- *   runtime factory used by generated handler pages (`handlerBinding`).
- *
- * Module references use `appRelativeModule` so the code generator emits
- * import paths relative to the application root, independent of the
- * working directory at build time.
+ * The processor is a local TypeScript file compiled to JavaScript via
+ * the `prepare` step before the pipeline loads it at runtime.
  */
 
 import path from 'node:path';
 import process from 'node:process';
 
 import {
-  appRelativeModule,
+  relativeModule,
   createCatchAllRouteHandlersPreset,
   type DynamicRouteParam,
   type RouteHandlersConfig
@@ -29,7 +21,6 @@ import {
 // ---------------------------------------------------------------------------
 
 const rootDir = process.cwd();
-const nextConfigPath = path.resolve(rootDir, 'next.config.ts');
 
 // ---------------------------------------------------------------------------
 // Route parameter
@@ -52,7 +43,11 @@ const docsHandlerRouteParam: DynamicRouteParam = {
 export const routeHandlersConfig: RouteHandlersConfig = {
   app: {
     rootDir,
-    nextConfigPath
+    prepare: {
+      tsconfigPath: relativeModule(
+        'config-variants/typescript/tsconfig.processor.json'
+      )
+    }
   },
   targets: [
     createCatchAllRouteHandlersPreset({
@@ -61,23 +56,11 @@ export const routeHandlersConfig: RouteHandlersConfig = {
       contentPagesDir: path.join(rootDir, 'content', 'pages'),
       contentLocaleMode: 'default-locale',
 
-      /**
-       * Handler binding — connects generated handler pages to the app's
-       * component resolution and rendering pipeline.
-       *
-       * - `componentsImport` — module exporting the component registry
-       *    (pure metadata, no component code).
-       * - `processorImport` — module exporting the route handler processor
-       *    that maps captured keys to component imports and a factory variant.
-       * - `runtimeFactory.importBase` — base path for factory variant modules
-       *    (e.g. `lib/handler-factory/none`).
-       */
       handlerBinding: {
-        componentsImport: appRelativeModule('component-registry'),
-        processorImport: appRelativeModule('handler-processor'),
-        runtimeFactory: {
-          importBase: appRelativeModule('lib/handler-factory')
-        }
+        // `prepare` compiles the processor into the app-root `dist/` folder.
+        // Runtime always loads that compiled artifact, so `processorImport`
+        // must stay aligned with the processor tsconfig `outDir`.
+        processorImport: relativeModule('dist/handler-processor')
       }
     })
   ]

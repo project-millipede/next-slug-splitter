@@ -1,6 +1,4 @@
-import process from 'node:process';
-
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   PHASE_DEVELOPMENT_SERVER,
   PHASE_PRODUCTION_BUILD
@@ -12,20 +10,11 @@ import {
 } from '../../../next/routing-strategy';
 
 describe('route handler routing strategy', () => {
-  const originalEnvValue =
-    process.env[ROUTE_HANDLER_DEV_ROUTING_ENV_VAR];
-
   afterEach(() => {
-    if (originalEnvValue == null) {
-      delete process.env[ROUTE_HANDLER_DEV_ROUTING_ENV_VAR];
-    } else {
-      process.env[ROUTE_HANDLER_DEV_ROUTING_ENV_VAR] = originalEnvValue;
-    }
+    vi.unstubAllEnvs();
   });
 
   it('defaults development to proxy through the resolved app policy', () => {
-    delete process.env[ROUTE_HANDLER_DEV_ROUTING_ENV_VAR];
-
     expect(
       resolveRouteHandlerRoutingStrategy({
         phase: PHASE_DEVELOPMENT_SERVER,
@@ -41,8 +30,6 @@ describe('route handler routing strategy', () => {
   });
 
   it('allows the resolved app policy to force rewrite mode in development', () => {
-    delete process.env[ROUTE_HANDLER_DEV_ROUTING_ENV_VAR];
-
     expect(
       resolveRouteHandlerRoutingStrategy({
         phase: PHASE_DEVELOPMENT_SERVER,
@@ -57,7 +44,7 @@ describe('route handler routing strategy', () => {
   });
 
   it('lets the env override force rewrites even when app policy prefers proxy', () => {
-    process.env[ROUTE_HANDLER_DEV_ROUTING_ENV_VAR] = 'rewrites';
+    vi.stubEnv(ROUTE_HANDLER_DEV_ROUTING_ENV_VAR, 'rewrites');
 
     expect(
       resolveRouteHandlerRoutingStrategy({
@@ -73,7 +60,7 @@ describe('route handler routing strategy', () => {
   });
 
   it('lets the env override force proxy even when app policy prefers rewrites', () => {
-    process.env[ROUTE_HANDLER_DEV_ROUTING_ENV_VAR] = 'proxy';
+    vi.stubEnv(ROUTE_HANDLER_DEV_ROUTING_ENV_VAR, 'proxy');
 
     expect(
       resolveRouteHandlerRoutingStrategy({
@@ -90,7 +77,7 @@ describe('route handler routing strategy', () => {
   });
 
   it('still falls back to rewrites outside development even when env override is set', () => {
-    process.env[ROUTE_HANDLER_DEV_ROUTING_ENV_VAR] = 'proxy';
+    vi.stubEnv(ROUTE_HANDLER_DEV_ROUTING_ENV_VAR, 'proxy');
 
     expect(
       resolveRouteHandlerRoutingStrategy({
@@ -102,6 +89,22 @@ describe('route handler routing strategy', () => {
     ).toEqual({
       kind: 'rewrites',
       reason: 'non-development-phase'
+    });
+  });
+
+  it('disables proxy in production builds even when development policy prefers proxy', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    expect(
+      resolveRouteHandlerRoutingStrategy({
+        phase: PHASE_PRODUCTION_BUILD,
+        routingPolicy: {
+          development: 'proxy'
+        }
+      })
+    ).toEqual({
+      kind: 'rewrites',
+      reason: 'proxy-disabled-in-production'
     });
   });
 });

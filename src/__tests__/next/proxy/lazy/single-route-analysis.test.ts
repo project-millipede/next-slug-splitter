@@ -4,17 +4,19 @@ import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const captureReferencedComponentNamesMock = vi.hoisted(() => vi.fn());
-const loadRegisteredSlugSplitterConfigMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../../core/capture', () => ({
+vi.mock(import('../../../../core/capture'), () => ({
   captureReferencedComponentNames: captureReferencedComponentNamesMock
 }));
 
-vi.mock('../../../../next/integration/slug-splitter-config-loader', () => ({
-  loadRegisteredSlugSplitterConfig: loadRegisteredSlugSplitterConfigMock
-}));
-
 import { createCatchAllRouteHandlersPreset } from '../../../../next/config';
+import { resolveRouteHandlersConfigsFromAppConfig } from '../../../../next/config/resolve-configs';
+import { resolveRouteHandlersAppContext } from '../../../../next/internal/route-handlers-bootstrap';
+import {
+  resolveRouteHandlerLazyRequest,
+  resolveRouteHandlerLazyResolvedTargetsFromAppConfig
+} from '../../../../next/proxy/lazy/request-resolution';
+import { analyzeRouteHandlerLazyMatchedRoute } from '../../../../next/proxy/lazy/single-route-analysis';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   TEST_PRIMARY_CONTENT_PAGES_DIR,
@@ -25,31 +27,35 @@ import {
   writeTestRouteHandlerPackage
 } from '../../../helpers/fixtures';
 import { withTempDir } from '../../../helpers/temp-dir';
-import { resolveRouteHandlerLazyRequest } from '../../../../next/proxy/lazy/request-resolution';
-import { analyzeRouteHandlerLazyMatchedRoute } from '../../../../next/proxy/lazy/single-route-analysis';
 
 import type {
+  ResolvedRouteHandlersConfig,
   RouteHandlersConfig,
   RouteHandlersTargetConfig
 } from '../../../../next/types';
+import type { RouteHandlerLazyResolvedTarget } from '../../../../next/proxy/lazy/types';
 
 function remarkNoop() {
   return undefined;
 }
+
+const TEST_LOCALE_CONFIG = {
+  locales: ['en'],
+  defaultLocale: 'en'
+};
+const TEST_BOOTSTRAP_GENERATION_TOKEN = 'bootstrap-1';
+const TEST_NEXT_BOOTSTRAP_GENERATION_TOKEN = 'bootstrap-2';
 
 const createCountedProcessorSource = (logPath: string): string =>
   [
     "import { appendFileSync } from 'node:fs';",
     `const logPath = ${JSON.stringify(logPath)};`,
     'export const routeHandlerProcessor = {',
-    '  ingress({ route, capturedKeys }) {',
+    '  resolve({ route, capturedComponentKeys }) {',
     "    appendFileSync(logPath, `${route.filePath}\\n`);",
-    '    return Object.fromEntries(capturedKeys.map(key => [key, {}]));',
-    '  },',
-    '  egress({ capturedKeys }) {',
     '    return {',
-    "      factoryVariant: 'none',",
-    '      components: capturedKeys.map(key => ({ key }))',
+    "      factoryImport: { kind: 'package', specifier: 'none' },",
+    "      components: capturedComponentKeys.map(key => ({ key, componentImport: { source: { kind: 'package', specifier: './components' }, kind: 'named', importedName: key } }))",
     '    };',
     '  }',
     '};',
@@ -64,8 +70,7 @@ const createSingleTargetConfig = ({
   targetOverrides?: Partial<RouteHandlersTargetConfig>;
 }): RouteHandlersConfig => ({
   app: {
-    rootDir,
-    nextConfigPath: path.join(rootDir, 'next.config.mjs')
+    rootDir
   },
   ...createCatchAllRouteHandlersPreset({
     routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
@@ -78,6 +83,43 @@ const createSingleTargetConfig = ({
     ...targetOverrides
   })
 });
+
+const createBootstrappedLazyAnalysisState = ({
+  rootDir,
+  routeHandlersConfig
+}: {
+  rootDir: string;
+  routeHandlersConfig: RouteHandlersConfig;
+}): {
+  resolvedTargets: Array<RouteHandlerLazyResolvedTarget>;
+  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
+} => {
+  const appContext = resolveRouteHandlersAppContext(
+    routeHandlersConfig,
+    rootDir
+  );
+  const bootstrappedRouteHandlersConfig =
+    appContext.routeHandlersConfig ?? routeHandlersConfig;
+  const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig({
+    appConfig: appContext.appConfig,
+    localeConfig: TEST_LOCALE_CONFIG,
+    routeHandlersConfig: bootstrappedRouteHandlersConfig
+  });
+
+  return {
+    resolvedTargets: resolveRouteHandlerLazyResolvedTargetsFromAppConfig({
+      appConfig: appContext.appConfig,
+      localeConfig: TEST_LOCALE_CONFIG,
+      routeHandlersConfig: bootstrappedRouteHandlersConfig
+    }),
+    resolvedConfigsByTargetId: new Map(
+      resolvedConfigs.map(resolvedConfig => [
+        resolvedConfig.targetId,
+        resolvedConfig
+      ])
+    )
+  };
+};
 
 const readLogEntries = async (logPath: string): Promise<Array<string>> => {
   try {
@@ -94,6 +136,21 @@ const readLogEntries = async (logPath: string): Promise<Array<string>> => {
 describe('proxy lazy single-route analysis', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('returns null when the target is not present in the bootstrapped config map', async () => {
+    const result = await analyzeRouteHandlerLazyMatchedRoute({
+      targetId: 'missing-target',
+      routePath: {
+        filePath: '/tmp/app/content/guides/en.mdx',
+        locale: 'en',
+        slugArray: ['guides']
+      },
+      bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
+      resolvedConfigsByTargetId: new Map()
+    });
+
+    expect(result).toBeNull();
   });
 
   it('analyzes one matched route file once and reuses the cached heavy result on later calls', async () => {
@@ -121,10 +178,6 @@ describe('proxy lazy single-route analysis', () => {
           }
         });
         await writeTestModule(
-          path.join(rootDir, 'next.config.mjs'),
-          'export default {};\n'
-        );
-        await writeTestModule(
           path.join(
             rootDir,
             'node_modules',
@@ -135,14 +188,14 @@ describe('proxy lazy single-route analysis', () => {
           createCountedProcessorSource(processorLogPath)
         );
         await writeTestModule(routeFilePath, '# Guides\n');
-        loadRegisteredSlugSplitterConfigMock.mockResolvedValue(routeHandlersConfig);
+        const bootstrapState = createBootstrappedLazyAnalysisState({
+          rootDir,
+          routeHandlersConfig
+        });
 
         const resolution = await resolveRouteHandlerLazyRequest({
           pathname: '/content/guides',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          }
+          resolvedTargets: bootstrapState.resolvedTargets
         });
 
         expect(resolution.kind).toBe('matched-route-file');
@@ -150,16 +203,18 @@ describe('proxy lazy single-route analysis', () => {
           throw new Error('Expected matched-route-file resolution.');
         }
 
-        const firstResult = await analyzeRouteHandlerLazyMatchedRoute(
-          resolution.config.targetId,
-          resolution.config.localeConfig,
-          resolution.routePath
-        );
-        const secondResult = await analyzeRouteHandlerLazyMatchedRoute(
-          resolution.config.targetId,
-          resolution.config.localeConfig,
-          resolution.routePath
-        );
+        const firstResult = await analyzeRouteHandlerLazyMatchedRoute({
+          targetId: resolution.config.targetId,
+          routePath: resolution.routePath,
+          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+        });
+        const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
+          targetId: resolution.config.targetId,
+          routePath: resolution.routePath,
+          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+        });
 
         expect(firstResult?.kind).toBe('heavy');
         expect(firstResult?.source).toBe('fresh');
@@ -195,10 +250,6 @@ describe('proxy lazy single-route analysis', () => {
           }
         });
         await writeTestModule(
-          path.join(rootDir, 'next.config.mjs'),
-          'export default {};\n'
-        );
-        await writeTestModule(
           path.join(
             rootDir,
             'node_modules',
@@ -209,14 +260,14 @@ describe('proxy lazy single-route analysis', () => {
           createCountedProcessorSource(processorLogPath)
         );
         await writeTestModule(routeFilePath, '# Guides\n');
-        loadRegisteredSlugSplitterConfigMock.mockResolvedValue(routeHandlersConfig);
+        const bootstrapState = createBootstrappedLazyAnalysisState({
+          rootDir,
+          routeHandlersConfig
+        });
 
         const resolution = await resolveRouteHandlerLazyRequest({
           pathname: '/content/guides',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          }
+          resolvedTargets: bootstrapState.resolvedTargets
         });
 
         expect(resolution.kind).toBe('matched-route-file');
@@ -224,16 +275,18 @@ describe('proxy lazy single-route analysis', () => {
           throw new Error('Expected matched-route-file resolution.');
         }
 
-        const firstResult = await analyzeRouteHandlerLazyMatchedRoute(
-          resolution.config.targetId,
-          resolution.config.localeConfig,
-          resolution.routePath
-        );
-        const secondResult = await analyzeRouteHandlerLazyMatchedRoute(
-          resolution.config.targetId,
-          resolution.config.localeConfig,
-          resolution.routePath
-        );
+        const firstResult = await analyzeRouteHandlerLazyMatchedRoute({
+          targetId: resolution.config.targetId,
+          routePath: resolution.routePath,
+          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+        });
+        const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
+          targetId: resolution.config.targetId,
+          routePath: resolution.routePath,
+          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+        });
 
         expect(firstResult?.kind).toBe('light');
         expect(firstResult?.source).toBe('fresh');
@@ -244,7 +297,7 @@ describe('proxy lazy single-route analysis', () => {
     );
   });
 
-  it('keeps using the cached one-file result when only non-content target config changes', async () => {
+  it('invalidates the cached one-file result when the bootstrap generation changes while the route file stays the same', async () => {
     await withTempDir(
       'next-slug-splitter-proxy-lazy-single-route-',
       async rootDir => {
@@ -277,10 +330,6 @@ describe('proxy lazy single-route analysis', () => {
           }
         });
         await writeTestModule(
-          path.join(rootDir, 'next.config.mjs'),
-          'export default {};\n'
-        );
-        await writeTestModule(
           path.join(
             rootDir,
             'node_modules',
@@ -291,47 +340,52 @@ describe('proxy lazy single-route analysis', () => {
           createCountedProcessorSource(processorLogPath)
         );
         await writeTestModule(routeFilePath, '# Guides\n');
-        loadRegisteredSlugSplitterConfigMock.mockResolvedValue(baseConfig);
+        const baseBootstrapState = createBootstrappedLazyAnalysisState({
+          rootDir,
+          routeHandlersConfig: baseConfig
+        });
+        const invalidatedBootstrapState = createBootstrappedLazyAnalysisState({
+          rootDir,
+          routeHandlersConfig: invalidatedConfig
+        });
 
         const firstResolution = await resolveRouteHandlerLazyRequest({
           pathname: '/content/guides',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          }
+          resolvedTargets: baseBootstrapState.resolvedTargets
         });
         if (firstResolution.kind !== 'matched-route-file') {
           throw new Error('Expected matched-route-file resolution.');
         }
 
-        await analyzeRouteHandlerLazyMatchedRoute(
-          firstResolution.config.targetId,
-          firstResolution.config.localeConfig,
-          firstResolution.routePath
-        );
-
-        loadRegisteredSlugSplitterConfigMock.mockResolvedValue(invalidatedConfig);
+        await analyzeRouteHandlerLazyMatchedRoute({
+          targetId: firstResolution.config.targetId,
+          routePath: firstResolution.routePath,
+          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
+          resolvedConfigsByTargetId: baseBootstrapState.resolvedConfigsByTargetId
+        });
 
         const secondResolution = await resolveRouteHandlerLazyRequest({
           pathname: '/content/guides',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          }
+          resolvedTargets: invalidatedBootstrapState.resolvedTargets
         });
         if (secondResolution.kind !== 'matched-route-file') {
           throw new Error('Expected matched-route-file resolution.');
         }
 
-        const secondResult = await analyzeRouteHandlerLazyMatchedRoute(
-          secondResolution.config.targetId,
-          secondResolution.config.localeConfig,
-          secondResolution.routePath
-        );
+        const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
+          targetId: secondResolution.config.targetId,
+          routePath: secondResolution.routePath,
+          bootstrapGenerationToken: TEST_NEXT_BOOTSTRAP_GENERATION_TOKEN,
+          resolvedConfigsByTargetId:
+            invalidatedBootstrapState.resolvedConfigsByTargetId
+        });
 
         expect(secondResult?.kind).toBe('heavy');
-        expect(secondResult?.source).toBe('cache');
-        expect(await readLogEntries(processorLogPath)).toEqual([routeFilePath]);
+        expect(secondResult?.source).toBe('fresh');
+        expect(await readLogEntries(processorLogPath)).toEqual([
+          routeFilePath,
+          routeFilePath
+        ]);
       }
     );
   });
@@ -361,10 +415,6 @@ describe('proxy lazy single-route analysis', () => {
           }
         });
         await writeTestModule(
-          path.join(rootDir, 'next.config.mjs'),
-          'export default {};\n'
-        );
-        await writeTestModule(
           path.join(
             rootDir,
             'node_modules',
@@ -375,32 +425,34 @@ describe('proxy lazy single-route analysis', () => {
           createCountedProcessorSource(processorLogPath)
         );
         await writeTestModule(routeFilePath, '# Guides\n');
-        loadRegisteredSlugSplitterConfigMock.mockResolvedValue(routeHandlersConfig);
+        const bootstrapState = createBootstrappedLazyAnalysisState({
+          rootDir,
+          routeHandlersConfig
+        });
 
         const resolution = await resolveRouteHandlerLazyRequest({
           pathname: '/content/guides',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          }
+          resolvedTargets: bootstrapState.resolvedTargets
         });
         if (resolution.kind !== 'matched-route-file') {
           throw new Error('Expected matched-route-file resolution.');
         }
 
-        const firstResult = await analyzeRouteHandlerLazyMatchedRoute(
-          resolution.config.targetId,
-          resolution.config.localeConfig,
-          resolution.routePath
-        );
+        const firstResult = await analyzeRouteHandlerLazyMatchedRoute({
+          targetId: resolution.config.targetId,
+          routePath: resolution.routePath,
+          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+        });
 
         await writeTestModule(routeFilePath, '# Guides updated\n');
 
-        const secondResult = await analyzeRouteHandlerLazyMatchedRoute(
-          resolution.config.targetId,
-          resolution.config.localeConfig,
-          resolution.routePath
-        );
+        const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
+          targetId: resolution.config.targetId,
+          routePath: resolution.routePath,
+          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+        });
 
         expect(firstResult?.kind).toBe('heavy');
         expect(firstResult?.source).toBe('fresh');

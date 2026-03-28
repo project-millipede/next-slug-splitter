@@ -1,6 +1,6 @@
 export {
-  absoluteFileModule,
-  appRelativeModule,
+  absoluteModule,
+  relativeModule,
   packageModule
 } from '../../module-reference';
 export { resolveRouteHandlersAppConfig } from './app';
