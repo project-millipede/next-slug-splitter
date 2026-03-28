@@ -35,11 +35,10 @@ describe('proxy lazy stale-output cleanup', () => {
       })
     ).resolves.toBe('removed');
 
-    expect(removeRenderedRouteHandlerPageIfPresentMock).toHaveBeenCalledWith({
-      pageFilePath:
-        '/repo/app/pages/blog/_handlers/application-extensibility/en.tsx',
-      handlersDir: '/repo/app/pages/blog/_handlers'
-    });
+    expect(removeRenderedRouteHandlerPageIfPresentMock).toHaveBeenCalledWith(
+      '/repo/app/pages/blog/_handlers/application-extensibility/en.tsx',
+      '/repo/app/pages/blog/_handlers'
+    );
   });
 
   it('derives the emitted page path from route identity before delegating cleanup', async () => {
@@ -66,9 +65,9 @@ describe('proxy lazy stale-output cleanup', () => {
       emitFormat: 'ts',
       handlerRelativePath: 'guides/en'
     });
-    expect(removeRenderedRouteHandlerPageIfPresentMock).toHaveBeenCalledWith({
-      pageFilePath: '/repo/app/pages/content/_handlers/guides/en.tsx',
-      handlersDir: '/repo/app/pages/content/_handlers'
-    });
+    expect(removeRenderedRouteHandlerPageIfPresentMock).toHaveBeenCalledWith(
+      '/repo/app/pages/content/_handlers/guides/en.tsx',
+      '/repo/app/pages/content/_handlers'
+    );
   });
 });

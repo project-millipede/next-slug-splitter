@@ -47,24 +47,19 @@ export type ExecuteRouteHandlerNextPipelineInput =
 /**
  * Execute the route-handler pipeline from pre-resolved configs.
  *
- * @param input - Pipeline execution input with already-resolved target configs.
+ * @param resolvedConfigs - Already-resolved target configs.
+ * @param mode - Pipeline execution mode.
  * @returns The merged Next integration result for the configured targets.
  */
-export const executeResolvedRouteHandlerNextPipeline = async ({
-  resolvedConfigs,
-  mode = 'generate'
-}: {
-  resolvedConfigs: Array<ResolvedRouteHandlersConfig>;
-  mode?: PipelineMode;
-}): Promise<RouteHandlerNextResult> => {
+export const executeResolvedRouteHandlerNextPipeline = async (
+  resolvedConfigs: Array<ResolvedRouteHandlersConfig>,
+  mode: PipelineMode = 'generate'
+): Promise<RouteHandlerNextResult> => {
   if (mode === 'generate') {
     // Generate mode first establishes build ownership of emitted handlers and
     // other shared artifacts. That keeps build/generate independent from prior
     // dev-owned state before any target execution begins.
-    await synchronizeRouteHandlerPhaseArtifacts({
-      resolvedConfigs,
-      phase: 'build'
-    });
+    await synchronizeRouteHandlerPhaseArtifacts(resolvedConfigs, 'build');
   }
 
   if (resolvedConfigs.length === 1) {
@@ -73,10 +68,7 @@ export const executeResolvedRouteHandlerNextPipeline = async ({
     // Single-target execution is now a direct hand-off. After phase
     // synchronization, this layer just executes the one resolved target and
     // returns its Next-facing result.
-    return executeRouteHandlerTarget({
-      config: singleResolvedTarget,
-      mode
-    });
+    return executeRouteHandlerTarget(singleResolvedTarget, mode);
   }
 
   const freshResults = await Promise.all(
@@ -84,18 +76,13 @@ export const executeResolvedRouteHandlerNextPipeline = async ({
       // Multi-target execution is equally direct. Each resolved target runs
       // fresh against the core pipeline, and this layer only collects the
       // per-target results for the final merge step.
-      executeRouteHandlerTarget({
-        config,
-        mode
-      })
+      executeRouteHandlerTarget(config, mode)
     )
   );
 
   // Merging is the remaining orchestration responsibility after the fresh
   // per-target executions above complete.
-  return mergeRouteHandlerNextResults({
-    results: freshResults
-  });
+  return mergeRouteHandlerNextResults(freshResults);
 };
 
 /**
@@ -136,8 +123,5 @@ export const executeRouteHandlerNextPipeline = async ({
     localeConfig: resolvedLocaleConfig,
     routeHandlersConfig
   });
-  return executeResolvedRouteHandlerNextPipeline({
-    resolvedConfigs,
-    mode
-  });
+  return executeResolvedRouteHandlerNextPipeline(resolvedConfigs, mode);
 };

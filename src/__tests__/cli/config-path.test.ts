@@ -90,12 +90,7 @@ describe('cli config path resolution', () => {
     test.for(scenarios)('[$id] $description', ({ argv, existingFiles, expected }) => {
       seedMockFsFiles(existingFiles);
 
-      expect(
-        resolveNextConfigPath({
-          argv,
-          rootDir
-        })
-      ).toBe(expected);
+      expect(resolveNextConfigPath(argv, rootDir)).toBe(expected);
     });
   });
 });

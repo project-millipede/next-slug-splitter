@@ -131,9 +131,9 @@ describe('cold-request dedupe — composite', () => {
     });
 
     expect(result).toEqual({ kind: 'heavy', analysisResult });
-    expect(emitRouteHandlerLazySingleHandlerMock).toHaveBeenCalledWith({
+    expect(emitRouteHandlerLazySingleHandlerMock).toHaveBeenCalledWith(
       analysisResult
-    });
+    );
   });
 
   it('returns { kind: "heavy" } without emission for cached heavy routes whose handler already exists', async () => {
@@ -171,9 +171,9 @@ describe('cold-request dedupe — composite', () => {
     expect(doesRouteHandlerLazySingleHandlerExistMock).toHaveBeenCalledWith(
       analysisResult
     );
-    expect(emitRouteHandlerLazySingleHandlerMock).toHaveBeenCalledWith({
+    expect(emitRouteHandlerLazySingleHandlerMock).toHaveBeenCalledWith(
       analysisResult
-    });
+    );
   });
 
   it('returns null without emission when analysis returns null', async () => {

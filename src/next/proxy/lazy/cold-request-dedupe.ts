@@ -117,9 +117,7 @@ const analyzeAndPrepare = async ({
     // to disk so the subsequent rewrite has a valid target. Unlike build-mode
     // batch emission, this only ensures the one requested route is ready and
     // never removes other handler files.
-    await emitRouteHandlerLazySingleHandler({
-      analysisResult
-    });
+    await emitRouteHandlerLazySingleHandler(analysisResult);
 
     return {
       kind: 'heavy',

@@ -158,10 +158,10 @@ describe('route handlers adapter', () => {
         }
       }
     );
-    expect(prepareRouteHandlersFromConfigMock).toHaveBeenCalledWith({
-      rootDir: TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
+    expect(prepareRouteHandlersFromConfigMock).toHaveBeenCalledWith(
+      TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
       routeHandlersConfig
-    });
+    );
     expect(resolveRouteHandlersConfigsFromAppConfigMock).toHaveBeenCalledWith(
       expect.objectContaining({
         localeConfig: {

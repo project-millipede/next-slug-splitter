@@ -25,14 +25,12 @@ import type {
  * Convert lightweight bootstrap state into the request-time routing-state
  * shape consumed by the proxy decision layer.
  *
- * @param input - State construction input.
+ * @param bootstrapState - Bootstrap-state snapshot to expose at request time.
  * @returns Lightweight request-time routing state.
  */
-const buildRouteHandlerProxyRoutingState = ({
-  bootstrapState
-}: {
-  bootstrapState: Awaited<ReturnType<typeof getRouteHandlerProxyBootstrapState>>;
-}): RouteHandlerProxyRoutingState => {
+const buildRouteHandlerProxyRoutingState = (
+  bootstrapState: Awaited<ReturnType<typeof getRouteHandlerProxyBootstrapState>>
+): RouteHandlerProxyRoutingState => {
   // The thin proxy runtime intentionally keeps no long-lived exact heavy-route
   // rewrite map. Cold heavy discovery lives in the worker session; the parent
   // process only carries enough bootstrap state to decide whether a worker is
@@ -61,9 +59,7 @@ const loadFreshRouteHandlerProxyRoutingState = async ({
     configRegistration
   );
 
-  return buildRouteHandlerProxyRoutingState({
-    bootstrapState
-  });
+  return buildRouteHandlerProxyRoutingState(bootstrapState);
 };
 
 /**

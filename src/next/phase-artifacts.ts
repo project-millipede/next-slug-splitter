@@ -65,13 +65,10 @@ const readRouteHandlerPhaseOwner = async (
   }
 };
 
-const writeRouteHandlerPhaseOwner = async ({
-  rootDir,
-  phase
-}: {
-  rootDir: string;
-  phase: RouteHandlerPhaseOwner;
-}): Promise<void> => {
+const writeRouteHandlerPhaseOwner = async (
+  rootDir: string,
+  phase: RouteHandlerPhaseOwner
+): Promise<void> => {
   const recordPath = resolveRouteHandlerPhaseRecordPath(rootDir);
   const record: RouteHandlerPhaseRecord = {
     version: ROUTE_HANDLER_PHASE_RECORD_VERSION,
@@ -84,11 +81,9 @@ const writeRouteHandlerPhaseOwner = async ({
   await writeFile(recordPath, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
 };
 
-const clearLegacyRouteHandlerCacheArtifacts = async ({
-  rootDir
-}: {
-  rootDir: string;
-}): Promise<void> => {
+const clearLegacyRouteHandlerCacheArtifacts = async (
+  rootDir: string
+): Promise<void> => {
   await Promise.all(
     LEGACY_ROUTE_HANDLER_CACHE_PATHS.map(relativePath =>
       rm(path.join(rootDir, relativePath), {
@@ -99,11 +94,9 @@ const clearLegacyRouteHandlerCacheArtifacts = async ({
   );
 };
 
-const clearDevLazySingleRouteCacheArtifacts = async ({
-  rootDir
-}: {
-  rootDir: string;
-}): Promise<void> => {
+const clearDevLazySingleRouteCacheArtifacts = async (
+  rootDir: string
+): Promise<void> => {
   await rm(path.join(rootDir, DEV_LAZY_SINGLE_ROUTE_CACHE_DIRECTORY), {
     recursive: true,
     force: true
@@ -129,14 +122,15 @@ const clearDevLazySingleRouteCacheArtifacts = async ({
  * 4. Entering `dev` after a previous `dev` owner preserves handler files and
  *    the route-plan cache so revisiting the same heavy route can skip both
  *    analysis and regeneration across dev restarts.
+ *
+ * @param resolvedConfigs - Fully resolved target configs for the current run.
+ * @param phase - Owning phase that should claim the shared artifacts.
+ * @returns A promise that settles after all phase-local cleanup is complete.
  */
-export const synchronizeRouteHandlerPhaseArtifacts = async ({
-  resolvedConfigs,
-  phase
-}: {
-  resolvedConfigs: Array<ResolvedRouteHandlersConfig>;
-  phase: RouteHandlerPhaseOwner;
-}): Promise<void> => {
+export const synchronizeRouteHandlerPhaseArtifacts = async (
+  resolvedConfigs: Array<ResolvedRouteHandlersConfig>,
+  phase: RouteHandlerPhaseOwner
+): Promise<void> => {
   const [referenceConfig] = resolvedConfigs;
 
   if (referenceConfig == null) {
@@ -146,18 +140,12 @@ export const synchronizeRouteHandlerPhaseArtifacts = async ({
   const rootDir = referenceConfig.app.rootDir;
   const previousPhase = await readRouteHandlerPhaseOwner(rootDir);
 
-  await clearLegacyRouteHandlerCacheArtifacts({
-    rootDir
-  });
+  await clearLegacyRouteHandlerCacheArtifacts(rootDir);
 
   if (phase === 'build') {
-    await clearDevLazySingleRouteCacheArtifacts({
-      rootDir
-    });
+    await clearDevLazySingleRouteCacheArtifacts(rootDir);
   } else if (previousPhase !== 'dev') {
-    await clearDevLazySingleRouteCacheArtifacts({
-      rootDir
-    });
+    await clearDevLazySingleRouteCacheArtifacts(rootDir);
 
     const handlersDirs = new Set(
       resolvedConfigs.map(config => config.paths.handlersDir)
@@ -168,8 +156,5 @@ export const synchronizeRouteHandlerPhaseArtifacts = async ({
     }
   }
 
-  await writeRouteHandlerPhaseOwner({
-    rootDir,
-    phase
-  });
+  await writeRouteHandlerPhaseOwner(rootDir, phase);
 };

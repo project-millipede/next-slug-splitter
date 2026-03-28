@@ -158,28 +158,28 @@ export const normalizeRouteHandlersTargetOptions = ({
   const resolvedRootDir = appConfig.rootDir;
   const resolvedPaths: RouteHandlerNextPaths = {
     rootDir: resolvedRootDir,
-    contentPagesDir: readRequiredStringOption({
-      value: resolveConfiguredPathOption({
+    contentPagesDir: readRequiredStringOption(
+      resolveConfiguredPathOption({
         rootDir: resolvedRootDir,
         value: configuredPaths.contentPagesDir,
         label: 'paths.contentPagesDir'
       }),
-      label: 'paths.contentPagesDir'
-    }),
-    handlersDir: readRequiredStringOption({
-      value: resolveConfiguredPathOption({
+      'paths.contentPagesDir'
+    ),
+    handlersDir: readRequiredStringOption(
+      resolveConfiguredPathOption({
         rootDir: resolvedRootDir,
         value: configuredPaths.handlersDir,
         label: 'paths.handlersDir'
       }),
-      label: 'paths.handlersDir'
-    })
+      'paths.handlersDir'
+    )
   };
   const routeBasePath = normalizeRouteBasePath(
-    readRequiredStringOption({
-      value: configuredRouteHandlers.routeBasePath,
-      label: 'routeBasePath'
-    })
+    readRequiredStringOption(
+      configuredRouteHandlers.routeBasePath,
+      'routeBasePath'
+    )
   );
   const mdxCompileOptions = readMdxCompileOptions(
     readObjectProperty(configuredRouteHandlers, 'mdxCompileOptions')

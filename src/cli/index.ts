@@ -30,7 +30,7 @@ const main = async (): Promise<void> => {
   const rootDir = process.cwd();
   const analyzeOnly = argv.includes('--analyze-only');
   const jsonOutput = argv.includes('--json');
-  const nextConfigPath = resolveNextConfigPath({ argv, rootDir });
+  const nextConfigPath = resolveNextConfigPath(argv, rootDir);
 
   if (!isNonEmptyString(nextConfigPath)) {
     throw createCliError(

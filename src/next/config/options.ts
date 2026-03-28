@@ -14,19 +14,15 @@ import {
 /**
  * Read a required string-valued config option.
  *
- * @param input Option input.
- * @param input.value Raw option value.
- * @param input.label Human-readable option label used in error messages.
+ * @param value - Raw option value.
+ * @param label - Human-readable option label used in error messages.
  * @returns The validated non-empty string value.
  * @throws If the value is missing or not a non-empty string.
  */
-export const readRequiredStringOption = ({
-  value,
-  label
-}: {
-  value: unknown;
-  label: string;
-}): string => {
+export const readRequiredStringOption = (
+  value: unknown,
+  label: string
+): string => {
   if (isNonEmptyString(value)) {
     return value;
   }

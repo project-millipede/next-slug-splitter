@@ -90,10 +90,10 @@ export const loadResolvedRouteHandlersConfigs = async ({
   );
   // Runtime config loading triggers app-owned preparation before target
   // execution begins because later planning may depend on generated app files.
-  await prepareRouteHandlersFromConfig({
-    rootDir: appContext.appConfig.rootDir,
-    routeHandlersConfig: appContext.routeHandlersConfig
-  });
+  await prepareRouteHandlersFromConfig(
+    appContext.appConfig.rootDir,
+    appContext.routeHandlersConfig
+  );
 
   return resolveRouteHandlersConfigsFromAppConfig({
     appConfig: appContext.appConfig,

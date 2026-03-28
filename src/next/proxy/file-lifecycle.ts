@@ -129,9 +129,8 @@ const renderLocaleConfigLiteral = (localeConfig: LocaleConfig): string =>
  * Render the adapter-time config registration that the thin Proxy runtime must
  * forward into the dev-only worker boundary.
  *
- * @param input - Registration input.
- * @param input.configPath - Absolute app-owned config path when one exists.
- * @param input.rootDir - True app root captured during `next.config.*`
+ * @param configPath - Absolute app-owned config path when one exists.
+ * @param rootDir - True app root captured during `next.config.*`
  * evaluation.
  * @returns Stable object literal text.
  *
@@ -144,13 +143,10 @@ const renderLocaleConfigLiteral = (localeConfig: LocaleConfig): string =>
  * request-time access to ad-hoc process registration behaves like ordinary
  * Node.
  */
-const renderConfigRegistrationLiteral = ({
-  configPath,
-  rootDir
-}: {
-  configPath?: string;
-  rootDir?: string;
-}): string =>
+const renderConfigRegistrationLiteral = (
+  configPath?: string,
+  rootDir?: string
+): string =>
   [
     '{',
     `  configPath: ${renderOptionalStringLiteral(configPath)},`,
@@ -201,10 +197,10 @@ const renderRouteHandlerProxySource = ({
     '',
     'const LOCALE_CONFIG = ' + renderLocaleConfigLiteral(localeConfig) + ';',
     'const CONFIG_REGISTRATION = ' +
-      renderConfigRegistrationLiteral({
-        configPath: configRegistration?.configPath,
-        rootDir: configRegistration?.rootDir
-      }) +
+      renderConfigRegistrationLiteral(
+        configRegistration?.configPath,
+        configRegistration?.rootDir
+      ) +
       ';',
     '',
     'export function proxy(request: NextRequest) {',
@@ -277,17 +273,14 @@ const writeGeneratedProxyFile = async ({
 /**
  * Ensure no app-owned Proxy or legacy middleware files would be overwritten.
  *
- * @param input - Conflict check input.
- * @param input.rootDir - Application root directory.
- * @param input.generatedProxyFilePath - Absolute path for the plugin-owned file.
+ * @param rootDir - Application root directory.
+ * @param generatedProxyFilePath - Absolute path for the plugin-owned file.
+ * @returns A promise that settles after conflict scanning completes.
  */
-const assertNoProxyConflicts = async ({
-  rootDir,
-  generatedProxyFilePath
-}: {
-  rootDir: string;
-  generatedProxyFilePath: string;
-}): Promise<void> => {
+const assertNoProxyConflicts = async (
+  rootDir: string,
+  generatedProxyFilePath: string
+): Promise<void> => {
   for (const candidateFilePath of resolveProxyConflictCandidates(rootDir)) {
     const sourceText = await readFileIfExists(candidateFilePath);
 
@@ -327,14 +320,12 @@ const assertNoProxyConflicts = async ({
 /**
  * Remove the plugin-owned root `proxy.ts` when present.
  *
- * @param input - Removal input.
- * @param input.rootDir - Application root directory.
+ * @param rootDir - Application root directory.
+ * @returns A promise that settles after any plugin-owned proxy file is removed.
  */
-const removeGeneratedProxyFileIfPresent = async ({
-  rootDir
-}: {
-  rootDir: string;
-}): Promise<void> => {
+const removeGeneratedProxyFileIfPresent = async (
+  rootDir: string
+): Promise<void> => {
   const proxyFilePath = resolveGeneratedProxyFilePath(rootDir);
   const sourceText = await readFileIfExists(proxyFilePath);
 
@@ -383,17 +374,12 @@ export const synchronizeRouteHandlerProxyFile = async ({
   if (strategy.kind !== 'proxy') {
     // Rewrite mode must actively clean up a stale plugin-generated proxy file
     // so later runs do not continue to route through Proxy by accident.
-    await removeGeneratedProxyFileIfPresent({
-      rootDir
-    });
+    await removeGeneratedProxyFileIfPresent(rootDir);
     return;
   }
 
   const generatedProxyFilePath = resolveGeneratedProxyFilePath(rootDir);
-  await assertNoProxyConflicts({
-    rootDir,
-    generatedProxyFilePath
-  });
+  await assertNoProxyConflicts(rootDir, generatedProxyFilePath);
   // We intentionally take locale config from the resolved targets rather than
   // loading app config again inside the generated file. Locale config is shared
   // across resolved targets, so capturing the first resolved config keeps the

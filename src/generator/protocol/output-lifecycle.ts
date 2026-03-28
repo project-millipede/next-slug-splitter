@@ -109,9 +109,9 @@ const readRouteHandlerOutputFileIfPresent = async (
 /**
  * Remove empty parent directories after one emitted page file was deleted.
  *
- * @param input - Directory-pruning input.
- * @param input.startPath - Directory to start pruning from.
- * @param input.stopPath - Directory boundary that must be preserved.
+ * @param startPath - Directory to start pruning from.
+ * @param stopPath - Directory boundary that must be preserved.
+ * @returns A promise that settles after empty directories have been pruned.
  *
  * @remarks
  * Generated handler directories are nested by slug/locale. When one emitted
@@ -119,13 +119,10 @@ const readRouteHandlerOutputFileIfPresent = async (
  * should be removed as well. The stop boundary keeps pruning scoped to the
  * handlers directory owned by the current target.
  */
-const removeEmptyRouteHandlerDirectoriesUpTo = async ({
-  startPath,
-  stopPath
-}: {
-  startPath: string;
-  stopPath: string;
-}): Promise<void> => {
+const removeEmptyRouteHandlerDirectoriesUpTo = async (
+  startPath: string,
+  stopPath: string
+): Promise<void> => {
   let currentPath = startPath;
 
   while (currentPath !== stopPath && currentPath.startsWith(stopPath)) {
@@ -142,8 +139,7 @@ const removeEmptyRouteHandlerDirectoriesUpTo = async ({
 /**
  * Synchronize one rendered handler page to disk by contents.
  *
- * @param input - Synchronization input.
- * @param input.page - Fully rendered handler page artifact.
+ * @param page - Fully rendered handler page artifact.
  * @returns Whether the page had to be written or was already current.
  *
  * @remarks
@@ -154,11 +150,9 @@ const removeEmptyRouteHandlerDirectoriesUpTo = async ({
  * It compares full source text rather than output hashes so callers do not
  * need to repeat that logic or own direct file reads.
  */
-export const synchronizeRenderedRouteHandlerPage = async ({
-  page
-}: {
-  page: RenderedHandlerPage;
-}): Promise<RenderedHandlerPageSynchronizationStatus> => {
+export const synchronizeRenderedRouteHandlerPage = async (
+  page: RenderedHandlerPage
+): Promise<RenderedHandlerPageSynchronizationStatus> => {
   const existingSource = await readRouteHandlerOutputFileIfPresent(
     page.pageFilePath
   );
@@ -175,9 +169,8 @@ export const synchronizeRenderedRouteHandlerPage = async ({
 /**
  * Remove one emitted handler page if it exists.
  *
- * @param input - Removal input.
- * @param input.pageFilePath - Absolute emitted page path.
- * @param input.handlersDir - Handlers-directory boundary for empty-directory
+ * @param pageFilePath - Absolute emitted page path.
+ * @param handlersDir - Handlers-directory boundary for empty-directory
  * pruning.
  * @returns Whether a file was removed or nothing existed to remove.
  *
@@ -187,22 +180,19 @@ export const synchronizeRenderedRouteHandlerPage = async ({
  * - lazy stale-output cleanup when one previously emitted route becomes light
  *   or disappears
  */
-export const removeRenderedRouteHandlerPageIfPresent = async ({
-  pageFilePath,
-  handlersDir
-}: {
-  pageFilePath: string;
-  handlersDir: string;
-}): Promise<EmittedHandlerPageRemovalStatus> => {
+export const removeRenderedRouteHandlerPageIfPresent = async (
+  pageFilePath: string,
+  handlersDir: string
+): Promise<EmittedHandlerPageRemovalStatus> => {
   try {
     await unlink(pageFilePath);
   } catch {
     return 'missing';
   }
 
-  await removeEmptyRouteHandlerDirectoriesUpTo({
-    startPath: path.dirname(pageFilePath),
-    stopPath: handlersDir
-  });
+  await removeEmptyRouteHandlerDirectoriesUpTo(
+    path.dirname(pageFilePath),
+    handlersDir
+  );
   return 'removed';
 };

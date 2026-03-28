@@ -38,17 +38,15 @@ export const resolveConfigPathFromArgv = (
  * Resolve the Next config path for the CLI by preferring `--config` and
  * falling back to default file discovery.
  *
- * @param input - CLI config-path resolution input.
+ * @param argv - Raw CLI arguments after the executable and script path.
+ * @param rootDir - Working directory used to resolve relative config paths.
  * @returns Resolved Next config path when one is available, otherwise
  * `undefined`.
  */
-export const resolveNextConfigPath = ({
-  argv,
-  rootDir
-}: {
-  argv: Array<string>;
-  rootDir: string;
-}): string | undefined => {
+export const resolveNextConfigPath = (
+  argv: Array<string>,
+  rootDir: string
+): string | undefined => {
   let nextConfigPath = resolveConfigPathFromArgv(argv, rootDir);
   if (nextConfigPath == null) {
     nextConfigPath = findNextConfigPath(rootDir);

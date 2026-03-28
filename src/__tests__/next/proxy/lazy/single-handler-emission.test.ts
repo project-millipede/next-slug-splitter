@@ -150,12 +150,12 @@ describe('proxy lazy single-handler emission', () => {
           throw new Error('Expected heavy single-route analysis.');
         }
 
-        const firstEmission = await emitRouteHandlerLazySingleHandler({
+        const firstEmission = await emitRouteHandlerLazySingleHandler(
           analysisResult
-        });
-        const secondEmission = await emitRouteHandlerLazySingleHandler({
+        );
+        const secondEmission = await emitRouteHandlerLazySingleHandler(
           analysisResult
-        });
+        );
         const emittedSource = await readFile(
           firstEmission.renderedPage.pageFilePath,
           'utf8'

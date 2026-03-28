@@ -14,22 +14,14 @@ import type {
  * Target tagging is what lets one shared cache record preserve docs/blog
  * separation for later lookup and generation ownership.
  *
- * @param input - Result construction input.
+ * @param config - Resolved target config that owns the result.
+ * @param pipelineResult - Core pipeline result for the target.
  * @returns Next integration result for one target.
  */
-export const buildRouteHandlerNextResult = ({
-  config,
-  pipelineResult
-}: {
-  /**
-   * Resolved target config that owns the result.
-   */
-  config: ResolvedRouteHandlersConfig;
-  /**
-   * Core pipeline result for the target.
-   */
-  pipelineResult: RouteHandlerPipelineResult;
-}): RouteHandlerNextResult => ({
+export const buildRouteHandlerNextResult = (
+  config: ResolvedRouteHandlersConfig,
+  pipelineResult: RouteHandlerPipelineResult
+): RouteHandlerNextResult => ({
   analyzedCount: pipelineResult.analyzedCount,
   heavyCount: pipelineResult.heavyCount,
   // Target tagging is what lets one shared cache record preserve docs/blog
@@ -52,17 +44,12 @@ export const buildRouteHandlerNextResult = ({
  * The cache remains one shared record, but heavy-route entries keep their
  * `targetId` so target-local ownership can be recovered later.
  *
- * @param input - Merge input.
+ * @param results - Target-local Next results.
  * @returns One merged cache result for all configured targets.
  */
-export const mergeRouteHandlerNextResults = ({
-  results
-}: {
-  /**
-   * Target-local Next results.
-   */
-  results: Array<RouteHandlerNextResult>;
-}): RouteHandlerNextResult => {
+export const mergeRouteHandlerNextResults = (
+  results: Array<RouteHandlerNextResult>
+): RouteHandlerNextResult => {
   const analyzedCount = results.reduce(
     (count, result) => count + result.analyzedCount,
     0

@@ -23,11 +23,9 @@ const createRequireFromRoot = (rootDir: string) =>
  * @returns Absolute path to the TypeScript compiler entry.
  * @throws If `typescript` is not installed in the application.
  */
-export const resolveAppLocalTypeScriptCompilerPath = ({
-  rootDir
-}: {
-  rootDir: string;
-}): string => {
+export const resolveAppLocalTypeScriptCompilerPath = (
+  rootDir: string
+): string => {
   const requireFromRoot = createRequireFromRoot(rootDir);
 
   try {

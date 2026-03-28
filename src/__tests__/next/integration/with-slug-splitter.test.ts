@@ -267,9 +267,7 @@ describe('withSlugSplitter', () => {
         await writeFile(conventionalConfigPath, 'export default {};\n', 'utf8');
 
         expect(
-          resolveRegisteredSlugSplitterConfigRegistration({
-            rootDir
-          })
+          resolveRegisteredSlugSplitterConfigRegistration(rootDir)
         ).toEqual({
           configPath: conventionalConfigPath,
           rootDir

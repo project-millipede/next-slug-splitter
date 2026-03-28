@@ -30,8 +30,7 @@ export type RouteHandlerLazySingleRouteEmissionResult = {
 /**
  * Emit exactly one lazily analyzed heavy route to disk.
  *
- * @param input - Emission input.
- * @param input.analysisResult - One-file heavy-route analysis result.
+ * @param analysisResult - One-file heavy-route analysis result.
  * @returns Synchronization result for the single emitted page.
  *
  * @remarks
@@ -44,16 +43,14 @@ export type RouteHandlerLazySingleRouteEmissionResult = {
  * That means this module never deletes other generated handlers. Its job is
  * strictly "ensure this one heavy route's handler file is ready right now."
  */
-export const emitRouteHandlerLazySingleHandler = async ({
-  analysisResult
-}: {
+export const emitRouteHandlerLazySingleHandler = async (
   analysisResult: Extract<
     RouteHandlerLazySingleRouteAnalysisResult,
     {
       kind: 'heavy';
     }
-  >;
-}): Promise<RouteHandlerLazySingleRouteEmissionResult> => {
+  >
+): Promise<RouteHandlerLazySingleRouteEmissionResult> => {
   const renderedPage = renderRouteHandlerPage({
     paths: analysisResult.config.paths,
     heavyRoute: analysisResult.plannedHeavyRoute,
@@ -62,9 +59,7 @@ export const emitRouteHandlerLazySingleHandler = async ({
     handlerRouteParam: analysisResult.config.handlerRouteParam,
     routeBasePath: analysisResult.config.routeBasePath
   });
-  const status = await synchronizeRenderedRouteHandlerPage({
-    page: renderedPage
-  });
+  const status = await synchronizeRenderedRouteHandlerPage(renderedPage);
 
   return {
     status,

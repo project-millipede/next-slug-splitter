@@ -97,20 +97,20 @@ describe('runtime index fresh execution', () => {
 
     executeRouteHandlerTargetMock.mockResolvedValue(freshResult);
 
-    const result = await executeResolvedRouteHandlerNextPipeline({
-      resolvedConfigs: [resolvedConfig],
-      mode: 'generate'
-    });
+    const result = await executeResolvedRouteHandlerNextPipeline(
+      [resolvedConfig],
+      'generate'
+    );
 
     expect(result).toEqual(freshResult);
-    expect(synchronizeRouteHandlerPhaseArtifactsMock).toHaveBeenCalledWith({
-      resolvedConfigs: [resolvedConfig],
-      phase: 'build'
-    });
-    expect(executeRouteHandlerTargetMock).toHaveBeenCalledWith({
-      config: resolvedConfig,
-      mode: 'generate'
-    });
+    expect(synchronizeRouteHandlerPhaseArtifactsMock).toHaveBeenCalledWith(
+      [resolvedConfig],
+      'build'
+    );
+    expect(executeRouteHandlerTargetMock).toHaveBeenCalledWith(
+      resolvedConfig,
+      'generate'
+    );
     expect(mergeRouteHandlerNextResultsMock).not.toHaveBeenCalled();
   });
 
@@ -141,16 +141,17 @@ describe('runtime index fresh execution', () => {
       .mockResolvedValueOnce(blogResult);
     mergeRouteHandlerNextResultsMock.mockReturnValue(mergedResult);
 
-    const result = await executeResolvedRouteHandlerNextPipeline({
-      resolvedConfigs: [docsConfig, blogConfig],
-      mode: 'analyze'
-    });
+    const result = await executeResolvedRouteHandlerNextPipeline(
+      [docsConfig, blogConfig],
+      'analyze'
+    );
 
     expect(result).toEqual(mergedResult);
     expect(synchronizeRouteHandlerPhaseArtifactsMock).not.toHaveBeenCalled();
     expect(executeRouteHandlerTargetMock).toHaveBeenCalledTimes(2);
-    expect(mergeRouteHandlerNextResultsMock).toHaveBeenCalledWith({
-      results: [docsResult, blogResult]
-    });
+    expect(mergeRouteHandlerNextResultsMock).toHaveBeenCalledWith([
+      docsResult,
+      blogResult
+    ]);
   });
 });

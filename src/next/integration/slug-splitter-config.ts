@@ -128,8 +128,7 @@ export const readRegisteredSlugSplitterConfigRootDir = ():
  * Resolve the strongest config-registration information available for later
  * adapter or proxy bridging work.
  *
- * @param input - Resolution input.
- * @param input.rootDir - True app root directory.
+ * @param rootDir - True app root directory.
  * @returns Explicit registration when available, otherwise a conventional
  * root-level config file guess for direct-object integrations.
  *
@@ -151,11 +150,9 @@ export const readRegisteredSlugSplitterConfigRootDir = ():
  * explicit while supporting the common app layout used by local workspaces like
  * Millipede.
  */
-export const resolveRegisteredSlugSplitterConfigRegistration = ({
-  rootDir
-}: {
-  rootDir: string;
-}): {
+export const resolveRegisteredSlugSplitterConfigRegistration = (
+  rootDir: string
+): {
   configPath?: string;
   rootDir: string;
 } => {

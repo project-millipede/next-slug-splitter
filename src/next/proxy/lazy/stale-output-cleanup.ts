@@ -33,10 +33,7 @@ export const removeRouteHandlerLazyOutputAtKnownLocation = ({
   handlersDir: string;
   pageFilePath: string;
 }): Promise<EmittedHandlerPageRemovalStatus> =>
-  removeRenderedRouteHandlerPageIfPresent({
-    pageFilePath,
-    handlersDir
-  });
+  removeRenderedRouteHandlerPageIfPresent(pageFilePath, handlersDir);
 
 /**
  * Remove the deterministic emitted handler file for one route identity.
@@ -83,8 +80,8 @@ export const removeRouteHandlerLazyOutputForIdentity = ({
     handlerRelativePath
   });
 
-  return removeRenderedRouteHandlerPageIfPresent({
+  return removeRenderedRouteHandlerPageIfPresent(
     pageFilePath,
-    handlersDir: config.paths.handlersDir
-  });
+    config.paths.handlersDir
+  );
 };

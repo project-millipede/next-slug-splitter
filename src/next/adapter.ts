@@ -79,10 +79,7 @@ const generateRewrites = async (
   // This is the main hand-off from the adapter layer into the deeper runtime
   // pipeline. Everything below this call now executes fresh target work and,
   // in generate mode, rebuilds the emitted handler directories.
-  return executeResolvedRouteHandlerNextPipeline({
-    resolvedConfigs,
-    mode: 'generate'
-  });
+  return executeResolvedRouteHandlerNextPipeline(resolvedConfigs, 'generate');
 };
 
 const routeHandlersAdapter: NextAdapter = {
@@ -113,10 +110,10 @@ const routeHandlersAdapter: NextAdapter = {
     // (e.g. `processorImport`) exist on disk, so any preparation that produces
     // those modules must complete first. Without this ordering, a cold build
     // (no prior `dist/`) would fail validation before `prepare` ever ran.
-    await prepareRouteHandlersFromConfig({
-      rootDir: appContext.appConfig.rootDir,
-      routeHandlersConfig: appContext.routeHandlersConfig
-    });
+    await prepareRouteHandlersFromConfig(
+      appContext.appConfig.rootDir,
+      appContext.routeHandlersConfig
+    );
 
     const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig({
       appConfig: appContext.appConfig,
@@ -128,10 +125,10 @@ const routeHandlersAdapter: NextAdapter = {
       routingPolicy: appContext.appConfig.routing
     });
 
-    await synchronizeRouteHandlerPhaseArtifacts({
+    await synchronizeRouteHandlerPhaseArtifacts(
       resolvedConfigs,
-      phase: routingStrategy.kind === 'proxy' ? 'dev' : 'build'
-    });
+      routingStrategy.kind === 'proxy' ? 'dev' : 'build'
+    );
 
     // This is the first routing-strategy split in the adapter. Before the
     // plugin decides whether it will install rewrites or rely on a generated
@@ -141,9 +138,9 @@ const routeHandlersAdapter: NextAdapter = {
       rootDir: appContext.appConfig.rootDir,
       strategy: routingStrategy,
       resolvedConfigs,
-      configRegistration: resolveRegisteredSlugSplitterConfigRegistration({
-        rootDir: appContext.appConfig.rootDir
-      })
+      configRegistration: resolveRegisteredSlugSplitterConfigRegistration(
+        appContext.appConfig.rootDir
+      )
     });
 
     if (routingStrategy.kind === 'proxy') {

@@ -94,9 +94,8 @@ describe('route handler preparation', () => {
     resolveAppLocalTypeScriptCompilerPathMock.mockReset();
 
     spawnMock.mockImplementation(() => createSuccessfulChildProcess({}));
-    resolveAppLocalTypeScriptCompilerPathMock.mockImplementation(
-      ({ rootDir }: { rootDir: string }) =>
-        path.join(rootDir, 'node_modules', 'typescript', 'lib', 'tsc.js')
+    resolveAppLocalTypeScriptCompilerPathMock.mockImplementation(rootDir =>
+      path.join(rootDir, 'node_modules', 'typescript', 'lib', 'tsc.js')
     );
   });
 
@@ -132,13 +131,13 @@ describe('route handler preparation', () => {
       preparePaths.map(preparePath => path.join(rootDir, preparePath))
     );
 
-    await prepareRouteHandlersFromConfig({
+    await prepareRouteHandlersFromConfig(
       rootDir,
-      routeHandlersConfig: buildRouteHandlersConfig({
+      buildRouteHandlersConfig({
         rootDir,
         preparePaths
       })
-    });
+    );
 
     expect(readProjectPathsFromSpawnCalls()).toEqual(
       preparePaths.map(preparePath => path.join(rootDir, preparePath))
@@ -169,14 +168,8 @@ describe('route handler preparation', () => {
     });
 
     await Promise.all([
-      prepareRouteHandlersFromConfig({
-        rootDir,
-        routeHandlersConfig
-      }),
-      prepareRouteHandlersFromConfig({
-        rootDir,
-        routeHandlersConfig
-      })
+      prepareRouteHandlersFromConfig(rootDir, routeHandlersConfig),
+      prepareRouteHandlersFromConfig(rootDir, routeHandlersConfig)
     ]);
 
     expect(spawnMock).toHaveBeenCalledTimes(1);

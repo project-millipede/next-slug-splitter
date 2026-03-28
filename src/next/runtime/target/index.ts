@@ -26,29 +26,18 @@ import type {
 /**
  * Execute one resolved route-handler target directly against the core pipeline.
  *
- * @param input - Target execution input.
+ * @param config - Fully resolved target config.
+ * @param mode - Pipeline execution mode.
  * @returns Next integration result for the target.
  */
-export const executeRouteHandlerTarget = async ({
-  config,
-  mode
-}: {
-  /**
-   * Fully resolved target config.
-   */
-  config: ResolvedRouteHandlersConfig;
-  /**
-   * Pipeline execution mode.
-   */
-  mode: PipelineMode;
-}): Promise<RouteHandlerNextResult> => {
+export const executeRouteHandlerTarget = async (
+  config: ResolvedRouteHandlersConfig,
+  mode: PipelineMode
+): Promise<RouteHandlerNextResult> => {
   // This is the per-target hand-off from the Next runtime layer into core
   // planning/generation for one fully resolved target.
   const coreResult: RouteHandlerPipelineResult =
     await executeRouteHandlerPipeline(config, mode);
 
-  return buildRouteHandlerNextResult({
-    config,
-    pipelineResult: coreResult
-  });
+  return buildRouteHandlerNextResult(config, coreResult);
 };

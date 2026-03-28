@@ -73,10 +73,10 @@ export const bootstrapRouteHandlerProxyWorker = async (
     );
   }
 
-  await prepareRouteHandlersFromConfig({
-    rootDir: appContext.appConfig.rootDir,
-    routeHandlersConfig: bootstrappedRouteHandlersConfig
-  });
+  await prepareRouteHandlersFromConfig(
+    appContext.appConfig.rootDir,
+    bootstrappedRouteHandlersConfig
+  );
 
   const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig({
     appConfig: appContext.appConfig,

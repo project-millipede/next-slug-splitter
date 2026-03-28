@@ -91,8 +91,6 @@ export const emitRouteHandlerPages = async ({
   }
 
   for (const page of renderedPages) {
-    await synchronizeRenderedRouteHandlerPage({
-      page
-    });
+    await synchronizeRenderedRouteHandlerPage(page);
   }
 };
