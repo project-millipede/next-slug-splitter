@@ -6,10 +6,10 @@
  *
  * - Where content pages live on disk (`contentPagesDir`).
  * - How the catch-all route parameter is shaped (`handlerRouteParam`).
- * - Where to find the component registry, the handler processor, and the
- *   runtime factory used by generated handler pages (`handlerBinding`).
+ * - Where to find the handler processor that maps captured keys to
+ *   component imports and a factory import (`handlerBinding`).
  *
- * Module references use `appRelativeModule` so the code generator emits
+ * Module references use `relativeModule` so the code generator emits
  * import paths relative to the application root, independent of the
  * working directory at build time.
  */
@@ -18,7 +18,7 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  appRelativeModule,
+  relativeModule,
   createCatchAllRouteHandlersPreset
 } from 'next-slug-splitter/next';
 
@@ -27,7 +27,6 @@ import {
 // ---------------------------------------------------------------------------
 
 const rootDir = process.cwd();
-const nextConfigPath = path.resolve(rootDir, 'next.config.mjs');
 
 // ---------------------------------------------------------------------------
 // Route parameter
@@ -51,8 +50,7 @@ const docsHandlerRouteParam = {
 /** @type {import('next-slug-splitter/next').RouteHandlersConfig} */
 export const routeHandlersConfig = {
   app: {
-    rootDir,
-    nextConfigPath
+    rootDir
   },
   targets: [
     createCatchAllRouteHandlersPreset({
@@ -65,19 +63,13 @@ export const routeHandlersConfig = {
        * Handler binding — connects generated handler pages to the app's
        * component resolution and rendering pipeline.
        *
-       * - `componentsImport` — module exporting the component registry
-       *    (pure metadata, no component code).
-       * - `processorImport` — module exporting the route handler processor
-       *    that maps captured keys to component imports and a factory variant.
-       * - `runtimeFactory.importBase` — base path for factory variant modules
-       *    (e.g. `lib/handler-factory/none`).
+       * `processorImport` — module exporting the route handler processor
+       * that maps captured keys to component imports and a factory import.
        */
       handlerBinding: {
-        componentsImport: appRelativeModule('component-registry.mjs'),
-        processorImport: appRelativeModule('handler-processor'),
-        runtimeFactory: {
-          importBase: appRelativeModule('lib/handler-factory')
-        }
+        processorImport: relativeModule(
+          'config-variants/javascript/handler-processor'
+        )
       }
     })
   ]

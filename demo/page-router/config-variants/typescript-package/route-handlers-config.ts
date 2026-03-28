@@ -1,5 +1,5 @@
 /**
- * Route handler configuration for the demo (TypeScript module-map variant).
+ * Route handler configuration for the demo (TypeScript package-exports variant).
  *
  * Defines a single catch-all target under the `/docs/` route segment.
  * The processor is a local TypeScript file compiled to JavaScript via
@@ -45,7 +45,7 @@ export const routeHandlersConfig: RouteHandlersConfig = {
     rootDir,
     prepare: {
       tsconfigPath: relativeModule(
-        'config-variants/typescript/tsconfig.processor.json'
+        'config-variants/typescript-package/tsconfig.processor.json'
       )
     }
   },

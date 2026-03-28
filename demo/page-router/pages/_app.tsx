@@ -6,6 +6,7 @@
  * layout without repeating markup in each page file.
  */
 
+import Link from 'next/link';
 import type { AppProps } from 'next/app';
 import type { CSSProperties, ReactNode } from 'react';
 
@@ -39,9 +40,9 @@ const logoLinkStyle: CSSProperties = {
 function SiteNav() {
   return (
     <nav style={navStyle}>
-      <a href="/" style={logoLinkStyle}>
+      <Link href="/" style={logoLinkStyle}>
         next-slug-splitter demo
-      </a>
+      </Link>
     </nav>
   );
 }

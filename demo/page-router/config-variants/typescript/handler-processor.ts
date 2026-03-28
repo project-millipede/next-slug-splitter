@@ -1,41 +1,42 @@
 /**
- * Minimal route handler processor for the demo.
+ * Route handler processor — module-map variant (TypeScript).
  *
- * The processor tells next-slug-splitter how to classify captured components
- * and which factory variant to use for each heavy route.
+ * The processor tells next-slug-splitter how to resolve captured components
+ * and which factory import to use for each heavy route.
  *
- * Component imports are resolved through the component registry — a pure
- * metadata module that maps keys to individual file paths. This avoids
- * importing from a barrel which would pull in all components and their
- * ballast.
+ * Component imports are resolved through a module map (`componentRegistry`)
+ * that maps keys to explicit file paths and export names.
  *
  * In a full application (e.g. the millipede app), the processor is more
- * elaborate: it resolves per-component metadata, selects a factory variant
+ * elaborate: it resolves per-component metadata, selects a factory import
  * based on runtime traits (selection, wrapper, none), and attaches metadata
  * to each component entry. This demo uses a simplified version that always
- * selects the `none` factory variant.
+ * selects the `none` factory import.
+ *
+ * This file is compiled to JavaScript via a `prepare` step
+ * (`tsconfig.processor.json`) before the pipeline loads it at runtime.
  */
-
-import path from 'node:path';
 
 import {
   defineRouteHandlerProcessor,
-  type ComponentImportSpec,
-  type RouteHandlerGeneratorComponent,
-  type RouteHandlerProcessor
+  relativeModule,
+  type ComponentImportSpec
 } from 'next-slug-splitter/next';
 
-import { componentRegistry, type ComponentRegistryEntry } from './component-registry';
+import {
+  componentRegistry,
+  type ComponentRegistryEntry
+} from './component-registry.js';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 /**
- * Resolved state returned by `ingress` and consumed by `egress`.
+ * Resolved component entries for one route-local planning run.
  *
- * Maps each captured component key to its registry entry, or `undefined`
- * when the key has no matching registry record.
+ * Maps each captured component key to its module-map entry, or `undefined`
+ * when the key has no matching record.
  */
 type ResolvedComponentMap = Readonly<
   Record<string, ComponentRegistryEntry | undefined>
@@ -46,29 +47,27 @@ type ResolvedComponentMap = Readonly<
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve each captured key against the component registry.
- *
- * Returns a map so `egress` can look up metadata per key without
- * repeating the registry lookup.
+ * Resolve each captured key against the component module map.
  */
 const resolveComponentsByCapturedKey = (
-  capturedKeys: readonly string[]
+  capturedComponentKeys: readonly string[]
 ): ResolvedComponentMap => {
   const resolved: Record<string, ComponentRegistryEntry | undefined> = {};
-  for (const key of capturedKeys) {
+
+  for (const key of capturedComponentKeys) {
     resolved[key] = componentRegistry[key];
   }
+
   return resolved;
 };
 
 /**
- * Build a `ComponentImportSpec` from a registry entry.
- *
- * Resolves the relative `modulePath` to an absolute path so the code
- * generator emits correct import statements in the generated handler.
+ * Build a component import from one module-map entry.
  */
-const buildComponentImport = (entry: ComponentRegistryEntry): ComponentImportSpec => ({
-  source: path.resolve(process.cwd(), entry.modulePath),
+const buildComponentImport = (
+  entry: ComponentRegistryEntry
+): ComponentImportSpec => ({
+  source: relativeModule(entry.modulePath),
   kind: 'named',
   importedName: entry.exportName
 });
@@ -77,30 +76,27 @@ const buildComponentImport = (entry: ComponentRegistryEntry): ComponentImportSpe
 // Processor
 // ---------------------------------------------------------------------------
 
-export const routeHandlerProcessor: RouteHandlerProcessor<ResolvedComponentMap> =
-  defineRouteHandlerProcessor({
-    ingress({ capturedKeys }) {
-      return resolveComponentsByCapturedKey(capturedKeys);
-    },
+export const routeHandlerProcessor = defineRouteHandlerProcessor({
+  resolve({ capturedComponentKeys }) {
+    const resolvedEntries = resolveComponentsByCapturedKey(
+      capturedComponentKeys
+    );
 
-    egress({ capturedKeys, resolved }) {
-      const components: Array<RouteHandlerGeneratorComponent> = [];
-
-      for (const key of capturedKeys) {
-        const entry = resolved[key];
-        if (entry) {
-          components.push({
-            key,
-            componentImport: buildComponentImport(entry)
-          });
-        } else {
-          components.push({ key });
+    return {
+      factoryImport: relativeModule('lib/handler-factory/none'),
+      components: capturedComponentKeys.map(key => {
+        const entry = resolvedEntries[key];
+        if (!entry) {
+          throw new Error(
+            `Unknown component key "${key}" — not found in module map.`
+          );
         }
-      }
 
-      return {
-        factoryVariant: 'none',
-        components
-      };
-    }
-  });
+        return {
+          key,
+          componentImport: buildComponentImport(entry)
+        };
+      })
+    };
+  }
+});
