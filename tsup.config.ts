@@ -4,11 +4,13 @@ export default defineConfig([
   {
     tsconfig: 'tsconfig.json',
     entry: {
+      'module-reference/index': 'src/module-reference/index.ts',
       'next/index': 'src/next/index.ts',
       'next/config': 'src/next/config/index.ts',
       'next/adapter': 'src/next/adapter.ts',
       'next/lookup': 'src/next/lookup.ts',
       'next/handler': 'src/next/handler-static-props.ts',
+      'next/not-found': 'src/next/not-found.ts',
       'next/proxy': 'src/next/proxy/index.ts',
       cli: 'src/cli/index.ts'
     },
