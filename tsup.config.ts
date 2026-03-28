@@ -30,6 +30,13 @@ export default defineConfig([
   {
     tsconfig: 'tsconfig.json',
     entry: {
+      /**
+       * Internal worker bundle used by the proxy runtime via child-process
+       * spawning.
+       *
+       * This file is intentionally built into `dist/`, but it is not part of
+       * the published `package.json#exports` surface.
+       */
       'next/proxy-lazy-worker': 'src/next/proxy/worker/entry.ts'
     },
     format: ['esm'],
