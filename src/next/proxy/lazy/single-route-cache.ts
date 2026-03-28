@@ -44,18 +44,14 @@ type LazySingleRouteCacheRecord = {
 /**
  * Create the `file-entry-cache` instance used by the lazy single-route cache.
  *
- * @param input - Cache-creation input.
- * @param input.rootDir - Application root directory.
- * @param input.targetId - Stable target identifier.
+ * @param rootDir - Application root directory.
+ * @param targetId - Stable target identifier.
  * @returns Cache instance scoped to one target.
  */
-const createLazySingleRouteFileCache = ({
-  rootDir,
-  targetId
-}: {
-  rootDir: string;
-  targetId: string;
-}): FileEntryCache =>
+const createLazySingleRouteFileCache = (
+  rootDir: string,
+  targetId: string
+): FileEntryCache =>
   fileEntryCache.create(
     `route-handlers-lazy-single-${targetId.replace(/[^a-zA-Z0-9_-]/g, '-')}`,
     path.resolve(rootDir, LAZY_SINGLE_ROUTE_CACHE_DIRECTORY),
@@ -107,9 +103,9 @@ const readLazySingleRouteCacheRecord = (
 /**
  * Try to reuse the cached single-route analysis for one file.
  *
- * @param input - Cache-read input.
- * @param input.config - Fully resolved target config for the route's target.
- * @param input.routePath - Localized route file whose cached record should be checked.
+ * @param config - Fully resolved target config for the route's target.
+ * @param routePath - Localized route file whose cached record should be checked.
+ * @param bootstrapGenerationToken - Current lazy-bootstrap generation token.
  * @returns Cached route-plan record when reusable, otherwise `null`.
  *
  * @remarks
@@ -120,19 +116,15 @@ const readLazySingleRouteCacheRecord = (
  * - the stored descriptor metadata can still be decoded as a
  *   `LazySingleRouteCacheRecord` for the current cache version
  */
-export const readLazySingleRouteCachedPlanRecord = ({
-  config,
-  routePath,
-  bootstrapGenerationToken
-}: {
-  config: ResolvedRouteHandlersConfig;
-  routePath: LocalizedRoutePath;
-  bootstrapGenerationToken: BootstrapGenerationToken;
-}): PersistedRoutePlanRecord | null => {
-  const fileCache = createLazySingleRouteFileCache({
-    rootDir: config.app.rootDir,
-    targetId: config.targetId
-  });
+export const readLazySingleRouteCachedPlanRecord = (
+  config: ResolvedRouteHandlersConfig,
+  routePath: LocalizedRoutePath,
+  bootstrapGenerationToken: BootstrapGenerationToken
+): PersistedRoutePlanRecord | null => {
+  const fileCache = createLazySingleRouteFileCache(
+    config.app.rootDir,
+    config.targetId
+  );
   const analysis = fileCache.analyzeFiles([routePath.filePath]);
 
   if (analysis.changedFiles.length > 0 || analysis.notFoundFiles.length > 0) {
@@ -157,26 +149,21 @@ export const readLazySingleRouteCachedPlanRecord = ({
 /**
  * Persist the freshly computed one-file route-plan record for lazy reuse.
  *
- * @param input - Cache-write input.
- * @param input.config - Fully resolved target config for the route's target.
- * @param input.routePath - Localized route file whose cache entry should be updated.
- * @param input.routePlanRecord - Freshly computed one-file route-plan record for `routePath`.
+ * @param config - Fully resolved target config for the route's target.
+ * @param routePath - Localized route file whose cache entry should be updated.
+ * @param routePlanRecord - Freshly computed one-file route-plan record for `routePath`.
+ * @param bootstrapGenerationToken - Current lazy-bootstrap generation token.
  */
-export const writeLazySingleRouteCachedPlanRecord = ({
-  config,
-  routePath,
-  routePlanRecord,
-  bootstrapGenerationToken
-}: {
-  config: ResolvedRouteHandlersConfig;
-  routePath: LocalizedRoutePath;
-  routePlanRecord: PersistedRoutePlanRecord;
-  bootstrapGenerationToken: BootstrapGenerationToken;
-}): void => {
-  const fileCache = createLazySingleRouteFileCache({
-    rootDir: config.app.rootDir,
-    targetId: config.targetId
-  });
+export const writeLazySingleRouteCachedPlanRecord = (
+  config: ResolvedRouteHandlersConfig,
+  routePath: LocalizedRoutePath,
+  routePlanRecord: PersistedRoutePlanRecord,
+  bootstrapGenerationToken: BootstrapGenerationToken
+): void => {
+  const fileCache = createLazySingleRouteFileCache(
+    config.app.rootDir,
+    config.targetId
+  );
   const descriptor = fileCache.getFileDescriptor(routePath.filePath);
   // The descriptor metadata is the persistence slot owned by this cache layer.
   // Writing the one-file route-plan record keeps the cache

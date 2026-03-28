@@ -311,13 +311,10 @@ const readDirectoryEntriesIfPresent = async (
  * The lazy request path must preserve that flexibility, but it only needs to
  * inspect the one target directory that corresponds to the requested slug.
  */
-const isFilenameModeLocalizedRouteCandidate = ({
-  fileName,
-  locale
-}: {
-  fileName: string;
-  locale: string;
-}): boolean =>
+const isFilenameModeLocalizedRouteCandidate = (
+  fileName: string,
+  locale: string
+): boolean =>
   new RegExp(
     `^${locale.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?:\\..+)?\\.(?:md|mdx)$`
   ).test(fileName);
@@ -360,10 +357,7 @@ export const resolveLocalizedContentRoute = async ({
       await readDirectoryEntriesIfPresent(routeDirectoryPath)
     )
       .filter(fileName =>
-        isFilenameModeLocalizedRouteCandidate({
-          fileName,
-          locale: identity.locale
-        })
+        isFilenameModeLocalizedRouteCandidate(fileName, identity.locale)
       )
       .sort((left, right) => left.localeCompare(right))
       .at(-1);

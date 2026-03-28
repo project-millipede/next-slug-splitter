@@ -93,12 +93,12 @@ describe('generated proxy file lifecycle', () => {
 
       await synchronizeRouteHandlerProxyFile({
         rootDir,
-        strategy: resolveRouteHandlerRoutingStrategy({
-          phase: PHASE_DEVELOPMENT_SERVER,
-          routingPolicy: createDevelopmentRoutingPolicy({
+        strategy: resolveRouteHandlerRoutingStrategy(
+          PHASE_DEVELOPMENT_SERVER,
+          createDevelopmentRoutingPolicy({
             routeHandlersConfig
           })
-        }),
+        ),
         resolvedConfigs
       });
 
@@ -133,12 +133,12 @@ describe('generated proxy file lifecycle', () => {
 
       await synchronizeRouteHandlerProxyFile({
         rootDir,
-        strategy: resolveRouteHandlerRoutingStrategy({
-          phase: PHASE_DEVELOPMENT_SERVER,
-          routingPolicy: createDevelopmentRoutingPolicy({
+        strategy: resolveRouteHandlerRoutingStrategy(
+          PHASE_DEVELOPMENT_SERVER,
+          createDevelopmentRoutingPolicy({
             routeHandlersConfig
           })
-        }),
+        ),
         resolvedConfigs,
         configRegistration: {
           configPath,
@@ -167,12 +167,12 @@ describe('generated proxy file lifecycle', () => {
 
       await synchronizeRouteHandlerProxyFile({
         rootDir,
-        strategy: resolveRouteHandlerRoutingStrategy({
-          phase: PHASE_DEVELOPMENT_SERVER,
-          routingPolicy: createDevelopmentRoutingPolicy({
+        strategy: resolveRouteHandlerRoutingStrategy(
+          PHASE_DEVELOPMENT_SERVER,
+          createDevelopmentRoutingPolicy({
             routeHandlersConfig
           })
-        }),
+        ),
         resolvedConfigs
       });
 
@@ -185,12 +185,12 @@ describe('generated proxy file lifecycle', () => {
 
       await synchronizeRouteHandlerProxyFile({
         rootDir,
-        strategy: resolveRouteHandlerRoutingStrategy({
-          phase: PHASE_DEVELOPMENT_SERVER,
-          routingPolicy: createDevelopmentRoutingPolicy({
+        strategy: resolveRouteHandlerRoutingStrategy(
+          PHASE_DEVELOPMENT_SERVER,
+          createDevelopmentRoutingPolicy({
             routeHandlersConfig
           })
-        }),
+        ),
         resolvedConfigs
       });
 
@@ -223,12 +223,12 @@ describe('generated proxy file lifecycle', () => {
 
       await synchronizeRouteHandlerProxyFile({
         rootDir,
-        strategy: resolveRouteHandlerRoutingStrategy({
-          phase: PHASE_DEVELOPMENT_SERVER,
-          routingPolicy: createDevelopmentRoutingPolicy({
+        strategy: resolveRouteHandlerRoutingStrategy(
+          PHASE_DEVELOPMENT_SERVER,
+          createDevelopmentRoutingPolicy({
             routeHandlersConfig
           })
-        }),
+        ),
         resolvedConfigs
       });
 
@@ -257,12 +257,12 @@ describe('generated proxy file lifecycle', () => {
       await expect(
         synchronizeRouteHandlerProxyFile({
           rootDir,
-          strategy: resolveRouteHandlerRoutingStrategy({
-            phase: PHASE_DEVELOPMENT_SERVER,
-            routingPolicy: createDevelopmentRoutingPolicy({
+          strategy: resolveRouteHandlerRoutingStrategy(
+            PHASE_DEVELOPMENT_SERVER,
+            createDevelopmentRoutingPolicy({
               routeHandlersConfig
             })
-          }),
+          ),
           resolvedConfigs
         })
       ).rejects.toThrow(/existing app-owned proxy file/i);
@@ -288,12 +288,12 @@ describe('generated proxy file lifecycle', () => {
       await expect(
         synchronizeRouteHandlerProxyFile({
           rootDir,
-          strategy: resolveRouteHandlerRoutingStrategy({
-            phase: PHASE_DEVELOPMENT_SERVER,
-            routingPolicy: createDevelopmentRoutingPolicy({
+          strategy: resolveRouteHandlerRoutingStrategy(
+            PHASE_DEVELOPMENT_SERVER,
+            createDevelopmentRoutingPolicy({
               routeHandlersConfig
             })
-          }),
+          ),
           resolvedConfigs
         })
       ).rejects.toThrow(/existing app-owned middleware file/i);

@@ -1,5 +1,32 @@
 import type { LocaleConfig } from '../../../core/types';
-import type { BootstrapGenerationToken } from '../runtime/types';
+import type {
+  BootstrapGenerationToken,
+  RouteHandlerProxyConfigRegistration
+} from '../runtime/types';
+
+/**
+ * Shared input required to create or resolve one persistent worker session.
+ *
+ * @remarks
+ * This shape captures the full parent-side session identity:
+ * - `localeConfig` defines the locale semantics the worker must bootstrap with
+ * - `bootstrapGenerationToken` ties the session to one parent bootstrap cycle
+ * - `configRegistration` scopes the session to one registered app/config root
+ */
+export type RouteHandlerProxyWorkerSessionInput = {
+  /**
+   * Locale semantics for the current worker generation.
+   */
+  localeConfig: LocaleConfig;
+  /**
+   * Parent-issued bootstrap generation token.
+   */
+  bootstrapGenerationToken: BootstrapGenerationToken;
+  /**
+   * Adapter-time config registration forwarded by the generated root proxy.
+   */
+  configRegistration: RouteHandlerProxyConfigRegistration;
+};
 
 /**
  * Serialized request sent from the thin proxy runtime into the dev-only lazy

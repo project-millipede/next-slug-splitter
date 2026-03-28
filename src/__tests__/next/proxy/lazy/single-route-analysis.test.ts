@@ -100,18 +100,18 @@ const createBootstrappedLazyAnalysisState = ({
   );
   const bootstrappedRouteHandlersConfig =
     appContext.routeHandlersConfig ?? routeHandlersConfig;
-  const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig({
-    appConfig: appContext.appConfig,
-    localeConfig: TEST_LOCALE_CONFIG,
-    routeHandlersConfig: bootstrappedRouteHandlersConfig
-  });
+  const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig(
+    appContext.appConfig,
+    TEST_LOCALE_CONFIG,
+    bootstrappedRouteHandlersConfig
+  );
 
   return {
-    resolvedTargets: resolveRouteHandlerLazyResolvedTargetsFromAppConfig({
-      appConfig: appContext.appConfig,
-      localeConfig: TEST_LOCALE_CONFIG,
-      routeHandlersConfig: bootstrappedRouteHandlersConfig
-    }),
+    resolvedTargets: resolveRouteHandlerLazyResolvedTargetsFromAppConfig(
+      appContext.appConfig,
+      TEST_LOCALE_CONFIG,
+      bootstrappedRouteHandlersConfig
+    ),
     resolvedConfigsByTargetId: new Map(
       resolvedConfigs.map(resolvedConfig => [
         resolvedConfig.targetId,
@@ -193,10 +193,10 @@ describe('proxy lazy single-route analysis', () => {
           routeHandlersConfig
         });
 
-        const resolution = await resolveRouteHandlerLazyRequest({
-          pathname: '/content/guides',
-          resolvedTargets: bootstrapState.resolvedTargets
-        });
+        const resolution = await resolveRouteHandlerLazyRequest(
+          '/content/guides',
+          bootstrapState.resolvedTargets
+        );
 
         expect(resolution.kind).toBe('matched-route-file');
         if (resolution.kind !== 'matched-route-file') {
@@ -265,10 +265,10 @@ describe('proxy lazy single-route analysis', () => {
           routeHandlersConfig
         });
 
-        const resolution = await resolveRouteHandlerLazyRequest({
-          pathname: '/content/guides',
-          resolvedTargets: bootstrapState.resolvedTargets
-        });
+        const resolution = await resolveRouteHandlerLazyRequest(
+          '/content/guides',
+          bootstrapState.resolvedTargets
+        );
 
         expect(resolution.kind).toBe('matched-route-file');
         if (resolution.kind !== 'matched-route-file') {
@@ -349,10 +349,10 @@ describe('proxy lazy single-route analysis', () => {
           routeHandlersConfig: invalidatedConfig
         });
 
-        const firstResolution = await resolveRouteHandlerLazyRequest({
-          pathname: '/content/guides',
-          resolvedTargets: baseBootstrapState.resolvedTargets
-        });
+        const firstResolution = await resolveRouteHandlerLazyRequest(
+          '/content/guides',
+          baseBootstrapState.resolvedTargets
+        );
         if (firstResolution.kind !== 'matched-route-file') {
           throw new Error('Expected matched-route-file resolution.');
         }
@@ -361,13 +361,14 @@ describe('proxy lazy single-route analysis', () => {
           targetId: firstResolution.config.targetId,
           routePath: firstResolution.routePath,
           bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
-          resolvedConfigsByTargetId: baseBootstrapState.resolvedConfigsByTargetId
+          resolvedConfigsByTargetId:
+            baseBootstrapState.resolvedConfigsByTargetId
         });
 
-        const secondResolution = await resolveRouteHandlerLazyRequest({
-          pathname: '/content/guides',
-          resolvedTargets: invalidatedBootstrapState.resolvedTargets
-        });
+        const secondResolution = await resolveRouteHandlerLazyRequest(
+          '/content/guides',
+          invalidatedBootstrapState.resolvedTargets
+        );
         if (secondResolution.kind !== 'matched-route-file') {
           throw new Error('Expected matched-route-file resolution.');
         }
@@ -430,10 +431,10 @@ describe('proxy lazy single-route analysis', () => {
           routeHandlersConfig
         });
 
-        const resolution = await resolveRouteHandlerLazyRequest({
-          pathname: '/content/guides',
-          resolvedTargets: bootstrapState.resolvedTargets
-        });
+        const resolution = await resolveRouteHandlerLazyRequest(
+          '/content/guides',
+          bootstrapState.resolvedTargets
+        );
         if (resolution.kind !== 'matched-route-file') {
           throw new Error('Expected matched-route-file resolution.');
         }

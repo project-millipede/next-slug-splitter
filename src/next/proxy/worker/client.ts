@@ -8,13 +8,15 @@ import { debugRouteHandlerProxy } from '../observability/debug-log';
 import type { LocaleConfig } from '../../../core/types';
 import type {
   BootstrapGenerationToken,
+  RouteHandlerProxyConfigRegistration,
   RouteHandlerProxyOptions
 } from '../runtime/types';
 import type {
   RouteHandlerProxyWorkerBootstrapResponse,
   RouteHandlerProxyWorkerRequest,
   RouteHandlerProxyWorkerResponse,
-  RouteHandlerProxyWorkerResponseEnvelope
+  RouteHandlerProxyWorkerResponseEnvelope,
+  RouteHandlerProxyWorkerSessionInput
 } from './types';
 
 const SLUG_SPLITTER_CONFIG_PATH_ENV = 'SLUG_SPLITTER_CONFIG_PATH';
@@ -49,17 +51,12 @@ let routeHandlerProxyWorkerRequestSequence = 0;
  * the generated `proxy.ts` bridge.
  */
 const resolveRouteHandlerProxyWorkerConfigRegistration = (
-  configRegistration?: RouteHandlerProxyOptions['configRegistration']
-): {
-  configPath?: string;
-  rootDir?: string;
-} => ({
+  configRegistration: RouteHandlerProxyConfigRegistration = {}
+): RouteHandlerProxyConfigRegistration => ({
   configPath:
-    configRegistration?.configPath ??
-    process.env[SLUG_SPLITTER_CONFIG_PATH_ENV],
+    configRegistration.configPath ?? process.env[SLUG_SPLITTER_CONFIG_PATH_ENV],
   rootDir:
-    configRegistration?.rootDir ??
-    process.env[SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV]
+    configRegistration.rootDir ?? process.env[SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV]
 });
 
 /**
@@ -74,11 +71,9 @@ const resolveRouteHandlerProxyWorkerConfigRegistration = (
  * heavy worker bundle, which is exactly what we must avoid. The worker file is
  * a sibling artifact on disk, so we resolve it like one.
  */
-const resolveRouteHandlerProxyWorkerEntryPath = ({
-  configRegistration
-}: {
-  configRegistration?: RouteHandlerProxyOptions['configRegistration'];
-}): string => {
+const resolveRouteHandlerProxyWorkerEntryPath = (
+  configRegistration: RouteHandlerProxyConfigRegistration = {}
+): string => {
   const { rootDir: registeredRootDir } =
     resolveRouteHandlerProxyWorkerConfigRegistration(configRegistration);
 
@@ -109,11 +104,9 @@ const resolveRouteHandlerProxyWorkerEntryPath = ({
  *
  * @returns `true` when the registered config file uses a TS extension.
  */
-const shouldUseRouteHandlerProxyWorkerStripTypes = ({
-  configRegistration
-}: {
-  configRegistration?: RouteHandlerProxyOptions['configRegistration'];
-}): boolean => {
+const shouldUseRouteHandlerProxyWorkerStripTypes = (
+  configRegistration: RouteHandlerProxyConfigRegistration = {}
+): boolean => {
   const { configPath: registeredConfigPath } =
     resolveRouteHandlerProxyWorkerConfigRegistration(configRegistration);
 
@@ -129,20 +122,13 @@ const shouldUseRouteHandlerProxyWorkerStripTypes = ({
  *
  * @returns Worker process argv.
  */
-const resolveRouteHandlerProxyWorkerArgv = ({
-  configRegistration
-}: {
-  configRegistration?: RouteHandlerProxyOptions['configRegistration'];
-}): string[] => {
-  const workerEntryPath = resolveRouteHandlerProxyWorkerEntryPath({
-    configRegistration
-  });
+const resolveRouteHandlerProxyWorkerArgv = (
+  configRegistration: RouteHandlerProxyConfigRegistration = {}
+): string[] => {
+  const workerEntryPath =
+    resolveRouteHandlerProxyWorkerEntryPath(configRegistration);
 
-  if (
-    !shouldUseRouteHandlerProxyWorkerStripTypes({
-      configRegistration
-    })
-  ) {
+  if (!shouldUseRouteHandlerProxyWorkerStripTypes(configRegistration)) {
     return [workerEntryPath];
   }
 
@@ -160,11 +146,9 @@ const resolveRouteHandlerProxyWorkerArgv = ({
  *
  * @returns Worker cwd.
  */
-const resolveRouteHandlerProxyWorkerCwd = ({
-  configRegistration
-}: {
-  configRegistration?: RouteHandlerProxyOptions['configRegistration'];
-}): string => {
+const resolveRouteHandlerProxyWorkerCwd = (
+  configRegistration: RouteHandlerProxyConfigRegistration = {}
+): string => {
   const { rootDir: registeredRootDir, configPath: registeredConfigPath } =
     resolveRouteHandlerProxyWorkerConfigRegistration(configRegistration);
 
@@ -184,11 +168,9 @@ const resolveRouteHandlerProxyWorkerCwd = ({
  *
  * @returns Plain environment object for `spawn(...)`.
  */
-const createRouteHandlerProxyWorkerEnvironment = ({
-  configRegistration
-}: {
-  configRegistration?: RouteHandlerProxyOptions['configRegistration'];
-}): NodeJS.ProcessEnv => {
+const createRouteHandlerProxyWorkerEnvironment = (
+  configRegistration: RouteHandlerProxyConfigRegistration = {}
+): NodeJS.ProcessEnv => {
   const workerEnvironment: NodeJS.ProcessEnv = {
     ...process.env
   };
@@ -232,14 +214,13 @@ const createRouteHandlerProxyWorkerRequestId = (): string =>
 /**
  * Resolve the stable parent-side session key.
  *
- * @param input - Session-key input.
+ * @param configRegistration - Adapter-time registration forwarded by the
+ * generated root Proxy file.
  * @returns Stable session key scoped to one app registration.
  */
-const createRouteHandlerProxyWorkerSessionKey = ({
-  configRegistration
-}: {
-  configRegistration?: RouteHandlerProxyOptions['configRegistration'];
-}): string => {
+const createRouteHandlerProxyWorkerSessionKey = (
+  configRegistration: RouteHandlerProxyConfigRegistration = {}
+): string => {
   const resolvedRegistration =
     resolveRouteHandlerProxyWorkerConfigRegistration(configRegistration);
 
@@ -252,17 +233,13 @@ const createRouteHandlerProxyWorkerSessionKey = ({
 /**
  * Reject every still-pending request on one worker session.
  *
- * @param input - Rejection input.
- * @param input.session - Worker session whose pending requests should fail.
- * @param input.error - Shared error surfaced to callers.
+ * @param session - Worker session whose pending requests should fail.
+ * @param error - Shared error surfaced to callers.
  */
-const rejectRouteHandlerProxyWorkerSessionPendingRequests = ({
-  session,
-  error
-}: {
-  session: RouteHandlerProxyWorkerSession;
-  error: Error;
-}): void => {
+const rejectRouteHandlerProxyWorkerSessionPendingRequests = (
+  session: RouteHandlerProxyWorkerSession,
+  error: Error
+): void => {
   for (const pendingRequest of session.pendingRequests.values()) {
     pendingRequest.reject(error);
   }
@@ -273,7 +250,8 @@ const rejectRouteHandlerProxyWorkerSessionPendingRequests = ({
 /**
  * Write one request into the persistent worker session.
  *
- * @param input - Session request input.
+ * @param session - Worker session that should receive the request.
+ * @param request - Serialized worker request payload.
  * @returns One typed worker response.
  *
  * @remarks
@@ -288,13 +266,10 @@ const sendRouteHandlerProxyWorkerRequest = <
   TResponse extends
     | RouteHandlerProxyWorkerBootstrapResponse
     | RouteHandlerProxyWorkerResponse
->({
-  session,
-  request
-}: {
-  session: RouteHandlerProxyWorkerSession;
-  request: RouteHandlerProxyWorkerRequest;
-}): Promise<TResponse> =>
+>(
+  session: RouteHandlerProxyWorkerSession,
+  request: RouteHandlerProxyWorkerRequest
+): Promise<TResponse> =>
   new Promise((resolve, reject) => {
     if (session.closed) {
       reject(new Error('next-slug-splitter proxy worker session is closed.'));
@@ -326,7 +301,8 @@ const sendRouteHandlerProxyWorkerRequest = <
 /**
  * Tear down one worker session and remove it from the registry if still owned.
  *
- * @param input - Session-close input.
+ * @param session - Worker session being closed.
+ * @param reason - Diagnostic reason recorded for the close event.
  *
  * @remarks
  * Close aspects:
@@ -335,13 +311,10 @@ const sendRouteHandlerProxyWorkerRequest = <
  * - Process termination is delegated to the child after local state is marked
  *   closed.
  */
-const closeRouteHandlerProxyWorkerSession = ({
-  session,
-  reason
-}: {
-  session: RouteHandlerProxyWorkerSession;
-  reason: string;
-}): void => {
+const closeRouteHandlerProxyWorkerSession = (
+  session: RouteHandlerProxyWorkerSession,
+  reason: string
+): void => {
   if (workerSessions.get(session.sessionKey) === session) {
     workerSessions.delete(session.sessionKey);
   }
@@ -364,6 +337,9 @@ const closeRouteHandlerProxyWorkerSession = ({
  * Spawn and bootstrap one persistent worker session.
  *
  * @param input - Session-creation input.
+ * @param input.localeConfig - Locale semantics for the current worker generation.
+ * @param input.bootstrapGenerationToken - Parent-issued bootstrap generation token.
+ * @param input.configRegistration - Adapter-time config registration.
  * @returns Persistent worker session for one bootstrap generation.
  *
  * @remarks
@@ -379,23 +355,13 @@ const createRouteHandlerProxyWorkerSession = ({
   localeConfig,
   bootstrapGenerationToken,
   configRegistration
-}: {
-  localeConfig: LocaleConfig;
-  bootstrapGenerationToken: BootstrapGenerationToken;
-  configRegistration?: RouteHandlerProxyOptions['configRegistration'];
-}): RouteHandlerProxyWorkerSession => {
-  const sessionKey = createRouteHandlerProxyWorkerSessionKey({
-    configRegistration
-  });
-  const workerArgv = resolveRouteHandlerProxyWorkerArgv({
-    configRegistration
-  });
-  const workerCwd = resolveRouteHandlerProxyWorkerCwd({
-    configRegistration
-  });
-  const workerEnvironment = createRouteHandlerProxyWorkerEnvironment({
-    configRegistration
-  });
+}: RouteHandlerProxyWorkerSessionInput): RouteHandlerProxyWorkerSession => {
+  const sessionKey =
+    createRouteHandlerProxyWorkerSessionKey(configRegistration);
+  const workerArgv = resolveRouteHandlerProxyWorkerArgv(configRegistration);
+  const workerCwd = resolveRouteHandlerProxyWorkerCwd(configRegistration);
+  const workerEnvironment =
+    createRouteHandlerProxyWorkerEnvironment(configRegistration);
 
   debugRouteHandlerProxy('lazy-worker:spawn', {
     cwd: workerCwd,
@@ -424,8 +390,7 @@ const createRouteHandlerProxyWorkerSession = ({
 
   child.on('message', rawEnvelope => {
     try {
-      const envelope =
-        rawEnvelope as RouteHandlerProxyWorkerResponseEnvelope;
+      const envelope = rawEnvelope as RouteHandlerProxyWorkerResponseEnvelope;
       const pendingRequest = session.pendingRequests.get(envelope.requestId);
 
       if (pendingRequest == null) {
@@ -441,17 +406,14 @@ const createRouteHandlerProxyWorkerSession = ({
 
       pendingRequest.reject(new Error(envelope.error.message));
     } catch (error) {
-      rejectRouteHandlerProxyWorkerSessionPendingRequests({
+      rejectRouteHandlerProxyWorkerSessionPendingRequests(
         session,
-        error:
-          error instanceof Error
-            ? error
-            : new Error(String(error))
-      });
-      closeRouteHandlerProxyWorkerSession({
+        error instanceof Error ? error : new Error(String(error))
+      );
+      closeRouteHandlerProxyWorkerSession(
         session,
-        reason: 'invalid-worker-response-envelope'
-      });
+        'invalid-worker-response-envelope'
+      );
     }
   });
 
@@ -465,10 +427,7 @@ const createRouteHandlerProxyWorkerSession = ({
   });
 
   child.on('error', error => {
-    rejectRouteHandlerProxyWorkerSessionPendingRequests({
-      session,
-      error
-    });
+    rejectRouteHandlerProxyWorkerSessionPendingRequests(session, error);
 
     if (workerSessions.get(sessionKey) === session) {
       workerSessions.delete(sessionKey);
@@ -488,36 +447,35 @@ const createRouteHandlerProxyWorkerSession = ({
       return;
     }
 
-    rejectRouteHandlerProxyWorkerSessionPendingRequests({
+    rejectRouteHandlerProxyWorkerSessionPendingRequests(
       session,
-      error: new Error(
+      new Error(
         `next-slug-splitter proxy worker exited with code ${String(
           exitCode
         )}: ${Buffer.concat(stderrChunks).toString('utf8')}`
       )
-    });
+    );
   });
 
-  session.bootstrapPromise = sendRouteHandlerProxyWorkerRequest<RouteHandlerProxyWorkerBootstrapResponse>(
-    {
+  session.bootstrapPromise =
+    sendRouteHandlerProxyWorkerRequest<RouteHandlerProxyWorkerBootstrapResponse>(
       session,
-      request: {
+      {
         requestId: createRouteHandlerProxyWorkerRequestId(),
         kind: 'bootstrap',
         bootstrapGenerationToken,
         localeConfig
       }
-    }
-  ).then(response => {
-    if (
-      response.kind !== 'bootstrapped' ||
-      response.bootstrapGenerationToken !== bootstrapGenerationToken
-    ) {
-      throw new Error(
-        'next-slug-splitter proxy worker bootstrap returned an unexpected generation token.'
-      );
-    }
-  });
+    ).then(response => {
+      if (
+        response.kind !== 'bootstrapped' ||
+        response.bootstrapGenerationToken !== bootstrapGenerationToken
+      ) {
+        throw new Error(
+          'next-slug-splitter proxy worker bootstrap returned an unexpected generation token.'
+        );
+      }
+    });
 
   return session;
 };
@@ -526,6 +484,9 @@ const createRouteHandlerProxyWorkerSession = ({
  * Resolve or restart the worker session for the requested bootstrap generation.
  *
  * @param input - Session-resolution input.
+ * @param input.localeConfig - Locale semantics for the current worker generation.
+ * @param input.bootstrapGenerationToken - Parent-issued bootstrap generation token.
+ * @param input.configRegistration - Adapter-time config registration.
  * @returns Ready worker session for the current generation.
  *
  * @remarks
@@ -539,14 +500,9 @@ const resolveRouteHandlerProxyWorkerSession = async ({
   localeConfig,
   bootstrapGenerationToken,
   configRegistration
-}: {
-  localeConfig: LocaleConfig;
-  bootstrapGenerationToken: BootstrapGenerationToken;
-  configRegistration?: RouteHandlerProxyOptions['configRegistration'];
-}): Promise<RouteHandlerProxyWorkerSession> => {
-  const sessionKey = createRouteHandlerProxyWorkerSessionKey({
-    configRegistration
-  });
+}: RouteHandlerProxyWorkerSessionInput): Promise<RouteHandlerProxyWorkerSession> => {
+  const sessionKey =
+    createRouteHandlerProxyWorkerSessionKey(configRegistration);
   const existingSession = workerSessions.get(sessionKey);
 
   if (
@@ -558,10 +514,10 @@ const resolveRouteHandlerProxyWorkerSession = async ({
   }
 
   if (existingSession != null) {
-    closeRouteHandlerProxyWorkerSession({
-      session: existingSession,
-      reason: 'bootstrap-generation-changed'
-    });
+    closeRouteHandlerProxyWorkerSession(
+      existingSession,
+      'bootstrap-generation-changed'
+    );
   }
 
   const session = createRouteHandlerProxyWorkerSession({
@@ -574,10 +530,7 @@ const resolveRouteHandlerProxyWorkerSession = async ({
   try {
     await session.bootstrapPromise;
   } catch (error) {
-    closeRouteHandlerProxyWorkerSession({
-      session,
-      reason: 'bootstrap-failed'
-    });
+    closeRouteHandlerProxyWorkerSession(session, 'bootstrap-failed');
     throw error;
   }
 
@@ -595,10 +548,7 @@ const resolveRouteHandlerProxyWorkerSession = async ({
  */
 export const clearRouteHandlerProxyWorkerClientSessions = (): void => {
   for (const session of workerSessions.values()) {
-    closeRouteHandlerProxyWorkerSession({
-      session,
-      reason: 'client-clear'
-    });
+    closeRouteHandlerProxyWorkerSession(session, 'client-clear');
   }
 
   workerSessions.clear();
@@ -624,19 +574,19 @@ export const resolveRouteHandlerProxyLazyMissWithWorker = async ({
   pathname,
   localeConfig,
   bootstrapGenerationToken,
-  configRegistration
+  configRegistration = {}
 }: {
   pathname: string;
   localeConfig: LocaleConfig;
   bootstrapGenerationToken: BootstrapGenerationToken;
-  configRegistration?: RouteHandlerProxyOptions['configRegistration'];
+  configRegistration?: RouteHandlerProxyConfigRegistration;
 }): Promise<RouteHandlerProxyWorkerResponse> => {
   const dedupeKey = JSON.stringify([
     pathname,
     localeConfig,
     bootstrapGenerationToken,
-    configRegistration?.configPath ?? null,
-    configRegistration?.rootDir ?? null
+    configRegistration.configPath ?? null,
+    configRegistration.rootDir ?? null
   ]);
   const existingResolution = inFlightLazyMissResolutions.get(dedupeKey);
 
@@ -650,14 +600,14 @@ export const resolveRouteHandlerProxyLazyMissWithWorker = async ({
     configRegistration
   })
     .then(session =>
-      sendRouteHandlerProxyWorkerRequest<RouteHandlerProxyWorkerResponse>({
+      sendRouteHandlerProxyWorkerRequest<RouteHandlerProxyWorkerResponse>(
         session,
-        request: {
+        {
           requestId: createRouteHandlerProxyWorkerRequestId(),
           kind: 'resolve-lazy-miss',
           pathname
         }
-      })
+      )
     )
     .catch(error => {
       debugRouteHandlerProxy('lazy-worker:error', {

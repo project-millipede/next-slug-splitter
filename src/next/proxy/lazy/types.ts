@@ -6,6 +6,7 @@ import type {
 import type { PlannedHeavyRoute } from '../../../core/types';
 import type { LocaleConfig } from '../../../core/types';
 import type { ResolvedRouteHandlersConfig } from '../../types';
+import type { BootstrapGenerationToken } from '../runtime/types';
 
 /**
  * Locale-aware request identity derived from one incoming public pathname.
@@ -109,6 +110,13 @@ export type RouteHandlerLazyOutputConfig = {
   paths: {
     handlersDir: string;
   };
+};
+
+export type RouteHandlerLazyMatchedRouteInput = {
+  targetId: string;
+  routePath: LocalizedRoutePath;
+  bootstrapGenerationToken: BootstrapGenerationToken;
+  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
 };
 
 /**
@@ -228,6 +236,20 @@ export type RouteHandlerLazySingleRouteAnalysisResult =
       plannedHeavyRoute: PlannedHeavyRoute;
     };
 
+export type RouteHandlerLazyLightAnalysisResult = Extract<
+  RouteHandlerLazySingleRouteAnalysisResult,
+  {
+    kind: 'light';
+  }
+>;
+
+export type RouteHandlerLazyHeavyAnalysisResult = Extract<
+  RouteHandlerLazySingleRouteAnalysisResult,
+  {
+    kind: 'heavy';
+  }
+>;
+
 /**
  * Result of the shared cold-request "prepare one matched route" workflow.
  *
@@ -262,12 +284,7 @@ export type RouteHandlerLazyMatchedRoutePreparationResult =
       /**
        * One-file analysis result that proved the route is light.
        */
-      analysisResult: Extract<
-        RouteHandlerLazySingleRouteAnalysisResult,
-        {
-          kind: 'light';
-        }
-      >;
+      analysisResult: RouteHandlerLazyLightAnalysisResult;
     }
   | {
       /**
@@ -278,10 +295,5 @@ export type RouteHandlerLazyMatchedRoutePreparationResult =
        * One-file heavy analysis result used for later rewrite resolution and
        * lazy discovery publication.
        */
-      analysisResult: Extract<
-        RouteHandlerLazySingleRouteAnalysisResult,
-        {
-          kind: 'heavy';
-        }
-      >;
+      analysisResult: RouteHandlerLazyHeavyAnalysisResult;
     };

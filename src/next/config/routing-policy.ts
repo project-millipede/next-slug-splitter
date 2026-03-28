@@ -36,8 +36,7 @@ const isRouteHandlerDevelopmentRoutingMode = (
  * Resolve the app-level routing policy from the raw `routeHandlersConfig.app`
  * object.
  *
- * @param input - Policy-resolution input.
- * @param input.configuredApp - Already validated raw app config object.
+ * @param configuredApp - Already validated raw app config object.
  * @returns Fully resolved app-level routing policy.
  *
  * @remarks
@@ -48,11 +47,9 @@ const isRouteHandlerDevelopmentRoutingMode = (
  * - validation errors should point to config shape, not runtime branches
  * - the rest of the system should consume one semantic policy contract
  */
-export const resolveRouteHandlersRoutingPolicy = ({
-  configuredApp
-}: {
-  configuredApp: Record<string, unknown>;
-}): ResolvedRouteHandlersRoutingPolicy => {
+export const resolveRouteHandlersRoutingPolicy = (
+  configuredApp: Record<string, unknown>
+): ResolvedRouteHandlersRoutingPolicy => {
   const configuredRouting = readObjectProperty(configuredApp, 'routing');
 
   if (configuredRouting == null) {

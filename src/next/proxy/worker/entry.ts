@@ -88,10 +88,10 @@ const handleRouteHandlerProxyWorkerRequest = async ({
       );
     }
 
-    const response = await resolveRouteHandlerProxyLazyMiss({
-      pathname: request.pathname,
+    const response = await resolveRouteHandlerProxyLazyMiss(
+      request.pathname,
       bootstrapState
-    });
+    );
 
     debugRouteHandlerProxyWorker('request:result', response);
 

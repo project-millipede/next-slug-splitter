@@ -77,18 +77,18 @@ const createBootstrappedLazyAnalysisState = ({
   );
   const bootstrappedRouteHandlersConfig =
     appContext.routeHandlersConfig ?? routeHandlersConfig;
-  const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig({
-    appConfig: appContext.appConfig,
-    localeConfig: TEST_LOCALE_CONFIG,
-    routeHandlersConfig: bootstrappedRouteHandlersConfig
-  });
+  const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig(
+    appContext.appConfig,
+    TEST_LOCALE_CONFIG,
+    bootstrappedRouteHandlersConfig
+  );
 
   return {
-    resolvedTargets: resolveRouteHandlerLazyResolvedTargetsFromAppConfig({
-      appConfig: appContext.appConfig,
-      localeConfig: TEST_LOCALE_CONFIG,
-      routeHandlersConfig: bootstrappedRouteHandlersConfig
-    }),
+    resolvedTargets: resolveRouteHandlerLazyResolvedTargetsFromAppConfig(
+      appContext.appConfig,
+      TEST_LOCALE_CONFIG,
+      bootstrappedRouteHandlersConfig
+    ),
     resolvedConfigsByTargetId: new Map(
       resolvedConfigs.map(resolvedConfig => [
         resolvedConfig.targetId,
@@ -132,10 +132,10 @@ describe('proxy lazy single-handler emission', () => {
           routeHandlersConfig
         });
 
-        const resolution = await resolveRouteHandlerLazyRequest({
-          pathname: '/content/guides',
-          resolvedTargets: bootstrapState.resolvedTargets
-        });
+        const resolution = await resolveRouteHandlerLazyRequest(
+          '/content/guides',
+          bootstrapState.resolvedTargets
+        );
         if (resolution.kind !== 'matched-route-file') {
           throw new Error('Expected matched-route-file resolution.');
         }
@@ -177,10 +177,10 @@ describe('proxy lazy single-handler emission', () => {
           '// AUTO-GENERATED ROUTE HANDLER. DO NOT EDIT.'
         );
         expect(
-          resolveRouteHandlerLazyRewriteDestination({
-            pathname: '/content/guides',
+          resolveRouteHandlerLazyRewriteDestination(
+            '/content/guides',
             analysisResult
-          })
+          )
         ).toBe('/content/_handlers/guides/en');
       }
     );

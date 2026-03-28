@@ -4,6 +4,7 @@ import {
 } from './bootstrap-state';
 
 import type {
+  RouteHandlerProxyConfigRegistration,
   RouteHandlerProxyOptions,
   RouteHandlerProxyRoutingState
 } from './types';
@@ -46,14 +47,14 @@ const buildRouteHandlerProxyRoutingState = (
 /**
  * Load fresh routing state for the proxy request-decision layer.
  *
- * @param input - Routing-state load input.
- * @param input.localeConfig - Shared app locale config captured at adapter time.
+ * @param localeConfig - Shared app locale config captured at adapter time.
+ * @param configRegistration - Adapter-time config registration.
  * @returns Fresh request-time routing state.
  */
-const loadFreshRouteHandlerProxyRoutingState = async ({
-  localeConfig,
-  configRegistration
-}: RouteHandlerProxyOptions): Promise<RouteHandlerProxyRoutingState> => {
+const loadFreshRouteHandlerProxyRoutingState = async (
+  localeConfig: RouteHandlerProxyOptions['localeConfig'],
+  configRegistration: RouteHandlerProxyConfigRegistration = {}
+): Promise<RouteHandlerProxyRoutingState> => {
   const bootstrapState = await getRouteHandlerProxyBootstrapState(
     localeConfig,
     configRegistration
@@ -65,22 +66,19 @@ const loadFreshRouteHandlerProxyRoutingState = async ({
 /**
  * Get proxy routing state for the thin request-decision layer.
  *
- * @param input - Routing-state request input.
- * @param input.localeConfig - Shared app locale config captured at adapter time.
+ * @param localeConfig - Shared app locale config captured at adapter time.
+ * @param configRegistration - Adapter-time config registration.
  * @returns Request-time routing state.
  *
  * @remarks
  * Long-lived reuse now belongs to the dedicated proxy bootstrap-state layer.
  * This wrapper simply exposes that state in the narrow request-facing shape.
  */
-export const getRouteHandlerProxyRoutingState = async ({
-  localeConfig,
-  configRegistration
-}: RouteHandlerProxyOptions): Promise<RouteHandlerProxyRoutingState> => {
-  return loadFreshRouteHandlerProxyRoutingState({
-    localeConfig,
-    ...(configRegistration == null ? {} : { configRegistration })
-  });
+export const getRouteHandlerProxyRoutingState = async (
+  localeConfig: RouteHandlerProxyOptions['localeConfig'],
+  configRegistration: RouteHandlerProxyConfigRegistration = {}
+): Promise<RouteHandlerProxyRoutingState> => {
+  return loadFreshRouteHandlerProxyRoutingState(localeConfig, configRegistration);
 };
 
 export { clearRouteHandlerProxyBootstrapStateCache };

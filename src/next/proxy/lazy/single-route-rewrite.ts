@@ -2,17 +2,16 @@ import { buildRouteRewriteEntries } from '../../rewrites/index';
 
 import type { PlannedHeavyRoute } from '../../../core/types';
 import type { ResolvedRouteHandlersConfig } from '../../types';
-import type { RouteHandlerLazySingleRouteAnalysisResult } from './types';
+import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
 
 /**
  * Resolve the concrete rewrite destination for the current pathname from one
  * concrete heavy-route payload plus its resolved target config.
  *
- * @param input - Rewrite-resolution input.
- * @param input.pathname - Public pathname currently being handled.
- * @param input.config - Fully resolved target config that owns the route.
- * @param input.plannedHeavyRoute - Heavy-route payload to translate into the
- * stable public rewrite shape.
+ * @param pathname - Public pathname currently being handled.
+ * @param config - Fully resolved target config that owns the route.
+ * @param plannedHeavyRoute - Heavy-route payload to translate into the stable
+ * public rewrite shape.
  * @returns Concrete generated-handler destination for the pathname, or `null`
  * when no rewrite matches the pathname.
  *
@@ -22,15 +21,11 @@ import type { RouteHandlerLazySingleRouteAnalysisResult } from './types';
  * - the immediate lazy request path after one-file analysis
  * - any route-local caller that already has a planned heavy route
  */
-export const resolveRouteHandlerHeavyRewriteDestination = ({
-  pathname,
-  config,
-  plannedHeavyRoute
-}: {
-  pathname: string;
-  config: ResolvedRouteHandlersConfig;
-  plannedHeavyRoute: PlannedHeavyRoute;
-}): string | null => {
+export const resolveRouteHandlerHeavyRewriteDestination = (
+  pathname: string,
+  config: ResolvedRouteHandlersConfig,
+  plannedHeavyRoute: PlannedHeavyRoute
+): string | null => {
   const rewrites = buildRouteRewriteEntries({
     heavyRoutes: [plannedHeavyRoute],
     defaultLocale: config.localeConfig.defaultLocale,
@@ -45,9 +40,8 @@ export const resolveRouteHandlerHeavyRewriteDestination = ({
  * Resolve the concrete rewrite destination for the current pathname from one
  * lazily analyzed heavy route.
  *
- * @param input - Rewrite-resolution input.
- * @param input.pathname - Public pathname currently being handled by Proxy.
- * @param input.analysisResult - One-file heavy-route analysis result.
+ * @param pathname - Public pathname currently being handled by Proxy.
+ * @param analysisResult - One-file heavy-route analysis result.
  * @returns Concrete generated-handler destination for the pathname, or `null`
  * when no rewrite matches the pathname.
  *
@@ -60,20 +54,12 @@ export const resolveRouteHandlerHeavyRewriteDestination = ({
  * That keeps the "how do we compute the final destination path?" logic aligned
  * with the stable rewrite builder while remaining independently testable.
  */
-export const resolveRouteHandlerLazyRewriteDestination = ({
-  pathname,
-  analysisResult
-}: {
-  pathname: string;
-  analysisResult: Extract<
-    RouteHandlerLazySingleRouteAnalysisResult,
-    {
-      kind: 'heavy';
-    }
-  >;
-}): string | null =>
-  resolveRouteHandlerHeavyRewriteDestination({
+export const resolveRouteHandlerLazyRewriteDestination = (
+  pathname: string,
+  analysisResult: RouteHandlerLazyHeavyAnalysisResult
+): string | null =>
+  resolveRouteHandlerHeavyRewriteDestination(
     pathname,
-    config: analysisResult.config,
-    plannedHeavyRoute: analysisResult.plannedHeavyRoute
-  });
+    analysisResult.config,
+    analysisResult.plannedHeavyRoute
+  );

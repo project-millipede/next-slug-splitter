@@ -68,10 +68,8 @@ describe('proxy routing state', () => {
     getRouteHandlerProxyBootstrapStateMock.mockResolvedValue(bootstrapState);
 
     const state = await getRouteHandlerProxyRoutingState({
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      }
+      locales: ['en'],
+      defaultLocale: 'en'
     });
 
     expect(state.rewriteBySourcePath.size).toBe(0);

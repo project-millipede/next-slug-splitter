@@ -77,21 +77,16 @@ export type RenderedHandlerPageLocation = {
 /**
  * Resolve the deterministic output location for one emitted handler page.
  *
- * @param input - Output-location input.
- * @param input.paths - Target filesystem paths.
- * @param input.emitFormat - Output format for generated files.
- * @param input.handlerRelativePath - Handler-relative path without extension.
+ * @param paths - Target filesystem paths.
+ * @param emitFormat - Output format for generated files.
+ * @param handlerRelativePath - Handler-relative path without extension.
  * @returns Output location for the emitted page.
  */
-export const resolveRenderedHandlerPageLocation = ({
-  paths,
-  emitFormat,
-  handlerRelativePath
-}: {
-  paths: Pick<RouteHandlerPaths, 'handlersDir'>;
-  emitFormat: EmitFormat;
-  handlerRelativePath: string;
-}): RenderedHandlerPageLocation => {
+export const resolveRenderedHandlerPageLocation = (
+  paths: Pick<RouteHandlerPaths, 'handlersDir'>,
+  emitFormat: EmitFormat,
+  handlerRelativePath: string
+): RenderedHandlerPageLocation => {
   const pageExtension = emitFormat === 'ts' ? 'tsx' : 'js';
   const pageFilePath = path.join(
     paths.handlersDir,
@@ -173,11 +168,11 @@ export const renderRouteHandlerPage = ({
   handlerRouteParam: DynamicRouteParam;
   routeBasePath: string;
 }): RenderedHandlerPage => {
-  const { relativePath, pageFilePath } = resolveRenderedHandlerPageLocation({
+  const { relativePath, pageFilePath } = resolveRenderedHandlerPageLocation(
     paths,
     emitFormat,
-    handlerRelativePath: heavyRoute.handlerRelativePath
-  });
+    heavyRoute.handlerRelativePath
+  );
   const renderConfig = createPreparedHandlerRenderConfig({
     pageFilePath,
     emitFormat,

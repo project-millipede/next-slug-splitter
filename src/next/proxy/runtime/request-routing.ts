@@ -13,6 +13,7 @@ import { resolveRouteHandlerProxyLazyMissWithWorker } from '../worker/client';
 
 import type {
   RouteHandlerProxyDecision,
+  RouteHandlerProxyConfigRegistration,
   RouteHandlerProxyOptions
 } from './types';
 import type { RouteHandlerProxyRoutingState } from './types';
@@ -75,21 +76,18 @@ const createEmptyRouteHandlerProxyRoutingState =
 /**
  * Attempt to load request-time routing state in the main Proxy process.
  *
- * @param input - Routing-state load input.
- * @param input.localeConfig - Shared locale config captured by the generated
- * root Proxy file.
+ * @param localeConfig - Shared locale config captured by the generated root
+ * Proxy file.
+ * @param configRegistration - Adapter-time config registration.
  * @returns Fresh routing state, or a conservative empty fallback when the main
  * Proxy process is not allowed to load app-owned config dynamically.
  */
-const getRouteHandlerProxyRoutingStateWithFallback = async ({
-  localeConfig,
-  configRegistration
-}: RouteHandlerProxyOptions): Promise<RouteHandlerProxyRoutingState> => {
+const getRouteHandlerProxyRoutingStateWithFallback = async (
+  localeConfig: RouteHandlerProxyOptions['localeConfig'],
+  configRegistration: RouteHandlerProxyConfigRegistration
+): Promise<RouteHandlerProxyRoutingState> => {
   try {
-    return await getRouteHandlerProxyRoutingState({
-      localeConfig,
-      ...(configRegistration == null ? {} : { configRegistration })
-    });
+    return await getRouteHandlerProxyRoutingState(localeConfig, configRegistration);
   } catch (error) {
     if (!shouldUseWorkerOnlyProxyFallback(error)) {
       throw error;
@@ -106,12 +104,11 @@ const getRouteHandlerProxyRoutingStateWithFallback = async ({
 /**
  * Create the final request decision for a lazily prepared heavy route.
  *
- * @param input - Heavy-route decision input.
- * @param input.pathname - Original public request pathname.
- * @param input.routeBasePaths - Known splitter target route bases for headers.
- * @param input.fallbackRouteBasePath - Target-local route base used when the
- * shared routing state does not yet have any discovered base paths.
- * @param input.rewriteDestination - Concrete generated handler destination.
+ * @param pathname - Original public request pathname.
+ * @param routeBasePaths - Known splitter target route bases for headers.
+ * @param fallbackRouteBasePath - Target-local route base used when the shared
+ * routing state does not yet have any discovered base paths.
+ * @param rewriteDestination - Concrete generated handler destination.
  * @returns Final proxy decision for this heavy route.
  *
  * @remarks
@@ -119,17 +116,12 @@ const getRouteHandlerProxyRoutingStateWithFallback = async ({
  * once a concrete heavy rewrite destination is known, the response path is
  * simply a rewrite to that generated handler page.
  */
-const createRouteHandlerProxyDecisionForLazyHeavyRoute = async ({
-  pathname,
-  routeBasePaths,
-  fallbackRouteBasePath,
-  rewriteDestination
-}: {
-  pathname: string;
-  routeBasePaths: Array<string>;
-  fallbackRouteBasePath: string;
-  rewriteDestination: string;
-}): Promise<RouteHandlerProxyDecision> => {
+const createRouteHandlerProxyDecisionForLazyHeavyRoute = async (
+  pathname: string,
+  routeBasePaths: Array<string>,
+  fallbackRouteBasePath: string,
+  rewriteDestination: string
+): Promise<RouteHandlerProxyDecision> => {
   const decisionRouteBasePaths =
     routeBasePaths.length > 0 ? routeBasePaths : [fallbackRouteBasePath];
 
@@ -163,7 +155,10 @@ const createRouteHandlerProxyDecisionForLazyHeavyRoute = async ({
  */
 const resolveRouteHandlerProxyDecision = async ({
   request,
-  options
+  options: {
+    localeConfig,
+    configRegistration = {}
+  }
 }: {
   request: NextRequest;
   options: RouteHandlerProxyOptions;
@@ -177,14 +172,10 @@ const resolveRouteHandlerProxyDecision = async ({
     rawUrl: request.url
   });
 
-  const routingState = await getRouteHandlerProxyRoutingStateWithFallback({
-    localeConfig: options.localeConfig,
-    ...(options.configRegistration == null
-      ? {}
-      : {
-          configRegistration: options.configRegistration
-        })
-  });
+  const routingState = await getRouteHandlerProxyRoutingStateWithFallback(
+    localeConfig,
+    configRegistration
+  );
   const knownRewriteDestination =
     routingState.rewriteBySourcePath.get(pathname);
 
@@ -207,13 +198,9 @@ const resolveRouteHandlerProxyDecision = async ({
     // while preserving the same semantic request-routing contract.
     const lazyWorkerResult = await resolveRouteHandlerProxyLazyMissWithWorker({
       pathname,
-      localeConfig: options.localeConfig,
+      localeConfig,
       bootstrapGenerationToken: routingState.bootstrapGenerationToken,
-      ...(options.configRegistration == null
-        ? {}
-        : {
-            configRegistration: options.configRegistration
-          })
+      configRegistration
     });
 
     if (lazyWorkerResult.kind === 'heavy') {
@@ -232,12 +219,12 @@ const resolveRouteHandlerProxyDecision = async ({
         });
       }
 
-      return createRouteHandlerProxyDecisionForLazyHeavyRoute({
+      return createRouteHandlerProxyDecisionForLazyHeavyRoute(
         pathname,
-        routeBasePaths: routingState.targetRouteBasePaths,
-        fallbackRouteBasePath: lazyWorkerResult.routeBasePath,
-        rewriteDestination: lazyWorkerResult.rewriteDestination
-      });
+        routingState.targetRouteBasePaths,
+        lazyWorkerResult.routeBasePath,
+        lazyWorkerResult.rewriteDestination
+      );
     }
 
     debugRouteHandlerProxy('lazy-worker:pass-through', {
@@ -272,42 +259,33 @@ const resolveRouteHandlerProxyDecision = async ({
     rewriteDestination: knownRewriteDestination
   });
 
-  return createRouteHandlerProxyDecisionForLazyHeavyRoute({
+  return createRouteHandlerProxyDecisionForLazyHeavyRoute(
     pathname,
-    routeBasePaths: routingState.targetRouteBasePaths,
-    fallbackRouteBasePath: routingState.targetRouteBasePaths[0] ?? '/',
-    rewriteDestination: knownRewriteDestination
-  });
+    routingState.targetRouteBasePaths,
+    routingState.targetRouteBasePaths[0] ?? '/',
+    knownRewriteDestination
+  );
 };
 
 /**
  * Attach diagnostic proxy headers to a concrete response.
  *
- * @param input - Header-decoration input.
- * @param input.response - Response to mutate.
- * @param input.decision - Request decision being materialized.
+ * @param response - Response to mutate.
+ * @param decision - Request decision being materialized.
  * @returns The same response instance for convenience.
  */
-const decorateRouteHandlerProxyResponse = ({
-  response,
-  decision
-}: {
-  response: NextResponse;
-  decision: Extract<
-    RouteHandlerProxyDecision,
-    {
-      kind: 'pass-through' | 'rewrite';
-    }
-  >;
-}): NextResponse => {
+const decorateRouteHandlerProxyResponse = (
+  response: NextResponse,
+  decision: RouteHandlerProxyDecision
+): NextResponse => {
   // The mode header makes live debugging much easier because a single `curl -I`
   // immediately tells us whether the request was rewritten or merely observed.
   response.headers.set(ROUTE_HANDLER_PROXY_HEADER, decision.kind);
 
-  const matchedRouteBasePath = findMatchedRouteBasePath({
-    pathname: decision.pathname,
-    routeBasePaths: decision.routeBasePaths
-  });
+  const matchedRouteBasePath = findMatchedRouteBasePath(
+    decision.pathname,
+    decision.routeBasePaths
+  );
 
   if (matchedRouteBasePath != null) {
     // The target header is best-effort diagnostic metadata, not a correctness
@@ -326,18 +304,14 @@ const decorateRouteHandlerProxyResponse = ({
  * Translate a high-level request decision into the concrete Next response that
  * should be returned from Proxy.
  *
- * @param input - Response creation input.
- * @param input.request - Incoming Next proxy request.
- * @param input.decision - High-level routing decision for the request.
+ * @param request - Incoming Next proxy request.
+ * @param decision - High-level routing decision for the request.
  * @returns Concrete proxy response.
  */
-const createRouteHandlerProxyResponse = async ({
-  request,
-  decision
-}: {
-  request: NextRequest;
-  decision: RouteHandlerProxyDecision;
-}): Promise<NextResponse> => {
+const createRouteHandlerProxyResponse = async (
+  request: NextRequest,
+  decision: RouteHandlerProxyDecision
+): Promise<NextResponse> => {
   const requestShape = analyzeRouteHandlerProxyRequestShape(request);
 
   if (decision.kind === 'pass-through') {
@@ -345,10 +319,7 @@ const createRouteHandlerProxyResponse = async ({
       pathname: decision.pathname,
       requestKind: requestShape.kind
     });
-    return decorateRouteHandlerProxyResponse({
-      response: NextResponse.next(),
-      decision
-    });
+    return decorateRouteHandlerProxyResponse(NextResponse.next(), decision);
   }
 
   // Rewrite responses always target the generated handler *page* pathname.
@@ -363,10 +334,10 @@ const createRouteHandlerProxyResponse = async ({
     rewriteUrl: rewriteUrl.toString()
   });
 
-  return decorateRouteHandlerProxyResponse({
-    response: NextResponse.rewrite(rewriteUrl),
+  return decorateRouteHandlerProxyResponse(
+    NextResponse.rewrite(rewriteUrl),
     decision
-  });
+  );
 };
 
 /**
@@ -389,8 +360,5 @@ export const handleRouteHandlerProxyRequest = async ({
     options
   });
 
-  return createRouteHandlerProxyResponse({
-    request,
-    decision
-  });
+  return createRouteHandlerProxyResponse(request, decision);
 };

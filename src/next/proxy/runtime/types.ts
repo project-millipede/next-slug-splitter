@@ -1,6 +1,25 @@
 import type { LocaleConfig } from '../../../core/types';
 
 /**
+ * Adapter-time registration that lets the proxy runtime and worker find the
+ * correct app-owned splitter config again.
+ *
+ * @remarks
+ * This stays optional because some environments can rely on ambient defaults,
+ * while others need the generated proxy bridge to forward explicit paths.
+ */
+export type RouteHandlerProxyConfigRegistration = {
+  /**
+   * Absolute app-owned config file path when one was registered explicitly.
+   */
+  configPath?: string;
+  /**
+   * Application root directory associated with the registered config.
+   */
+  rootDir?: string;
+};
+
+/**
  * Stable generation token for one bootstrapped proxy session.
  *
  * @remarks
@@ -76,17 +95,7 @@ export type RouteHandlerProxyOptions = {
    * config identity attached to the request-time bridge itself, which is the
    * one place we know Next will execute before any lazy worker delegation.
    */
-  configRegistration?: {
-    /**
-     * Absolute path to the app-owned `route-handlers-config.*` module when the
-     * app was registered through `withSlugSplitter({ configPath })`.
-     */
-    configPath?: string;
-    /**
-     * True app root captured during Next config evaluation.
-     */
-    rootDir?: string;
-  };
+  configRegistration?: RouteHandlerProxyConfigRegistration;
 };
 
 /**

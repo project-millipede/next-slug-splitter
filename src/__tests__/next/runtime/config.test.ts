@@ -120,11 +120,11 @@ describe('runtime config loading', () => {
       TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
       inputLocaleConfig
     );
-    expect(resolveRouteHandlersConfigsFromAppConfigMock).toHaveBeenCalledWith({
-      appConfig: TEST_APP_CONFIG,
-      localeConfig: resolvedLocaleConfig,
-      routeHandlersConfig: TEST_ROUTE_HANDLERS_CONFIG
-    });
+    expect(resolveRouteHandlersConfigsFromAppConfigMock).toHaveBeenCalledWith(
+      TEST_APP_CONFIG,
+      resolvedLocaleConfig,
+      TEST_ROUTE_HANDLERS_CONFIG
+    );
   });
 
   test('fails when neither localeConfig nor a persisted runtime semantics snapshot is available', async () => {

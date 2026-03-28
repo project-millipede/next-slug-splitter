@@ -135,13 +135,14 @@ const requireSingleRouteHandlersConfig = (
  * Normalize the pure target options that do not require module-resolution or
  * filesystem validation.
  *
- * @param input - Target normalization input.
+ * @param appConfig - Resolved app-level config shared by all targets.
+ * @param routeHandlersConfig - Single-target `RouteHandlersConfig`.
  * @returns Pure target options ready for later resolution steps.
  */
-export const normalizeRouteHandlersTargetOptions = ({
-  appConfig,
-  routeHandlersConfig
-}: ResolveRouteHandlersConfigBaseInput): NormalizedRouteHandlersTargetOptions => {
+export const normalizeRouteHandlersTargetOptions = (
+  appConfig: ResolvedRouteHandlersAppConfig,
+  routeHandlersConfig?: RouteHandlersConfig | RouteHandlersTargetConfig
+): NormalizedRouteHandlersTargetOptions => {
   const configuredRouteHandlers =
     requireSingleRouteHandlersConfig(routeHandlersConfig);
 
@@ -208,22 +209,20 @@ export const normalizeRouteHandlersTargetOptions = ({
 /**
  * Resolve the target-local config that is independent of locale extraction.
  *
- * @param input - Target-base resolution input.
+ * @param appConfig - Resolved app-level config shared by all targets.
+ * @param routeHandlersConfig - Single-target `RouteHandlersConfig`.
  * @returns Resolved target config without locale data attached.
  */
-export const resolveRouteHandlersConfigBase = ({
-  appConfig,
-  routeHandlersConfig
-}: ResolveRouteHandlersConfigBaseInput): ResolvedRouteHandlersConfigBase => {
+export const resolveRouteHandlersConfigBase = (
+  appConfig: ResolvedRouteHandlersAppConfig,
+  routeHandlersConfig?: RouteHandlersConfig | RouteHandlersTargetConfig
+): ResolvedRouteHandlersConfigBase => {
   const configuredRouteHandlers =
     requireSingleRouteHandlersConfig(routeHandlersConfig);
-  const readRequiredModuleReferenceOption = ({
-    value,
-    label
-  }: {
-    value: unknown;
-    label: string;
-  }): ModuleReference => {
+  const readRequiredModuleReferenceOption = (
+    value: unknown,
+    label: string
+  ): ModuleReference => {
     if (!isModuleReference(value)) {
       throw createConfigError(`${label} must be a module reference object.`);
     }
@@ -234,20 +233,20 @@ export const resolveRouteHandlersConfigBase = ({
   // App-level config owns root resolution now, so target-local paths are only
   // allowed to override path fragments, not the root itself.
   const resolvedRootDir = appConfig.rootDir;
-  const normalizedTargetOptions = normalizeRouteHandlersTargetOptions({
+  const normalizedTargetOptions = normalizeRouteHandlersTargetOptions(
     appConfig,
-    routeHandlersConfig: configuredRouteHandlers
-  });
+    configuredRouteHandlers
+  );
   const resolvedHandlerBinding = resolveRouteHandlerBinding({
     rootDir: resolvedRootDir,
     handlerBinding: configuredRouteHandlers.handlerBinding
   });
   const resolvedBaseStaticPropsImport = normalizeModuleReference(
     resolvedRootDir,
-    readRequiredModuleReferenceOption({
-      value: configuredRouteHandlers.baseStaticPropsImport,
-      label: 'baseStaticPropsImport'
-    })
+    readRequiredModuleReferenceOption(
+      configuredRouteHandlers.baseStaticPropsImport,
+      'baseStaticPropsImport'
+    )
   );
   try {
     resolveModuleReferenceToPath(

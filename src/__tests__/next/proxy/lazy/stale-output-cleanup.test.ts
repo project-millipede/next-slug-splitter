@@ -58,13 +58,13 @@ describe('proxy lazy stale-output cleanup', () => {
       })
     ).resolves.toBe('removed');
 
-    expect(resolveRenderedHandlerPageLocationMock).toHaveBeenCalledWith({
-      paths: {
+    expect(resolveRenderedHandlerPageLocationMock).toHaveBeenCalledWith(
+      {
         handlersDir: '/repo/app/pages/content/_handlers'
       },
-      emitFormat: 'ts',
-      handlerRelativePath: 'guides/en'
-    });
+      'ts',
+      'guides/en'
+    );
     expect(removeRenderedRouteHandlerPageIfPresentMock).toHaveBeenCalledWith(
       '/repo/app/pages/content/_handlers/guides/en.tsx',
       '/repo/app/pages/content/_handlers'

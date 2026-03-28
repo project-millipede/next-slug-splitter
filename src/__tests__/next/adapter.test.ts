@@ -164,11 +164,13 @@ describe('route handlers adapter', () => {
     );
     expect(resolveRouteHandlersConfigsFromAppConfigMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        localeConfig: {
-          locales: ['en', 'fr'],
-          defaultLocale: 'fr'
-        }
-      })
+        rootDir: TEST_ROUTE_HANDLERS_CONFIG.app.rootDir
+      }),
+      {
+        locales: ['en', 'fr'],
+        defaultLocale: 'fr'
+      },
+      routeHandlersConfig
     );
     expect(synchronizeRouteHandlerPhaseArtifactsMock).toHaveBeenCalled();
     expect(synchronizeRouteHandlerProxyFileMock).toHaveBeenCalled();

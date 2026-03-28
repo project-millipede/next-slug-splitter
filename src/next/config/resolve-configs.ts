@@ -67,22 +67,20 @@ const requireResolvedRouteHandlersConfig = <
 /**
  * Resolve one configured target from an already-resolved app config.
  *
- * @param input - Config-resolution input.
+ * @param appConfig - Resolved app-level config shared by all targets.
+ * @param localeConfig - Already-extracted Next runtime semantics.
+ * @param routeHandlersConfig - App-owned `RouteHandlersConfig`.
  * @returns Fully resolved target config with locale data attached.
  */
-export const resolveRouteHandlersConfigFromAppConfig = ({
-  appConfig,
-  localeConfig,
-  routeHandlersConfig
-}: {
-  appConfig: ResolvedRouteHandlersAppConfig;
-  localeConfig: LocaleConfig;
-  routeHandlersConfig?: RouteHandlersConfigLike;
-}): ResolvedRouteHandlersConfig => ({
-  ...resolveRouteHandlersConfigBaseFromAppConfig({
+export const resolveRouteHandlersConfigFromAppConfig = (
+  appConfig: ResolvedRouteHandlersAppConfig,
+  localeConfig: LocaleConfig,
+  routeHandlersConfig?: RouteHandlersConfigLike
+): ResolvedRouteHandlersConfig => ({
+  ...resolveRouteHandlersConfigBaseFromAppConfig(
     appConfig,
     routeHandlersConfig
-  }),
+  ),
   localeConfig: copyLocaleConfig(localeConfig)
 });
 
@@ -90,20 +88,18 @@ export const resolveRouteHandlersConfigFromAppConfig = ({
  * Resolve one configured target from an already-resolved app config without
  * re-resolving the app-level inputs.
  *
- * @param input - Config-base resolution input.
+ * @param appConfig - Resolved app-level config shared by all targets.
+ * @param routeHandlersConfig - App-owned `RouteHandlersConfig`.
  * @returns Resolved target config without locale data attached.
  */
-export const resolveRouteHandlersConfigBaseFromAppConfig = ({
-  appConfig,
-  routeHandlersConfig
-}: {
-  appConfig: ResolvedRouteHandlersAppConfig;
-  routeHandlersConfig?: RouteHandlersConfigLike;
-}): ResolvedRouteHandlersConfigBase =>
-  resolveRouteHandlersConfigBase({
+export const resolveRouteHandlersConfigBaseFromAppConfig = (
+  appConfig: ResolvedRouteHandlersAppConfig,
+  routeHandlersConfig?: RouteHandlersConfigLike
+): ResolvedRouteHandlersConfigBase =>
+  resolveRouteHandlersConfigBase(
     appConfig,
-    routeHandlersConfig: requireResolvedRouteHandlersConfig(routeHandlersConfig)
-  });
+    requireResolvedRouteHandlersConfig(routeHandlersConfig)
+  );
 
 /**
  * Resolve one configured target into a single target config with locale
@@ -124,11 +120,11 @@ export const resolveRouteHandlersConfig = ({
     routeHandlersConfig: configuredRouteHandlers
   });
 
-  return resolveRouteHandlersConfigFromAppConfig({
+  return resolveRouteHandlersConfigFromAppConfig(
     appConfig,
     localeConfig,
-    routeHandlersConfig: configuredRouteHandlers
-  });
+    configuredRouteHandlers
+  );
 };
 
 /**
@@ -156,7 +152,8 @@ export type NormalizedRouteHandlersTargetRecord = {
  * Resolve the base config for every configured target from an already-resolved
  * app config.
  *
- * @param input - Config-base resolution input.
+ * @param appConfig - Resolved app-level config shared by all targets.
+ * @param routeHandlersConfig - App-owned `RouteHandlersConfig`.
  * @returns Resolved base configs for every configured target.
  *
  * @remarks
@@ -164,21 +161,18 @@ export type NormalizedRouteHandlersTargetRecord = {
  * are attached later by the caller that owns the approved runtime-semantics
  * source for the current execution path.
  */
-export const resolveRouteHandlersConfigBasesFromAppConfig = ({
-  appConfig,
-  routeHandlersConfig
-}: {
-  appConfig: ResolvedRouteHandlersAppConfig;
-  routeHandlersConfig?: RouteHandlersConfig;
-}): Array<ResolvedRouteHandlersConfigBase> => {
-  return resolveNormalizedRouteHandlersTargetsFromAppConfig({
+export const resolveRouteHandlersConfigBasesFromAppConfig = (
+  appConfig: ResolvedRouteHandlersAppConfig,
+  routeHandlersConfig?: RouteHandlersConfig
+): Array<ResolvedRouteHandlersConfigBase> => {
+  return resolveNormalizedRouteHandlersTargetsFromAppConfig(
     appConfig,
     routeHandlersConfig
-  }).map(({ routeHandlersConfig: normalizedTargetConfig }) =>
-    resolveRouteHandlersConfigBase({
+  ).map(({ routeHandlersConfig: normalizedTargetConfig }) =>
+    resolveRouteHandlersConfigBase(
       appConfig,
-      routeHandlersConfig: normalizedTargetConfig
-    })
+      normalizedTargetConfig
+    )
   );
 };
 
@@ -186,16 +180,14 @@ export const resolveRouteHandlersConfigBasesFromAppConfig = ({
  * Expand and normalize the configured target list without performing
  * disk-backed module resolution.
  *
- * @param input - Pure target-normalization input.
+ * @param appConfig - Resolved app-level config shared by all targets.
+ * @param routeHandlersConfig - App-owned `RouteHandlersConfig`.
  * @returns Configured targets paired with their pure normalized options.
  */
-export const resolveNormalizedRouteHandlersTargetsFromAppConfig = ({
-  appConfig,
-  routeHandlersConfig
-}: {
-  appConfig: ResolvedRouteHandlersAppConfig;
-  routeHandlersConfig?: RouteHandlersConfig;
-}): Array<NormalizedRouteHandlersTargetRecord> => {
+export const resolveNormalizedRouteHandlersTargetsFromAppConfig = (
+  appConfig: ResolvedRouteHandlersAppConfig,
+  routeHandlersConfig?: RouteHandlersConfig
+): Array<NormalizedRouteHandlersTargetRecord> => {
   const configuredRouteHandlers =
     requireResolvedRouteHandlersConfig(routeHandlersConfig);
   const configuredTargets = readObjectProperty(configuredRouteHandlers, 'targets');
@@ -204,10 +196,10 @@ export const resolveNormalizedRouteHandlersTargetsFromAppConfig = ({
     return [
       {
         routeHandlersConfig: configuredRouteHandlers,
-        options: normalizeRouteHandlersTargetOptions({
+        options: normalizeRouteHandlersTargetOptions(
           appConfig,
-          routeHandlersConfig: configuredRouteHandlers
-        })
+          configuredRouteHandlers
+        )
       }
     ];
   }
@@ -228,10 +220,10 @@ export const resolveNormalizedRouteHandlersTargetsFromAppConfig = ({
     }
 
     const normalizedTargetConfig = targetConfig as RouteHandlersTargetConfig;
-    const options = normalizeRouteHandlersTargetOptions({
+    const options = normalizeRouteHandlersTargetOptions(
       appConfig,
-      routeHandlersConfig: normalizedTargetConfig
-    });
+      normalizedTargetConfig
+    );
 
     if (seenTargetIds.has(options.targetId)) {
       throw createConfigError(
@@ -267,31 +259,29 @@ export const resolveRouteHandlersConfigBases = ({
     routeHandlersConfig: configuredRouteHandlers
   });
 
-  return resolveRouteHandlersConfigBasesFromAppConfig({
+  return resolveRouteHandlersConfigBasesFromAppConfig(
     appConfig,
-    routeHandlersConfig: configuredRouteHandlers
-  });
+    configuredRouteHandlers
+  );
 };
 
 /**
  * Resolve every configured target from an already-resolved app config.
  *
- * @param input - Config-resolution input.
+ * @param appConfig - Resolved app-level config shared by all targets.
+ * @param localeConfig - Already-extracted Next runtime semantics.
+ * @param routeHandlersConfig - App-owned `RouteHandlersConfig`.
  * @returns Fully resolved target configs for all configured targets.
  */
-export const resolveRouteHandlersConfigsFromAppConfig = ({
-  appConfig,
-  localeConfig,
-  routeHandlersConfig
-}: {
-  appConfig: ResolvedRouteHandlersAppConfig;
-  localeConfig: LocaleConfig;
-  routeHandlersConfig?: RouteHandlersConfig;
-}): Array<ResolvedRouteHandlersConfig> =>
-  resolveRouteHandlersConfigBasesFromAppConfig({
+export const resolveRouteHandlersConfigsFromAppConfig = (
+  appConfig: ResolvedRouteHandlersAppConfig,
+  localeConfig: LocaleConfig,
+  routeHandlersConfig?: RouteHandlersConfig
+): Array<ResolvedRouteHandlersConfig> =>
+  resolveRouteHandlersConfigBasesFromAppConfig(
     appConfig,
     routeHandlersConfig
-  }).map(resolvedConfig => ({
+  ).map(resolvedConfig => ({
     ...resolvedConfig,
     localeConfig: copyLocaleConfig(localeConfig)
   }));
@@ -317,9 +307,9 @@ export const resolveRouteHandlersConfigs = ({
     routeHandlersConfig: configuredRouteHandlers
   });
 
-  return resolveRouteHandlersConfigsFromAppConfig({
+  return resolveRouteHandlersConfigsFromAppConfig(
     appConfig,
     localeConfig,
-    routeHandlersConfig: configuredRouteHandlers
-  });
+    configuredRouteHandlers
+  );
 };

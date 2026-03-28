@@ -152,10 +152,9 @@ export const readPersistedRoutePlanRecord = (
 /**
  * Build the persisted one-file route-plan record for a localized route file.
  *
- * @param input - Record-construction input.
- * @param input.routePath - Localized content route to analyze.
- * @param input.config - Fully resolved target config used for planning.
- * @param input.planRoute - Prepared processor-backed route planner.
+ * @param routePath - Localized content route to analyze.
+ * @param config - Fully resolved target config used for planning.
+ * @param planRoute - Prepared processor-backed route planner.
  * @returns Persisted one-file route-plan record.
  *
  * @remarks
@@ -168,15 +167,11 @@ export const readPersistedRoutePlanRecord = (
  * It intentionally does not know anything about higher-level cache layout or
  * request routing.
  */
-export const createPersistedRoutePlanRecord = async ({
-  routePath,
-  config,
-  planRoute
-}: {
-  routePath: LocalizedRoutePath;
-  config: ResolvedRouteHandlersConfig;
-  planRoute: Awaited<ReturnType<typeof createRouteHandlerRoutePlanner>>;
-}): Promise<PersistedRoutePlanRecord> => {
+export const createPersistedRoutePlanRecord = async (
+  routePath: LocalizedRoutePath,
+  config: ResolvedRouteHandlersConfig,
+  planRoute: Awaited<ReturnType<typeof createRouteHandlerRoutePlanner>>
+): Promise<PersistedRoutePlanRecord> => {
   const usedLoadableComponentKeys = sortStringArray(
     await captureReferencedComponentNames({
       filePath: routePath.filePath,

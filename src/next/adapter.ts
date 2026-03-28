@@ -115,15 +115,15 @@ const routeHandlersAdapter: NextAdapter = {
       appContext.routeHandlersConfig
     );
 
-    const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig({
-      appConfig: appContext.appConfig,
-      localeConfig: runtimeSemantics.localeConfig,
-      routeHandlersConfig: appContext.routeHandlersConfig
-    });
-    const routingStrategy = resolveRouteHandlerRoutingStrategy({
+    const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig(
+      appContext.appConfig,
+      runtimeSemantics.localeConfig,
+      appContext.routeHandlersConfig
+    );
+    const routingStrategy = resolveRouteHandlerRoutingStrategy(
       phase,
-      routingPolicy: appContext.appConfig.routing
-    });
+      appContext.appConfig.routing
+    );
 
     await synchronizeRouteHandlerPhaseArtifacts(
       resolvedConfigs,

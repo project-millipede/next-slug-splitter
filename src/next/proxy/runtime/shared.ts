@@ -104,13 +104,10 @@ export const buildRouteHandlerProxyMatchers = (
  * prefixes win over shorter ones. That avoids ambiguous ownership when one
  * route base path is nested inside another.
  */
-export const findMatchedRouteBasePath = ({
-  pathname,
-  routeBasePaths
-}: {
-  pathname: string;
-  routeBasePaths: Array<string>;
-}): string | null => {
+export const findMatchedRouteBasePath = (
+  pathname: string,
+  routeBasePaths: Array<string>
+): string | null => {
   // We sort by descending length so `/docs/api` beats `/docs` when both are
   // configured. That gives the diagnostic header the same "most specific owner
   // wins" behavior developers usually expect from routing systems.

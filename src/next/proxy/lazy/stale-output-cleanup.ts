@@ -74,11 +74,11 @@ export const removeRouteHandlerLazyOutputForIdentity = ({
       includeLocaleLeaf: config.contentLocaleMode !== 'default-locale'
     }
   );
-  const { pageFilePath } = resolveRenderedHandlerPageLocation({
-    paths: config.paths,
-    emitFormat: config.emitFormat,
+  const { pageFilePath } = resolveRenderedHandlerPageLocation(
+    config.paths,
+    config.emitFormat,
     handlerRelativePath
-  });
+  );
 
   return removeRenderedRouteHandlerPageIfPresent(
     pageFilePath,

@@ -5,10 +5,10 @@ import {
 } from './single-handler-emission';
 import { composeKey } from './key-builder';
 
-import type { LocalizedRoutePath } from '../../../core/types';
-import type { ResolvedRouteHandlersConfig } from '../../types';
-import type { RouteHandlerLazyMatchedRoutePreparationResult } from './types';
-import type { BootstrapGenerationToken } from '../runtime/types';
+import type {
+  RouteHandlerLazyMatchedRouteInput,
+  RouteHandlerLazyMatchedRoutePreparationResult
+} from './types';
 
 /**
  * Process-local dedupe map for concurrent cold lazy-route requests.
@@ -70,6 +70,11 @@ const inFlightLazyMatchedRoutePreparations = new Map<
  * needed to resolve the rewrite destination.
  *
  * @param input - Analysis/emission input.
+ * @param input.targetId - Target identifier selected by lazy request resolution.
+ * @param input.routePath - Concrete localized content route file to analyze.
+ * @param input.bootstrapGenerationToken - Current worker bootstrap generation token.
+ * @param input.resolvedConfigsByTargetId - Bootstrapped heavy target configs keyed by
+ * target id.
  * @returns Preparation result for the matched route, or `null` when the target
  * can no longer be resolved.
  */
@@ -78,12 +83,8 @@ const analyzeAndPrepare = async ({
   routePath,
   bootstrapGenerationToken,
   resolvedConfigsByTargetId
-}: {
-  targetId: string;
-  routePath: LocalizedRoutePath;
-  bootstrapGenerationToken: BootstrapGenerationToken;
-  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
-}): Promise<RouteHandlerLazyMatchedRoutePreparationResult | null> => {
+}: RouteHandlerLazyMatchedRouteInput
+): Promise<RouteHandlerLazyMatchedRoutePreparationResult | null> => {
   const analysisResult = await analyzeRouteHandlerLazyMatchedRoute({
     targetId,
     routePath,
@@ -144,6 +145,11 @@ const analyzeAndPrepare = async ({
  * settles so subsequent requests can observe content or cache changes.
  *
  * @param input - Preparation input.
+ * @param input.targetId - Target identifier selected by lazy request resolution.
+ * @param input.routePath - Concrete localized content route file to analyze.
+ * @param input.bootstrapGenerationToken - Current worker bootstrap generation token.
+ * @param input.resolvedConfigsByTargetId - Bootstrapped heavy target configs keyed by
+ * target id.
  * @returns Preparation result from {@link analyzeAndPrepare}, or `null` when the
  * target can no longer be analyzed.
  */
@@ -152,12 +158,8 @@ export const prepareRouteHandlerLazyMatchedRoute = async ({
   routePath,
   bootstrapGenerationToken,
   resolvedConfigsByTargetId
-}: {
-  targetId: string;
-  routePath: LocalizedRoutePath;
-  bootstrapGenerationToken: BootstrapGenerationToken;
-  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
-}): Promise<RouteHandlerLazyMatchedRoutePreparationResult | null> => {
+}: RouteHandlerLazyMatchedRouteInput
+): Promise<RouteHandlerLazyMatchedRoutePreparationResult | null> => {
   const preparationKey = composeKey(targetId, routePath.filePath);
   const existingPreparation =
     inFlightLazyMatchedRoutePreparations.get(preparationKey);

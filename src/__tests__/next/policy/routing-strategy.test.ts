@@ -16,12 +16,12 @@ describe('route handler routing strategy', () => {
 
   it('defaults development to proxy through the resolved app policy', () => {
     expect(
-      resolveRouteHandlerRoutingStrategy({
-        phase: PHASE_DEVELOPMENT_SERVER,
-        routingPolicy: {
+      resolveRouteHandlerRoutingStrategy(
+        PHASE_DEVELOPMENT_SERVER,
+        {
           development: 'proxy'
         }
-      })
+      )
     ).toEqual({
       kind: 'proxy',
       implementation: 'synthetic-root-proxy-file',
@@ -31,12 +31,12 @@ describe('route handler routing strategy', () => {
 
   it('allows the resolved app policy to force rewrite mode in development', () => {
     expect(
-      resolveRouteHandlerRoutingStrategy({
-        phase: PHASE_DEVELOPMENT_SERVER,
-        routingPolicy: {
+      resolveRouteHandlerRoutingStrategy(
+        PHASE_DEVELOPMENT_SERVER,
+        {
           development: 'rewrites'
         }
-      })
+      )
     ).toEqual({
       kind: 'rewrites',
       reason: 'development-policy-rewrites'
@@ -47,12 +47,12 @@ describe('route handler routing strategy', () => {
     vi.stubEnv(ROUTE_HANDLER_DEV_ROUTING_ENV_VAR, 'rewrites');
 
     expect(
-      resolveRouteHandlerRoutingStrategy({
-        phase: PHASE_DEVELOPMENT_SERVER,
-        routingPolicy: {
+      resolveRouteHandlerRoutingStrategy(
+        PHASE_DEVELOPMENT_SERVER,
+        {
           development: 'proxy'
         }
-      })
+      )
     ).toEqual({
       kind: 'rewrites',
       reason: 'environment-override-rewrites'
@@ -63,12 +63,12 @@ describe('route handler routing strategy', () => {
     vi.stubEnv(ROUTE_HANDLER_DEV_ROUTING_ENV_VAR, 'proxy');
 
     expect(
-      resolveRouteHandlerRoutingStrategy({
-        phase: PHASE_DEVELOPMENT_SERVER,
-        routingPolicy: {
+      resolveRouteHandlerRoutingStrategy(
+        PHASE_DEVELOPMENT_SERVER,
+        {
           development: 'rewrites'
         }
-      })
+      )
     ).toEqual({
       kind: 'proxy',
       implementation: 'synthetic-root-proxy-file',
@@ -80,12 +80,12 @@ describe('route handler routing strategy', () => {
     vi.stubEnv(ROUTE_HANDLER_DEV_ROUTING_ENV_VAR, 'proxy');
 
     expect(
-      resolveRouteHandlerRoutingStrategy({
-        phase: PHASE_PRODUCTION_BUILD,
-        routingPolicy: {
+      resolveRouteHandlerRoutingStrategy(
+        PHASE_PRODUCTION_BUILD,
+        {
           development: 'proxy'
         }
-      })
+      )
     ).toEqual({
       kind: 'rewrites',
       reason: 'non-development-phase'
@@ -96,12 +96,12 @@ describe('route handler routing strategy', () => {
     vi.stubEnv('NODE_ENV', 'production');
 
     expect(
-      resolveRouteHandlerRoutingStrategy({
-        phase: PHASE_PRODUCTION_BUILD,
-        routingPolicy: {
+      resolveRouteHandlerRoutingStrategy(
+        PHASE_PRODUCTION_BUILD,
+        {
           development: 'proxy'
         }
-      })
+      )
     ).toEqual({
       kind: 'rewrites',
       reason: 'proxy-disabled-in-production'

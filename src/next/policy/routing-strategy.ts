@@ -93,9 +93,8 @@ const readEnvironmentRoutingOverride =
 /**
  * Resolve the active routing strategy for the current Next phase.
  *
- * @param input - Strategy resolution input.
- * @param input.phase - Current Next phase string.
- * @param input.routingPolicy - Resolved high-level app routing policy.
+ * @param phase - Current Next phase string.
+ * @param routingPolicy - Resolved high-level app routing policy.
  * @returns The explicit routing strategy the adapter should follow.
  *
  * @remarks
@@ -107,13 +106,10 @@ const readEnvironmentRoutingOverride =
  *
  * instead of repeating environment/phase checks in multiple places.
  */
-export const resolveRouteHandlerRoutingStrategy = ({
-  phase,
-  routingPolicy
-}: {
-  phase: string;
-  routingPolicy: ResolvedRouteHandlersRoutingPolicy;
-}): RouteHandlerRoutingStrategy => {
+export const resolveRouteHandlerRoutingStrategy = (
+  phase: string,
+  routingPolicy: ResolvedRouteHandlersRoutingPolicy
+): RouteHandlerRoutingStrategy => {
   if (phase !== PHASE_DEVELOPMENT_SERVER) {
     // The proxy path is intentionally dev-only. Production build and server
     // keep the stable rewrite-based behavior so shipped apps stay on the

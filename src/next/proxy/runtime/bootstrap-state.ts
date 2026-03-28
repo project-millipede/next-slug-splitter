@@ -8,6 +8,7 @@ import {
 
 import type {
   BootstrapGenerationToken,
+  RouteHandlerProxyConfigRegistration,
   RouteHandlerProxyOptions
 } from './types';
 
@@ -39,12 +40,12 @@ const inFlightBootstrapStates = new Map<
 
 const createRouteHandlerProxyBootstrapStateKey = (
   localeConfig: RouteHandlerProxyOptions['localeConfig'],
-  configRegistration: RouteHandlerProxyOptions['configRegistration']
+  configRegistration: RouteHandlerProxyConfigRegistration = {}
 ): string =>
   JSON.stringify([
     localeConfig,
-    configRegistration?.configPath ?? null,
-    configRegistration?.rootDir ?? null
+    configRegistration.configPath ?? null,
+    configRegistration.rootDir ?? null
   ]);
 
 const createRouteHandlerProxyBootstrapGenerationToken =
@@ -52,8 +53,7 @@ const createRouteHandlerProxyBootstrapGenerationToken =
     `route-handler-proxy-bootstrap-${String(++bootstrapGenerationSequence)}`;
 
 const loadFreshRouteHandlerProxyBootstrapState = async (
-  localeConfig: RouteHandlerProxyOptions['localeConfig'],
-  configRegistration: RouteHandlerProxyOptions['configRegistration']
+  configRegistration: RouteHandlerProxyConfigRegistration = {}
 ): Promise<RouteHandlerProxyBootstrapState> => {
   const routeHandlersConfig = await loadRouteHandlersConfigOrRegistered();
   const bootstrapGenerationToken =
@@ -69,12 +69,12 @@ const loadFreshRouteHandlerProxyBootstrapState = async (
 
   const appContext = resolveRouteHandlersAppContext(
     routeHandlersConfig,
-    configRegistration?.rootDir
+    configRegistration.rootDir
   );
-  const normalizedTargets = resolveNormalizedRouteHandlersTargetsFromAppConfig({
-    appConfig: appContext.appConfig,
-    routeHandlersConfig: appContext.routeHandlersConfig
-  });
+  const normalizedTargets = resolveNormalizedRouteHandlersTargetsFromAppConfig(
+    appContext.appConfig,
+    appContext.routeHandlersConfig
+  );
 
   return {
     hasConfiguredTargets: normalizedTargets.length > 0,
@@ -89,12 +89,12 @@ const loadFreshRouteHandlerProxyBootstrapState = async (
  * Read or initialize the current proxy bootstrap state.
  *
  * @param localeConfig - Shared locale config captured by the generated proxy.
- * @param configRegistration - Optional cross-process config registration.
+ * @param configRegistration - Cross-process config registration.
  * @returns Cached bootstrap state for the current registration/locale pair.
  */
 export const getRouteHandlerProxyBootstrapState = async (
   localeConfig: RouteHandlerProxyOptions['localeConfig'],
-  configRegistration: RouteHandlerProxyOptions['configRegistration']
+  configRegistration: RouteHandlerProxyConfigRegistration = {}
 ): Promise<RouteHandlerProxyBootstrapState> => {
   const stateKey = createRouteHandlerProxyBootstrapStateKey(
     localeConfig,
@@ -113,7 +113,6 @@ export const getRouteHandlerProxyBootstrapState = async (
   }
 
   const bootstrapPromise = loadFreshRouteHandlerProxyBootstrapState(
-    localeConfig,
     configRegistration
   ).then(state => {
     cachedBootstrapStates.set(stateKey, state);

@@ -202,8 +202,6 @@ export const resolveRouteHandlersAppConfig = ({
     // integration stack can consume one already-validated contract instead of
     // re-reading raw `routeHandlersConfig.app.routing` shape in multiple
     // places.
-    routing: resolveRouteHandlersRoutingPolicy({
-      configuredApp
-    })
+    routing: resolveRouteHandlersRoutingPolicy(configuredApp)
   };
 };

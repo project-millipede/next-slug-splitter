@@ -74,19 +74,16 @@ const resolveLookupPhaseFromEnvironment = (): string =>
  * Resolve the page-time lookup policy from the already-resolved app routing
  * policy.
  *
- * @param input - Policy-resolution input.
- * @param input.routingPolicy - Resolved app-level routing policy.
+ * @param routingPolicy - Resolved app-level routing policy.
  * @returns Explicit lookup policy for the current environment.
  */
-export const resolveRouteHandlerLookupPolicy = ({
-  routingPolicy
-}: {
-  routingPolicy: ResolvedRouteHandlersRoutingPolicy;
-}): RouteHandlerLookupPolicy => {
-  const routingStrategy = resolveRouteHandlerRoutingStrategy({
-    phase: resolveLookupPhaseFromEnvironment(),
+export const resolveRouteHandlerLookupPolicy = (
+  routingPolicy: ResolvedRouteHandlersRoutingPolicy
+): RouteHandlerLookupPolicy => {
+  const routingStrategy = resolveRouteHandlerRoutingStrategy(
+    resolveLookupPhaseFromEnvironment(),
     routingPolicy
-  });
+  );
 
   if (routingStrategy.kind === 'proxy') {
     // In proxy development mode, page-time lookup becomes best-effort and

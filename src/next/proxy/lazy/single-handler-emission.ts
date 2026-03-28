@@ -11,7 +11,7 @@ import {
 import type {
   RenderedHandlerPage
 } from '../../../generator/protocol/rendered-page';
-import type { RouteHandlerLazySingleRouteAnalysisResult } from './types';
+import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
 
 /**
  * Result of synchronizing one lazily emitted handler page to disk.
@@ -44,12 +44,7 @@ export type RouteHandlerLazySingleRouteEmissionResult = {
  * strictly "ensure this one heavy route's handler file is ready right now."
  */
 export const emitRouteHandlerLazySingleHandler = async (
-  analysisResult: Extract<
-    RouteHandlerLazySingleRouteAnalysisResult,
-    {
-      kind: 'heavy';
-    }
-  >
+  analysisResult: RouteHandlerLazyHeavyAnalysisResult
 ): Promise<RouteHandlerLazySingleRouteEmissionResult> => {
   const renderedPage = renderRouteHandlerPage({
     paths: analysisResult.config.paths,
@@ -89,18 +84,13 @@ export const emitRouteHandlerLazySingleHandler = async (
  * otherwise `false`.
  */
 export const doesRouteHandlerLazySingleHandlerExist = async (
-  analysisResult: Extract<
-    RouteHandlerLazySingleRouteAnalysisResult,
-    {
-      kind: 'heavy';
-    }
-  >
+  analysisResult: RouteHandlerLazyHeavyAnalysisResult
 ): Promise<boolean> => {
-  const { pageFilePath } = resolveRenderedHandlerPageLocation({
-    paths: analysisResult.config.paths,
-    emitFormat: analysisResult.config.emitFormat,
-    handlerRelativePath: analysisResult.plannedHeavyRoute.handlerRelativePath
-  });
+  const { pageFilePath } = resolveRenderedHandlerPageLocation(
+    analysisResult.config.paths,
+    analysisResult.config.emitFormat,
+    analysisResult.plannedHeavyRoute.handlerRelativePath
+  );
 
   return doesRouteHandlerOutputFileExist(pageFilePath);
 };

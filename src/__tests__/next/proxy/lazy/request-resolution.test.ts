@@ -51,10 +51,7 @@ describe('proxy lazy request resolution', () => {
 
   test('returns no-target when the pathname does not belong to any configured target', async () => {
     await expect(
-      resolveRouteHandlerLazyRequest({
-        pathname: '/marketing/launch',
-        resolvedTargets: []
-      })
+      resolveRouteHandlerLazyRequest('/marketing/launch', [])
     ).resolves.toEqual({
       kind: 'no-target',
       pathname: '/marketing/launch'
@@ -242,10 +239,7 @@ describe('proxy lazy request resolution', () => {
     resolveLocalizedContentRouteMock.mockResolvedValue(resolvedRoutePath);
 
     await expect(
-      resolveRouteHandlerLazyRequest({
-        pathname,
-        resolvedTargets
-      })
+      resolveRouteHandlerLazyRequest(pathname, resolvedTargets)
     ).resolves.toEqual(expected);
   });
 });

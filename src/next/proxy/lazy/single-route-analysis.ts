@@ -8,10 +8,11 @@ import {
   writeLazySingleRouteCachedPlanRecord
 } from './single-route-cache';
 
-import type { LocalizedRoutePath } from '../../../core/types';
-import type { RouteHandlerLazySingleRouteAnalysisResult } from './types';
 import type { ResolvedRouteHandlersConfig } from '../../types';
-import type { BootstrapGenerationToken } from '../runtime/types';
+import type {
+  RouteHandlerLazyMatchedRouteInput,
+  RouteHandlerLazySingleRouteAnalysisResult
+} from './types';
 
 /**
  * Single-file heavy/light analysis for the lazy dev proxy path.
@@ -35,9 +36,8 @@ import type { BootstrapGenerationToken } from '../runtime/types';
 /**
  * Read the already-bootstrapped target config needed for one-file planning.
  *
- * @param input - Target-resolution input.
- * @param input.targetId - Target identifier selected by lazy request resolution.
- * @param input.resolvedConfigsByTargetId - Bootstrapped target configs keyed by
+ * @param targetId - Target identifier selected by lazy request resolution.
+ * @param resolvedConfigsByTargetId - Bootstrapped target configs keyed by
  * stable target id.
  * @returns Fully resolved target config, or `null` when the target is no
  * longer present.
@@ -47,13 +47,10 @@ import type { BootstrapGenerationToken } from '../runtime/types';
  * front. The request-time analysis path then reads the bootstrapped config
  * from memory instead of reloading config or running prepare again.
  */
-const resolveLazyAnalysisTargetConfig = ({
-  targetId,
-  resolvedConfigsByTargetId
-}: {
-  targetId: string;
-  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
-}): ResolvedRouteHandlersConfig | null =>
+const resolveLazyAnalysisTargetConfig = (
+  targetId: string,
+  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>
+): ResolvedRouteHandlersConfig | null =>
   resolvedConfigsByTargetId.get(targetId) ?? null;
 
 /**
@@ -61,10 +58,6 @@ const resolveLazyAnalysisTargetConfig = ({
  * result shape.
  *
  * @param input - Conversion input.
- * @param input.source - Whether the record came from cache or fresh analysis.
- * @param input.config - Fully resolved target config.
- * @param input.routePath - Localized content route file.
- * @param input.routePlanRecord - Persisted one-file route-plan record.
  * @returns Lazy single-route analysis result.
  */
 const toLazySingleRouteAnalysisResult = ({
@@ -96,31 +89,27 @@ const toLazySingleRouteAnalysisResult = ({
 /**
  * Analyze one lazy matched route file and return the one-file planning result.
  *
- * @param targetId - Target identifier selected by lazy request resolution.
- * @param routePath - Concrete localized content route file to analyze.
- * @param bootstrapGenerationToken - Current worker bootstrap generation token.
- * @param resolvedConfigsByTargetId - Bootstrapped heavy target configs keyed by
+ * @param input - Analysis input.
+ * @param input.targetId - Target identifier selected by lazy request resolution.
+ * @param input.routePath - Concrete localized content route file to analyze.
+ * @param input.bootstrapGenerationToken - Current worker bootstrap generation token.
+ * @param input.resolvedConfigsByTargetId - Bootstrapped heavy target configs keyed by
  * target id.
  * @returns One-file lazy analysis result, or `null` when the target can no
  * longer be resolved by the time analysis begins.
  */
-export const analyzeRouteHandlerLazyMatchedRoute = async (
-  {
-    targetId,
-    routePath,
-    bootstrapGenerationToken,
-    resolvedConfigsByTargetId
-  }: {
-    targetId: string;
-    routePath: LocalizedRoutePath;
-    bootstrapGenerationToken: BootstrapGenerationToken;
-    resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
-  }
-): Promise<RouteHandlerLazySingleRouteAnalysisResult | null> => {
-  const config = resolveLazyAnalysisTargetConfig({
+export const analyzeRouteHandlerLazyMatchedRoute = async ({
+  targetId,
+  routePath,
+  bootstrapGenerationToken,
+  resolvedConfigsByTargetId
+}: RouteHandlerLazyMatchedRouteInput): Promise<
+  RouteHandlerLazySingleRouteAnalysisResult | null
+> => {
+  const config = resolveLazyAnalysisTargetConfig(
     targetId,
     resolvedConfigsByTargetId
-  });
+  );
 
   if (config == null) {
     // Config churn between request resolution and analysis should degrade
@@ -129,11 +118,11 @@ export const analyzeRouteHandlerLazyMatchedRoute = async (
     return null;
   }
 
-  const cachedRoutePlanRecord = readLazySingleRouteCachedPlanRecord({
+  const cachedRoutePlanRecord = readLazySingleRouteCachedPlanRecord(
     config,
     routePath,
     bootstrapGenerationToken
-  });
+  );
 
   if (cachedRoutePlanRecord != null) {
     return toLazySingleRouteAnalysisResult({
@@ -151,18 +140,18 @@ export const analyzeRouteHandlerLazyMatchedRoute = async (
     rootDir: config.paths.rootDir,
     processorConfig: config.processorConfig
   });
-  const routePlanRecord = await createPersistedRoutePlanRecord({
+  const routePlanRecord = await createPersistedRoutePlanRecord(
     routePath,
     config,
     planRoute
-  });
+  );
 
-  writeLazySingleRouteCachedPlanRecord({
+  writeLazySingleRouteCachedPlanRecord(
     config,
     routePath,
     routePlanRecord,
     bootstrapGenerationToken
-  });
+  );
 
   return toLazySingleRouteAnalysisResult({
     source: 'fresh',

@@ -12,6 +12,7 @@ import {
 
 import type { ResolvedRouteHandlersConfig } from '../types';
 import type { LocaleConfig } from '../../core/types';
+import type { RouteHandlerProxyConfigRegistration } from './runtime/types';
 
 const ROOT_PROXY_FILE_PATH = 'proxy.ts';
 const ROOT_PROXY_JS_FILE_PATH = 'proxy.js';
@@ -178,10 +179,7 @@ const renderRouteHandlerProxySource = ({
 }: {
   matchers: Array<string>;
   localeConfig: LocaleConfig;
-  configRegistration?: {
-    configPath?: string;
-    rootDir?: string;
-  };
+  configRegistration: RouteHandlerProxyConfigRegistration;
 }): string =>
   [
     '/**',
@@ -198,8 +196,8 @@ const renderRouteHandlerProxySource = ({
     'const LOCALE_CONFIG = ' + renderLocaleConfigLiteral(localeConfig) + ';',
     'const CONFIG_REGISTRATION = ' +
       renderConfigRegistrationLiteral(
-        configRegistration?.configPath,
-        configRegistration?.rootDir
+        configRegistration.configPath,
+        configRegistration.rootDir
       ) +
       ';',
     '',
@@ -238,10 +236,7 @@ const writeGeneratedProxyFile = async ({
   proxyFilePath: string;
   matchers: Array<string>;
   localeConfig: LocaleConfig;
-  configRegistration?: {
-    configPath?: string;
-    rootDir?: string;
-  };
+  configRegistration: RouteHandlerProxyConfigRegistration;
 }): Promise<void> => {
   // `ts-morph` is used even though the file is small because it gives us a
   // deterministic save/format pipeline and keeps generated output readable when
@@ -361,15 +356,12 @@ export const synchronizeRouteHandlerProxyFile = async ({
   rootDir,
   strategy,
   resolvedConfigs,
-  configRegistration
+  configRegistration = {}
 }: {
   rootDir: string;
   strategy: RouteHandlerRoutingStrategy;
   resolvedConfigs: Array<ResolvedRouteHandlersConfig>;
-  configRegistration?: {
-    configPath?: string;
-    rootDir?: string;
-  };
+  configRegistration?: RouteHandlerProxyConfigRegistration;
 }): Promise<void> => {
   if (strategy.kind !== 'proxy') {
     // Rewrite mode must actively clean up a stale plugin-generated proxy file

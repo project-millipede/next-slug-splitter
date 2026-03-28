@@ -95,9 +95,9 @@ export const loadResolvedRouteHandlersConfigs = async ({
     appContext.routeHandlersConfig
   );
 
-  return resolveRouteHandlersConfigsFromAppConfig({
-    appConfig: appContext.appConfig,
-    localeConfig: resolvedLocaleConfig,
-    routeHandlersConfig: appContext.routeHandlersConfig
-  });
+  return resolveRouteHandlersConfigsFromAppConfig(
+    appContext.appConfig,
+    resolvedLocaleConfig,
+    appContext.routeHandlersConfig
+  );
 };

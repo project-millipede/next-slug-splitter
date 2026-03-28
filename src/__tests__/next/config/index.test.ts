@@ -341,10 +341,10 @@ describe('next config helpers', () => {
         })
       });
 
-      const normalizedOptions = normalizeRouteHandlersTargetOptions({
-        appConfig: TEST_RESOLVED_APP_CONFIG,
+      const normalizedOptions = normalizeRouteHandlersTargetOptions(
+        TEST_RESOLVED_APP_CONFIG,
         routeHandlersConfig
-      });
+      );
 
       expect(normalizedOptions.contentLocaleMode).toBe('default-locale');
       expect(normalizedOptions.routeBasePath).toBe('/secondary');
@@ -371,10 +371,10 @@ describe('next config helpers', () => {
       });
 
       expect(
-        normalizeRouteHandlersTargetOptions({
-          appConfig: TEST_RESOLVED_APP_CONFIG,
+        normalizeRouteHandlersTargetOptions(
+          TEST_RESOLVED_APP_CONFIG,
           routeHandlersConfig
-        }).mdxCompileOptions
+        ).mdxCompileOptions
       ).toEqual({
         remarkPlugins: [testRemarkPlugin],
         recmaPlugins: [testRecmaPlugin]
@@ -383,9 +383,9 @@ describe('next config helpers', () => {
 
     test('rejects invalid mdxCompileOptions plugin lists', () => {
       expect(() =>
-        normalizeRouteHandlersTargetOptions({
-          appConfig: TEST_RESOLVED_APP_CONFIG,
-          routeHandlersConfig: {
+        normalizeRouteHandlersTargetOptions(
+          TEST_RESOLVED_APP_CONFIG,
+          {
             app: createAppConfig(TEST_APP.rootDir),
             ...createCatchAllRouteHandlersPreset({
               routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
@@ -400,7 +400,7 @@ describe('next config helpers', () => {
               remarkPlugins: 'not-an-array'
             }
           } as unknown as RouteHandlersConfig
-        })
+        )
       ).toThrow(
         '[next-slug-splitter] mdxCompileOptions.remarkPlugins must be an array.'
       );
@@ -435,10 +435,10 @@ describe('next config helpers', () => {
         ]
       };
 
-      const normalizedTargets = resolveNormalizedRouteHandlersTargetsFromAppConfig({
-        appConfig: TEST_RESOLVED_APP_CONFIG,
+      const normalizedTargets = resolveNormalizedRouteHandlersTargetsFromAppConfig(
+        TEST_RESOLVED_APP_CONFIG,
         routeHandlersConfig
-      });
+      );
 
       expect(normalizedTargets).toHaveLength(2);
       const [contentTarget, secondaryTarget] = normalizedTargets;
@@ -454,9 +454,9 @@ describe('next config helpers', () => {
 
     test('rejects duplicate normalized target ids', () => {
       expect(() =>
-        resolveNormalizedRouteHandlersTargetsFromAppConfig({
-          appConfig: TEST_RESOLVED_APP_CONFIG,
-          routeHandlersConfig: {
+        resolveNormalizedRouteHandlersTargetsFromAppConfig(
+          TEST_RESOLVED_APP_CONFIG,
+          {
             app: createAppConfig(TEST_APP.rootDir),
             targets: [
               createCatchAllRouteHandlersPreset({
@@ -479,7 +479,7 @@ describe('next config helpers', () => {
               })
             ]
           }
-        })
+        )
       ).toThrow(
         'routeHandlersConfig.targets contains duplicate targetId "docs".'
       );

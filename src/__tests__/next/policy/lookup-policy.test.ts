@@ -56,9 +56,7 @@ describe('route handler lookup policy', () => {
 
     expect(
       resolveRouteHandlerLookupPolicy({
-        routingPolicy: {
-          development: developmentRoutingMode
-        }
+        development: developmentRoutingMode
       })
     ).toEqual(expected);
   });

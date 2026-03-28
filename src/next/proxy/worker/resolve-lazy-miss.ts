@@ -10,9 +10,8 @@ import type { RouteHandlerProxyWorkerResponse } from './types';
 /**
  * Resolve one proxy lazy miss completely inside the worker process.
  *
- * @param input - Worker-resolution input.
- * @param input.pathname - Public pathname being handled by proxy.
- * @param input.bootstrapState - Bootstrapped worker state for the current generation.
+ * @param pathname - Public pathname being handled by proxy.
+ * @param bootstrapState - Bootstrapped worker state for the current generation.
  * @returns Serialized semantic result for the thin proxy runtime.
  *
  * @remarks
@@ -28,23 +27,20 @@ import type { RouteHandlerProxyWorkerResponse } from './types';
  * result so it can stay focused on request transport and response
  * materialization.
  */
-export const resolveRouteHandlerProxyLazyMiss = async ({
-  pathname,
-  bootstrapState
-}: {
-  pathname: string;
-  bootstrapState: RouteHandlerProxyWorkerBootstrapState;
-}): Promise<RouteHandlerProxyWorkerResponse> => {
+export const resolveRouteHandlerProxyLazyMiss = async (
+  pathname: string,
+  bootstrapState: RouteHandlerProxyWorkerBootstrapState
+): Promise<RouteHandlerProxyWorkerResponse> => {
   debugRouteHandlerProxyWorker('lazy-miss:start', {
     pathname,
     bootstrapGenerationToken: bootstrapState.bootstrapGenerationToken,
     targetCount: bootstrapState.lazyResolvedTargets.length
   });
 
-  const lazyRequestResolution = await resolveRouteHandlerLazyRequest({
+  const lazyRequestResolution = await resolveRouteHandlerLazyRequest(
     pathname,
-    resolvedTargets: bootstrapState.lazyResolvedTargets
-  });
+    bootstrapState.lazyResolvedTargets
+  );
 
   debugRouteHandlerProxyWorker('lazy-miss:request-resolution', {
     pathname,
@@ -61,10 +57,10 @@ export const resolveRouteHandlerProxyLazyMiss = async ({
       });
 
     if (lazyMatchedRoutePreparation?.kind === 'heavy') {
-      const rewriteDestination = resolveRouteHandlerLazyRewriteDestination({
+      const rewriteDestination = resolveRouteHandlerLazyRewriteDestination(
         pathname,
-        analysisResult: lazyMatchedRoutePreparation.analysisResult
-      });
+        lazyMatchedRoutePreparation.analysisResult
+      );
 
       if (rewriteDestination != null) {
         return {

@@ -108,7 +108,8 @@ describe('proxy request routing', () => {
         locales: ['en'],
         defaultLocale: 'en'
       },
-      bootstrapGenerationToken: 'bootstrap-1'
+      bootstrapGenerationToken: 'bootstrap-1',
+      configRegistration: {}
     });
   });
 
@@ -139,7 +140,8 @@ describe('proxy request routing', () => {
         locales: ['en'],
         defaultLocale: 'en'
       },
-      bootstrapGenerationToken: 'route-handler-proxy-worker-only-fallback'
+      bootstrapGenerationToken: 'route-handler-proxy-worker-only-fallback',
+      configRegistration: {}
     });
     expect(response.headers.get('x-next-slug-splitter-synthetic-proxy')).toBe(
       'rewrite'
@@ -268,6 +270,7 @@ describe('proxy request routing', () => {
             defaultLocale: string;
           };
           bootstrapGenerationToken: string;
+          configRegistration: Record<string, never>;
         };
     };
 
@@ -297,7 +300,8 @@ describe('proxy request routing', () => {
             locales: ['en'],
             defaultLocale: 'en'
           },
-          bootstrapGenerationToken: 'bootstrap-1'
+          bootstrapGenerationToken: 'bootstrap-1',
+          configRegistration: {}
         }
       },
       {
@@ -325,7 +329,8 @@ describe('proxy request routing', () => {
             locales: ['en'],
             defaultLocale: 'en'
           },
-          bootstrapGenerationToken: 'bootstrap-1'
+          bootstrapGenerationToken: 'bootstrap-1',
+          configRegistration: {}
         }
       },
       {
@@ -353,7 +358,8 @@ describe('proxy request routing', () => {
             locales: ['en'],
             defaultLocale: 'en'
           },
-          bootstrapGenerationToken: 'bootstrap-1'
+          bootstrapGenerationToken: 'bootstrap-1',
+          configRegistration: {}
         }
       },
       {
@@ -378,7 +384,8 @@ describe('proxy request routing', () => {
             locales: ['en'],
             defaultLocale: 'en'
           },
-          bootstrapGenerationToken: 'bootstrap-1'
+          bootstrapGenerationToken: 'bootstrap-1',
+          configRegistration: {}
         }
       },
       {
@@ -403,7 +410,8 @@ describe('proxy request routing', () => {
             locales: ['en'],
             defaultLocale: 'en'
           },
-          bootstrapGenerationToken: 'bootstrap-1'
+          bootstrapGenerationToken: 'bootstrap-1',
+          configRegistration: {}
         }
       },
       {
@@ -428,7 +436,8 @@ describe('proxy request routing', () => {
             locales: ['en'],
             defaultLocale: 'en'
           },
-          bootstrapGenerationToken: 'bootstrap-1'
+          bootstrapGenerationToken: 'bootstrap-1',
+          configRegistration: {}
         }
       },
       {
@@ -457,7 +466,8 @@ describe('proxy request routing', () => {
             locales: ['en', 'de'],
             defaultLocale: 'en'
           },
-          bootstrapGenerationToken: 'bootstrap-1'
+          bootstrapGenerationToken: 'bootstrap-1',
+          configRegistration: {}
         }
       }
     ];

@@ -26,8 +26,17 @@ const SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV = 'SLUG_SPLITTER_CONFIG_ROOT_DIR';
  *   original app config-loading inputs around for request-time use.
  */
 export type RouteHandlerProxyWorkerBootstrapState = {
+  /**
+   * Parent-issued token that identifies the current bootstrap generation.
+   */
   bootstrapGenerationToken: BootstrapGenerationToken;
+  /**
+   * Lightweight target shapes used for request-to-file resolution.
+   */
   lazyResolvedTargets: Array<RouteHandlerLazyResolvedTarget>;
+  /**
+   * Fully resolved heavy-analysis configs keyed by stable target id.
+   */
   resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
 };
 
@@ -78,19 +87,19 @@ export const bootstrapRouteHandlerProxyWorker = async (
     bootstrappedRouteHandlersConfig
   );
 
-  const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig({
-    appConfig: appContext.appConfig,
+  const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig(
+    appContext.appConfig,
     localeConfig,
-    routeHandlersConfig: bootstrappedRouteHandlersConfig
-  });
+    bootstrappedRouteHandlersConfig
+  );
 
   return {
     bootstrapGenerationToken,
-    lazyResolvedTargets: resolveRouteHandlerLazyResolvedTargetsFromAppConfig({
-      appConfig: appContext.appConfig,
+    lazyResolvedTargets: resolveRouteHandlerLazyResolvedTargetsFromAppConfig(
+      appContext.appConfig,
       localeConfig,
-      routeHandlersConfig: bootstrappedRouteHandlersConfig
-    }),
+      bootstrappedRouteHandlersConfig
+    ),
     resolvedConfigsByTargetId: new Map(
       resolvedConfigs.map(resolvedConfig => [
         resolvedConfig.targetId,
