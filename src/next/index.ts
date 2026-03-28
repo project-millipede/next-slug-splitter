@@ -2,6 +2,8 @@ export type {
   ComponentImportSpec,
   DynamicRouteParam,
   DynamicRouteParamKind,
+  ModuleReference,
+  RouteHandlerGeneratorComponent,
   RouteHandlerProcessor,
   RouteHandlersConfig
 } from './types';
