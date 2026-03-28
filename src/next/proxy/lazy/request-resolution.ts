@@ -1,22 +1,12 @@
 import {
   resolveLocalizedContentRoute
 } from '../../../core/discovery';
-import { resolveRouteHandlersAppConfig } from '../../config/app';
-import {
-  deriveTargetIdFromRouteBasePath,
-  normalizeRouteBasePath,
-  normalizeTargetId,
-  readContentLocaleModeOption,
-  readEmitFormatOption,
-  readRequiredStringOption
-} from '../../config/options';
-import { resolveConfiguredPathOption } from '../../config/paths';
-import { loadRegisteredSlugSplitterConfig } from '../../integration/slug-splitter-config-loader';
+import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../config/resolve-configs';
 
 import type { LocaleConfig } from '../../../core/types';
 import type {
-  RouteHandlersConfig,
-  RouteHandlersTargetConfig
+  ResolvedRouteHandlersAppConfig,
+  RouteHandlersConfig
 } from '../../types';
 import type {
   RouteHandlerLazyRequestIdentity,
@@ -197,89 +187,41 @@ const resolveMatchedTargetRequest = ({
 };
 
 /**
- * Expand the app-owned config into the list of configured target objects.
- *
- * @param routeHandlersConfig - Registered route-handlers config.
- * @returns Target config list in configuration order.
- */
-const readConfiguredTargets = (
-  routeHandlersConfig: RouteHandlersConfig
-): Array<RouteHandlersTargetConfig | RouteHandlersConfig> =>
-  Array.isArray(routeHandlersConfig.targets)
-    ? routeHandlersConfig.targets
-    : [routeHandlersConfig];
-
-/**
  * Resolve the lightweight target shape needed by lazy request resolution.
  *
  * @param input - Resolution input.
+ * @param input.appConfig - Already-resolved app config.
  * @param input.localeConfig - Shared locale config captured at adapter time.
- * @returns Lightweight resolved target configs, or an empty array when no
- * config is currently registered.
+ * @param input.routeHandlersConfig - App-owned splitter config.
+ * @returns Lightweight resolved target configs.
  */
-const resolveProxyLazyConfigs = async ({
-  localeConfig
+export const resolveRouteHandlerLazyResolvedTargetsFromAppConfig = ({
+  appConfig,
+  localeConfig,
+  routeHandlersConfig
 }: {
+  appConfig: ResolvedRouteHandlersAppConfig;
   localeConfig: LocaleConfig;
-}): Promise<Array<RouteHandlerLazyResolvedTarget>> => {
-  const routeHandlersConfig = await loadRegisteredSlugSplitterConfig();
-
-  if (routeHandlersConfig == null) {
-    return [];
-  }
-
-  const appConfig = resolveRouteHandlersAppConfig({
+  routeHandlersConfig: RouteHandlersConfig;
+}): Array<RouteHandlerLazyResolvedTarget> =>
+  resolveNormalizedRouteHandlersTargetsFromAppConfig({
+    appConfig,
     routeHandlersConfig
-  });
-  const configuredTargets = readConfiguredTargets(routeHandlersConfig);
-
-  return configuredTargets.map(configuredTarget => {
-    const configuredPaths = configuredTarget.paths ?? {};
-    const routeBasePath = normalizeRouteBasePath(
-      readRequiredStringOption({
-        value: configuredTarget.routeBasePath,
-        label: 'routeBasePath'
-      })
-    );
-    const contentPagesDir = readRequiredStringOption({
-      value: resolveConfiguredPathOption({
-        rootDir: appConfig.rootDir,
-        value: configuredPaths.contentPagesDir,
-        label: 'paths.contentPagesDir'
-      }),
-      label: 'paths.contentPagesDir'
-    });
-    const handlersDir = readRequiredStringOption({
-      value: resolveConfiguredPathOption({
-        rootDir: appConfig.rootDir,
-        value: configuredPaths.handlersDir,
-        label: 'paths.handlersDir'
-      }),
-      label: 'paths.handlersDir'
-    });
-    const targetId = normalizeTargetId(
-      configuredTarget.targetId ?? deriveTargetIdFromRouteBasePath(routeBasePath)
-    );
-
+  }).map(({ options }) => ({
     // This is intentionally the smallest resolved shape that can support
     // request-to-file matching plus deterministic stale-output cleanup. No
     // processor imports, runtime factory imports, or other planner-only data
     // are pulled into this seam.
-    return {
-      targetId,
-      routeBasePath,
-      contentLocaleMode: readContentLocaleModeOption(
-        configuredTarget.contentLocaleMode
-      ),
-      localeConfig,
-      emitFormat: readEmitFormatOption(configuredTarget.emitFormat),
-      paths: {
-        contentPagesDir,
-        handlersDir
-      }
-    };
-  });
-};
+    targetId: options.targetId,
+    routeBasePath: options.routeBasePath,
+    contentLocaleMode: options.contentLocaleMode,
+    localeConfig,
+    emitFormat: options.emitFormat,
+    paths: {
+      contentPagesDir: options.paths.contentPagesDir,
+      handlersDir: options.paths.handlersDir
+    }
+  }));
 
 /**
  * Resolve one proxy pathname into one concrete target-local content file when
@@ -287,22 +229,19 @@ const resolveProxyLazyConfigs = async ({
  *
  * @param input - Lazy request-resolution input.
  * @param input.pathname - Public pathname to resolve.
- * @param input.localeConfig - Shared locale config captured at adapter time.
+ * @param input.resolvedTargets - Bootstrapped lightweight target configs.
  * @returns Target/file resolution result for the pathname.
  */
 export const resolveRouteHandlerLazyRequest = async ({
   pathname,
-  localeConfig
+  resolvedTargets
 }: {
   pathname: string;
-  localeConfig: LocaleConfig;
+  resolvedTargets: Array<RouteHandlerLazyResolvedTarget>;
 }): Promise<RouteHandlerLazyRequestResolution> => {
-  const resolvedConfigs = await resolveProxyLazyConfigs({
-    localeConfig
-  });
   const matchedTargetRequest = resolveMatchedTargetRequest({
     pathname,
-    resolvedConfigs
+    resolvedConfigs: resolvedTargets
   });
 
   if (matchedTargetRequest == null) {

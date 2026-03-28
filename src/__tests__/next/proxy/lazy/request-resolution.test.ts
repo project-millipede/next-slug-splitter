@@ -1,68 +1,59 @@
-import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { createCatchAllRouteHandlersPreset } from '../../../../next/config';
-import {
-  TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-  createTestHandlerBinding
-} from '../../../helpers/fixtures';
-import { withTempDir } from '../../../helpers/temp-dir';
+const resolveLocalizedContentRouteMock = vi.hoisted(() => vi.fn());
 
-import type { RouteHandlersConfig } from '../../../../next/types';
+vi.mock(import('../../../../core/discovery'), async importOriginal => {
+  const actual = await importOriginal<typeof import('../../../../core/discovery')>();
 
-const loadRegisteredSlugSplitterConfigMock = vi.hoisted(() => vi.fn());
-
-vi.mock('../../../../next/integration/slug-splitter-config-loader', () => ({
-  loadRegisteredSlugSplitterConfig: loadRegisteredSlugSplitterConfigMock
-}));
+  return {
+    ...actual,
+    resolveLocalizedContentRoute: resolveLocalizedContentRouteMock
+  };
+});
 
 import { resolveRouteHandlerLazyRequest } from '../../../../next/proxy/lazy/request-resolution';
 
-const createMultiTargetConfig = (rootDir: string): RouteHandlersConfig => ({
-  app: {
-    rootDir,
-    nextConfigPath: path.join(rootDir, 'next.config.mjs')
-  },
-  targets: [
-    createCatchAllRouteHandlersPreset({
-      routeSegment: 'docs',
-      handlerRouteParam: {
-        name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-        kind: 'catch-all'
-      },
-      contentPagesDir: path.join(rootDir, 'docs', 'src', 'pages'),
-      handlerBinding: createTestHandlerBinding()
-    }),
-    createCatchAllRouteHandlersPreset({
-      routeSegment: 'blog',
-      contentLocaleMode: 'default-locale',
-      handlerRouteParam: {
-        name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-        kind: 'catch-all'
-      },
-      contentPagesDir: path.join(rootDir, 'blog', 'src', 'pages'),
-      handlerBinding: createTestHandlerBinding()
-    })
-  ]
-});
+const rootDir = '/repo/app';
+const localeConfig = {
+  locales: ['en', 'de'],
+  defaultLocale: 'en'
+};
+const docsConfig = {
+  targetId: 'docs',
+  routeBasePath: '/docs',
+  contentLocaleMode: 'filename' as const,
+  emitFormat: 'ts' as const,
+  localeConfig,
+  paths: {
+    contentPagesDir: path.join(rootDir, 'docs', 'src', 'pages'),
+    handlersDir: path.join(rootDir, 'pages', 'docs', '_handlers')
+  }
+};
+const blogConfig = {
+  targetId: 'blog',
+  routeBasePath: '/blog',
+  contentLocaleMode: 'default-locale' as const,
+  emitFormat: 'ts' as const,
+  localeConfig,
+  paths: {
+    contentPagesDir: path.join(rootDir, 'blog', 'src', 'pages'),
+    handlersDir: path.join(rootDir, 'pages', 'blog', '_handlers')
+  }
+};
+const resolvedTargets = [docsConfig, blogConfig];
 
 describe('proxy lazy request resolution', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('returns no-target when the pathname does not belong to any configured target', async () => {
-    loadRegisteredSlugSplitterConfigMock.mockResolvedValue(undefined);
-
+  test('returns no-target when the pathname does not belong to any configured target', async () => {
     await expect(
       resolveRouteHandlerLazyRequest({
         pathname: '/marketing/launch',
-        localeConfig: {
-          locales: ['en', 'de'],
-          defaultLocale: 'en'
-        }
+        resolvedTargets: []
       })
     ).resolves.toEqual({
       kind: 'no-target',
@@ -70,178 +61,191 @@ describe('proxy lazy request resolution', () => {
     });
   });
 
-  it('resolves a default-locale filename-mode request to the concrete content file', async () => {
-    await withTempDir(
-      'next-slug-splitter-proxy-lazy-resolution-',
-      async rootDir => {
-        const routeHandlersConfig = createMultiTargetConfig(rootDir);
-        const docsPagesDir = path.join(rootDir, 'docs', 'src', 'pages');
-
-        await mkdir(path.join(docsPagesDir, 'getting-started'), {
-          recursive: true
-        });
-        await writeFile(
-          path.join(docsPagesDir, 'getting-started', 'en.mdx'),
-          '# EN',
-          'utf8'
-        );
-        await writeFile(
-          path.join(docsPagesDir, 'getting-started', 'de.mdx'),
-          '# DE',
-          'utf8'
-        );
-
-        loadRegisteredSlugSplitterConfigMock.mockResolvedValue(
-          routeHandlersConfig
-        );
-
-        const result = await resolveRouteHandlerLazyRequest({
-          pathname: '/docs/getting-started',
-          localeConfig: {
-            locales: ['en', 'de'],
-            defaultLocale: 'en'
-          }
-        });
-
-        expect(result.kind).toBe('matched-route-file');
-        if (result.kind !== 'matched-route-file') {
-          throw new Error('Expected matched-route-file resolution.');
+  type Scenario = {
+    id: string;
+    description: string;
+    pathname: string;
+    resolvedRoutePath:
+      | {
+          locale: string;
+          slugArray: Array<string>;
+          filePath: string;
         }
+      | null;
+    expected:
+      | {
+          kind: 'matched-route-file';
+          pathname: string;
+          config: typeof docsConfig | typeof blogConfig;
+          identity: {
+            pathname: string;
+            locale: string;
+            slugArray: Array<string>;
+          };
+          routePath: {
+            locale: string;
+            slugArray: Array<string>;
+            filePath: string;
+          };
+        }
+      | {
+          kind: 'missing-route-file';
+          pathname: string;
+          config: typeof docsConfig | typeof blogConfig;
+          identity: {
+            pathname: string;
+            locale: string;
+            slugArray: Array<string>;
+          };
+        };
+  };
 
-        expect(result.config.routeBasePath).toBe('/docs');
-        expect(result.identity).toEqual({
+  const scenarios: ReadonlyArray<Scenario> = [
+    {
+      id: 'Default-Locale-Filename',
+      description: 'resolves a default-locale filename-mode request to the concrete content file',
+      pathname: '/docs/getting-started',
+      resolvedRoutePath: {
+        locale: 'en',
+        slugArray: ['getting-started'],
+        filePath: path.join(
+          rootDir,
+          'docs',
+          'src',
+          'pages',
+          'getting-started',
+          'en.mdx'
+        )
+      },
+      expected: {
+        kind: 'matched-route-file',
+        pathname: '/docs/getting-started',
+        config: docsConfig,
+        identity: {
           pathname: '/docs/getting-started',
           locale: 'en',
           slugArray: ['getting-started']
-        });
-        expect(result.routePath.filePath).toBe(
-          path.join(docsPagesDir, 'getting-started', 'en.mdx')
-        );
-      }
-    );
-  });
-
-  it('resolves a localized filename-mode request to the concrete locale-specific content file', async () => {
-    await withTempDir(
-      'next-slug-splitter-proxy-lazy-resolution-',
-      async rootDir => {
-        const routeHandlersConfig = createMultiTargetConfig(rootDir);
-        const docsPagesDir = path.join(rootDir, 'docs', 'src', 'pages');
-
-        await mkdir(path.join(docsPagesDir, 'getting-started'), {
-          recursive: true
-        });
-        await writeFile(
-          path.join(docsPagesDir, 'getting-started', 'de.mdx'),
-          '# DE',
-          'utf8'
-        );
-
-        loadRegisteredSlugSplitterConfigMock.mockResolvedValue(
-          routeHandlersConfig
-        );
-
-        const result = await resolveRouteHandlerLazyRequest({
-          pathname: '/de/docs/getting-started',
-          localeConfig: {
-            locales: ['en', 'de'],
-            defaultLocale: 'en'
-          }
-        });
-
-        expect(result.kind).toBe('matched-route-file');
-        if (result.kind !== 'matched-route-file') {
-          throw new Error('Expected matched-route-file resolution.');
+        },
+        routePath: {
+          locale: 'en',
+          slugArray: ['getting-started'],
+          filePath: path.join(
+            rootDir,
+            'docs',
+            'src',
+            'pages',
+            'getting-started',
+            'en.mdx'
+          )
         }
-
-        expect(result.identity).toEqual({
+      }
+    },
+    {
+      id: 'Localized-Filename',
+      description: 'resolves a localized filename-mode request to the locale-specific content file',
+      pathname: '/de/docs/getting-started',
+      resolvedRoutePath: {
+        locale: 'de',
+        slugArray: ['getting-started'],
+        filePath: path.join(
+          rootDir,
+          'docs',
+          'src',
+          'pages',
+          'getting-started',
+          'de.mdx'
+        )
+      },
+      expected: {
+        kind: 'matched-route-file',
+        pathname: '/de/docs/getting-started',
+        config: docsConfig,
+        identity: {
           pathname: '/de/docs/getting-started',
           locale: 'de',
           slugArray: ['getting-started']
-        });
-        expect(result.routePath.filePath).toBe(
-          path.join(docsPagesDir, 'getting-started', 'de.mdx')
-        );
-      }
-    );
-  });
-
-  it('resolves default-locale content mode without requiring locale-named files', async () => {
-    await withTempDir(
-      'next-slug-splitter-proxy-lazy-resolution-',
-      async rootDir => {
-        const routeHandlersConfig = createMultiTargetConfig(rootDir);
-        const blogPagesDir = path.join(rootDir, 'blog', 'src', 'pages');
-
-        await mkdir(blogPagesDir, {
-          recursive: true
-        });
-        await writeFile(
-          path.join(blogPagesDir, 'application-extensibility.mdx'),
-          '# Blog',
-          'utf8'
-        );
-
-        loadRegisteredSlugSplitterConfigMock.mockResolvedValue(
-          routeHandlersConfig
-        );
-
-        const result = await resolveRouteHandlerLazyRequest({
-          pathname: '/blog/application-extensibility',
-          localeConfig: {
-            locales: ['en', 'de'],
-            defaultLocale: 'en'
-          }
-        });
-
-        expect(result.kind).toBe('matched-route-file');
-        if (result.kind !== 'matched-route-file') {
-          throw new Error('Expected matched-route-file resolution.');
+        },
+        routePath: {
+          locale: 'de',
+          slugArray: ['getting-started'],
+          filePath: path.join(
+            rootDir,
+            'docs',
+            'src',
+            'pages',
+            'getting-started',
+            'de.mdx'
+          )
         }
-
-        expect(result.config.routeBasePath).toBe('/blog');
-        expect(result.identity).toEqual({
+      }
+    },
+    {
+      id: 'Default-Locale-Content',
+      description: 'resolves default-locale content mode without requiring locale-named files',
+      pathname: '/blog/application-extensibility',
+      resolvedRoutePath: {
+        locale: 'en',
+        slugArray: ['application-extensibility'],
+        filePath: path.join(
+          rootDir,
+          'blog',
+          'src',
+          'pages',
+          'application-extensibility.mdx'
+        )
+      },
+      expected: {
+        kind: 'matched-route-file',
+        pathname: '/blog/application-extensibility',
+        config: blogConfig,
+        identity: {
           pathname: '/blog/application-extensibility',
           locale: 'en',
           slugArray: ['application-extensibility']
-        });
-        expect(result.routePath.filePath).toBe(
-          path.join(blogPagesDir, 'application-extensibility.mdx')
-        );
-      }
-    );
-  });
-
-  it('distinguishes a missing content file from a pathname outside all targets', async () => {
-    await withTempDir(
-      'next-slug-splitter-proxy-lazy-resolution-',
-      async rootDir => {
-        const routeHandlersConfig = createMultiTargetConfig(rootDir);
-
-        loadRegisteredSlugSplitterConfigMock.mockResolvedValue(
-          routeHandlersConfig
-        );
-
-        const result = await resolveRouteHandlerLazyRequest({
-          pathname: '/docs/missing-page',
-          localeConfig: {
-            locales: ['en', 'de'],
-            defaultLocale: 'en'
-          }
-        });
-
-        expect(result.kind).toBe('missing-route-file');
-        if (result.kind !== 'missing-route-file') {
-          throw new Error('Expected missing-route-file resolution.');
+        },
+        routePath: {
+          locale: 'en',
+          slugArray: ['application-extensibility'],
+          filePath: path.join(
+            rootDir,
+            'blog',
+            'src',
+            'pages',
+            'application-extensibility.mdx'
+          )
         }
-
-        expect(result.config.routeBasePath).toBe('/docs');
-        expect(result.identity).toEqual({
+      }
+    },
+    {
+      id: 'Missing-Route-File',
+      description: 'distinguishes a missing content file from a pathname inside a known target',
+      pathname: '/docs/missing-page',
+      resolvedRoutePath: null,
+      expected: {
+        kind: 'missing-route-file',
+        pathname: '/docs/missing-page',
+        config: docsConfig,
+        identity: {
           pathname: '/docs/missing-page',
           locale: 'en',
           slugArray: ['missing-page']
-        });
+        }
       }
-    );
+    }
+  ];
+
+  test.for(scenarios)('[$id] $description', async ({
+    pathname,
+    resolvedRoutePath,
+    expected
+  }) => {
+    resolveLocalizedContentRouteMock.mockResolvedValue(resolvedRoutePath);
+
+    await expect(
+      resolveRouteHandlerLazyRequest({
+        pathname,
+        resolvedTargets
+      })
+    ).resolves.toEqual(expected);
   });
 });

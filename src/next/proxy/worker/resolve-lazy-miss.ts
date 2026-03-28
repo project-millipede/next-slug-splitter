@@ -1,19 +1,18 @@
-import { resolveRouteHandlerLazyRequest } from '../lazy/request-resolution';
-import { removeRouteHandlerLazyOutputForIdentity } from '../lazy/stale-output-cleanup';
-import { resolveRouteHandlerLazyRewriteDestination } from '../lazy/single-route-rewrite';
 import { prepareRouteHandlerLazyMatchedRoute } from '../lazy/cold-request-dedupe';
-import { getRouteHandlerProxyRoutingState } from '../runtime/routing-state';
+import { resolveRouteHandlerLazyRequest } from '../lazy/request-resolution';
+import { resolveRouteHandlerLazyRewriteDestination } from '../lazy/single-route-rewrite';
+import { removeRouteHandlerLazyOutputForIdentity } from '../lazy/stale-output-cleanup';
 import { debugRouteHandlerProxyWorker } from './debug-log';
 
+import type { RouteHandlerProxyWorkerBootstrapState } from './bootstrap';
 import type { RouteHandlerProxyWorkerResponse } from './types';
-import type { LocaleConfig } from '../../../core/types';
 
 /**
  * Resolve one proxy lazy miss completely inside the worker process.
  *
  * @param input - Worker-resolution input.
  * @param input.pathname - Public pathname being handled by proxy.
- * @param input.localeConfig - Locale config captured by the generated root proxy.
+ * @param input.bootstrapState - Bootstrapped worker state for the current generation.
  * @returns Serialized semantic result for the thin proxy runtime.
  *
  * @remarks
@@ -26,34 +25,25 @@ import type { LocaleConfig } from '../../../core/types';
  * - remove stale lazy output when the route is light or missing
  *
  * The parent proxy runtime intentionally receives only a compact semantic
- * result so it can stay focused on request transport, warm-up, and response
+ * result so it can stay focused on request transport and response
  * materialization.
  */
 export const resolveRouteHandlerProxyLazyMiss = async ({
   pathname,
-  localeConfig
+  bootstrapState
 }: {
   pathname: string;
-  localeConfig: LocaleConfig;
+  bootstrapState: RouteHandlerProxyWorkerBootstrapState;
 }): Promise<RouteHandlerProxyWorkerResponse> => {
   debugRouteHandlerProxyWorker('lazy-miss:start', {
     pathname,
-    localeConfig
-  });
-
-  const routingState = await getRouteHandlerProxyRoutingState({
-    localeConfig
-  });
-
-  debugRouteHandlerProxyWorker('lazy-miss:routing-state', {
-    pathname,
-    targetRouteBasePaths: routingState.targetRouteBasePaths,
-    rewriteCount: routingState.rewriteBySourcePath.size
+    bootstrapGenerationToken: bootstrapState.bootstrapGenerationToken,
+    targetCount: bootstrapState.lazyResolvedTargets.length
   });
 
   const lazyRequestResolution = await resolveRouteHandlerLazyRequest({
     pathname,
-    localeConfig
+    resolvedTargets: bootstrapState.lazyResolvedTargets
   });
 
   debugRouteHandlerProxyWorker('lazy-miss:request-resolution', {
@@ -63,11 +53,12 @@ export const resolveRouteHandlerProxyLazyMiss = async ({
 
   if (lazyRequestResolution.kind === 'matched-route-file') {
     const lazyMatchedRoutePreparation =
-      await prepareRouteHandlerLazyMatchedRoute(
-        lazyRequestResolution.config.targetId,
-        lazyRequestResolution.config.localeConfig,
-        lazyRequestResolution.routePath
-      );
+      await prepareRouteHandlerLazyMatchedRoute({
+        targetId: lazyRequestResolution.config.targetId,
+        routePath: lazyRequestResolution.routePath,
+        bootstrapGenerationToken: bootstrapState.bootstrapGenerationToken,
+        resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+      });
 
     if (lazyMatchedRoutePreparation?.kind === 'heavy') {
       const rewriteDestination = resolveRouteHandlerLazyRewriteDestination({
@@ -78,7 +69,10 @@ export const resolveRouteHandlerProxyLazyMiss = async ({
       if (rewriteDestination != null) {
         return {
           kind: 'heavy',
-          source: lazyMatchedRoutePreparation.analysisResult.source,
+          source:
+            lazyMatchedRoutePreparation.analysisResult.source === 'fresh'
+              ? 'discovery'
+              : 'cache',
           rewriteDestination,
           routeBasePath:
             lazyMatchedRoutePreparation.analysisResult.config.routeBasePath

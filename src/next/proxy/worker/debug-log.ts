@@ -30,9 +30,11 @@ const stringifyRouteHandlerProxyWorkerDebugPayload = (
  * @param payload - Optional structured payload.
  *
  * @remarks
- * Worker stdout is reserved for the single JSON response consumed by the thin
- * Proxy runtime. All debug output therefore has to travel over stderr so we do
- * not corrupt the wire protocol.
+ * Logging aspects:
+ * - Protocol separation: worker request/response traffic travels over IPC.
+ * - Output choice: debug lines still go to stderr for visual separation.
+ * - Compatibility: app-owned stdout noise no longer shares a channel with the
+ *   worker protocol.
  */
 export const debugRouteHandlerProxyWorker = (
   event: string,

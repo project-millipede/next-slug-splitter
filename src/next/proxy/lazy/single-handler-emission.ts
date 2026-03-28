@@ -58,8 +58,6 @@ export const emitRouteHandlerLazySingleHandler = async ({
     paths: analysisResult.config.paths,
     heavyRoute: analysisResult.plannedHeavyRoute,
     emitFormat: analysisResult.config.emitFormat,
-    runtimeHandlerFactoryImportBase:
-      analysisResult.config.runtimeHandlerFactoryImportBase,
     baseStaticPropsImport: analysisResult.config.baseStaticPropsImport,
     handlerRouteParam: analysisResult.config.handlerRouteParam,
     routeBasePath: analysisResult.config.routeBasePath

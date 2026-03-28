@@ -27,23 +27,6 @@ export const ROUTE_HANDLER_PROXY_TARGET_HEADER =
   'x-next-slug-splitter-synthetic-proxy-target';
 
 /**
- * Read target route base paths from fully resolved target configs.
- *
- * @param resolvedConfigs - Resolved target configs.
- * @returns Sorted unique route base paths.
- */
-export const readResolvedRouteBasePaths = (
-  resolvedConfigs: Array<ResolvedRouteHandlersConfig>
-): Array<string> => {
-  // Resolved configs already went through app-config resolution, locale
-  // enrichment, and target normalization. At this stage we only need a stable,
-  // target-owned route-base list for diagnostic matching in the proxy runtime.
-  return [...new Set(resolvedConfigs.map(config => config.routeBasePath))].sort(
-    (left, right) => left.localeCompare(right)
-  );
-};
-
-/**
  * Convert one route base path into the non-locale matcher used by Proxy.
  *
  * @param routeBasePath - Target-owned route base path.

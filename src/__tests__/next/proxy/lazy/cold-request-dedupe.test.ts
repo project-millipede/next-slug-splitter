@@ -7,11 +7,11 @@ const analyzeRouteHandlerLazyMatchedRouteMock = vi.hoisted(() => vi.fn());
 const doesRouteHandlerLazySingleHandlerExistMock = vi.hoisted(() => vi.fn());
 const emitRouteHandlerLazySingleHandlerMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../../next/proxy/lazy/single-route-analysis', () => ({
+vi.mock(import('../../../../next/proxy/lazy/single-route-analysis'), () => ({
   analyzeRouteHandlerLazyMatchedRoute: analyzeRouteHandlerLazyMatchedRouteMock
 }));
 
-vi.mock('../../../../next/proxy/lazy/single-handler-emission', () => ({
+vi.mock(import('../../../../next/proxy/lazy/single-handler-emission'), () => ({
   doesRouteHandlerLazySingleHandlerExist:
     doesRouteHandlerLazySingleHandlerExistMock,
   emitRouteHandlerLazySingleHandler: emitRouteHandlerLazySingleHandlerMock
@@ -19,7 +19,8 @@ vi.mock('../../../../next/proxy/lazy/single-handler-emission', () => ({
 
 import { prepareRouteHandlerLazyMatchedRoute } from '../../../../next/proxy/lazy/cold-request-dedupe';
 
-const localeConfig = { locales: ['en'], defaultLocale: 'en' };
+const bootstrapGenerationToken = 'bootstrap-1';
+const resolvedConfigsByTargetId = new Map();
 const routePath = { locale: 'en', slugArray: ['post'], filePath: '/tmp/post.mdx' };
 
 describe('composeKey', () => {
@@ -61,8 +62,18 @@ describe('prepareRouteHandlerLazyMatchedRoute deduplication', () => {
     const deferred = createDeferred<{ kind: 'heavy' }>();
     analyzeRouteHandlerLazyMatchedRouteMock.mockReturnValue(deferred.promise);
 
-    prepareRouteHandlerLazyMatchedRoute('blog', localeConfig, routePath);
-    prepareRouteHandlerLazyMatchedRoute('blog', localeConfig, routePath);
+    prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
+    prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
 
     expect(analyzeRouteHandlerLazyMatchedRouteMock).toHaveBeenCalledTimes(1);
 
@@ -72,7 +83,12 @@ describe('prepareRouteHandlerLazyMatchedRoute deduplication', () => {
   it('does not emit for light results', async () => {
     analyzeRouteHandlerLazyMatchedRouteMock.mockResolvedValue({ kind: 'light' });
 
-    await prepareRouteHandlerLazyMatchedRoute('blog', localeConfig, routePath);
+    await prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
 
     expect(emitRouteHandlerLazySingleHandlerMock).not.toHaveBeenCalled();
   });
@@ -82,7 +98,12 @@ describe('prepareRouteHandlerLazyMatchedRoute deduplication', () => {
     analyzeRouteHandlerLazyMatchedRouteMock.mockResolvedValue(analysisResult);
     doesRouteHandlerLazySingleHandlerExistMock.mockResolvedValue(true);
 
-    await prepareRouteHandlerLazyMatchedRoute('blog', localeConfig, routePath);
+    await prepareRouteHandlerLazyMatchedRoute({
+      targetId: 'blog',
+      routePath,
+      bootstrapGenerationToken,
+      resolvedConfigsByTargetId
+    });
 
     expect(doesRouteHandlerLazySingleHandlerExistMock).toHaveBeenCalledWith(
       analysisResult

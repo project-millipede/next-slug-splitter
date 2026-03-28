@@ -1,109 +1,38 @@
+import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { debugRouteHandlerProxy } from '../observability/debug-log';
 
-import type {
-  RouteHandlerProxyWorkerRequest,
-  RouteHandlerProxyWorkerResponse
-} from './types';
 import type { LocaleConfig } from '../../../core/types';
-import type { RouteHandlerProxyOptions } from '../runtime/types';
+import type {
+  BootstrapGenerationToken,
+  RouteHandlerProxyOptions
+} from '../runtime/types';
+import type {
+  RouteHandlerProxyWorkerBootstrapResponse,
+  RouteHandlerProxyWorkerRequest,
+  RouteHandlerProxyWorkerResponse,
+  RouteHandlerProxyWorkerResponseEnvelope
+} from './types';
 
 const SLUG_SPLITTER_CONFIG_PATH_ENV = 'SLUG_SPLITTER_CONFIG_PATH';
 const SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV = 'SLUG_SPLITTER_CONFIG_ROOT_DIR';
 const EXPERIMENTAL_STRIP_TYPES_FLAG = '--experimental-strip-types';
 
+// Cache-policy note: `workerSessions` and `inFlightLazyMissResolutions` are
+// intentionally separate layers. `workerSessions` keeps one long-lived child
+// process alive, while `inFlightLazyMissResolutions` collapses overlapping
+// identical parent requests so they are not both sent into that session. See
+// `docs/architecture/cache-policy.md`.
 const inFlightLazyMissResolutions = new Map<
   string,
   Promise<RouteHandlerProxyWorkerResponse>
 >();
-const cachedLazyMissResolutions = new Map<
-  string,
-  {
-    expiresAt: number;
-    response: Extract<
-      RouteHandlerProxyWorkerResponse,
-      {
-        kind: 'heavy';
-      }
-    >;
-  }
->();
+const workerSessions = new Map<string, RouteHandlerProxyWorkerSession>();
 
-const ROUTE_HANDLER_PROXY_WORKER_CACHE_TTL_MS = 10_000;
-
-/**
- * Read one still-fresh settled worker result from the process-local cache.
- *
- * @param dedupeKey - Stable cache key for the current pathname/config pair.
- * @returns Cached heavy response when still fresh, otherwise `null`.
- *
- * @remarks
- * The main proxy runtime currently cannot hold a fully resolved routing-state
- * snapshot in-process because Next's special Proxy module graph rejects the
- * dynamic app-config imports that ordinary Node code would allow.
- *
- * That means even already-seen heavy routes can otherwise keep paying the
- * worker spawn cost on every re-entry, including incidental `HEAD
- * /_next/data/...` validation traffic from the Next client router.
- *
- * This short-lived cache is a deliberately conservative bridge:
- * - process-local only
- * - heavy-route results only
- * - bounded TTL
- *
- * It does not try to become a second long-lived source of truth. It simply
- * keeps obviously warm heavy routes from feeling slow during active dev
- * navigation.
- */
-const readRouteHandlerProxyWorkerCachedResolution = (
-  dedupeKey: string
-): Extract<RouteHandlerProxyWorkerResponse, { kind: 'heavy' }> | null => {
-  const cachedResolution = cachedLazyMissResolutions.get(dedupeKey);
-
-  if (cachedResolution == null) {
-    return null;
-  }
-
-  if (cachedResolution.expiresAt <= Date.now()) {
-    cachedLazyMissResolutions.delete(dedupeKey);
-    return null;
-  }
-
-  return cachedResolution.response;
-};
-
-/**
- * Publish one settled heavy worker result into the short-lived process-local
- * cache.
- *
- * @param input - Cache publication input.
- * @param input.dedupeKey - Stable cache key for the pathname/config pair.
- * @param input.response - Settled worker response.
- *
- * @remarks
- * Heavy results are cached conservatively for a short time so obviously warm
- * routes do not keep paying worker spawn cost during active dev navigation.
- */
-const publishRouteHandlerProxyWorkerCachedResolution = ({
-  dedupeKey,
-  response
-}: {
-  dedupeKey: string;
-  response: RouteHandlerProxyWorkerResponse;
-}): void => {
-  if (response.kind !== 'heavy') {
-    return;
-  }
-
-  cachedLazyMissResolutions.set(dedupeKey, {
-    expiresAt: Date.now() + ROUTE_HANDLER_PROXY_WORKER_CACHE_TTL_MS,
-    response
-  });
-};
+let routeHandlerProxyWorkerRequestSequence = 0;
 
 /**
  * Resolve the explicit config registration this proxy request wants the worker
@@ -179,17 +108,6 @@ const resolveRouteHandlerProxyWorkerEntryPath = ({
  * type-stripping loader.
  *
  * @returns `true` when the registered config file uses a TS extension.
- *
- * @remarks
- * The main Next process can already evaluate the app's TS config as part of
- * its own toolchain. The dev-only lazy worker is different: it is a brand-new
- * child Node process that loads the registered config path directly from disk.
- *
- * When the app registered `route-handlers-config.ts`, that fresh child process
- * must opt into Node's strip-types support or the worker would fail before it
- * even reaches any proxy logic. Keeping this detection here makes the boundary
- * explicit and avoids baking TS-loader assumptions into the worker entrypoint
- * itself.
  */
 const shouldUseRouteHandlerProxyWorkerStripTypes = ({
   configRegistration
@@ -210,13 +128,6 @@ const shouldUseRouteHandlerProxyWorkerStripTypes = ({
  * Build the Node argv used to launch the dedicated lazy worker.
  *
  * @returns Worker process argv.
- *
- * @remarks
- * This worker is development-only and exists specifically so the main proxy
- * bundle does not import the heavy MDX/esbuild graph. Because it is a true
- * process boundary, it no longer inherits the parent process' in-memory config
- * registry or any TS-aware module loader state. The launch contract therefore
- * has to be explicit about how app-owned TS config files are loaded.
  */
 const resolveRouteHandlerProxyWorkerArgv = ({
   configRegistration
@@ -248,18 +159,6 @@ const resolveRouteHandlerProxyWorkerArgv = ({
  * Resolve the working directory for the dev-only worker process.
  *
  * @returns Worker cwd.
- *
- * @remarks
- * The worker loads the app-owned config file inside a fresh Node process. Many
- * existing app configs compute values like `rootDir = process.cwd()` during
- * module evaluation. If the worker inherited the library package cwd instead of
- * the true app root, those config-time calculations would silently point at
- * the wrong project and every later path resolution would drift.
- *
- * We therefore prefer the app root captured at `withSlugSplitter(...)`
- * registration time. Falling back to the config file directory still gives a
- * sensible best-effort cwd for direct/integration tests that only registered a
- * config path.
  */
 const resolveRouteHandlerProxyWorkerCwd = ({
   configRegistration
@@ -284,17 +183,6 @@ const resolveRouteHandlerProxyWorkerCwd = ({
  * Materialize the environment passed into the child worker process.
  *
  * @returns Plain environment object for `spawn(...)`.
- *
- * @remarks
- * In the Next Proxy runtime, `process.env` can behave like a special runtime
- * view instead of a plain eagerly materialized object. The parent Proxy
- * process can still read individual keys from that view, but passing the view
- * object through to `spawn(...)` is not guaranteed to preserve ad-hoc
- * registration keys such as `SLUG_SPLITTER_CONFIG_PATH`.
- *
- * The lazy worker depends on those exact registration keys to find the
- * app-owned config file and root directory, so we eagerly copy the environment
- * into a plain object and then pin the two critical keys explicitly.
  */
 const createRouteHandlerProxyWorkerEnvironment = ({
   configRegistration
@@ -318,118 +206,435 @@ const createRouteHandlerProxyWorkerEnvironment = ({
   return workerEnvironment;
 };
 
+type RouteHandlerProxyWorkerPendingRequest = {
+  resolve: (
+    response:
+      | RouteHandlerProxyWorkerBootstrapResponse
+      | RouteHandlerProxyWorkerResponse
+  ) => void;
+  reject: (error: Error) => void;
+};
+
+type RouteHandlerProxyWorkerSession = {
+  sessionKey: string;
+  bootstrapGenerationToken: BootstrapGenerationToken;
+  child: ReturnType<typeof spawn>;
+  pendingRequests: Map<string, RouteHandlerProxyWorkerPendingRequest>;
+  bootstrapPromise: Promise<void>;
+  closed: boolean;
+};
+
+const createRouteHandlerProxyWorkerRequestId = (): string =>
+  `route-handler-proxy-worker-request-${String(
+    ++routeHandlerProxyWorkerRequestSequence
+  )}`;
+
 /**
- * Execute one single-shot proxy worker request.
+ * Resolve the stable parent-side session key.
  *
- * @param request - Serialized worker request.
- * @returns Serialized worker response.
+ * @param input - Session-key input.
+ * @returns Stable session key scoped to one app registration.
+ */
+const createRouteHandlerProxyWorkerSessionKey = ({
+  configRegistration
+}: {
+  configRegistration?: RouteHandlerProxyOptions['configRegistration'];
+}): string => {
+  const resolvedRegistration =
+    resolveRouteHandlerProxyWorkerConfigRegistration(configRegistration);
+
+  return JSON.stringify([
+    resolvedRegistration.configPath ?? null,
+    resolvedRegistration.rootDir ?? null
+  ]);
+};
+
+/**
+ * Reject every still-pending request on one worker session.
+ *
+ * @param input - Rejection input.
+ * @param input.session - Worker session whose pending requests should fail.
+ * @param input.error - Shared error surfaced to callers.
+ */
+const rejectRouteHandlerProxyWorkerSessionPendingRequests = ({
+  session,
+  error
+}: {
+  session: RouteHandlerProxyWorkerSession;
+  error: Error;
+}): void => {
+  for (const pendingRequest of session.pendingRequests.values()) {
+    pendingRequest.reject(error);
+  }
+
+  session.pendingRequests.clear();
+};
+
+/**
+ * Write one request into the persistent worker session.
+ *
+ * @param input - Session request input.
+ * @returns One typed worker response.
  *
  * @remarks
- * The proxy runtime intentionally talks to the worker through a real child
- * process instead of another imported module. That is the whole point of this
- * boundary: keep the heavy lazy stack out of Next's proxy module graph.
+ * Request-send aspects:
+ * - Transport: requests travel over the child IPC channel, not stdin.
+ * - Correlation: pending promises are keyed by request id until one matching
+ *   response arrives.
+ * - Failure mode: a missing IPC channel is treated as a session-level
+ *   contract violation.
  */
-const executeRouteHandlerProxyWorker = (
-  request: RouteHandlerProxyWorkerRequest,
-  options?: {
-    configRegistration?: RouteHandlerProxyOptions['configRegistration'];
-  }
-): Promise<RouteHandlerProxyWorkerResponse> =>
+const sendRouteHandlerProxyWorkerRequest = <
+  TResponse extends
+    | RouteHandlerProxyWorkerBootstrapResponse
+    | RouteHandlerProxyWorkerResponse
+>({
+  session,
+  request
+}: {
+  session: RouteHandlerProxyWorkerSession;
+  request: RouteHandlerProxyWorkerRequest;
+}): Promise<TResponse> =>
   new Promise((resolve, reject) => {
-    const workerArgv = resolveRouteHandlerProxyWorkerArgv({
-      configRegistration: options?.configRegistration
-    });
-    const workerCwd = resolveRouteHandlerProxyWorkerCwd({
-      configRegistration: options?.configRegistration
-    });
-    const workerEnvironment = createRouteHandlerProxyWorkerEnvironment({
-      configRegistration: options?.configRegistration
+    if (session.closed) {
+      reject(new Error('next-slug-splitter proxy worker session is closed.'));
+      return;
+    }
+
+    if (typeof session.child.send !== 'function') {
+      reject(new Error('next-slug-splitter proxy worker IPC is unavailable.'));
+      return;
+    }
+
+    session.pendingRequests.set(request.requestId, {
+      resolve: response => {
+        resolve(response as TResponse);
+      },
+      reject
     });
 
-    debugRouteHandlerProxy('lazy-worker:spawn', {
-      pathname: request.pathname,
-      cwd: workerCwd,
-      argv: workerArgv,
-      hasConfigPath:
-        typeof workerEnvironment[SLUG_SPLITTER_CONFIG_PATH_ENV] === 'string',
-      hasRootDir:
-        typeof workerEnvironment[SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV] === 'string'
-    });
-
-    const child = spawn(process.execPath, workerArgv, {
-      cwd: workerCwd,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: workerEnvironment
-    });
-    const stdoutChunks: Array<Buffer> = [];
-    const stderrChunks: Array<Buffer> = [];
-
-    child.stdout.on('data', chunk => {
-      stdoutChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    });
-    child.stderr.on('data', chunk => {
-      const normalizedChunk = Buffer.isBuffer(chunk)
-        ? chunk
-        : Buffer.from(chunk);
-
-      stderrChunks.push(normalizedChunk);
-      debugRouteHandlerProxy('lazy-worker:stderr', {
-        pathname: request.pathname,
-        text: normalizedChunk.toString('utf8').trim()
-      });
-    });
-    child.on('error', reject);
-    child.on('close', exitCode => {
-      if (exitCode !== 0) {
-        reject(
-          new Error(
-            `next-slug-splitter proxy worker exited with code ${String(
-              exitCode
-            )}: ${Buffer.concat(stderrChunks).toString('utf8')}`
-          )
-        );
+    session.child.send(request, error => {
+      if (error == null) {
         return;
       }
 
-      try {
-        resolve(
-          JSON.parse(
-            Buffer.concat(stdoutChunks).toString('utf8')
-          ) as RouteHandlerProxyWorkerResponse
-        );
-      } catch (error) {
-        reject(error);
-      }
+      session.pendingRequests.delete(request.requestId);
+      reject(error);
     });
-
-    child.stdin.end(JSON.stringify(request));
   });
 
 /**
- * Resolve one proxy lazy miss through the dedicated worker process.
+ * Tear down one worker session and remove it from the registry if still owned.
+ *
+ * @param input - Session-close input.
+ *
+ * @remarks
+ * Close aspects:
+ * - Registry ownership is checked before removing the session entry.
+ * - Closing is idempotent so repeated teardown paths stay harmless.
+ * - Process termination is delegated to the child after local state is marked
+ *   closed.
+ */
+const closeRouteHandlerProxyWorkerSession = ({
+  session,
+  reason
+}: {
+  session: RouteHandlerProxyWorkerSession;
+  reason: string;
+}): void => {
+  if (workerSessions.get(session.sessionKey) === session) {
+    workerSessions.delete(session.sessionKey);
+  }
+
+  if (session.closed) {
+    return;
+  }
+
+  session.closed = true;
+
+  debugRouteHandlerProxy('lazy-worker:session-close', {
+    reason,
+    bootstrapGenerationToken: session.bootstrapGenerationToken
+  });
+
+  session.child.kill();
+};
+
+/**
+ * Spawn and bootstrap one persistent worker session.
+ *
+ * @param input - Session-creation input.
+ * @returns Persistent worker session for one bootstrap generation.
+ *
+ * @remarks
+ * Session-creation aspects:
+ * - Transport: the child is spawned with an IPC channel in addition to stderr
+ *   and stdout pipes.
+ * - Bootstrap: the parent immediately sends a bootstrap request before the
+ *   session is considered ready.
+ * - Diagnostics: stderr is still collected for error surfacing and debug
+ *   logging, but it is not part of the request protocol.
+ */
+const createRouteHandlerProxyWorkerSession = ({
+  localeConfig,
+  bootstrapGenerationToken,
+  configRegistration
+}: {
+  localeConfig: LocaleConfig;
+  bootstrapGenerationToken: BootstrapGenerationToken;
+  configRegistration?: RouteHandlerProxyOptions['configRegistration'];
+}): RouteHandlerProxyWorkerSession => {
+  const sessionKey = createRouteHandlerProxyWorkerSessionKey({
+    configRegistration
+  });
+  const workerArgv = resolveRouteHandlerProxyWorkerArgv({
+    configRegistration
+  });
+  const workerCwd = resolveRouteHandlerProxyWorkerCwd({
+    configRegistration
+  });
+  const workerEnvironment = createRouteHandlerProxyWorkerEnvironment({
+    configRegistration
+  });
+
+  debugRouteHandlerProxy('lazy-worker:spawn', {
+    cwd: workerCwd,
+    argv: workerArgv,
+    hasConfigPath:
+      typeof workerEnvironment[SLUG_SPLITTER_CONFIG_PATH_ENV] === 'string',
+    hasRootDir:
+      typeof workerEnvironment[SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV] === 'string',
+    bootstrapGenerationToken
+  });
+
+  const child = spawn(process.execPath, workerArgv, {
+    cwd: workerCwd,
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+    env: workerEnvironment
+  });
+  const session: RouteHandlerProxyWorkerSession = {
+    sessionKey,
+    bootstrapGenerationToken,
+    child,
+    pendingRequests: new Map(),
+    bootstrapPromise: Promise.resolve(),
+    closed: false
+  };
+  const stderrChunks: Array<Buffer> = [];
+
+  child.on('message', rawEnvelope => {
+    try {
+      const envelope =
+        rawEnvelope as RouteHandlerProxyWorkerResponseEnvelope;
+      const pendingRequest = session.pendingRequests.get(envelope.requestId);
+
+      if (pendingRequest == null) {
+        return;
+      }
+
+      session.pendingRequests.delete(envelope.requestId);
+
+      if (envelope.ok) {
+        pendingRequest.resolve(envelope.response);
+        return;
+      }
+
+      pendingRequest.reject(new Error(envelope.error.message));
+    } catch (error) {
+      rejectRouteHandlerProxyWorkerSessionPendingRequests({
+        session,
+        error:
+          error instanceof Error
+            ? error
+            : new Error(String(error))
+      });
+      closeRouteHandlerProxyWorkerSession({
+        session,
+        reason: 'invalid-worker-response-envelope'
+      });
+    }
+  });
+
+  child.stderr?.on('data', chunk => {
+    const normalizedChunk = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+
+    stderrChunks.push(normalizedChunk);
+    debugRouteHandlerProxy('lazy-worker:stderr', {
+      text: normalizedChunk.toString('utf8').trim()
+    });
+  });
+
+  child.on('error', error => {
+    rejectRouteHandlerProxyWorkerSessionPendingRequests({
+      session,
+      error
+    });
+
+    if (workerSessions.get(sessionKey) === session) {
+      workerSessions.delete(sessionKey);
+    }
+
+    session.closed = true;
+  });
+
+  child.on('close', exitCode => {
+    if (workerSessions.get(sessionKey) === session) {
+      workerSessions.delete(sessionKey);
+    }
+
+    session.closed = true;
+
+    if (session.pendingRequests.size === 0 && exitCode === 0) {
+      return;
+    }
+
+    rejectRouteHandlerProxyWorkerSessionPendingRequests({
+      session,
+      error: new Error(
+        `next-slug-splitter proxy worker exited with code ${String(
+          exitCode
+        )}: ${Buffer.concat(stderrChunks).toString('utf8')}`
+      )
+    });
+  });
+
+  session.bootstrapPromise = sendRouteHandlerProxyWorkerRequest<RouteHandlerProxyWorkerBootstrapResponse>(
+    {
+      session,
+      request: {
+        requestId: createRouteHandlerProxyWorkerRequestId(),
+        kind: 'bootstrap',
+        bootstrapGenerationToken,
+        localeConfig
+      }
+    }
+  ).then(response => {
+    if (
+      response.kind !== 'bootstrapped' ||
+      response.bootstrapGenerationToken !== bootstrapGenerationToken
+    ) {
+      throw new Error(
+        'next-slug-splitter proxy worker bootstrap returned an unexpected generation token.'
+      );
+    }
+  });
+
+  return session;
+};
+
+/**
+ * Resolve or restart the worker session for the requested bootstrap generation.
+ *
+ * @param input - Session-resolution input.
+ * @returns Ready worker session for the current generation.
+ *
+ * @remarks
+ * Resolution aspects:
+ * - Reuse: an existing session is reused only when the generation token still
+ *   matches.
+ * - Restart: generation changes force a full session restart and re-bootstrap.
+ * - Readiness: callers await bootstrap completion before using the session.
+ */
+const resolveRouteHandlerProxyWorkerSession = async ({
+  localeConfig,
+  bootstrapGenerationToken,
+  configRegistration
+}: {
+  localeConfig: LocaleConfig;
+  bootstrapGenerationToken: BootstrapGenerationToken;
+  configRegistration?: RouteHandlerProxyOptions['configRegistration'];
+}): Promise<RouteHandlerProxyWorkerSession> => {
+  const sessionKey = createRouteHandlerProxyWorkerSessionKey({
+    configRegistration
+  });
+  const existingSession = workerSessions.get(sessionKey);
+
+  if (
+    existingSession != null &&
+    existingSession.bootstrapGenerationToken === bootstrapGenerationToken
+  ) {
+    await existingSession.bootstrapPromise;
+    return existingSession;
+  }
+
+  if (existingSession != null) {
+    closeRouteHandlerProxyWorkerSession({
+      session: existingSession,
+      reason: 'bootstrap-generation-changed'
+    });
+  }
+
+  const session = createRouteHandlerProxyWorkerSession({
+    localeConfig,
+    bootstrapGenerationToken,
+    configRegistration
+  });
+  workerSessions.set(sessionKey, session);
+
+  try {
+    await session.bootstrapPromise;
+  } catch (error) {
+    closeRouteHandlerProxyWorkerSession({
+      session,
+      reason: 'bootstrap-failed'
+    });
+    throw error;
+  }
+
+  return session;
+};
+
+/**
+ * Clear all persistent worker client state.
+ *
+ * @remarks
+ * Cleanup aspects:
+ * - Tests use this to isolate worker-session state.
+ * - Explicit refresh work can reuse the same teardown path later.
+ * - Every known session is closed through the normal lifecycle helper.
+ */
+export const clearRouteHandlerProxyWorkerClientSessions = (): void => {
+  for (const session of workerSessions.values()) {
+    closeRouteHandlerProxyWorkerSession({
+      session,
+      reason: 'client-clear'
+    });
+  }
+
+  workerSessions.clear();
+  inFlightLazyMissResolutions.clear();
+  routeHandlerProxyWorkerRequestSequence = 0;
+};
+
+/**
+ * Resolve one proxy lazy miss through the dedicated persistent worker session.
  *
  * @param input - Worker client input.
  * @param input.pathname - Public pathname that missed the stable routing state.
  * @param input.localeConfig - Locale config captured by the generated root proxy.
+ * @param input.bootstrapGenerationToken - Current bootstrap generation token from the parent runtime.
  * @returns Semantic lazy-miss outcome.
  *
  * @remarks
- * This client keeps one small in-process dedupe map so concurrent misses for
- * the same pathname share a single worker request instead of spawning several
- * identical child processes.
+ * This client keeps only in-flight dedupe in the parent process. Warm reuse
+ * now comes from keeping the worker session itself alive across revisits while
+ * the bootstrap generation remains unchanged.
  */
 export const resolveRouteHandlerProxyLazyMissWithWorker = async ({
   pathname,
   localeConfig,
+  bootstrapGenerationToken,
   configRegistration
 }: {
   pathname: string;
   localeConfig: LocaleConfig;
+  bootstrapGenerationToken: BootstrapGenerationToken;
   configRegistration?: RouteHandlerProxyOptions['configRegistration'];
 }): Promise<RouteHandlerProxyWorkerResponse> => {
   const dedupeKey = JSON.stringify([
     pathname,
     localeConfig,
+    bootstrapGenerationToken,
     configRegistration?.configPath ?? null,
     configRegistration?.rootDir ?? null
   ]);
@@ -439,45 +644,21 @@ export const resolveRouteHandlerProxyLazyMissWithWorker = async ({
     return existingResolution;
   }
 
-  const cachedResolution =
-    readRouteHandlerProxyWorkerCachedResolution(dedupeKey);
-
-  if (cachedResolution != null) {
-    debugRouteHandlerProxy('lazy-worker:cache-hit', {
-      pathname,
-      rewriteDestination: cachedResolution.rewriteDestination,
-      source: cachedResolution.source
-    });
-    return cachedResolution;
-  }
-
-  const resolutionPromise = executeRouteHandlerProxyWorker(
-    {
-      kind: 'resolve-lazy-miss',
-      pathname,
-      localeConfig
-    },
-    {
-      configRegistration
-    }
-  )
-    .then(response => {
-      publishRouteHandlerProxyWorkerCachedResolution({
-        dedupeKey,
-        response
-      });
-
-      if (response.kind === 'heavy') {
-        debugRouteHandlerProxy('lazy-worker:cache-store', {
-          pathname,
-          rewriteDestination: response.rewriteDestination,
-          source: response.source,
-          ttlMs: ROUTE_HANDLER_PROXY_WORKER_CACHE_TTL_MS
-        });
-      }
-
-      return response;
-    })
+  const resolutionPromise = resolveRouteHandlerProxyWorkerSession({
+    localeConfig,
+    bootstrapGenerationToken,
+    configRegistration
+  })
+    .then(session =>
+      sendRouteHandlerProxyWorkerRequest<RouteHandlerProxyWorkerResponse>({
+        session,
+        request: {
+          requestId: createRouteHandlerProxyWorkerRequestId(),
+          kind: 'resolve-lazy-miss',
+          pathname
+        }
+      })
+    )
     .catch(error => {
       debugRouteHandlerProxy('lazy-worker:error', {
         pathname,

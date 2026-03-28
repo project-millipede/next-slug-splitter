@@ -1,31 +1,51 @@
 import type { LocaleConfig } from '../../../core/types';
+import type { BootstrapGenerationToken } from '../runtime/types';
 
 /**
  * Serialized request sent from the thin proxy runtime into the dev-only lazy
- * worker process.
+ * worker session.
  *
  * @remarks
- * The worker boundary exists specifically so the main proxy bundle can remain
- * free of the MDX analysis stack. That means the wire contract should stay
- * intentionally small and JSON-serializable.
+ * Design aspects:
+ * - Transport: requests stay JSON-serializable so they can travel over Node
+ *   IPC without custom encoding.
+ * - Boundary: the thin proxy runtime forwards only the data required to
+ *   classify or bootstrap one request.
+ * - Isolation: heavy planning state remains worker-local instead of being
+ *   reconstructed in the proxy runtime.
  */
-export type RouteHandlerProxyWorkerRequest = {
-  kind: 'resolve-lazy-miss';
-  pathname: string;
-  localeConfig: LocaleConfig;
+export type RouteHandlerProxyWorkerRequest =
+  | {
+      requestId: string;
+      kind: 'bootstrap';
+      bootstrapGenerationToken: BootstrapGenerationToken;
+      localeConfig: LocaleConfig;
+    }
+  | {
+      requestId: string;
+      kind: 'resolve-lazy-miss';
+      pathname: string;
+    };
+
+/**
+ * Acknowledgement returned when the long-lived worker session has finished its
+ * one-time bootstrap work for the current generation.
+ */
+export type RouteHandlerProxyWorkerBootstrapResponse = {
+  kind: 'bootstrapped';
+  bootstrapGenerationToken: BootstrapGenerationToken;
 };
 
 /**
  * Serialized worker response for one proxy lazy-miss resolution.
  *
  * @remarks
- * The proxy runtime does not need the full internal lazy-analysis object
- * graph. It only needs to know whether the miss resolved to:
- * - a heavy rewrite candidate
- * - or a conservative pass-through
- *
- * Returning just that semantic outcome keeps the worker boundary clean and
- * avoids leaking lazy implementation details back into the thin proxy path.
+ * Design aspects:
+ * - Scope: the proxy runtime only receives the semantic routing outcome.
+ * - Stability: internal analysis objects stay inside the worker and do not
+ *   become part of the wire contract.
+ * - Evolution: keeping the response small reduces coupling between the thin
+ *   runtime and the worker implementation.
  */
 export type RouteHandlerProxyWorkerResponse =
   | {
@@ -41,4 +61,33 @@ export type RouteHandlerProxyWorkerResponse =
         | 'missing-route-file'
         | 'light'
         | 'missing-rewrite-destination';
+    };
+
+/**
+ * One IPC response envelope traveling from the worker back to the thin proxy
+ * runtime.
+ *
+ * @remarks
+ * Design aspects:
+ * - Multiplexing: request ids let one long-lived worker serve multiple
+ *   overlapping requests.
+ * - Symmetry: both bootstrap and lazy-miss responses use the same outer
+ *   envelope shape.
+ * - Failure reporting: worker-side errors stay request-scoped instead of
+ *   collapsing the entire session immediately.
+ */
+export type RouteHandlerProxyWorkerResponseEnvelope =
+  | {
+      requestId: string;
+      ok: true;
+      response:
+        | RouteHandlerProxyWorkerBootstrapResponse
+        | RouteHandlerProxyWorkerResponse;
+    }
+  | {
+      requestId: string;
+      ok: false;
+      error: {
+        message: string;
+      };
     };
