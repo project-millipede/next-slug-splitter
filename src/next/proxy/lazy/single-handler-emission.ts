@@ -2,15 +2,15 @@ import {
   doesRouteHandlerOutputFileExist,
   synchronizeRenderedRouteHandlerPage,
   type RenderedHandlerPageSynchronizationStatus
-} from '../../../generator/output-lifecycle';
+} from '../../../generator/protocol/output-lifecycle';
 import {
   renderRouteHandlerPage,
   resolveRenderedHandlerPageLocation
-} from '../../../generator/rendered-page';
+} from '../../../generator/protocol/rendered-page';
 
 import type {
   RenderedHandlerPage
-} from '../../../generator/rendered-page';
+} from '../../../generator/protocol/rendered-page';
 import type { RouteHandlerLazySingleRouteAnalysisResult } from './types';
 
 /**

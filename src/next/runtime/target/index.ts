@@ -12,7 +12,7 @@
  * where one resolved Next target is handed off to core execution.
  */
 import { executeRouteHandlerPipeline } from '../../../core/pipeline';
-import { buildRouteHandlerNextResult } from '../results';
+import { buildRouteHandlerNextResult } from '../shared/results';
 
 import type {
   PipelineMode,

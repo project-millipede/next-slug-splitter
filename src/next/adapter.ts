@@ -35,12 +35,12 @@ import {
   createRouteHandlerLookupSnapshot,
   writeRouteHandlerLookupSnapshot
 } from './lookup-persisted';
-import { withRouteHandlerRewrites } from './plugin';
-import { prepareRouteHandlersFromConfig } from './prepare';
+import { withRouteHandlerRewrites } from './rewrites/plugin';
+import { prepareRouteHandlersFromConfig } from './prepare/index';
 import { applyRouteHandlerProxyNextConfigPolicy } from './policy/proxy-next-config';
 import { synchronizeRouteHandlerPhaseArtifacts } from './phase-artifacts';
 import { synchronizeRouteHandlerProxyFile } from './proxy/file-lifecycle';
-import { resolveRouteHandlerRoutingStrategy } from './routing-strategy';
+import { resolveRouteHandlerRoutingStrategy } from './policy/routing-strategy';
 import { deriveRouteHandlerRuntimeSemantics } from './runtime-semantics/derive';
 import { writeRouteHandlerRuntimeSemantics } from './runtime-semantics/write';
 import { executeResolvedRouteHandlerNextPipeline } from './runtime';

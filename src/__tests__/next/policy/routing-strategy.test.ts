@@ -7,7 +7,7 @@ import {
 import {
   ROUTE_HANDLER_DEV_ROUTING_ENV_VAR,
   resolveRouteHandlerRoutingStrategy
-} from '../../../next/routing-strategy';
+} from '../../../next/policy/routing-strategy';
 
 describe('route handler routing strategy', () => {
   afterEach(() => {

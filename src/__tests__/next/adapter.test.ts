@@ -20,7 +20,7 @@ vi.mock(import('../../next/internal/route-handlers-bootstrap'), () => ({
   resolveRouteHandlersAppContext: resolveRouteHandlersAppContextMock
 }));
 
-vi.mock(import('../../next/prepare'), () => ({
+vi.mock(import('../../next/prepare/index'), () => ({
   prepareRouteHandlersFromConfig: prepareRouteHandlersFromConfigMock
 }));
 
@@ -29,7 +29,7 @@ vi.mock(import('../../next/config/resolve-configs'), () => ({
     resolveRouteHandlersConfigsFromAppConfigMock
 }));
 
-vi.mock(import('../../next/routing-strategy'), () => ({
+vi.mock(import('../../next/policy/routing-strategy'), () => ({
   resolveRouteHandlerRoutingStrategy: resolveRouteHandlerRoutingStrategyMock
 }));
 
@@ -47,7 +47,7 @@ vi.mock(import('../../next/runtime'), () => ({
     executeResolvedRouteHandlerNextPipelineMock
 }));
 
-vi.mock(import('../../next/plugin'), () => ({
+vi.mock(import('../../next/rewrites/plugin'), () => ({
   withRouteHandlerRewrites: withRouteHandlerRewritesMock
 }));
 

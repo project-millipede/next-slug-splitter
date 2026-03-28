@@ -20,7 +20,7 @@ vi.mock(import('../../../next/prepare/typescript'), () => ({
 
 import * as childProcess from 'node:child_process';
 import { relativeModule } from '../../../next';
-import { prepareRouteHandlersFromConfig } from '../../../next/prepare';
+import { prepareRouteHandlersFromConfig } from '../../../next/prepare/index';
 import * as prepareTypeScript from '../../../next/prepare/typescript';
 import { resetMockFs, seedMockFsFiles } from '../../__utils__/mock-fs';
 

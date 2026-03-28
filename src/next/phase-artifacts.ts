@@ -1,7 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { clearRouteHandlerOutputDirectory } from '../generator/output-lifecycle';
+import { clearRouteHandlerOutputDirectory } from '../generator/protocol/output-lifecycle';
 import {
   isObjectRecordOf,
   readObjectProperty

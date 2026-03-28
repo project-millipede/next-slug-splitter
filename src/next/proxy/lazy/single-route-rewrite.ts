@@ -1,4 +1,4 @@
-import { buildRouteRewriteEntries } from '../../rewrites';
+import { buildRouteRewriteEntries } from '../../rewrites/index';
 
 import type { PlannedHeavyRoute } from '../../../core/types';
 import type { ResolvedRouteHandlersConfig } from '../../types';

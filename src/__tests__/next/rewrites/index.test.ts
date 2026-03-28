@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildRouteRewriteEntries } from '../../../next/rewrites';
+import { buildRouteRewriteEntries } from '../../../next/rewrites/index';
 import { createHeavyRoute } from '../../helpers/builders';
 
 import type { RouteHandlerRewrite } from '../../../next/types';

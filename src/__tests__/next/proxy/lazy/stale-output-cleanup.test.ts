@@ -3,12 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const removeRenderedRouteHandlerPageIfPresentMock = vi.hoisted(() => vi.fn());
 const resolveRenderedHandlerPageLocationMock = vi.hoisted(() => vi.fn());
 
-vi.mock(import('../../../../generator/output-lifecycle'), () => ({
+vi.mock(import('../../../../generator/protocol/output-lifecycle'), () => ({
   removeRenderedRouteHandlerPageIfPresent:
     removeRenderedRouteHandlerPageIfPresentMock
 }));
 
-vi.mock(import('../../../../generator/rendered-page'), () => ({
+vi.mock(import('../../../../generator/protocol/rendered-page'), () => ({
   resolveRenderedHandlerPageLocation: resolveRenderedHandlerPageLocationMock
 }));
 

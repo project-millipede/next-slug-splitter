@@ -15,7 +15,7 @@ vi.mock(import('../../../next/internal/route-handlers-bootstrap'), () => ({
   resolveRouteHandlersAppContext: resolveRouteHandlersAppContextMock
 }));
 
-vi.mock(import('../../../next/prepare'), () => ({
+vi.mock(import('../../../next/prepare/index'), () => ({
   prepareRouteHandlersFromConfig: prepareRouteHandlersFromConfigMock
 }));
 

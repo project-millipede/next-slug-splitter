@@ -2,7 +2,7 @@ import { createRouteHandlerRoutePlanner } from '../../../core/processor-runner';
 import {
   createPersistedRoutePlanRecord,
   type PersistedRoutePlanRecord
-} from '../../runtime/route-plan-record';
+} from '../../runtime/target/route-plan-record';
 import {
   readLazySingleRouteCachedPlanRecord,
   writeLazySingleRouteCachedPlanRecord

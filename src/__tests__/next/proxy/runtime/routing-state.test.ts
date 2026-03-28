@@ -6,7 +6,7 @@ vi.mock(import('../../../../next/proxy/runtime/bootstrap-state'), () => ({
 }));
 
 import * as bootstrapState from '../../../../next/proxy/runtime/bootstrap-state';
-import { getRouteHandlerProxyRoutingState } from '../../../../next/proxy/routing-state';
+import { getRouteHandlerProxyRoutingState } from '../../../../next/proxy/runtime/routing-state';
 
 describe('proxy routing state', () => {
   const getRouteHandlerProxyBootstrapStateMock = vi.mocked(

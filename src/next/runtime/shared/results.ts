@@ -1,5 +1,5 @@
-import { dedupeRewriteIdentities } from '../../rewrite-identity';
-import { buildRouteRewriteEntries } from '../../rewrites';
+import { dedupeRewriteIdentities } from '../../rewrites/identity';
+import { buildRouteRewriteEntries } from '../../rewrites/index';
 
 import type { RouteHandlerPipelineResult } from '../../../core/types';
 import type {

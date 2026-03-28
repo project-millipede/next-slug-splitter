@@ -25,7 +25,7 @@ import {
   resolveLocaleConfigFromInputOrRuntimeSemantics,
   resolveRouteHandlersAppContext
 } from '../internal/route-handlers-bootstrap';
-import { prepareRouteHandlersFromConfig } from '../prepare';
+import { prepareRouteHandlersFromConfig } from '../prepare/index';
 
 import type { LocaleConfig } from '../../core/types';
 import type {

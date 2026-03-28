@@ -4,8 +4,11 @@ import path from 'node:path';
 import { Project, IndentationText, QuoteKind, ScriptKind } from 'ts-morph';
 
 import { createRuntimeError } from '../../utils/errors';
-import { type RouteHandlerRoutingStrategy } from '../routing-strategy';
-import { buildRouteHandlerProxyMatchers, ROUTE_HANDLER_PROXY_OWNERSHIP_MARKER } from './shared';
+import { type RouteHandlerRoutingStrategy } from '../policy/routing-strategy';
+import {
+  buildRouteHandlerProxyMatchers,
+  ROUTE_HANDLER_PROXY_OWNERSHIP_MARKER
+} from './runtime/shared';
 
 import type { ResolvedRouteHandlersConfig } from '../types';
 import type { LocaleConfig } from '../../core/types';

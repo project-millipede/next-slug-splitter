@@ -11,7 +11,7 @@ vi.mock(import('../../../../next/proxy/worker/client'), () => ({
 
 import * as proxyRoutingState from '../../../../next/proxy/runtime/routing-state';
 import * as proxyWorkerClient from '../../../../next/proxy/worker/client';
-import { handleRouteHandlerProxyRequest } from '../../../../next/proxy/request-routing';
+import { handleRouteHandlerProxyRequest } from '../../../../next/proxy/runtime/request-routing';
 
 import type {
   RouteHandlerProxyRoutingState

@@ -5,7 +5,7 @@ import fileEntryCache, { type FileEntryCache } from 'file-entry-cache';
 import {
   readPersistedRoutePlanRecord,
   type PersistedRoutePlanRecord
-} from '../../runtime/route-plan-record';
+} from '../../runtime/target/route-plan-record';
 import {
   isObjectRecordOf,
   readObjectProperty

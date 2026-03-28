@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { withRouteHandlerRewrites } from '../../../next/plugin';
+import { withRouteHandlerRewrites } from '../../../next/rewrites/plugin';
 
 import type {
   RouteHandlerRewrite,

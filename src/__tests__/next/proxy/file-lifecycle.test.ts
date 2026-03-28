@@ -6,7 +6,7 @@ import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 
 import { createCatchAllRouteHandlersPreset } from '../../../next/config';
 import { synchronizeRouteHandlerProxyFile } from '../../../next/proxy/file-lifecycle';
-import { resolveRouteHandlerRoutingStrategy } from '../../../next/routing-strategy';
+import { resolveRouteHandlerRoutingStrategy } from '../../../next/policy/routing-strategy';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   createTestHandlerBinding

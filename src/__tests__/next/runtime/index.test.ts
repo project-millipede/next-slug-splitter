@@ -6,17 +6,17 @@ vi.mock(import('../../../next/phase-artifacts'), () => ({
   synchronizeRouteHandlerPhaseArtifacts: vi.fn()
 }));
 
-vi.mock(import('../../../next/runtime/results'), () => ({
+vi.mock(import('../../../next/runtime/shared/results'), () => ({
   mergeRouteHandlerNextResults: vi.fn()
 }));
 
-vi.mock(import('../../../next/runtime/target'), () => ({
+vi.mock(import('../../../next/runtime/target/index'), () => ({
   executeRouteHandlerTarget: vi.fn()
 }));
 
 import * as phaseArtifacts from '../../../next/phase-artifacts';
-import * as runtimeResults from '../../../next/runtime/results';
-import * as runtimeTarget from '../../../next/runtime/target';
+import * as runtimeResults from '../../../next/runtime/shared/results';
+import * as runtimeTarget from '../../../next/runtime/target/index';
 import { executeResolvedRouteHandlerNextPipeline } from '../../../next/runtime';
 
 import type { ResolvedRouteHandlersConfig } from '../../../next/types';

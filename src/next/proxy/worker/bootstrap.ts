@@ -3,7 +3,7 @@ import {
   loadRouteHandlersConfigOrRegistered,
   resolveRouteHandlersAppContext
 } from '../../internal/route-handlers-bootstrap';
-import { prepareRouteHandlersFromConfig } from '../../prepare';
+import { prepareRouteHandlersFromConfig } from '../../prepare/index';
 import { resolveRouteHandlerLazyResolvedTargetsFromAppConfig } from '../lazy/request-resolution';
 
 import type { LocaleConfig } from '../../../core/types';

@@ -20,8 +20,8 @@ import {
   loadResolvedRouteHandlersConfigs,
   type LoadResolvedRouteHandlersConfigsInput
 } from './config';
-import { mergeRouteHandlerNextResults } from './results';
-import { executeRouteHandlerTarget } from './target';
+import { mergeRouteHandlerNextResults } from './shared/results';
+import { executeRouteHandlerTarget } from './target/index';
 
 import type { PipelineMode } from '../../core/types';
 import type {
