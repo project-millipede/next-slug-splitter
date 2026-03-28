@@ -1,4 +1,4 @@
-import { access, readdir } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import path from 'path';
 import globFiles from 'fast-glob';
 
@@ -12,12 +12,17 @@ import type {
 
 /**
  * Convert a filesystem path to POSIX separators.
+ * Uses a global regex to ensure that even on POSIX systems,
+ * Windows-style backslashes are normalized to forward slashes.
+ *
+ * Example:
+ * - `C:\\app\\pages\\docs` -> `C:/app/pages/docs`
+ * - `/Users/project/pages/docs` -> `/Users/project/pages/docs`
  *
  * @param value - Filesystem path value.
  * @returns POSIX-normalized path string.
  */
-export const toPosix = (value: string): string =>
-  value.split(path.sep).join('/');
+export const toPosix = (value: string): string => value.replace(/\\/g, '/');
 
 /**
  * Convert slug segments into a slash-separated slug path.
@@ -262,7 +267,7 @@ export type ResolveLocalizedContentRouteInput = {
  */
 const fileExists = async (filePath: string): Promise<boolean> => {
   try {
-    await access(filePath);
+    await stat(filePath);
     return true;
   } catch {
     return false;
@@ -347,7 +352,10 @@ export const resolveLocalizedContentRoute = async ({
   identity
 }: ResolveLocalizedContentRouteInput): Promise<LocalizedRoutePath | null> => {
   if (contentLocaleMode === 'filename') {
-    const routeDirectoryPath = path.resolve(contentPagesDir, ...identity.slugArray);
+    const routeDirectoryPath = path.resolve(
+      contentPagesDir,
+      ...identity.slugArray
+    );
     const matchedFileName = (
       await readDirectoryEntriesIfPresent(routeDirectoryPath)
     )

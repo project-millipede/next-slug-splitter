@@ -3,10 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createRouteContext,
-  createRouteHandlerRoutePlanner,
-  resolveRouteHandlerProcessorCacheInfo
+  createRouteHandlerRoutePlanner
 } from '../../core/processor-runner';
-import { absoluteFileModule } from '../../module-reference';
+import { absoluteModule, packageModule } from '../../module-reference';
 import { writeTestModule } from '../helpers/fixtures';
 import { withTempDir } from '../helpers/temp-dir';
 
@@ -32,19 +31,18 @@ describe('processor runner', () => {
         processorPath,
         [
           'export const routeHandlerProcessor = {',
-          '  ingress({ capturedKeys, route }) {',
-          '    return Object.fromEntries(',
-          '      capturedKeys.map((key, index) => [key, { index, routePath: route.routePath }])',
+          '  resolve({ capturedComponentKeys, route }) {',
+          '    const resolvedEntries = Object.fromEntries(',
+          '      capturedComponentKeys.map((key, index) => [key, { index, routePath: route.routePath }])',
           '    );',
-          '  },',
-          '  egress({ capturedKeys, resolved }) {',
           '    return {',
-          '      factoryVariant: "selection",',
-          '      components: capturedKeys.map(key => ({',
+          '      factoryImport: { kind: "package", specifier: "selection" },',
+          '      components: capturedComponentKeys.map(key => ({',
           '        key,',
+          '        componentImport: { source: { kind: "package", specifier: "./components" }, kind: "named", importedName: key },',
           '        metadata: {',
-          '          routePath: resolved[key].routePath,',
-          '          order: resolved[key].index,',
+          '          routePath: resolvedEntries[key].routePath,',
+          '          order: resolvedEntries[key].index,',
           '          runtimeTraits: ["selection"]',
           '        }',
           '      }))',
@@ -57,14 +55,10 @@ describe('processor runner', () => {
 
       const planner = await createRouteHandlerRoutePlanner({
         rootDir,
-        componentsImport: absoluteFileModule(componentsPath),
         processorConfig: {
           kind: 'module',
-          processorImport: absoluteFileModule(processorPath)
-        },
-        runtimeHandlerFactoryImportBase: absoluteFileModule(
-          path.join(rootDir, 'factory')
-        )
+          processorImport: absoluteModule(processorPath)
+        }
       });
 
       const result = await planner({
@@ -77,15 +71,15 @@ describe('processor runner', () => {
           slugArray: ['selection'],
           targetId: 'docs'
         }),
-        capturedKeys: ['SelectionComponent']
+        capturedComponentKeys: ['SelectionComponent']
       });
 
-      expect(result.factoryVariant).toBe('selection');
+      expect(result.factoryImport).toEqual(packageModule('selection'));
       expect(result.componentEntries).toEqual([
         {
           key: 'SelectionComponent',
           componentImport: {
-            source: componentsPath,
+            source: packageModule('./components'),
             kind: 'named',
             importedName: 'SelectionComponent'
           },
@@ -108,8 +102,7 @@ describe('processor runner', () => {
         processorPath,
         [
           'export const routeHandlerProcessor = {',
-          '  ingress() { return {}; },',
-          '  egress() { return { factoryVariant: "none", components: [] }; }',
+          '  resolve() { return { factoryImport: { kind: "package", specifier: "none" }, components: [] }; }',
           '};',
           ''
         ].join('\n')
@@ -118,16 +111,10 @@ describe('processor runner', () => {
       await expect(
         createRouteHandlerRoutePlanner({
           rootDir,
-          componentsImport: absoluteFileModule(
-            path.join(rootDir, 'components.mjs')
-          ),
           processorConfig: {
             kind: 'module',
-            processorImport: absoluteFileModule(processorPath)
-          },
-          runtimeHandlerFactoryImportBase: absoluteFileModule(
-            path.join(rootDir, 'factory')
-          )
+            processorImport: absoluteModule(processorPath)
+          }
         })
       ).rejects.toThrow(
         `Processor module "${processorPath}" must resolve to a native JavaScript module (.js, .mjs, or .cjs).`
@@ -135,7 +122,7 @@ describe('processor runner', () => {
     });
   });
 
-  it('rejects missing captured component plans from processor egress', async () => {
+  it('rejects legacy two-phase processors with a targeted migration error', async () => {
     await withTempDir('next-slug-splitter-processor-', async rootDir => {
       const processorPath = path.join(rootDir, 'processor.mjs');
 
@@ -144,13 +131,69 @@ describe('processor runner', () => {
         processorPath,
         [
           'export const routeHandlerProcessor = {',
-          '  ingress() {',
-          '    return {};',
-          '  },',
-          '  egress() {',
+          '  resolve() { return {}; },',
+          '  plan() { return { factoryImport: { kind: "package", specifier: "none" }, components: [] }; }',
+          '};',
+          ''
+        ].join('\n')
+      );
+
+      await expect(
+        createRouteHandlerRoutePlanner({
+          rootDir,
+          processorConfig: {
+            kind: 'module',
+            processorImport: absoluteModule(processorPath)
+          }
+        })
+      ).rejects.toThrow(
+        `processor module "${processorPath}" still uses the removed two-phase processor API. Remove plan(...) and have resolve(...) return the final RouteHandlerGeneratorPlan.`
+      );
+    });
+  });
+
+  it('rejects processor modules without a resolve function', async () => {
+    await withTempDir('next-slug-splitter-processor-', async rootDir => {
+      const processorPath = path.join(rootDir, 'processor.mjs');
+
+      await writeFactoryVariant(rootDir, 'none');
+      await writeTestModule(
+        processorPath,
+        [
+          'export const routeHandlerProcessor = {',
+          '  factoryImport: { kind: "package", specifier: "none" }',
+          '};',
+          ''
+        ].join('\n')
+      );
+
+      await expect(
+        createRouteHandlerRoutePlanner({
+          rootDir,
+          processorConfig: {
+            kind: 'module',
+            processorImport: absoluteModule(processorPath)
+          }
+        })
+      ).rejects.toThrow(
+        `processor module "${processorPath}".resolve must be a function.`
+      );
+    });
+  });
+
+  it('rejects missing captured component plans from processor resolve', async () => {
+    await withTempDir('next-slug-splitter-processor-', async rootDir => {
+      const processorPath = path.join(rootDir, 'processor.mjs');
+
+      await writeFactoryVariant(rootDir, 'none');
+      await writeTestModule(
+        processorPath,
+        [
+          'export const routeHandlerProcessor = {',
+          '  resolve() {',
           '    return {',
-          '      factoryVariant: "none",',
-          '      components: [{ key: "KnownComponent" }]',
+          '      factoryImport: { kind: "package", specifier: "none" },',
+          '      components: [{ key: "KnownComponent", componentImport: { source: { kind: "package", specifier: "./components" }, kind: "named", importedName: "KnownComponent" } }]',
           '    };',
           '  }',
           '};',
@@ -160,14 +203,10 @@ describe('processor runner', () => {
 
       const planner = await createRouteHandlerRoutePlanner({
         rootDir,
-        componentsImport: absoluteFileModule(path.join(rootDir, 'components.mjs')),
         processorConfig: {
           kind: 'module',
-          processorImport: absoluteFileModule(processorPath)
-        },
-        runtimeHandlerFactoryImportBase: absoluteFileModule(
-          path.join(rootDir, 'factory')
-        )
+          processorImport: absoluteModule(processorPath)
+        }
       });
 
       await expect(
@@ -181,7 +220,7 @@ describe('processor runner', () => {
             slugArray: ['missing'],
             targetId: 'docs'
           }),
-          capturedKeys: ['KnownComponent', 'MissingComponent']
+          capturedComponentKeys: ['KnownComponent', 'MissingComponent']
         })
       ).rejects.toThrow(
         'Processor for target "docs", route "/docs/missing", handler "en-missing" is missing captured component key "MissingComponent".'
@@ -189,30 +228,21 @@ describe('processor runner', () => {
     });
   });
 
-  it('rejects non-serializable processor metadata and exposes cache inputs', async () => {
+  it('rejects non-serializable processor metadata', async () => {
     await withTempDir('next-slug-splitter-processor-', async rootDir => {
-      const metadataPath = path.join(rootDir, 'metadata.mjs');
       const processorPath = path.join(rootDir, 'processor.mjs');
 
-      await writeTestModule(metadataPath, 'export const metadata = {};\n');
       await writeFactoryVariant(rootDir, 'none');
       await writeTestModule(
         processorPath,
         [
-          `const metadataPath = ${JSON.stringify(metadataPath)};`,
           'export const routeHandlerProcessor = {',
-          '  cache: {',
-          '    inputImports: [{ kind: "absolute-file", path: metadataPath }],',
-          '    getIdentity: ({ targetId }) => `processor:${targetId ?? "none"}`',
-          '  },',
-          '  ingress() {',
-          '    return {};',
-          '  },',
-          '  egress() {',
+          '  resolve() {',
           '    return {',
-          '      factoryVariant: "none",',
+          '      factoryImport: { kind: "package", specifier: "none" },',
           '      components: [{',
           '        key: "BrokenComponent",',
+          '        componentImport: { source: { kind: "package", specifier: "./components" }, kind: "named", importedName: "BrokenComponent" },',
           '        metadata: { bad: () => null }',
           '      }]',
           '    };',
@@ -222,30 +252,12 @@ describe('processor runner', () => {
         ].join('\n')
       );
 
-      const cacheInfo = await resolveRouteHandlerProcessorCacheInfo({
-        rootDir,
-        processorConfig: {
-          kind: 'module',
-          processorImport: absoluteFileModule(processorPath)
-        },
-        targetId: 'docs'
-      });
-
-      expect(cacheInfo).toEqual({
-        inputImports: [absoluteFileModule(metadataPath)],
-        identity: 'processor:docs'
-      });
-
       const planner = await createRouteHandlerRoutePlanner({
         rootDir,
-        componentsImport: absoluteFileModule(path.join(rootDir, 'components.mjs')),
         processorConfig: {
           kind: 'module',
-          processorImport: absoluteFileModule(processorPath)
-        },
-        runtimeHandlerFactoryImportBase: absoluteFileModule(
-          path.join(rootDir, 'factory')
-        )
+          processorImport: absoluteModule(processorPath)
+        }
       });
 
       await expect(
@@ -259,7 +271,7 @@ describe('processor runner', () => {
             slugArray: ['broken'],
             targetId: 'docs'
           }),
-          capturedKeys: ['BrokenComponent']
+          capturedComponentKeys: ['BrokenComponent']
         })
       ).rejects.toThrow(
         'Component "BrokenComponent" for target "docs", route "/docs/broken", handler "en-broken".metadata must be a JSON-serializable object when provided.'

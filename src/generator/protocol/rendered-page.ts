@@ -14,10 +14,7 @@ import path from 'node:path';
 
 import { hashSync, HashAlgorithm } from '@cacheable/utils';
 
-import {
-  appendModuleReferenceSubpath,
-  toEmittedImportSpecifier
-} from '../../module-reference';
+import { toEmittedImportSpecifier } from '../../module-reference';
 import {
   type PreparedHandlerRenderConfig,
   renderRouteHandlerModules
@@ -123,33 +120,26 @@ const createPreparedHandlerRenderConfig = ({
   emitFormat,
   routeBasePath,
   baseStaticPropsImport,
-  runtimeHandlerFactoryImportBase,
-  factoryVariant,
+  factoryImport,
   handlerRouteParam
 }: {
   pageFilePath: string;
   emitFormat: EmitFormat;
   routeBasePath: string;
   baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
-  runtimeHandlerFactoryImportBase: ResolvedRouteHandlerModuleReference;
-  factoryVariant: string;
+  factoryImport: ResolvedRouteHandlerModuleReference;
   handlerRouteParam: DynamicRouteParam;
 }): PreparedHandlerRenderConfig => {
-  const runtimeHandlerFactoryImport = toEmittedImportSpecifier({
-    pageFilePath,
-    reference: appendModuleReferenceSubpath(
-      runtimeHandlerFactoryImportBase,
-      factoryVariant
-    )
-  });
-
   return {
     pageFilePath,
-    runtimeHandlerFactoryImport,
-    baseStaticPropsImport: toEmittedImportSpecifier({
+    runtimeHandlerFactoryImport: toEmittedImportSpecifier(
       pageFilePath,
-      reference: baseStaticPropsImport
-    }),
+      factoryImport
+    ),
+    baseStaticPropsImport: toEmittedImportSpecifier(
+      pageFilePath,
+      baseStaticPropsImport
+    ),
     handlerRouteParam,
     routeBasePath,
     emitFormat
@@ -164,7 +154,6 @@ const createPreparedHandlerRenderConfig = ({
  * @param input.paths - Target filesystem paths.
  * @param input.heavyRoute - Planned heavy route to render.
  * @param input.emitFormat - Output format for generated files.
- * @param input.runtimeHandlerFactoryImportBase - Resolved runtime factory import base.
  * @param input.baseStaticPropsImport - Resolved base static props import.
  * @param input.routeBasePath - Public route base path for the target.
  * @returns Fully rendered handler page artifact.
@@ -173,7 +162,6 @@ export const renderRouteHandlerPage = ({
   paths,
   heavyRoute,
   emitFormat,
-  runtimeHandlerFactoryImportBase,
   baseStaticPropsImport,
   handlerRouteParam,
   routeBasePath
@@ -181,7 +169,6 @@ export const renderRouteHandlerPage = ({
   paths: RouteHandlerPaths;
   heavyRoute: PlannedHeavyRoute;
   emitFormat: EmitFormat;
-  runtimeHandlerFactoryImportBase: ResolvedRouteHandlerModuleReference;
   baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
   handlerRouteParam: DynamicRouteParam;
   routeBasePath: string;
@@ -196,8 +183,7 @@ export const renderRouteHandlerPage = ({
     emitFormat,
     routeBasePath,
     baseStaticPropsImport,
-    runtimeHandlerFactoryImportBase,
-    factoryVariant: heavyRoute.factoryVariant,
+    factoryImport: heavyRoute.factoryImport,
     handlerRouteParam
   });
 

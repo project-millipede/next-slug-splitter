@@ -2,11 +2,11 @@ import path from 'node:path';
 
 import type {
   HeavyRouteCandidate,
-  ComponentImportSpec,
+  ResolvedComponentImportSpec,
   LoadableComponentEntry,
   PlannedHeavyRoute
 } from '../../core/types';
-import { absoluteFileModule, packageModule } from '../../module-reference';
+import { absoluteModule, packageModule } from '../../module-reference';
 import type {
   DynamicRouteParam,
   ResolvedModuleReference,
@@ -17,19 +17,17 @@ import type {
 import {
   TEST_COMPONENT_IMPORT_NAME,
   TEST_COMPONENT_IMPORT_SOURCE,
-  TEST_PRIMARY_FACTORY_IMPORT,
   TEST_PRIMARY_ROUTE_SEGMENT
 } from './fixtures';
 
 type ContentHandlerModuleInput = {
   routeBasePath: string;
   baseStaticPropsImport: ResolvedModuleReference;
-  runtimeHandlerFactoryImportBase: ResolvedModuleReference;
   handlerRouteParam: DynamicRouteParam;
 };
 
-const DEFAULT_COMPONENT_IMPORT: ComponentImportSpec = {
-  source: TEST_COMPONENT_IMPORT_SOURCE,
+const DEFAULT_COMPONENT_IMPORT: ResolvedComponentImportSpec = {
+  source: packageModule(TEST_COMPONENT_IMPORT_SOURCE),
   kind: 'named',
   importedName: TEST_COMPONENT_IMPORT_NAME
 };
@@ -82,7 +80,7 @@ export const createHeavyRoute = (
  */
 export const createPlannedHeavyRoute = (
   overrides: Partial<PlannedHeavyRoute> &
-    Pick<PlannedHeavyRoute, 'factoryVariant' | 'componentEntries'>
+    Pick<PlannedHeavyRoute, 'factoryImport' | 'componentEntries'>
 ): PlannedHeavyRoute => ({
   ...createHeavyRoute(overrides),
   ...overrides
@@ -141,9 +139,8 @@ export const createContentHandlerModuleInput = (
   rootDir: string
 ): ContentHandlerModuleInput => ({
   routeBasePath: '/content',
-  baseStaticPropsImport: absoluteFileModule(
+  baseStaticPropsImport: absoluteModule(
     path.join(rootDir, 'pages', 'content', '[...entry]')
   ),
-  runtimeHandlerFactoryImportBase: packageModule(TEST_PRIMARY_FACTORY_IMPORT),
   handlerRouteParam: { name: 'entry', kind: 'catch-all' }
 });

@@ -11,13 +11,28 @@
  * indentation behavior.
  */
 import { CodeBlockWriter } from 'ts-morph';
-import type { ComponentImportSpec } from '../../core/types';
+import type { ComponentImportKind } from '../../core/types';
 import { isString } from '../../utils/type-guards';
 
 /**
- * Component import record with resolved local alias.
+ * Component import record with resolved local alias and emitted source specifier.
  */
-export type HandlerComponentImportRecord = ComponentImportSpec & {
+export type HandlerComponentImportRecord = {
+  /**
+   * Emitted import source specifier.
+   */
+  source: string;
+
+  /**
+   * Kind of import (default or named).
+   */
+  kind: ComponentImportKind;
+
+  /**
+   * Name of the exported symbol being imported.
+   */
+  importedName: string;
+
   /**
    * Local alias used for the imported component.
    */

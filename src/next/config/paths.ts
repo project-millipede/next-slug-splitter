@@ -1,9 +1,9 @@
 import path from 'path';
 
-import { appRelativeModule } from '../../module-reference';
+import { relativeModule } from '../../module-reference';
 import { createConfigError } from '../../utils/errors';
 import type {
-  AppRelativeModuleReference,
+  RelativeModuleReference,
   DynamicRouteParam,
   RouteHandlerTargetPaths
 } from '../types';
@@ -56,7 +56,7 @@ export const resolveConfiguredPathOption = ({
  * be proxied by generated handler pages.
  *
  * @param input - Static-props import construction input.
- * @returns Source page module reference relative to the app root.
+ * @returns Source page module reference relative to the project root.
  */
 export const createCatchAllBaseStaticPropsImport = ({
   routeSegment,
@@ -70,7 +70,7 @@ export const createCatchAllBaseStaticPropsImport = ({
    * Dynamic route parameter descriptor for the source page.
    */
   handlerRouteParam: DynamicRouteParam;
-}): AppRelativeModuleReference => {
+}): RelativeModuleReference => {
   const routeSegments = routeSegment.split('/');
   const pageSegment =
     handlerRouteParam.kind === 'single'
@@ -79,7 +79,7 @@ export const createCatchAllBaseStaticPropsImport = ({
         ? `[...${handlerRouteParam.name}]`
         : `[[...${handlerRouteParam.name}]]`;
 
-  return appRelativeModule(['pages', ...routeSegments, pageSegment].join('/'));
+  return relativeModule(['pages', ...routeSegments, pageSegment].join('/'));
 };
 
 /**
@@ -116,7 +116,7 @@ export const createCatchAllRouteHandlerNextPaths = ({
     );
   }
 
-  // The preset keeps these paths app-relative. App-level config owns the root
+  // The preset keeps these paths relative to the project root. App-level config owns the root
   // directory and resolves them later.
   const routeSegments = routeSegment.split('/');
 

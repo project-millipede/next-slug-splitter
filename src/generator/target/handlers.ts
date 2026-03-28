@@ -41,7 +41,6 @@ export const emitRouteHandlerPages = async ({
   paths,
   heavyRoutes,
   emitFormat,
-  runtimeHandlerFactoryImportBase,
   baseStaticPropsImport,
   handlerRouteParam,
   routeBasePath
@@ -58,10 +57,6 @@ export const emitRouteHandlerPages = async ({
    * Output format for generated files.
    */
   emitFormat: EmitFormat;
-  /**
-   * Resolved runtime handler factory import base.
-   */
-  runtimeHandlerFactoryImportBase: ResolvedRouteHandlerModuleReference;
   /**
    * Resolved base static props module reference.
    */
@@ -88,7 +83,6 @@ export const emitRouteHandlerPages = async ({
         paths,
         heavyRoute: entry,
         emitFormat,
-        runtimeHandlerFactoryImportBase,
         baseStaticPropsImport,
         handlerRouteParam,
         routeBasePath

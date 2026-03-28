@@ -7,11 +7,9 @@
  * emitter.
  * Direct source rendering remains delegated to the emitter layer.
  */
-import path from 'node:path';
-
 import { sortStringArray } from '../../core/discovery';
 import {
-  absoluteFileModule,
+  getModuleReferenceValue,
   toEmittedImportSpecifier
 } from '../../module-reference';
 import { createGeneratorError } from '../../utils/errors';
@@ -20,6 +18,8 @@ import type { HandlerLoadableComponentEmitEntry } from './emitters';
 import type { HandlerComponentImportRecord } from './import-block';
 
 import { renderHandlerPageSource } from './emitters';
+
+import type { ResolvedModuleReference } from '../../module-reference';
 
 import type {
   ComponentImportKind,
@@ -31,10 +31,22 @@ import type {
 /**
  * Component import record before alias resolution.
  */
-type PendingComponentImportRecord = Omit<
-  HandlerComponentImportRecord,
-  'alias'
-> & {
+type PendingComponentImportRecord = {
+  /**
+   * Resolved module reference for the component source.
+   */
+  source: ResolvedModuleReference;
+
+  /**
+   * Kind of import (default or named).
+   */
+  kind: ComponentImportKind;
+
+  /**
+   * Name of the exported symbol being imported.
+   */
+  importedName: string;
+
   /**
    * Loadable component entry keys that map to this import.
    */
@@ -126,7 +138,7 @@ const resolveComponentLocalName = (
     candidates.push(toIdentifierCandidate(entryKey));
   }
 
-  candidates.push(getSourceLocalNameCandidate(importRecord.source));
+  candidates.push(getSourceLocalNameCandidate(getModuleReferenceValue(importRecord.source)));
 
   const seenCandidates = new Set<string>();
   for (const candidate of candidates) {
@@ -163,7 +175,7 @@ const comparePendingComponentImportRecords = (
   left: PendingComponentImportRecord,
   right: PendingComponentImportRecord
 ): number => {
-  const sourceComparison = left.source.localeCompare(right.source);
+  const sourceComparison = getModuleReferenceValue(left.source).localeCompare(getModuleReferenceValue(right.source));
   if (sourceComparison !== 0) {
     return sourceComparison;
   }
@@ -271,9 +283,10 @@ const buildHandlerImports = (
       importsByKind,
       componentImport.kind
     );
+    const sourceKey = `${componentImport.source.kind}:${getModuleReferenceValue(componentImport.source)}`;
     const importedNameMap = getOrCreateImportedNameMap(
       sourceImportMap,
-      componentImport.source
+      sourceKey
     );
 
     let importRecord = importedNameMap.get(componentImport.importedName);
@@ -304,12 +317,7 @@ const buildHandlerImports = (
 
     return {
       alias,
-      source: path.isAbsolute(importRecord.source)
-        ? toEmittedImportSpecifier({
-            pageFilePath,
-            reference: absoluteFileModule(importRecord.source)
-          })
-        : importRecord.source,
+      source: toEmittedImportSpecifier(pageFilePath, importRecord.source),
       kind: importRecord.kind,
       importedName: importRecord.importedName
     };

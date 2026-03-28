@@ -1,6 +1,6 @@
 import {
   isModuleReference,
-  normalizeModuleReferenceFromRoot,
+  normalizeModuleReference,
   resolveModuleReferenceToPath
 } from '../../module-reference';
 import {
@@ -86,15 +86,23 @@ export type ResolveRouteHandlersConfigBaseInput = {
 };
 
 /**
- * Resolve the target-local config that is independent of locale extraction.
- *
- * @param input - Target-base resolution input.
- * @returns Resolved target config without locale data attached.
+ * Pure normalized target options derived from one configured target before any
+ * disk-backed module resolution occurs.
  */
-export const resolveRouteHandlersConfigBase = ({
-  appConfig,
-  routeHandlersConfig
-}: ResolveRouteHandlersConfigBaseInput): ResolvedRouteHandlersConfigBase => {
+export type NormalizedRouteHandlersTargetOptions = Pick<
+  ResolvedRouteHandlersConfigBase,
+  | 'targetId'
+  | 'emitFormat'
+  | 'contentLocaleMode'
+  | 'handlerRouteParam'
+  | 'mdxCompileOptions'
+  | 'routeBasePath'
+  | 'paths'
+>;
+
+const requireSingleRouteHandlersConfig = (
+  routeHandlersConfig: RouteHandlersConfig | RouteHandlersTargetConfig | undefined
+): RouteHandlersConfig | RouteHandlersTargetConfig => {
   const configuredRouteHandlers =
     readProvidedOrRegisteredRouteHandlersConfig(routeHandlersConfig);
   if (configuredRouteHandlers == null) {
@@ -120,6 +128,23 @@ export const resolveRouteHandlersConfigBase = ({
     }
   }
 
+  return configuredRouteHandlers;
+};
+
+/**
+ * Normalize the pure target options that do not require module-resolution or
+ * filesystem validation.
+ *
+ * @param input - Target normalization input.
+ * @returns Pure target options ready for later resolution steps.
+ */
+export const normalizeRouteHandlersTargetOptions = ({
+  appConfig,
+  routeHandlersConfig
+}: ResolveRouteHandlersConfigBaseInput): NormalizedRouteHandlersTargetOptions => {
+  const configuredRouteHandlers =
+    requireSingleRouteHandlersConfig(routeHandlersConfig);
+
   if (
     configuredRouteHandlers.paths !== undefined &&
     !isObjectRecord(configuredRouteHandlers.paths)
@@ -130,44 +155,7 @@ export const resolveRouteHandlersConfigBase = ({
   const configuredPaths = isObjectRecord(configuredRouteHandlers.paths)
     ? configuredRouteHandlers.paths
     : {};
-  const readRequiredModuleReferenceOption = ({
-    value,
-    label
-  }: {
-    value: unknown;
-    label: string;
-  }): ModuleReference => {
-    if (!isModuleReference(value)) {
-      throw createConfigError(`${label} must be a module reference object.`);
-    }
-
-    return value;
-  };
-
-  // App-level config owns root resolution now, so target-local paths are only
-  // allowed to override path fragments, not the root itself.
   const resolvedRootDir = appConfig.rootDir;
-  const resolvedHandlerBinding = resolveRouteHandlerBinding({
-    rootDir: resolvedRootDir,
-    handlerBinding: configuredRouteHandlers.handlerBinding
-  });
-  const resolvedBaseStaticPropsImport = normalizeModuleReferenceFromRoot({
-    rootDir: resolvedRootDir,
-    reference: readRequiredModuleReferenceOption({
-      value: configuredRouteHandlers.baseStaticPropsImport,
-      label: 'baseStaticPropsImport'
-    })
-  });
-  try {
-    resolveModuleReferenceToPath({
-      rootDir: resolvedRootDir,
-      reference: resolvedBaseStaticPropsImport
-    });
-  } catch {
-    throw createConfigError(
-      `baseStaticPropsImport could not be resolved from "${resolvedRootDir}".`
-    );
-  }
   const resolvedPaths: RouteHandlerNextPaths = {
     rootDir: resolvedRootDir,
     contentPagesDir: readRequiredStringOption({
@@ -203,23 +191,79 @@ export const resolveRouteHandlersConfigBase = ({
   if (configuredTargetId == null) {
     configuredTargetId = deriveTargetIdFromRouteBasePath(routeBasePath);
   }
-  const targetId = normalizeTargetId(configuredTargetId);
 
   return {
-    app: appConfig,
-    targetId,
+    targetId: normalizeTargetId(configuredTargetId),
     emitFormat: readEmitFormatOption(configuredRouteHandlers.emitFormat),
     contentLocaleMode: readContentLocaleModeOption(
       configuredRouteHandlers.contentLocaleMode
     ),
     handlerRouteParam,
-    runtimeHandlerFactoryImportBase:
-      resolvedHandlerBinding.runtimeHandlerFactoryImportBase,
-    baseStaticPropsImport: resolvedBaseStaticPropsImport,
-    componentsImport: resolvedHandlerBinding.componentsImport,
-    processorConfig: resolvedHandlerBinding.processorConfig,
     mdxCompileOptions,
     routeBasePath,
     paths: resolvedPaths
+  };
+};
+
+/**
+ * Resolve the target-local config that is independent of locale extraction.
+ *
+ * @param input - Target-base resolution input.
+ * @returns Resolved target config without locale data attached.
+ */
+export const resolveRouteHandlersConfigBase = ({
+  appConfig,
+  routeHandlersConfig
+}: ResolveRouteHandlersConfigBaseInput): ResolvedRouteHandlersConfigBase => {
+  const configuredRouteHandlers =
+    requireSingleRouteHandlersConfig(routeHandlersConfig);
+  const readRequiredModuleReferenceOption = ({
+    value,
+    label
+  }: {
+    value: unknown;
+    label: string;
+  }): ModuleReference => {
+    if (!isModuleReference(value)) {
+      throw createConfigError(`${label} must be a module reference object.`);
+    }
+
+    return value;
+  };
+
+  // App-level config owns root resolution now, so target-local paths are only
+  // allowed to override path fragments, not the root itself.
+  const resolvedRootDir = appConfig.rootDir;
+  const normalizedTargetOptions = normalizeRouteHandlersTargetOptions({
+    appConfig,
+    routeHandlersConfig: configuredRouteHandlers
+  });
+  const resolvedHandlerBinding = resolveRouteHandlerBinding({
+    rootDir: resolvedRootDir,
+    handlerBinding: configuredRouteHandlers.handlerBinding
+  });
+  const resolvedBaseStaticPropsImport = normalizeModuleReference(
+    resolvedRootDir,
+    readRequiredModuleReferenceOption({
+      value: configuredRouteHandlers.baseStaticPropsImport,
+      label: 'baseStaticPropsImport'
+    })
+  );
+  try {
+    resolveModuleReferenceToPath(
+      resolvedRootDir,
+      resolvedBaseStaticPropsImport
+    );
+  } catch {
+    throw createConfigError(
+      `baseStaticPropsImport could not be resolved from "${resolvedRootDir}".`
+    );
+  }
+
+  return {
+    app: appConfig,
+    ...normalizedTargetOptions,
+    baseStaticPropsImport: resolvedBaseStaticPropsImport,
+    processorConfig: resolvedHandlerBinding.processorConfig,
   };
 };

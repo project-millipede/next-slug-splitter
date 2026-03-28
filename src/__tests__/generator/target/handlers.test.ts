@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { emitRouteHandlerPages } from '../../../generator/handlers';
 import { renderRouteHandlerModules } from '../../../generator/render-modules';
+import { absoluteModule, packageModule } from '../../../module-reference';
 import {
   createContentHandlerModuleInput,
   createLoadableComponentEntry,
@@ -33,7 +34,7 @@ describe('generator handlers', () => {
       createLoadableComponentEntry({
         key: 'WrapperComponent',
         componentImport: {
-          source: '@next-slug-splitter-test/components',
+          source: packageModule('@next-slug-splitter-test/components'),
           kind: 'named',
           importedName: 'WrapperComponent'
         },
@@ -44,7 +45,7 @@ describe('generator handlers', () => {
       createLoadableComponentEntry({
         key: 'SelectionComponent',
         componentImport: {
-          source: '@next-slug-splitter-test/components',
+          source: packageModule('@next-slug-splitter-test/components'),
           kind: 'named',
           importedName: 'SelectionComponent'
         },
@@ -96,7 +97,7 @@ describe('generator handlers', () => {
         createLoadableComponentEntry({
           key: 'Demo',
           componentImport: {
-            source: '@demo/pkg',
+            source: packageModule('@demo/pkg'),
             kind: 'named',
             importedName: 'Demo'
           }
@@ -121,7 +122,7 @@ describe('generator handlers', () => {
         createLoadableComponentEntry({
           key: 'Demo',
           componentImport: {
-            source: '@demo/pkg',
+            source: packageModule('@demo/pkg'),
             kind: 'named',
             importedName: 'Demo'
           },
@@ -168,7 +169,7 @@ describe('generator handlers', () => {
         createLoadableComponentEntry({
           key: 'CustomComponentOne',
           componentImport: {
-            source: '@next-slug-splitter-test/content-components',
+            source: packageModule('@next-slug-splitter-test/content-components'),
             kind: 'named',
             importedName: 'CustomComponentOne'
           }
@@ -176,7 +177,7 @@ describe('generator handlers', () => {
         createLoadableComponentEntry({
           key: 'CustomComponentTwo',
           componentImport: {
-            source: '@next-slug-splitter-test/content-components',
+            source: packageModule('@next-slug-splitter-test/content-components'),
             kind: 'named',
             importedName: 'CustomComponentTwo'
           }
@@ -184,7 +185,7 @@ describe('generator handlers', () => {
         createLoadableComponentEntry({
           key: 'CustomComponentThree',
           componentImport: {
-            source: '@next-slug-splitter-test/content-components',
+            source: packageModule('@next-slug-splitter-test/content-components'),
             kind: 'named',
             importedName: 'CustomComponentThree'
           }
@@ -221,7 +222,7 @@ describe('generator handlers', () => {
         createLoadableComponentEntry({
           key: 'CustomComponent',
           componentImport: {
-            source: '/repo/packages/content/mdx/src/route-handler-components.ts',
+            source: absoluteModule('/repo/packages/content/mdx/src/route-handler-components.ts'),
             kind: 'named',
             importedName: 'CustomComponent'
           }
@@ -249,7 +250,7 @@ describe('generator handlers', () => {
       const componentEntry = createLoadableComponentEntry({
         key: 'NestedCustomComponent',
         componentImport: {
-          source: '@next-slug-splitter-test/content-components',
+          source: packageModule('@next-slug-splitter-test/content-components'),
           kind: 'named',
           importedName: 'NestedCustomComponent'
         }
@@ -264,13 +265,11 @@ describe('generator handlers', () => {
             handlerId: 'de-nested-example',
             handlerRelativePath: 'nested/example/de',
             usedLoadableComponentKeys: ['NestedCustomComponent'],
-            factoryVariant: 'none',
+            factoryImport: packageModule('none'),
             componentEntries: [componentEntry]
           })
         ],
         emitFormat: 'ts',
-        runtimeHandlerFactoryImportBase:
-          contentHandlerModuleInput.runtimeHandlerFactoryImportBase,
         baseStaticPropsImport: contentHandlerModuleInput.baseStaticPropsImport,
         handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
         routeBasePath: contentHandlerModuleInput.routeBasePath
@@ -296,12 +295,12 @@ describe('generator handlers', () => {
         handlerId: 'en-stable',
         handlerRelativePath: 'stable/en',
         usedLoadableComponentKeys: ['StableComponent'],
-        factoryVariant: 'none',
+        factoryImport: packageModule('none'),
         componentEntries: [
           createLoadableComponentEntry({
             key: 'StableComponent',
             componentImport: {
-              source: '@next-slug-splitter-test/content-components',
+              source: packageModule('@next-slug-splitter-test/content-components'),
               kind: 'named',
               importedName: 'StableComponent'
             }
@@ -314,12 +313,12 @@ describe('generator handlers', () => {
         handlerId: 'en-changed',
         handlerRelativePath: 'changed/en',
         usedLoadableComponentKeys: ['ChangedComponent'],
-        factoryVariant: 'none',
+        factoryImport: packageModule('none'),
         componentEntries: [
           createLoadableComponentEntry({
             key: 'ChangedComponent',
             componentImport: {
-              source: '@next-slug-splitter-test/content-components',
+              source: packageModule('@next-slug-splitter-test/content-components'),
               kind: 'named',
               importedName: 'ChangedComponent'
             }
@@ -332,12 +331,12 @@ describe('generator handlers', () => {
         handlerId: 'en-stale',
         handlerRelativePath: 'stale/en',
         usedLoadableComponentKeys: ['StaleComponent'],
-        factoryVariant: 'none',
+        factoryImport: packageModule('none'),
         componentEntries: [
           createLoadableComponentEntry({
             key: 'StaleComponent',
             componentImport: {
-              source: '@next-slug-splitter-test/content-components',
+              source: packageModule('@next-slug-splitter-test/content-components'),
               kind: 'named',
               importedName: 'StaleComponent'
             }
@@ -349,8 +348,6 @@ describe('generator handlers', () => {
         paths,
         heavyRoutes: [unchangedRoute, changedRouteInitial, staleRoute],
         emitFormat: 'ts',
-        runtimeHandlerFactoryImportBase:
-          contentHandlerModuleInput.runtimeHandlerFactoryImportBase,
         baseStaticPropsImport: contentHandlerModuleInput.baseStaticPropsImport,
         handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
         routeBasePath: contentHandlerModuleInput.routeBasePath
@@ -366,12 +363,12 @@ describe('generator handlers', () => {
 
       const changedRouteUpdated = createPlannedHeavyRoute({
         ...changedRouteInitial,
-        factoryVariant: 'selection',
+        factoryImport: packageModule('selection'),
         componentEntries: [
           createLoadableComponentEntry({
             key: 'ChangedComponent',
             componentImport: {
-              source: '@next-slug-splitter-test/content-components',
+              source: packageModule('@next-slug-splitter-test/content-components'),
               kind: 'named',
               importedName: 'ChangedComponent'
             },
@@ -386,8 +383,6 @@ describe('generator handlers', () => {
         paths,
         heavyRoutes: [unchangedRoute, changedRouteUpdated],
         emitFormat: 'ts',
-        runtimeHandlerFactoryImportBase:
-          contentHandlerModuleInput.runtimeHandlerFactoryImportBase,
         baseStaticPropsImport: contentHandlerModuleInput.baseStaticPropsImport,
         handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
         routeBasePath: contentHandlerModuleInput.routeBasePath
@@ -398,7 +393,7 @@ describe('generator handlers', () => {
 
       expect(unchangedSourceAfter).toBe(unchangedSourceBefore);
       expect(changedSourceAfter).not.toBe(changedSourceBefore);
-      expect(changedSourceAfter).toContain('/selection');
+      expect(changedSourceAfter).toContain("from 'selection'");
       expect(await fileExists(stalePath)).toBe(false);
     });
   });
