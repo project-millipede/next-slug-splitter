@@ -6,8 +6,8 @@ import path from 'node:path';
  *
  * @remarks
  * This list is only used when the CLI needs to locate a Next config file
- * without an explicit `--config` argument. The core library contract remains
- * app-config-driven through `routeHandlersConfig.app.nextConfigPath`.
+ * without an explicit `--config` argument. Deeper route-handler code consumes
+ * already-derived Next config values instead of threading config-file paths.
  */
 export const DEFAULT_NEXT_CONFIG_FILENAMES = [
   'next.config.ts',

@@ -3,22 +3,31 @@
  *
  * @remarks
  * This module is the bridge between consumer-provided configuration and the
- * deeper cache-aware runtime pipeline. Its place in the system is important:
+ * deeper runtime pipeline. Its place in the system is important:
  * before shared cache policy, target-local planning reuse, or selective
  * emission can happen, the runtime must first normalize app config, load the
- * Next config, and execute app-owned preparation tasks.
+ * persisted Next-derived runtime semantics, and execute the optional app-owned
+ * prepare step.
  *
- * The cache group touched here is the preparation-cache group. When this file
- * calls `prepareRouteHandlersFromConfig(...)`, the runtime is not yet deciding
- * about route planning or emitted handlers; it is only making sure any
- * app-owned prerequisites, such as cached `tsc-project` steps, are in place.
+ * When this file calls `prepareRouteHandlersFromConfig(...)`, the runtime is
+ * not yet deciding about route planning or emitted handlers; it is only making
+ * sure any app-owned prerequisites are in place.
+ *
+ * Raw `next.config.*` loading does not happen here anymore. The only allowed
+ * sources of locale semantics at this layer are:
+ * - explicit `localeConfig` provided by an approved top-level entrypoint
+ * - the persisted runtime-semantics snapshot written earlier by the adapter
  */
-import { resolveRouteHandlersAppConfig } from '../config/app';
-import { resolveRouteHandlersConfigs } from '../config/resolve-configs';
-import { loadNextConfig, type NextConfigLike } from '../config/load-next-config';
-import { loadRegisteredSlugSplitterConfig } from '../integration/slug-splitter-config-loader';
+import { createConfigError } from '../../utils/errors';
+import { resolveRouteHandlersConfigsFromAppConfig } from '../config/resolve-configs';
+import {
+  loadRouteHandlersConfigOrRegistered,
+  resolveLocaleConfigFromInputOrRuntimeSemantics,
+  resolveRouteHandlersAppContext
+} from '../internal/route-handlers-bootstrap';
 import { prepareRouteHandlersFromConfig } from '../prepare';
 
+import type { LocaleConfig } from '../../core/types';
 import type {
   ResolvedRouteHandlersConfig,
   RouteHandlersEntrypointInput
@@ -29,9 +38,10 @@ import type {
  */
 export type LoadResolvedRouteHandlersConfigsInput = RouteHandlersEntrypointInput & {
   /**
-   * Already-loaded Next config object, when available.
+   * Already-extracted locale configuration when an allowed entrypoint already
+   * has it available.
    */
-  nextConfig?: NextConfigLike;
+  localeConfig?: LocaleConfig;
 };
 
 /**
@@ -43,43 +53,51 @@ export type LoadResolvedRouteHandlersConfigsInput = RouteHandlersEntrypointInput
  */
 export const loadResolvedRouteHandlersConfigs = async ({
   rootDir,
-  nextConfigPath,
-  nextConfig,
+  localeConfig,
   routeHandlersConfig
 }: LoadResolvedRouteHandlersConfigsInput): Promise<Array<ResolvedRouteHandlersConfig>> => {
-  let resolvedRouteHandlersConfig = routeHandlersConfig;
-  if (
-    resolvedRouteHandlersConfig == null &&
-    (rootDir == null || nextConfigPath == null)
-  ) {
-    resolvedRouteHandlersConfig = await loadRegisteredSlugSplitterConfig();
+  let loadedRouteHandlersConfig = routeHandlersConfig;
+  if (loadedRouteHandlersConfig == null && rootDir == null) {
+    loadedRouteHandlersConfig = await loadRouteHandlersConfigOrRegistered(
+      loadedRouteHandlersConfig
+    );
   }
 
-  const appConfig = resolveRouteHandlersAppConfig({
-    rootDir,
-    nextConfigPath,
-    routeHandlersConfig: resolvedRouteHandlersConfig
-  });
-  let loadedNextConfig = nextConfig;
-  if (loadedNextConfig == null) {
-    loadedNextConfig = await loadNextConfig(appConfig.nextConfigPath);
+  // Locale resolution only needs a stable app root. We therefore allow one
+  // early app-context pass from explicit entrypoint overrides before the full
+  // route-handlers config object has necessarily been loaded.
+  const initialAppContext = resolveRouteHandlersAppContext(
+    loadedRouteHandlersConfig,
+    rootDir
+  );
+  const resolvedLocaleConfig =
+    await resolveLocaleConfigFromInputOrRuntimeSemantics(
+      initialAppContext.appConfig.rootDir,
+      localeConfig
+    );
+  if (resolvedLocaleConfig == null) {
+    throw createConfigError(
+      'Missing route-handler runtime semantics snapshot. Capture Next locale semantics through withSlugSplitter(...), the Next adapter, or another top-level entrypoint before executing the pipeline.'
+    );
   }
-  if (resolvedRouteHandlersConfig == null) {
-    resolvedRouteHandlersConfig = await loadRegisteredSlugSplitterConfig();
-  }
-  // Consumer entry into the preparation-cache group. This call happens before
-  // target execution and before shared-cache policy is consulted because the
-  // app may need its preparation tasks to materialize processor/runtime inputs
-  // that the rest of the pipeline depends on.
+
+  loadedRouteHandlersConfig = await loadRouteHandlersConfigOrRegistered(
+    loadedRouteHandlersConfig
+  );
+  const appContext = resolveRouteHandlersAppContext(
+    loadedRouteHandlersConfig,
+    rootDir
+  );
+  // Runtime config loading triggers app-owned preparation before target
+  // execution begins because later planning may depend on generated app files.
   await prepareRouteHandlersFromConfig({
-    rootDir: appConfig.rootDir,
-    routeHandlersConfig: resolvedRouteHandlersConfig
+    rootDir: appContext.appConfig.rootDir,
+    routeHandlersConfig: appContext.routeHandlersConfig
   });
 
-  return resolveRouteHandlersConfigs({
-    rootDir: appConfig.rootDir,
-    nextConfigPath: appConfig.nextConfigPath,
-    nextConfig: loadedNextConfig,
-    routeHandlersConfig: resolvedRouteHandlersConfig
+  return resolveRouteHandlersConfigsFromAppConfig({
+    appConfig: appContext.appConfig,
+    localeConfig: resolvedLocaleConfig,
+    routeHandlersConfig: appContext.routeHandlersConfig
   });
 };

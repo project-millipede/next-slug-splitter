@@ -1,9 +1,11 @@
+import path from 'node:path';
 import process from 'node:process';
 
 import type { NextConfig } from 'next';
 
 import { createConfigError } from '../../utils/errors';
 import { isFunction } from '../../utils/type-guards';
+import { isNonEmptyString } from '../../utils/type-guards-extended';
 import type { RouteHandlersConfig } from '../types';
 
 import type { NextConfigLike } from '../config/load-next-config';
@@ -16,6 +18,8 @@ import {
   registerSlugSplitterConfigPath,
   resolveSlugSplitterConfigPath
 } from './slug-splitter-config';
+import { deriveRouteHandlerRuntimeSemantics } from '../runtime-semantics/derive';
+import { writeRouteHandlerRuntimeSemanticsSync } from '../runtime-semantics/write-sync';
 
 /**
  * Supported Next config factory signature.
@@ -35,6 +39,20 @@ export type NextConfigExport = NextConfigLike | NextConfigFactory;
 const isNextConfigFactory = (
   value: NextConfigExport
 ): value is NextConfigFactory => isFunction(value);
+
+const resolveRouteHandlerEntrypointRootDir = (
+  routeHandlersConfig: RouteHandlersConfig | undefined
+): string => {
+  const configuredRootDir = routeHandlersConfig?.app?.rootDir;
+  if (
+    isNonEmptyString(configuredRootDir) &&
+    path.isAbsolute(configuredRootDir)
+  ) {
+    return configuredRootDir;
+  }
+
+  return process.cwd();
+};
 
 /**
  * Input for `withSlugSplitter(...)`.
@@ -83,21 +101,23 @@ export function withSlugSplitter(
   nextConfigExport: NextConfigExport,
   options: WithSlugSplitterOptions
 ): NextConfigExport {
+  const entrypointRootDir = resolveRouteHandlerEntrypointRootDir(
+    options.routeHandlersConfig
+  );
   const resolvedAdapterPath =
     options.routeHandlersConfig != null
       ? createRouteHandlersAdapterPath(options.routeHandlersConfig)
       : (() => {
-          const rootDir = process.cwd();
           const resolvedConfigPath = resolveSlugSplitterConfigPath({
-            rootDir,
+            rootDir: entrypointRootDir,
             configPath: options.configPath
           });
 
           registerSlugSplitterConfigPath(resolvedConfigPath, {
-            rootDir
+            rootDir: entrypointRootDir
           });
 
-          return resolveSlugSplitterAdapterEntry(rootDir);
+          return resolveSlugSplitterAdapterEntry(entrypointRootDir);
         })();
 
   const applyRouteHandlers = (nextConfig: NextConfigLike): NextConfigLike => {
@@ -136,6 +156,10 @@ export function withSlugSplitter(
         'withSlugSplitter(...) now installs the stable adapterPath option. Move any existing experimental.adapterPath to adapterPath before applying withSlugSplitter(...).'
       );
     }
+    writeRouteHandlerRuntimeSemanticsSync(
+      entrypointRootDir,
+      deriveRouteHandlerRuntimeSemantics(nextConfig)
+    );
 
     return {
       ...nextConfig,

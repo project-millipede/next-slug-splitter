@@ -3,8 +3,10 @@
 import process from 'process';
 
 import {
-  DEFAULT_NEXT_CONFIG_FILENAMES
+  DEFAULT_NEXT_CONFIG_FILENAMES,
+  loadNextConfig
 } from '../next/config/index';
+import { deriveRouteHandlerRuntimeSemantics } from '../next/runtime-semantics/derive';
 import { executeRouteHandlerNextPipeline } from '../next/runtime';
 import {
   createCliError,
@@ -35,10 +37,13 @@ const main = async (): Promise<void> => {
       `Unable to locate a Next config file in ${rootDir}. Pass --config or add one of: ${DEFAULT_NEXT_CONFIG_FILENAMES.join(', ')}.`
     );
   }
+  const runtimeSemantics = deriveRouteHandlerRuntimeSemantics(
+    await loadNextConfig(nextConfigPath)
+  );
 
   const result = await executeRouteHandlerNextPipeline({
     rootDir,
-    nextConfigPath,
+    localeConfig: runtimeSemantics.localeConfig,
     mode: analyzeOnly ? 'analyze' : 'generate'
   });
 

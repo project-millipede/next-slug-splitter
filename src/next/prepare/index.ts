@@ -2,29 +2,26 @@
  * App-owned preparation execution for the Next integration.
  *
  * @remarks
- * This file is the operational entrypoint for the preparation-cache group.
- * The cache decision itself lives in `prepare-cache.ts`, but this module owns
- * the real execution of preparation tasks once the cache layer says a task is
- * stale and must run.
+ * This file is the operational entrypoint for `routeHandlersConfig.app.prepare`.
+ * It resolves the configured prepare steps, invokes the app-local TypeScript
+ * compiler for each one, and shares one in-flight promise when identical
+ * preparation requests overlap in the same process.
  *
  * There are two distinct concerns here:
- * - execution semantics: spawn the command or TypeScript compiler correctly
+ * - execution semantics: invoke the app-local TypeScript compiler correctly
  * - in-process deduplication: if multiple callers ask for the same resolved
- *   preparation set in one process, they share the same in-flight promise
+ *   preparation in one process, they share the same active execution
  *
  * Consumer-facing runtime code reaches this file from multiple places:
  * - adapter rewrite generation
  * - runtime config loading
  * - lookup fallback preparation
- *
- * That makes this file the clearest "prepare cache entrypoint" in the system.
  */
 import { spawn } from 'node:child_process';
 import process from 'node:process';
 
 import { createRuntimeError } from '../../utils/errors';
 import { resolveRouteHandlerPreparations } from '../config/app';
-import { getResolvedPreparationExecutionState } from './cache';
 import { resolveAppLocalTypeScriptCompilerPath } from './typescript';
 
 import type {
@@ -32,6 +29,8 @@ import type {
   RouteHandlersConfig
 } from '../types';
 
+// Cache-policy note: prepare keeps only in-flight dedupe. It does not remember
+// settled successful runs. See `docs/architecture/cache-policy.md`.
 const inFlightPreparationRuns = new Map<string, Promise<void>>();
 
 const createPreparationRunKey = ({
@@ -41,9 +40,8 @@ const createPreparationRunKey = ({
   rootDir: string;
   preparations: Array<ResolvedRouteHandlerPreparation>;
 }): string => {
-  // The process-local dedupe key intentionally uses the fully resolved
-  // preparation payload. Two callers should share work only when they would run
-  // the exact same task set from the same app root.
+  // Two callers should share work only when they would run the exact same
+  // prepare-step set from the same app root.
   return JSON.stringify({
     rootDir,
     preparations
@@ -62,9 +60,9 @@ const runChildProcess = ({
   cwd: string;
 }): Promise<void> =>
   new Promise((resolve, reject) => {
-    // Preparation tasks run as real child processes because they represent
-    // app-owned side effects such as TypeScript project builds. Capturing both
-    // stdout and stderr lets us surface a useful runtime error if one fails.
+    // The prepare step runs as a real child process because it represents an
+    // app-owned TypeScript project build. Capturing both stdout and stderr lets
+    // us surface a useful runtime error if it fails.
     const childProcess = spawn(command, args, {
       cwd,
       env: process.env,
@@ -91,7 +89,7 @@ const runChildProcess = ({
 
     childProcess.on('close', exitCode => {
       if (exitCode === 0) {
-        // A successful preparation task is intentionally silent; callers only
+        // A successful prepare step is intentionally silent; callers only
         // care that required app artifacts are ready for the next cache or
         // routing phase.
         resolve();
@@ -108,44 +106,25 @@ const runChildProcess = ({
   });
 
 /**
- * Execute a single resolved preparation task.
- *
- * Dispatches to the appropriate runner based on the preparation kind:
- * - `command`: spawns the configured command in the resolved cwd.
- * - `tsc-project`: runs the app-local TypeScript compiler against the
- *   configured tsconfig.
+ * Execute one resolved prepare step.
  *
  * @param rootDir - Application root directory.
- * @param preparation - Resolved preparation task to execute.
+ * @param preparation - Resolved preparation to execute.
  */
 const runResolvedPreparationTask = async ({
   rootDir,
-  preparation
+  preparation,
+  index
 }: {
   rootDir: string;
   preparation: ResolvedRouteHandlerPreparation;
+  index: number;
 }): Promise<void> => {
-  if (preparation.kind === 'command') {
-    // Generic command preparations remain app-defined black boxes. We resolve
-    // the command array earlier in config processing; by the time execution
-    // reaches this branch, the runtime only needs to spawn it faithfully.
-    const [command, ...args] = preparation.command;
-
-    await runChildProcess({
-      label: `prepare task "${preparation.id}"`,
-      command,
-      args,
-      cwd: preparation.cwd
-    });
-    return;
-  }
-
-  // `tsc-project` preparations are the cache-aware path we understand deeply.
   // We resolve the app-local compiler entry and invoke it directly so the
   // runtime does not depend on shell resolution or a globally installed `tsc`.
   const tscEntryPath = resolveAppLocalTypeScriptCompilerPath({ rootDir });
   await runChildProcess({
-    label: `prepare task "${preparation.id}"`,
+    label: `routeHandlersConfig.app.prepare[${index}]`,
     command: process.execPath,
     args: [tscEntryPath, '-p', preparation.tsconfigPath, '--pretty', 'false'],
     cwd: rootDir
@@ -160,9 +139,8 @@ export const runResolvedRouteHandlerPreparations = async ({
   preparations: Array<ResolvedRouteHandlerPreparation>;
 }): Promise<void> => {
   if (preparations.length === 0) {
-    // No configured preparation means downstream cache and generation logic can
-    // proceed immediately. Returning early keeps the "no prepare work" case
-    // extremely cheap.
+    // No configured preparation means downstream config loading and route
+    // handling can proceed immediately.
     return;
   }
 
@@ -172,36 +150,21 @@ export const runResolvedRouteHandlerPreparations = async ({
   });
   const existingRun = inFlightPreparationRuns.get(runKey);
   if (existingRun != null) {
-    // This is the process-local dedupe layer for preparation work. It is
-    // separate from the on-disk preparation cache and only prevents duplicate
-    // concurrent execution inside one process lifetime.
+    // Share one active prepare run when identical callers overlap in the same
+    // process. This avoids duplicate child processes without remembering prior
+    // executions after they complete.
     return existingRun;
   }
 
   const runPromise = (async () => {
-    for (const preparation of preparations) {
-      // Consumer hand-off into the preparation-cache decision layer. The cache
-      // answers whether this concrete resolved preparation is unchanged and may
-      // be skipped, or whether execution must happen before the runtime can
-      // continue.
-      const executionState = await getResolvedPreparationExecutionState({
-        rootDir,
-        preparation
-      });
-      if (!executionState.shouldRun) {
-        // This is the main cached fast path for prepare work. The task's inputs
-        // are unchanged, so we deliberately avoid respawning the underlying
-        // command or TypeScript compiler.
-        continue;
-      }
-
+    for (const [index, preparation] of preparations.entries()) {
+      // Prepare steps remain app-owned preprocessing. When configured, they
+      // execute in declared order each time this entrypoint runs.
       await runResolvedPreparationTask({
         rootDir,
-        preparation
+        preparation,
+        index
       });
-      // Completion is recorded only after the task exits successfully so the
-      // next run never treats a failed or interrupted preparation as reusable.
-      await executionState.markCompleted();
     }
   })().finally(() => {
     inFlightPreparationRuns.delete(runKey);
@@ -218,14 +181,13 @@ export const prepareRouteHandlersFromConfig = async ({
   rootDir: string;
   routeHandlersConfig: RouteHandlersConfig | undefined;
 }): Promise<void> => {
-  // Consumer-facing entry into the preparation group. Callers pass the app
-  // config boundary here; from this point onward the system resolves concrete
-  // preparation tasks, consults the preparation cache, and executes only the
-  // work that still needs to happen.
+  // Consumer-facing entry into app-owned preparation. Callers pass the app
+  // config boundary here; from this point onward the system resolves the
+  // concrete prepare steps and executes them before later routing work.
   //
   // Keeping this wrapper separate from raw execution is useful because most
   // consumers think in terms of "prepare the app for route handlers," not in
-  // terms of individual resolved preparation task records.
+  // terms of the resolved preparation records.
 
   await runResolvedRouteHandlerPreparations({
     rootDir,

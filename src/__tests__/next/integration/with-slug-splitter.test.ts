@@ -1,6 +1,7 @@
-import { writeFile } from 'node:fs/promises';
+import { unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import type { NextConfig } from 'next';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { withSlugSplitter } from '../../../next';
@@ -11,16 +12,18 @@ import {
   resolveRegisteredSlugSplitterConfigRegistration,
   resolveSlugSplitterAdapterEntry
 } from '../../../next/integration';
+import { resolveRouteHandlerRuntimeSemanticsPath } from '../../../next/runtime-semantics/persisted';
+import { readRouteHandlerRuntimeSemantics } from '../../../next/runtime-semantics/read';
 import { withTempDir } from '../../helpers/temp-dir';
 
 /**
  * ARCHITECTURE OVERVIEW: withSlugSplitter Tests
- * * These tests verify the Next.js configuration wrapper which is responsible for:
+ * These tests verify the Next.js configuration wrapper which is responsible for:
  * 1. REGISTRATION: Storing the configuration path or object in a global registry.
  * 2. RESOLUTION: Resolving the absolute path to the 'adapter.js' entry point.
  * 3. INJECTION: Merging that path into the Next.js 'adapterPath' option.
  * 4. FACTORY WRAPPING: Supporting both static config objects and async factory functions.
- * * NOTE: Currently, 'resolveSlugSplitterAdapterEntry' is tested against 'process.cwd()'
+ * NOTE: Currently, 'resolveSlugSplitterAdapterEntry' is tested against 'process.cwd()'
  * because mocking internal 'require.resolve' calls in a Vitest environment
  * requires further investigation into module hoisting/caching.
  */
@@ -30,6 +33,31 @@ const ROUTE_HANDLERS_CONFIG_SYMBOL = Symbol.for(
 );
 const SLUG_SPLITTER_CONFIG_PATH_ENV = 'SLUG_SPLITTER_CONFIG_PATH';
 const SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV = 'SLUG_SPLITTER_CONFIG_ROOT_DIR';
+type StaticWrappedConfig = Exclude<
+  ReturnType<typeof withSlugSplitter>,
+  Function
+>;
+
+const TEST_DIRECT_ROUTE_HANDLERS_CONFIG = {
+  app: {
+    rootDir: process.cwd()
+  }
+} as const;
+
+const TEST_DIRECT_NEXT_CONFIG: NextConfig = {
+  reactStrictMode: true,
+  i18n: {
+    locales: ['en', 'de'],
+    defaultLocale: 'de'
+  }
+};
+
+const TEST_ASYNC_FACTORY_NEXT_CONFIG: NextConfig = {
+  i18n: {
+    locales: ['en', 'fr'],
+    defaultLocale: 'fr'
+  }
+};
 
 const clearRegisteredRouteHandlersState = (): void => {
   const globalScope = globalThis as typeof globalThis & {
@@ -47,6 +75,12 @@ afterEach(() => {
   clearRegisteredRouteHandlersState();
 });
 
+afterEach(async () => {
+  await unlink(resolveRouteHandlerRuntimeSemanticsPath(process.cwd())).catch(
+    () => undefined
+  );
+});
+
 describe('withSlugSplitter', () => {
   it('registers the config file path and installs the resolved adapter path', async () => {
     await withTempDir(
@@ -58,8 +92,7 @@ describe('withSlugSplitter', () => {
           [
             'export const routeHandlersConfig = {',
             '  app: {',
-            `    rootDir: ${JSON.stringify(rootDir)},`,
-            `    nextConfigPath: ${JSON.stringify(path.join(rootDir, 'next.config.mjs'))}`,
+            `    rootDir: ${JSON.stringify(rootDir)}`,
             '  }',
             '};',
             ''
@@ -69,7 +102,11 @@ describe('withSlugSplitter', () => {
 
         const wrappedConfig = withSlugSplitter(
           {
-            reactStrictMode: true
+            reactStrictMode: true,
+            i18n: {
+              locales: ['en', 'de'],
+              defaultLocale: 'en'
+            }
           },
           {
             configPath
@@ -79,8 +116,12 @@ describe('withSlugSplitter', () => {
         // Sequence Verification:
         // 1. Next.js Config Preservation: Verify user-provided options like 'reactStrictMode' remain.
         // 2. Adapter Injection: Ensure top-level 'adapterPath' is added to the config.
-        expect(wrappedConfig as any).toEqual({
+        expect(wrappedConfig as StaticWrappedConfig).toEqual({
           reactStrictMode: true,
+          i18n: {
+            locales: ['en', 'de'],
+            defaultLocale: 'en'
+          },
           adapterPath: resolveSlugSplitterAdapterEntry(process.cwd())
         });
 
@@ -94,8 +135,7 @@ describe('withSlugSplitter', () => {
         const loadedConfig = await loadRegisteredSlugSplitterConfig();
         expect(loadedConfig).toEqual({
           app: {
-            rootDir,
-            nextConfigPath: path.join(rootDir, 'next.config.mjs')
+            rootDir
           }
         });
       }
@@ -109,12 +149,16 @@ describe('withSlugSplitter', () => {
         const configPath = path.join(rootDir, 'route-handlers.config.mjs');
         await writeFile(
           configPath,
-          'export default { app: { rootDir: "/tmp/app", nextConfigPath: "/tmp/app/next.config.mjs" } };\n',
+          'export default { app: { rootDir: "/tmp/app" } };\n',
           'utf8'
         );
 
         const wrappedConfig = withSlugSplitter(
           async () => ({
+            i18n: {
+              locales: ['en', 'de'],
+              defaultLocale: 'en'
+            },
             experimental: {
               typedRoutes: true
             },
@@ -128,19 +172,23 @@ describe('withSlugSplitter', () => {
         );
 
         expect(typeof wrappedConfig).toBe('function');
+        if (typeof wrappedConfig !== 'function') {
+          throw new Error('Expected wrapped Next config factory.');
+        }
 
-        const resolvedConfig = await (wrappedConfig as any)(
-          'phase-production-build',
-          {
-            defaultConfig: {}
-          }
-        );
+        const resolvedConfig = await wrappedConfig('phase-production-build', {
+          defaultConfig: {}
+        });
 
         // Sequence Verification for Factories:
         // 1. Factory Execution: The wrapper must execute and return the user's config.
         // 2. Experimental Preservation: Keep 'typedRoutes' intact while adding top-level 'adapterPath'.
         expect(resolvedConfig).toEqual({
           adapterPath: resolveSlugSplitterAdapterEntry(process.cwd()),
+          i18n: {
+            locales: ['en', 'de'],
+            defaultLocale: 'en'
+          },
           experimental: {
             typedRoutes: true
           },
@@ -153,34 +201,58 @@ describe('withSlugSplitter', () => {
   });
 
   it('registers an in-process routeHandlersConfig object when provided directly', async () => {
-    const routeHandlersConfig = {
-      app: {
-        rootDir: process.cwd(),
-        nextConfigPath: path.join(process.cwd(), 'next.config.ts')
-      }
-    };
-
-    const wrappedConfig = withSlugSplitter(
-      {
-        reactStrictMode: true
-      },
-      {
-        routeHandlersConfig
-      }
-    );
+    const wrappedConfig = withSlugSplitter(TEST_DIRECT_NEXT_CONFIG, {
+      routeHandlersConfig: TEST_DIRECT_ROUTE_HANDLERS_CONFIG
+    });
 
     // Sequence Verification for Direct Objects:
     // 1. Registry: Store the object in-process (globalSymbol) rather than using a file path.
-    expect(wrappedConfig as any).toEqual({
-      reactStrictMode: true,
+    expect(wrappedConfig as StaticWrappedConfig).toEqual({
+      ...TEST_DIRECT_NEXT_CONFIG,
       adapterPath: resolveSlugSplitterAdapterEntry(process.cwd())
     });
 
-    expect(readRegisteredRouteHandlersConfig()).toEqual(routeHandlersConfig);
+    expect(readRegisteredRouteHandlersConfig()).toEqual(
+      TEST_DIRECT_ROUTE_HANDLERS_CONFIG
+    );
     expect(readRegisteredSlugSplitterConfigPath()).toBeUndefined();
 
     const loadedConfig = await loadRegisteredSlugSplitterConfig();
-    expect(loadedConfig).toEqual(routeHandlersConfig);
+    expect(loadedConfig).toEqual(TEST_DIRECT_ROUTE_HANDLERS_CONFIG);
+    expect(await readRouteHandlerRuntimeSemantics(process.cwd())).toEqual({
+      localeConfig: {
+        locales: ['en', 'de'],
+        defaultLocale: 'de'
+      }
+    });
+  });
+
+  it('writes the runtime semantics snapshot for async Next config factories', async () => {
+    const wrappedConfig = withSlugSplitter(
+      async () => TEST_ASYNC_FACTORY_NEXT_CONFIG,
+      {
+        routeHandlersConfig: TEST_DIRECT_ROUTE_HANDLERS_CONFIG
+      }
+    );
+
+    if (typeof wrappedConfig !== 'function') {
+      throw new Error('Expected wrapped Next config factory.');
+    }
+
+    const resolvedConfig = await wrappedConfig('phase-production-build', {
+      defaultConfig: {}
+    });
+
+    expect(resolvedConfig).toEqual({
+      ...TEST_ASYNC_FACTORY_NEXT_CONFIG,
+      adapterPath: resolveSlugSplitterAdapterEntry(process.cwd())
+    });
+    expect(await readRouteHandlerRuntimeSemantics(process.cwd())).toEqual({
+      localeConfig: {
+        locales: ['en', 'fr'],
+        defaultLocale: 'fr'
+      }
+    });
   });
 
   it('falls back to the conventional root config file name when no explicit config-path registration exists', async () => {
@@ -207,52 +279,33 @@ describe('withSlugSplitter', () => {
   });
 
   it('rejects existing adapterPath values', async () => {
-    await withTempDir(
-      'next-slug-splitter-with-slug-splitter-',
-      async rootDir => {
-        const configPath = path.join(rootDir, 'route-handlers.config.mjs');
-        await writeFile(configPath, 'export default {};\n', 'utf8');
-
-        expect(() =>
-          withSlugSplitter(
-            {
-              adapterPath: '/tmp/custom-adapter.mjs'
-            },
-            {
-              configPath
-            }
-          )
-        ).toThrow(
-          '[next-slug-splitter] withSlugSplitter(...) cannot be combined with an existing adapterPath.'
-        );
-      }
+    expect(() =>
+      withSlugSplitter(
+        {
+          adapterPath: '/tmp/custom-adapter.mjs'
+        },
+        {
+          routeHandlersConfig: TEST_DIRECT_ROUTE_HANDLERS_CONFIG
+        }
+      )
+    ).toThrow(
+      '[next-slug-splitter] withSlugSplitter(...) cannot be combined with an existing adapterPath.'
     );
   });
 
   it('rejects legacy experimental.adapterPath values with a migration error', async () => {
-    await withTempDir(
-      'next-slug-splitter-with-slug-splitter-',
-      async rootDir => {
-        const configPath = path.join(rootDir, 'route-handlers.config.mjs');
-        await writeFile(configPath, 'export default {};\n', 'utf8');
-
-        // Guard Verification:
-        // Verify the plugin doesn't accidentally stomp on other Next.js experimental adapters.
-        expect(() =>
-          withSlugSplitter(
-            {
-              experimental: {
-                adapterPath: '/tmp/custom-adapter.mjs'
-              }
-            } as any,
-            {
-              configPath
-            }
-          )
-        ).toThrow(
-          '[next-slug-splitter] withSlugSplitter(...) now installs the stable adapterPath option. Move any existing experimental.adapterPath to adapterPath before applying withSlugSplitter(...).'
-        );
+    const nextConfigWithLegacyAdapter = {
+      experimental: {
+        adapterPath: '/tmp/custom-adapter.mjs'
       }
+    } as unknown as NextConfig;
+
+    expect(() =>
+      withSlugSplitter(nextConfigWithLegacyAdapter, {
+        routeHandlersConfig: TEST_DIRECT_ROUTE_HANDLERS_CONFIG
+      })
+    ).toThrow(
+      '[next-slug-splitter] withSlugSplitter(...) now installs the stable adapterPath option. Move any existing experimental.adapterPath to adapterPath before applying withSlugSplitter(...).'
     );
   });
 });

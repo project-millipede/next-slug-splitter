@@ -15,6 +15,7 @@
  */
 import { type NextConfigLike } from '../config/index';
 import { synchronizeRouteHandlerPhaseArtifacts } from '../phase-artifacts';
+import { deriveRouteHandlerRuntimeSemantics } from '../runtime-semantics/derive';
 import {
   loadResolvedRouteHandlersConfigs,
   type LoadResolvedRouteHandlersConfigsInput
@@ -117,17 +118,22 @@ export const executeResolvedRouteHandlerNextPipeline = async ({
  */
 export const executeRouteHandlerNextPipeline = async ({
   rootDir,
-  nextConfigPath,
+  localeConfig,
   nextConfig,
   routeHandlersConfig,
   mode = 'generate'
 }: ExecuteRouteHandlerNextPipelineInput = {}): Promise<RouteHandlerNextResult> => {
+  const resolvedLocaleConfig =
+    localeConfig ??
+    (nextConfig == null
+      ? undefined
+      : deriveRouteHandlerRuntimeSemantics(nextConfig).localeConfig);
+
   // Consumer entry into the runtime config-loading group. This stage is where
-  // preparation caching may run before the actual target execution phase.
+  // app-owned preparation may run before the actual target execution phase.
   const resolvedConfigs = await loadResolvedRouteHandlersConfigs({
     rootDir,
-    nextConfigPath,
-    nextConfig,
+    localeConfig: resolvedLocaleConfig,
     routeHandlersConfig
   });
   return executeResolvedRouteHandlerNextPipeline({

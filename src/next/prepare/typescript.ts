@@ -2,16 +2,9 @@
  * Shared TypeScript resolution helpers for the preparation subsystem.
  *
  * @remarks
- * This file belongs to the preparation-cache group, but it intentionally does
- * not make cache decisions itself. Its job is to centralize one piece of
- * preparation identity and execution state that multiple callers care about:
- * resolving the app-local `typescript/lib/tsc.js` entry.
- *
- * Both the preparation execution layer and the preparation cache layer depend
- * on this resolution:
- * - execution needs the compiler path to actually run `tsc-project` tasks
- * - caching includes the compiler path in the tracked input set so changing
- *   the effective TypeScript installation invalidates cached preparations
+ * This file centralizes one shared piece of preparation execution state:
+ * resolving the app-local `typescript/lib/tsc.js` entry used by
+ * `routeHandlersConfig.app.prepare`.
  */
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -41,26 +34,8 @@ export const resolveAppLocalTypeScriptCompilerPath = ({
     return requireFromRoot.resolve('typescript/lib/tsc.js');
   } catch {
     throw createRuntimeError(
-      'Unable to resolve app-local TypeScript for routeHandlersConfig.app.prepare. Install "typescript" in the app or remove the "tsc-project" preparation task.',
+      'Unable to resolve app-local TypeScript for routeHandlersConfig.app.prepare. Install "typescript" in the app or remove routeHandlersConfig.app.prepare.',
       { rootDir }
     );
-  }
-};
-
-/**
- * Try to resolve the app-local TypeScript compiler path without throwing.
- *
- * @param rootDir - Application root used as the resolution base.
- * @returns Absolute path when available, otherwise `undefined`.
- */
-export const tryResolveAppLocalTypeScriptCompilerPath = ({
-  rootDir
-}: {
-  rootDir: string;
-}): string | undefined => {
-  try {
-    return resolveAppLocalTypeScriptCompilerPath({ rootDir });
-  } catch {
-    return undefined;
   }
 };

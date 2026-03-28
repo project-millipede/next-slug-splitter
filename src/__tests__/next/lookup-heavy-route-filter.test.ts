@@ -1,275 +1,168 @@
-import path from 'node:path';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+const readRouteHandlerLookupSnapshotMock = vi.hoisted(() => vi.fn());
 
-const executeRouteHandlerNextPipelineMock = vi.hoisted(() => vi.fn());
-
-vi.mock('../../next/runtime', () => ({
-  executeRouteHandlerNextPipeline: executeRouteHandlerNextPipelineMock
+vi.mock(import('../../next/lookup-persisted'), () => ({
+  readRouteHandlerLookupSnapshot: readRouteHandlerLookupSnapshotMock
 }));
 
-import { createHeavyRoute } from '../helpers/builders';
 import {
-  TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-  TEST_PRIMARY_CONTENT_PAGES_DIR,
-  TEST_PRIMARY_ROUTE_SEGMENT,
-  createTestHandlerBinding,
-  writeTestBaseStaticPropsPage,
-  writeTestRouteHandlerPackage
-} from '../helpers/fixtures';
-import { withTempDir } from '../helpers/temp-dir';
-import { createCatchAllRouteHandlersPreset } from '../../next/config';
-import { registerRouteHandlersConfig } from '../../next/integration/config-registry';
-import { withHeavyRouteFilter } from '../../next/lookup';
+  filterStaticPathsAgainstHeavyRoutes,
+  withHeavyRouteFilter
+} from '../../next/lookup';
+import { TEST_PRIMARY_ROUTE_SEGMENT } from '../helpers/fixtures';
 
-import type { RouteHandlersConfig } from '../../next/types';
+type StaticPathEntry = {
+  params: Record<string, string | Array<string>>;
+  locale?: string;
+};
 
-const createSingleTargetConfig = ({
-  rootDir,
-  developmentRoutingMode = 'rewrites'
-}: {
-  rootDir: string;
-  developmentRoutingMode?: 'proxy' | 'rewrites';
-}): RouteHandlersConfig => ({
-  app: {
-    rootDir,
-    nextConfigPath: path.join(rootDir, 'next.config.mjs'),
-    routing: {
-      development: developmentRoutingMode
-    }
-  },
-  ...createCatchAllRouteHandlersPreset({
-    routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-    handlerRouteParam: {
-      name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-      kind: 'catch-all'
+describe('filterStaticPathsAgainstHeavyRoutes', () => {
+  type Scenario = {
+    id: string;
+    description: string;
+    slugParam?: string;
+    paths: Array<StaticPathEntry>;
+    expectedPaths: Array<StaticPathEntry>;
+    heavyKeys: Array<string>;
+    fallback: boolean | 'blocking';
+  };
+
+  const scenarios: ReadonlyArray<Scenario> = [
+    {
+      id: 'Catch-All',
+      description: 'filters heavy catch-all entries and preserves light ones',
+      paths: [
+        { params: { slug: ['getting-started'] }, locale: 'en' },
+        { params: { slug: ['heavy-page'] }, locale: 'en' },
+        { params: { slug: ['another-page'] }, locale: 'en' }
+      ],
+      expectedPaths: [
+        { params: { slug: ['getting-started'] }, locale: 'en' },
+        { params: { slug: ['another-page'] }, locale: 'en' }
+      ],
+      heavyKeys: ['en::heavy-page'],
+      fallback: false
     },
-    contentPagesDir: path.join(rootDir, TEST_PRIMARY_CONTENT_PAGES_DIR),
-    handlerBinding: createTestHandlerBinding()
-  })
-});
+    {
+      id: 'Single-Segment',
+      description: 'supports single-segment slug params',
+      slugParam: 'slug',
+      paths: [
+        { params: { slug: 'light-post' }, locale: 'en' },
+        { params: { slug: 'heavy-post' }, locale: 'en' }
+      ],
+      expectedPaths: [{ params: { slug: 'light-post' }, locale: 'en' }],
+      heavyKeys: ['en::heavy-post'],
+      fallback: false
+    },
+    {
+      id: 'Missing-Locale-Or-Slug',
+      description: 'keeps entries without locale or slug',
+      paths: [
+        { params: { slug: ['heavy-page'] }, locale: 'en' },
+        { params: { slug: ['some-page'] } },
+        { params: { id: 'no-slug-entry' }, locale: 'en' }
+      ],
+      expectedPaths: [
+        { params: { slug: ['some-page'] } },
+        { params: { id: 'no-slug-entry' }, locale: 'en' }
+      ],
+      heavyKeys: ['en::heavy-page'],
+      fallback: false
+    },
+    {
+      id: 'Fallback-Preserved',
+      description: 'preserves fallback value from the inner getStaticPaths result',
+      paths: [],
+      expectedPaths: [],
+      heavyKeys: [],
+      fallback: 'blocking'
+    }
+  ];
 
-const createPathEntries = () => [
-  { params: { slug: ['getting-started'] }, locale: 'en' },
-  { params: { slug: ['heavy-page'] }, locale: 'en' },
-  { params: { slug: ['another-page'] }, locale: 'en' },
-  { params: { slug: ['heavy-page'] }, locale: 'de' }
-];
+  test.for(scenarios)('[$id] $description', ({
+    slugParam,
+    paths,
+    expectedPaths,
+    heavyKeys,
+    fallback
+  }) => {
+    const result = filterStaticPathsAgainstHeavyRoutes(
+      paths,
+      fallback,
+      (locale, slugArray) =>
+        heavyKeys.includes(`${locale}::${slugArray.join('/')}`),
+      slugParam
+    );
+
+    expect(result.paths).toEqual(expectedPaths);
+    expect(result.fallback).toBe(fallback);
+  });
+});
 
 describe('withHeavyRouteFilter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it('filters heavy routes in rewrite mode', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
-
-    await withTempDir('next-slug-splitter-filter-rewrite-', async rootDir => {
-      executeRouteHandlerNextPipelineMock.mockResolvedValue({
-        analyzedCount: 4,
-        heavyCount: 2,
-        heavyPaths: [
-          createHeavyRoute({
-            targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-            locale: 'en',
-            slugArray: ['heavy-page'],
-            handlerId: 'en-heavy-page',
-            handlerRelativePath: 'heavy-page/en'
-          }),
-          createHeavyRoute({
-            targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-            locale: 'de',
-            slugArray: ['heavy-page'],
-            handlerId: 'de-heavy-page',
-            handlerRelativePath: 'heavy-page/de'
-          })
-        ],
-        rewrites: []
-      });
-
-      await writeTestRouteHandlerPackage(rootDir);
-      await writeTestBaseStaticPropsPage(rootDir, {
-        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-        handlerRouteParam: {
-          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-          kind: 'catch-all'
+    readRouteHandlerLookupSnapshotMock.mockResolvedValue({
+      version: 1,
+      filterHeavyRoutesInStaticPaths: false,
+      targets: [
+        {
+          targetId: TEST_PRIMARY_ROUTE_SEGMENT,
+          heavyRoutePathKeys: []
         }
-      });
+      ]
+    });
+  });
 
-      registerRouteHandlersConfig(createSingleTargetConfig({ rootDir }));
+  test('returns all paths unfiltered in proxy mode', async () => {
+    const getStaticPaths = withHeavyRouteFilter({
+      targetId: TEST_PRIMARY_ROUTE_SEGMENT,
+      getStaticPaths: async () => ({
+        paths: [
+          { params: { slug: ['getting-started'] }, locale: 'en' },
+          { params: { slug: ['heavy-page'] }, locale: 'en' }
+        ],
+        fallback: false
+      })
+    });
 
-      const getStaticPaths = withHeavyRouteFilter({
-        targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-        getStaticPaths: async () => ({
-          paths: createPathEntries(),
-          fallback: false
-        })
-      });
-
-      const result = await getStaticPaths({});
-
-      expect(result.paths).toEqual([
+    await expect(getStaticPaths({})).resolves.toEqual({
+      paths: [
         { params: { slug: ['getting-started'] }, locale: 'en' },
-        { params: { slug: ['another-page'] }, locale: 'en' }
-      ]);
-      expect(result.fallback).toBe(false);
+        { params: { slug: ['heavy-page'] }, locale: 'en' }
+      ],
+      fallback: false
     });
   });
 
-  it('returns all paths unfiltered in proxy mode', async () => {
-    vi.stubEnv('NODE_ENV', 'development');
-
-    await withTempDir('next-slug-splitter-filter-proxy-', async rootDir => {
-      const allPaths = createPathEntries();
-
-      registerRouteHandlersConfig(createSingleTargetConfig({
-        rootDir,
-        developmentRoutingMode: 'proxy'
-      }));
-
-      const getStaticPaths = withHeavyRouteFilter({
-        targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-        getStaticPaths: async () => ({
-          paths: allPaths,
-          fallback: false
-        })
-      });
-
-      const result = await getStaticPaths({});
-
-      expect(result.paths).toEqual(allPaths);
-      expect(result.fallback).toBe(false);
-      expect(executeRouteHandlerNextPipelineMock).not.toHaveBeenCalled();
-    });
-  });
-
-  it('supports single-segment slug params', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
-
-    await withTempDir('next-slug-splitter-filter-single-', async rootDir => {
-      executeRouteHandlerNextPipelineMock.mockResolvedValue({
-        analyzedCount: 2,
-        heavyCount: 1,
-        heavyPaths: [
-          createHeavyRoute({
-            targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-            locale: 'en',
-            slugArray: ['heavy-post'],
-            handlerId: 'en-heavy-post',
-            handlerRelativePath: 'heavy-post/en'
-          })
-        ],
-        rewrites: []
-      });
-
-      await writeTestRouteHandlerPackage(rootDir);
-      await writeTestBaseStaticPropsPage(rootDir, {
-        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-        handlerRouteParam: {
-          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-          kind: 'catch-all'
+  test('filters heavy routes from the persisted lookup snapshot and preserves fallback', async () => {
+    readRouteHandlerLookupSnapshotMock.mockResolvedValue({
+      version: 1,
+      filterHeavyRoutesInStaticPaths: true,
+      targets: [
+        {
+          targetId: TEST_PRIMARY_ROUTE_SEGMENT,
+          heavyRoutePathKeys: ['en:heavy-page']
         }
-      });
-
-      registerRouteHandlersConfig(createSingleTargetConfig({ rootDir }));
-
-      const getStaticPaths = withHeavyRouteFilter({
-        targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-        slugParam: 'slug',
-        getStaticPaths: async () => ({
-          paths: [
-            { params: { slug: 'light-post' }, locale: 'en' },
-            { params: { slug: 'heavy-post' }, locale: 'en' }
-          ],
-          fallback: false
-        })
-      });
-
-      const result = await getStaticPaths({});
-
-      expect(result.paths).toEqual([
-        { params: { slug: 'light-post' }, locale: 'en' }
-      ]);
+      ]
     });
-  });
 
-  it('keeps entries without locale or slug', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
-
-    await withTempDir('next-slug-splitter-filter-missing-', async rootDir => {
-      executeRouteHandlerNextPipelineMock.mockResolvedValue({
-        analyzedCount: 1,
-        heavyCount: 1,
-        heavyPaths: [
-          createHeavyRoute({
-            targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-            locale: 'en',
-            slugArray: ['heavy-page'],
-            handlerId: 'en-heavy-page',
-            handlerRelativePath: 'heavy-page/en'
-          })
+    const getStaticPaths = withHeavyRouteFilter({
+      targetId: TEST_PRIMARY_ROUTE_SEGMENT,
+      getStaticPaths: async () => ({
+        paths: [
+          { params: { slug: ['light-page'] }, locale: 'en' },
+          { params: { slug: ['heavy-page'] }, locale: 'en' }
         ],
-        rewrites: []
-      });
-
-      await writeTestRouteHandlerPackage(rootDir);
-      await writeTestBaseStaticPropsPage(rootDir, {
-        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-        handlerRouteParam: {
-          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-          kind: 'catch-all'
-        }
-      });
-
-      const entries = [
-        { params: { slug: ['heavy-page'] }, locale: 'en' },
-        { params: { slug: ['some-page'] } },
-        { params: { id: 'no-slug-entry' }, locale: 'en' }
-      ] as Array<{ params: Record<string, string | Array<string>>; locale?: string }>;
-
-      registerRouteHandlersConfig(createSingleTargetConfig({ rootDir }));
-
-      const getStaticPaths = withHeavyRouteFilter({
-        targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-        getStaticPaths: async () => ({
-          paths: entries,
-          fallback: false
-        })
-      });
-
-      const result = await getStaticPaths({});
-
-      expect(result.paths).toEqual([
-        { params: { slug: ['some-page'] } },
-        { params: { id: 'no-slug-entry' }, locale: 'en' }
-      ]);
+        fallback: 'blocking'
+      })
     });
-  });
 
-  it('preserves fallback value from inner getStaticPaths', async () => {
-    vi.stubEnv('NODE_ENV', 'development');
-
-    await withTempDir('next-slug-splitter-filter-fallback-', async rootDir => {
-      registerRouteHandlersConfig(createSingleTargetConfig({
-        rootDir,
-        developmentRoutingMode: 'proxy'
-      }));
-
-      const getStaticPaths = withHeavyRouteFilter({
-        targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-        getStaticPaths: async () => ({
-          paths: [],
-          fallback: 'blocking'
-        })
-      });
-
-      const result = await getStaticPaths({});
-
-      expect(result.fallback).toBe('blocking');
+    await expect(getStaticPaths({})).resolves.toEqual({
+      paths: [{ params: { slug: ['light-page'] }, locale: 'en' }],
+      fallback: 'blocking'
     });
   });
 });
