@@ -99,7 +99,7 @@ export default withSlugSplitter(nextConfig, {
 
 import process from 'node:process';
 import path from 'node:path';
-import { createCatchAllRouteHandlersPreset } from 'next-slug-splitter/next/config';
+import { createCatchAllRouteHandlersPreset } from 'next-slug-splitter/next';
 import { routeHandlerBindings } from 'site-route-handlers/config';
 
 const rootDir = process.cwd();

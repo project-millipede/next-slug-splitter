@@ -2,10 +2,8 @@
 
 import process from 'process';
 
-import {
-  DEFAULT_NEXT_CONFIG_FILENAMES,
-  loadNextConfig
-} from '../next/config/index';
+import { DEFAULT_NEXT_CONFIG_FILENAMES } from '../next/config/find-next-config-path';
+import { loadNextConfig } from '../next/config/load-next-config';
 import { deriveRouteHandlerRuntimeSemantics } from '../next/runtime-semantics/derive';
 import { executeRouteHandlerNextPipeline } from '../next/runtime';
 import {

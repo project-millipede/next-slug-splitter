@@ -30,11 +30,12 @@ import {
   packageModule,
   relativeModule
 } from '../../../module-reference';
+import { createCatchAllRouteHandlersPreset } from '../../../next/config/index';
 import {
-  createCatchAllRouteHandlersPreset,
-  findNextConfigPath,
-  resolveRouteHandlersAppConfig
-} from '../../../next/config/index';
+  DEFAULT_NEXT_CONFIG_FILENAMES,
+  findNextConfigPath
+} from '../../../next/config/find-next-config-path';
+import { resolveRouteHandlersAppConfig } from '../../../next/config/app';
 import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../../next/config/resolve-configs';
 import { normalizeRouteHandlersTargetOptions } from '../../../next/config/resolve-target';
 import { resolveRouteHandlerPreparations } from '../../../next/config/app';
@@ -120,6 +121,15 @@ describe('next config helpers', () => {
         throw new Error('Unexpected module reference in test.');
       }
     );
+  });
+
+  test('exposes stable default Next config filenames', () => {
+    expect(DEFAULT_NEXT_CONFIG_FILENAMES).toEqual([
+      'next.config.ts',
+      'next.config.js',
+      'next.config.mjs',
+      'next.config.cjs'
+    ]);
   });
 
   describe('findNextConfigPath', () => {

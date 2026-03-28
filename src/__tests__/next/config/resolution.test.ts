@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { absoluteModule, relativeModule } from '../../../module-reference';
-import { resolveRouteHandlersConfig } from '../../../next/config';
+import { resolveRouteHandlersConfig } from '../../../next/config/resolve-configs';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   TEST_PRIMARY_CONTENT_PAGES_DIR,

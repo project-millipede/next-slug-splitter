@@ -1,6 +1,6 @@
 import path from 'path';
 
-import { findNextConfigPath } from '../next/config/index';
+import { findNextConfigPath } from '../next/config/find-next-config-path';
 import { createCliError } from '../utils/errors';
 import { isNonEmptyString } from '../utils/type-guards-extended';
 

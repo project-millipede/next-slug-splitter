@@ -13,7 +13,7 @@
  *
  * There is no longer any persisted build-side runtime cache in this layer.
  */
-import { type NextConfigLike } from '../config/index';
+import { type NextConfigLike } from '../config/load-next-config';
 import { synchronizeRouteHandlerPhaseArtifacts } from '../phase-artifacts';
 import { deriveRouteHandlerRuntimeSemantics } from '../runtime-semantics/derive';
 import {
