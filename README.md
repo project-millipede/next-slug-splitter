@@ -348,7 +348,7 @@ the dedicated not-found helper:
 ```tsx
 import type { NextPage } from 'next';
 
-import { useSlugSplitterNotFoundRetry } from 'next-slug-splitter/next/not-found';
+import { useSlugSplitterNotFoundRetry } from 'next-slug-splitter/next/not-found-retry';
 
 const CATCH_ALL_ROUTE_PREFIXES = ['/docs/', '/blog/'];
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
  * Import `next/router.js` instead of `next/router` here.
  *
  * 1. This package ships ESM subpath exports through `dist/`.
- * 2. The built `next/not-found` entry is then loaded as an external package
+ * 2. The built `next/not-found-retry` entry is then loaded as an external package
  *    module during Next's build-time page-data collection.
  * 3. In that packaged ESM context, the concrete `next/router.js` file
  *    resolves more reliably than the bare `next/router` specifier.

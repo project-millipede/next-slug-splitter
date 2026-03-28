@@ -1,6 +1,6 @@
 import type { NextPage } from 'next';
 
-import { useSlugSplitterNotFoundRetry } from 'next-slug-splitter/next/not-found';
+import { useSlugSplitterNotFoundRetry } from 'next-slug-splitter/next/not-found-retry';
 
 /**
  * Routes served by the proxy rewrite system.

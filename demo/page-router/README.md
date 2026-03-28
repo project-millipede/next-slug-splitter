@@ -174,7 +174,7 @@ pnpm start:ts-pkg  -> npm_lifecycle_event = "start:ts-pkg"  -> typescript-packag
 
 ## Dev 404 Retry Workaround
 
-The demo also includes `pages/404.tsx`, which uses `useSlugSplitterNotFoundRetry(...)` from `next-slug-splitter/next/not-found` as a dev-only workaround for a remaining Next/Turbopack race.
+The demo also includes `pages/404.tsx`, which uses `useSlugSplitterNotFoundRetry(...)` from `next-slug-splitter/next/not-found-retry` as a dev-only workaround for a remaining Next/Turbopack race.
 
 When a heavy route is emitted lazily on first request, the proxy can already know the correct rewrite target while Next is still warming that page up. In that narrow window the same request may still land on a transient 404. The demo's 404 page probes the route for readiness and retries once instead of immediately showing a not-found page.
 

@@ -10,7 +10,7 @@ export default defineConfig([
       'next/adapter': 'src/next/adapter.ts',
       'next/lookup': 'src/next/lookup.ts',
       'next/handler': 'src/next/handler-static-props.ts',
-      'next/not-found': 'src/next/not-found.ts',
+      'next/not-found-retry': 'src/next/not-found-retry.ts',
       'next/proxy': 'src/next/proxy/index.ts',
       cli: 'src/cli/index.ts'
     },

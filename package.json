@@ -81,10 +81,10 @@
       "import": "./dist/next/proxy.js",
       "default": "./dist/next/proxy.js"
     },
-    "./next/not-found": {
-      "types": "./dist/next/not-found.d.ts",
-      "import": "./dist/next/not-found.js",
-      "default": "./dist/next/not-found.js"
+    "./next/not-found-retry": {
+      "types": "./dist/next/not-found-retry.d.ts",
+      "import": "./dist/next/not-found-retry.js",
+      "default": "./dist/next/not-found-retry.js"
     },
     "./module-reference": {
       "types": "./dist/module-reference/index.d.ts",
