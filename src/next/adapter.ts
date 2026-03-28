@@ -147,6 +147,8 @@ const routeHandlersAdapter: NextAdapter = {
       await writeRouteHandlerLookupSnapshot(
         appContext.appConfig.rootDir,
         createRouteHandlerLookupSnapshot(
+          // Proxy development mode keeps page-time lookup read-only and leaves
+          // cold heavy-route ownership discovery to request-time proxy routing.
           false,
           resolvedConfigs.map(config => config.targetId)
         )
@@ -172,6 +174,8 @@ const routeHandlersAdapter: NextAdapter = {
     await writeRouteHandlerLookupSnapshot(
       appContext.appConfig.rootDir,
       createRouteHandlerLookupSnapshot(
+        // Rewrite/build mode needs an exact heavy/light split up front so
+        // `getStaticPaths` can filter heavy routes out of the light page.
         true,
         resolvedConfigs.map(config => config.targetId),
         rewrites

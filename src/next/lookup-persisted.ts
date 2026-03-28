@@ -13,14 +13,47 @@ const DEFAULT_ROUTE_HANDLER_LOOKUP_SNAPSHOT_PATH = path.join(
   'route-handlers-lookup.json'
 );
 
+/**
+ * Persisted heavy-route ownership for one configured target.
+ */
 export type PersistedRouteHandlerLookupTarget = {
+  /**
+   * Stable target identifier used to scope lookup data in multi-target apps.
+   */
   targetId: string;
+
+  /**
+   * Encoded heavy-route membership keys for this target.
+   *
+   * Each entry is produced by `toHeavyRoutePathKey(locale, slugArray)` and
+   * lets page-time lookup answer "is this localized path heavy?" without
+   * rerunning route analysis.
+   */
   heavyRoutePathKeys: Array<string>;
 };
 
+/**
+ * Persisted page-time heavy-route lookup snapshot written by the adapter.
+ */
 export type PersistedRouteHandlerLookupSnapshot = {
+  /**
+   * Schema version for the persisted snapshot format.
+   */
   version: number;
+
+  /**
+   * Whether `getStaticPaths` should actively exclude heavy routes from the
+   * light catch-all page.
+   *
+   * `true` means rewrite/build mode needs an exact heavy/light split at
+   * page-time. `false` means proxy development mode leaves cold ownership
+   * discovery to request-time proxy routing instead.
+   */
   filterHeavyRoutesInStaticPaths: boolean;
+
+  /**
+   * Per-target heavy-route ownership data used by page-time lookup.
+   */
   targets: Array<PersistedRouteHandlerLookupTarget>;
 };
 
