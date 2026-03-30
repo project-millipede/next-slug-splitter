@@ -279,16 +279,40 @@ export const routeHandlerProcessor = defineRouteHandlerProcessor({
 
 ### 4. Generate or Analyze (Optional CLI)
 
-The CLI generates handler artifacts or runs analysis only.
+The standalone CLI generates handler artifacts or runs analysis only. Pass the
+route-handlers config module path plus explicit locale semantics.
+
+Repository example:
+run these from `demo/page-router` after building the library so
+`../../dist/cli.js` exists.
 
 ```bash
-next-slug-splitter                    # Generate handlers and artifacts
-next-slug-splitter --analyze-only     # Analyze without generating
-next-slug-splitter --analyze-only --json  # JSON output for tooling
+pnpm generate:ballast
+pnpm clean:handlers
+
+pnpm exec tsx ../../dist/cli.js \
+  --route-handlers-config-path ./config-variants/typescript-package/route-handlers-config.ts \
+  --locales en \
+  --default-locale en \
+  --analyze-only
+
+pnpm exec tsx ../../dist/cli.js \
+  --route-handlers-config-path ./config-variants/typescript-package/route-handlers-config.ts \
+  --locales en \
+  --default-locale en
+
+node ../../dist/cli.js \
+  --route-handlers-config-path ./config-variants/javascript-package/route-handlers-config.mjs \
+  --locales en \
+  --default-locale en \
+  --analyze-only
 ```
 
-Without `--config`, the CLI falls back to discovering one of the standard Next
-config filenames in the current working directory.
+The Next adapter derives locale semantics from live Next config. The standalone
+CLI requires locale semantics explicitly.
+
+1. Use `tsx` when the route-handlers config module is TypeScript, for example `.ts`.
+2. Use plain `node` when the route-handlers config module is JavaScript, for example `.mjs`.
 
 > In development with proxy mode, the CLI step is not needed. The proxy
 > discovers routes on demand.

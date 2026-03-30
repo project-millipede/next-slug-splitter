@@ -1,4 +1,4 @@
-import { unlink, writeFile } from 'node:fs/promises';
+import { readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import type { NextConfig } from 'next';
@@ -12,8 +12,10 @@ import {
   resolveRegisteredSlugSplitterConfigRegistration,
   resolveSlugSplitterAdapterEntry
 } from '../../../next/integration';
-import { resolveRouteHandlerRuntimeSemanticsPath } from '../../../next/runtime-semantics/persisted';
-import { readRouteHandlerRuntimeSemantics } from '../../../next/runtime-semantics/read';
+import {
+  parseRouteHandlerRuntimeSemantics,
+  resolveRouteHandlerRuntimeSemanticsPath
+} from '../../../next/runtime-semantics/persisted';
 import { withTempDir } from '../../helpers/temp-dir';
 
 /**
@@ -80,6 +82,20 @@ afterEach(async () => {
     () => undefined
   );
 });
+
+const readPersistedRuntimeSemantics = async () => {
+  const raw = await readFile(
+    resolveRouteHandlerRuntimeSemanticsPath(process.cwd()),
+    'utf8'
+  );
+  const parsed = parseRouteHandlerRuntimeSemantics(raw);
+
+  if (parsed == null) {
+    throw new Error('Expected persisted runtime semantics snapshot.');
+  }
+
+  return parsed;
+};
 
 describe('withSlugSplitter', () => {
   it('registers the config file path and installs the resolved adapter path', async () => {
@@ -219,7 +235,7 @@ describe('withSlugSplitter', () => {
 
     const loadedConfig = await loadRegisteredSlugSplitterConfig();
     expect(loadedConfig).toEqual(TEST_DIRECT_ROUTE_HANDLERS_CONFIG);
-    expect(await readRouteHandlerRuntimeSemantics(process.cwd())).toEqual({
+    expect(await readPersistedRuntimeSemantics()).toEqual({
       localeConfig: {
         locales: ['en', 'de'],
         defaultLocale: 'de'
@@ -247,7 +263,7 @@ describe('withSlugSplitter', () => {
       ...TEST_ASYNC_FACTORY_NEXT_CONFIG,
       adapterPath: resolveSlugSplitterAdapterEntry(process.cwd())
     });
-    expect(await readRouteHandlerRuntimeSemantics(process.cwd())).toEqual({
+    expect(await readPersistedRuntimeSemantics()).toEqual({
       localeConfig: {
         locales: ['en', 'fr'],
         defaultLocale: 'fr'

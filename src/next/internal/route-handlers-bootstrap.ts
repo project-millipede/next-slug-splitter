@@ -1,7 +1,5 @@
-import type { LocaleConfig } from '../../core/types';
 import { resolveRouteHandlersAppConfig } from '../config/app';
 import { loadRegisteredSlugSplitterConfig } from '../integration/slug-splitter-config-loader';
-import { readRouteHandlerRuntimeSemantics } from '../runtime-semantics/read';
 
 import type {
   ResolvedRouteHandlersAppConfig,
@@ -17,11 +15,6 @@ export type RouteHandlersAppContext = {
   appConfig: ResolvedRouteHandlersAppConfig;
   routeHandlersConfig: RouteHandlersConfig | undefined;
 };
-
-const copyLocaleConfig = (localeConfig: LocaleConfig): LocaleConfig => ({
-  locales: [...localeConfig.locales],
-  defaultLocale: localeConfig.defaultLocale
-});
 
 /**
  * Read the app-owned route-handlers config from the current caller or the
@@ -53,28 +46,3 @@ export const resolveRouteHandlersAppContext = (
     routeHandlersConfig
   })
 });
-
-/**
- * Resolve locale data from an explicit locale config or the persisted
- * runtime-semantics snapshot.
- *
- * @param rootDir - Application root directory.
- * @param localeConfig - Optional explicit locale config.
- * @returns Explicit or persisted locale config, otherwise `null`.
- */
-export const resolveLocaleConfigFromInputOrRuntimeSemantics = async (
-  rootDir: string,
-  localeConfig?: LocaleConfig
-): Promise<LocaleConfig | null> => {
-  if (localeConfig != null) {
-    return copyLocaleConfig(localeConfig);
-  }
-
-  const persistedRuntimeSemantics = await readRouteHandlerRuntimeSemantics(
-    rootDir
-  );
-
-  return persistedRuntimeSemantics == null
-    ? null
-    : copyLocaleConfig(persistedRuntimeSemantics.localeConfig);
-};
