@@ -20,6 +20,10 @@ const localeConfig = {
   locales: ['en', 'de'],
   defaultLocale: 'en'
 };
+const singleLocaleConfig = {
+  locales: ['en'],
+  defaultLocale: 'en'
+};
 const docsConfig = {
   targetId: 'docs',
   routeBasePath: '/docs',
@@ -43,6 +47,16 @@ const blogConfig = {
   }
 };
 const resolvedTargets = [docsConfig, blogConfig];
+const singleLocaleResolvedTargets = [
+  {
+    ...docsConfig,
+    localeConfig: singleLocaleConfig
+  },
+  {
+    ...blogConfig,
+    localeConfig: singleLocaleConfig
+  }
+];
 
 describe('proxy lazy request resolution', () => {
   beforeEach(() => {
@@ -56,6 +70,20 @@ describe('proxy lazy request resolution', () => {
       kind: 'no-target',
       pathname: '/marketing/launch'
     });
+  });
+
+  test('does not treat default-locale-prefixed public aliases as valid in single-locale mode', async () => {
+    await expect(
+      resolveRouteHandlerLazyRequest(
+        '/en/docs/getting-started',
+        singleLocaleResolvedTargets
+      )
+    ).resolves.toEqual({
+      kind: 'no-target',
+      pathname: '/en/docs/getting-started'
+    });
+
+    expect(resolveLocalizedContentRouteMock).not.toHaveBeenCalled();
   });
 
   type Scenario = {

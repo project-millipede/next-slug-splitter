@@ -1,5 +1,8 @@
 import { toRoutePath } from '../../core/discovery';
-import type { HeavyRouteCandidate } from '../../core/types';
+import type {
+  HeavyRouteCandidate,
+  LocaleConfig
+} from '../../core/types';
 import { dedupeRewriteIdentities } from './identity';
 import type { RewriteRecord } from '../types';
 
@@ -22,7 +25,7 @@ const sortRewriteRecords = (
  */
 export const buildRouteRewriteEntries = ({
   heavyRoutes,
-  defaultLocale,
+  localeConfig,
   routeBasePath
 }: {
   /**
@@ -30,15 +33,17 @@ export const buildRouteRewriteEntries = ({
    */
   heavyRoutes: Array<HeavyRouteCandidate>;
   /**
-   * Default locale of the target.
+   * Locale configuration of the target.
    */
-  defaultLocale: string;
+  localeConfig: LocaleConfig;
   /**
    * Route base path owned by the target.
    */
   routeBasePath: string;
 }): Array<RewriteRecord> => {
   const rewrites: Array<RewriteRecord> = [];
+  const shouldEmitDefaultLocalePrefixedAlias =
+    localeConfig.locales.length > 1;
 
   /**
    * Push one route-handler rewrite.
@@ -58,17 +63,31 @@ export const buildRouteRewriteEntries = ({
     const sourceRoutePath = toRoutePath(routeBasePath, entry.slugArray);
     const destinationBase = `${routeBasePath}/_handlers/${entry.handlerRelativePath}`;
 
-    if (entry.locale === defaultLocale) {
-      // Default-locale targets need both the locale-less public route and the
-      // locale-prefixed variant to land on the same generated handler.
+    if (entry.locale === localeConfig.defaultLocale) {
+      /**
+       * Default-locale routes follow two rules:
+       *
+       * 1. They always own the canonical locale-less public path.
+       * 2. They only keep the explicit /<defaultLocale>/... alias when more
+       *    than one locale is configured.
+       */
       addRewrite(sourceRoutePath, destinationBase);
-      addRewrite(
-        `/${entry.locale}${sourceRoutePath}`,
-        `/${entry.locale}${destinationBase}`
-      );
+
+      if (shouldEmitDefaultLocalePrefixedAlias) {
+        addRewrite(
+          `/${entry.locale}${sourceRoutePath}`,
+          `/${entry.locale}${destinationBase}`
+        );
+      }
+
       continue;
     }
 
+    /**
+     * Non-default-locale routes follow one rule:
+     *
+     * 1. They are only public through their explicit /<locale>/... prefix.
+     */
     addRewrite(
       `/${entry.locale}${sourceRoutePath}`,
       `/${entry.locale}${destinationBase}`
