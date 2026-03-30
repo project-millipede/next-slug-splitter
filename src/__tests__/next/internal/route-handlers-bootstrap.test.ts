@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const loadRegisteredSlugSplitterConfigMock = vi.hoisted(() => vi.fn());
 const resolveRouteHandlersAppConfigMock = vi.hoisted(() => vi.fn());
-const readRouteHandlerRuntimeSemanticsMock = vi.hoisted(() => vi.fn());
 
 vi.mock(import('../../../next/integration/slug-splitter-config-loader'), () => ({
   loadRegisteredSlugSplitterConfig: loadRegisteredSlugSplitterConfigMock
@@ -12,13 +11,8 @@ vi.mock(import('../../../next/config/app'), () => ({
   resolveRouteHandlersAppConfig: resolveRouteHandlersAppConfigMock
 }));
 
-vi.mock(import('../../../next/runtime-semantics/read'), () => ({
-  readRouteHandlerRuntimeSemantics: readRouteHandlerRuntimeSemanticsMock
-}));
-
 import {
   loadRouteHandlersConfigOrRegistered,
-  resolveLocaleConfigFromInputOrRuntimeSemantics,
   resolveRouteHandlersAppContext
 } from '../../../next/internal/route-handlers-bootstrap';
 
@@ -66,44 +60,6 @@ describe('route-handlers bootstrap helpers', () => {
     expect(result).toEqual({
       routeHandlersConfig,
       appConfig: TEST_APP_CONFIG
-    });
-  });
-
-  it('uses the explicit localeConfig without reading persisted runtime semantics', async () => {
-    const explicitLocaleConfig = {
-      locales: ['en', 'de'],
-      defaultLocale: 'en'
-    };
-
-    const result = await resolveLocaleConfigFromInputOrRuntimeSemantics(
-      TEST_ROOT_DIR,
-      explicitLocaleConfig
-    );
-
-    expect(readRouteHandlerRuntimeSemanticsMock).not.toHaveBeenCalled();
-    expect(result).toEqual(explicitLocaleConfig);
-    expect(result).not.toBe(explicitLocaleConfig);
-  });
-
-  it('reads persisted runtime semantics exactly once when localeConfig is omitted', async () => {
-    readRouteHandlerRuntimeSemanticsMock.mockResolvedValue({
-      localeConfig: {
-        locales: ['en', 'fr'],
-        defaultLocale: 'fr'
-      }
-    });
-
-    const result = await resolveLocaleConfigFromInputOrRuntimeSemantics(
-      TEST_ROOT_DIR
-    );
-
-    expect(readRouteHandlerRuntimeSemanticsMock).toHaveBeenCalledTimes(1);
-    expect(readRouteHandlerRuntimeSemanticsMock).toHaveBeenCalledWith(
-      TEST_ROOT_DIR
-    );
-    expect(result).toEqual({
-      locales: ['en', 'fr'],
-      defaultLocale: 'fr'
     });
   });
 });

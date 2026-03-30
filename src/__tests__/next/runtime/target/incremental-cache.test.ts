@@ -24,17 +24,15 @@ import {
 } from '../../../helpers/fixtures';
 import { withTempDir } from '../../../helpers/temp-dir';
 
-import type { NextConfigLike } from '../../../../next/config/load-next-config';
+import type { LocaleConfig } from '../../../../core/types';
 import type {
   RouteHandlersConfig,
   RouteHandlersTargetConfig
 } from '../../../../next/types';
 
-const TEST_NEXT_CONFIG: NextConfigLike = {
-  i18n: {
-    locales: ['en'],
-    defaultLocale: 'en'
-  }
+const TEST_LOCALE_CONFIG: LocaleConfig = {
+  locales: ['en'],
+  defaultLocale: 'en'
 };
 
 const createCountedProcessorSource = (logPath: string): string =>
@@ -156,12 +154,12 @@ describe('fresh target execution', () => {
 
       const firstResult = await executeRouteHandlerNextPipeline({
         routeHandlersConfig,
-        nextConfig: TEST_NEXT_CONFIG,
+        localeConfig: TEST_LOCALE_CONFIG,
         mode: 'generate'
       });
       const secondResult = await executeRouteHandlerNextPipeline({
         routeHandlersConfig,
-        nextConfig: TEST_NEXT_CONFIG,
+        localeConfig: TEST_LOCALE_CONFIG,
         mode: 'generate'
       });
 
@@ -189,7 +187,7 @@ describe('fresh target execution', () => {
 
       await executeRouteHandlerNextPipeline({
         routeHandlersConfig,
-        nextConfig: TEST_NEXT_CONFIG,
+        localeConfig: TEST_LOCALE_CONFIG,
         mode: 'generate'
       });
 
@@ -201,7 +199,7 @@ describe('fresh target execution', () => {
 
       const secondResult = await executeRouteHandlerNextPipeline({
         routeHandlersConfig,
-        nextConfig: TEST_NEXT_CONFIG,
+        localeConfig: TEST_LOCALE_CONFIG,
         mode: 'generate'
       });
 

@@ -1,21 +1,10 @@
-import type { PathLike } from 'node:fs';
 import path from 'node:path';
 
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-const existsSyncMock = vi.hoisted(() => vi.fn<(filePath: PathLike) => boolean>());
 const resolveModuleReferenceToFilePathMock = vi.hoisted(() =>
   vi.fn<(rootDir: string, reference: { kind: string; path?: string; specifier?: string }) => string>()
 );
-
-vi.mock(import('node:fs'), async importOriginal => {
-  const actual = await importOriginal();
-
-  return {
-    ...actual,
-    existsSync: existsSyncMock as typeof actual.existsSync
-  };
-});
 
 vi.mock(import('../../../module-reference'), async importOriginal => {
   const actual = await importOriginal<typeof import('../../../module-reference')>();
@@ -31,10 +20,6 @@ import {
   relativeModule
 } from '../../../module-reference';
 import { createCatchAllRouteHandlersPreset } from '../../../next/config/index';
-import {
-  DEFAULT_NEXT_CONFIG_FILENAMES,
-  findNextConfigPath
-} from '../../../next/config/find-next-config-path';
 import { resolveRouteHandlersAppConfig } from '../../../next/config/app';
 import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../../next/config/resolve-configs';
 import { normalizeRouteHandlersTargetOptions } from '../../../next/config/resolve-target';
@@ -102,7 +87,6 @@ const TEST_RESOLVED_APP_CONFIG = createResolvedAppConfig(TEST_APP);
 
 describe('next config helpers', () => {
   beforeEach(() => {
-    existsSyncMock.mockReset();
     resolveModuleReferenceToFilePathMock.mockReset();
     resolveModuleReferenceToFilePathMock.mockImplementation(
       (rootDir, reference) => {
@@ -121,50 +105,6 @@ describe('next config helpers', () => {
         throw new Error('Unexpected module reference in test.');
       }
     );
-  });
-
-  test('exposes stable default Next config filenames', () => {
-    expect(DEFAULT_NEXT_CONFIG_FILENAMES).toEqual([
-      'next.config.ts',
-      'next.config.js',
-      'next.config.mjs',
-      'next.config.cjs'
-    ]);
-  });
-
-  describe('findNextConfigPath', () => {
-    type Scenario = {
-      id: string;
-      description: string;
-      existingFiles: Array<string>;
-      expected: string | undefined;
-    };
-
-    const scenarios: ReadonlyArray<Scenario> = [
-      {
-        id: 'First-Supported',
-        description: 'returns the first supported config filename that exists',
-        existingFiles: [
-          path.join(TEST_APP.rootDir, 'next.config.js'),
-          path.join(TEST_APP.rootDir, 'next.config.mjs')
-        ],
-        expected: path.join(TEST_APP.rootDir, 'next.config.js')
-      },
-      {
-        id: 'No-Match',
-        description: 'returns undefined when no supported default config exists',
-        existingFiles: [],
-        expected: undefined
-      }
-    ];
-
-    test.for(scenarios)('[$id] $description', ({ existingFiles, expected }) => {
-      existsSyncMock.mockImplementation(filePath =>
-        existingFiles.includes(String(filePath))
-      );
-
-      expect(findNextConfigPath(TEST_APP.rootDir)).toBe(expected);
-    });
   });
 
   describe('createCatchAllRouteHandlersPreset', () => {
