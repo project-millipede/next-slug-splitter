@@ -28,7 +28,7 @@ export const resolveRouteHandlerHeavyRewriteDestination = (
 ): string | null => {
   const rewrites = buildRouteRewriteEntries({
     heavyRoutes: [plannedHeavyRoute],
-    defaultLocale: config.localeConfig.defaultLocale,
+    localeConfig: config.localeConfig,
     routeBasePath: config.routeBasePath
   });
 

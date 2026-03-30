@@ -1,6 +1,4 @@
-import type {
-  ResolvedRouteHandlersConfig
-} from '../../types';
+import type { ResolvedRouteHandlersConfig } from '../../types';
 import { normalizeRouteBasePath } from '../../config/options';
 
 /**
@@ -57,38 +55,45 @@ const toLocalizedRouteMatcher = (
     : `/${locale}${routeBasePath}/:path*`;
 
 /**
- * Build the static matcher list embedded into the generated root `proxy.ts`.
+ * Builds the static proxy matcher list embedded into the generated root
+ * `proxy.ts`.
  *
- * @param resolvedConfigs - Fully resolved target configs.
- * @returns Sorted, deduplicated proxy matcher strings.
+ * @param resolvedConfigs - Fully resolved target configurations.
+ * @returns A sorted, deduplicated array of proxy matcher strings.
  *
  * @remarks
- * The matchers cover:
- * - the locale-less target route base path
- * - every locale-prefixed variant of that route base path
- *
- * Data requests (`/_next/data/...`) are intentionally NOT matched. Next
- * normalizes those into public pathnames before the proxy sees them, so the
- * proxy only needs to match public page routes.
+ * Matcher Coverage & Behavior:
+ * - Included Paths:
+ *   Covers the locale-less target route base path and, when multiple locales
+ *   are configured, every locale-prefixed variant.
+ * - Excluded Paths:
+ *   Data requests (`/_next/data/...`) are intentionally NOT matched.
+ *   Next.js normalizes these into public pathnames before proxy evaluation,
+ *   limiting the proxy's responsibility to public page routes.
  */
 export const buildRouteHandlerProxyMatchers = (
   resolvedConfigs: Array<ResolvedRouteHandlersConfig>
 ): Array<string> => {
+  // Use a Set to automatically deduplicate overlapping matchers across configs.
   const matchers = new Set<string>();
 
   for (const config of resolvedConfigs) {
-    // Every target should match its locale-less public route so default-locale
-    // navigation and applications without explicit locale prefixes are covered.
+    // 1. Every target owns the canonical locale-less public path.
     matchers.add(toRouteMatcher(config.routeBasePath));
 
+    // 2. Single-locale apps do not expose /<locale>/... public aliases.
+    if (config.localeConfig.locales.length === 1) {
+      continue;
+    }
+
+    // 3. Multi-locale apps need explicit locale-prefixed matchers because proxy
+    //    matching happens before runtime code can interpret the pathname.
     for (const locale of config.localeConfig.locales) {
-      // Locale-prefixed requests need their own static matcher because Proxy
-      // matcher evaluation happens before our runtime code can inspect the
-      // pathname and decide whether it belongs to a localized heavy route.
       matchers.add(toLocalizedRouteMatcher(locale, config.routeBasePath));
     }
   }
 
+  // 4. Convert the deduplicated set to a sorted array for deterministic output.
   return [...matchers].sort((left, right) => left.localeCompare(right));
 };
 

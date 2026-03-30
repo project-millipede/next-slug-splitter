@@ -49,10 +49,15 @@ const createMultiTargetConfig = (rootDir: string): RouteHandlersConfig => ({
 
 const createResolvedConfigs = ({
   rootDir,
-  routeHandlersConfig
+  routeHandlersConfig,
+  localeConfig = {
+    locales: ['en', 'de'],
+    defaultLocale: 'en'
+  }
 }: {
   rootDir: string;
   routeHandlersConfig: RouteHandlersConfig;
+  localeConfig?: ResolvedRouteHandlersConfig['localeConfig'];
 }): Array<ResolvedRouteHandlersConfig> => {
   const targets = Array.isArray(routeHandlersConfig.targets)
     ? routeHandlersConfig.targets
@@ -60,10 +65,7 @@ const createResolvedConfigs = ({
 
   return targets.map((targetConfig, targetIndex) => ({
     routeBasePath: targetConfig.routeBasePath,
-    localeConfig: {
-      locales: ['en', 'de'],
-      defaultLocale: 'en'
-    }
+    localeConfig
   })) as Array<ResolvedRouteHandlersConfig>;
 };
 
@@ -116,6 +118,41 @@ describe('generated proxy file lifecycle', () => {
       expect(proxySource).toContain('const CONFIG_REGISTRATION = {');
       expect(proxySource).toContain('configPath: undefined');
       expect(proxySource).toContain('rootDir: undefined');
+    });
+  });
+
+  it('does not emit locale-prefixed proxy matchers for single-locale targets', async () => {
+    await withTempDir('next-slug-splitter-synthetic-proxy-', async rootDir => {
+      const routeHandlersConfig = createMultiTargetConfig(rootDir);
+      const proxyPath = path.join(rootDir, 'proxy.ts');
+      const resolvedConfigs = createResolvedConfigs({
+        rootDir,
+        routeHandlersConfig,
+        localeConfig: {
+          locales: ['en'],
+          defaultLocale: 'en'
+        }
+      });
+
+      vi.stubEnv('NODE_ENV', 'development');
+
+      await synchronizeRouteHandlerProxyFile({
+        rootDir,
+        strategy: resolveRouteHandlerRoutingStrategy(
+          PHASE_DEVELOPMENT_SERVER,
+          createDevelopmentRoutingPolicy({
+            routeHandlersConfig
+          })
+        ),
+        resolvedConfigs
+      });
+
+      const proxySource = await readFile(proxyPath, 'utf8');
+
+      expect(proxySource).toContain("'/docs/:path*'");
+      expect(proxySource).toContain("'/blog/:path*'");
+      expect(proxySource).not.toContain("'/en/docs/:path*'");
+      expect(proxySource).not.toContain("'/en/blog/:path*'");
     });
   });
 

@@ -32,7 +32,7 @@ export const buildRouteHandlerNextResult = (
   })),
   rewrites: buildRouteRewriteEntries({
     heavyRoutes: pipelineResult.heavyPaths,
-    defaultLocale: config.localeConfig.defaultLocale,
+    localeConfig: config.localeConfig,
     routeBasePath: config.routeBasePath
   })
 });

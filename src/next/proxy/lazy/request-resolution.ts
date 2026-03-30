@@ -1,6 +1,4 @@
-import {
-  resolveLocalizedContentRoute
-} from '../../../core/discovery';
+import { resolveLocalizedContentRoute } from '../../../core/discovery';
 import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../config/resolve-configs';
 
 import type { LocaleConfig } from '../../../core/types';
@@ -13,6 +11,7 @@ import type {
   RouteHandlerLazyResolvedTarget,
   RouteHandlerLazyRequestResolution
 } from './types';
+import { isNonEmptyString } from '../../../utils/type-guards-extended';
 
 /**
  * Target-local lazy request resolution for the dev proxy path.
@@ -38,94 +37,94 @@ import type {
  */
 
 /**
- * Split a public pathname into normalized path segments.
+ * Splits a path into clean, validated segments.
  *
- * @param pathname - Public pathname without query string.
- * @returns Ordered non-empty path segments.
+ * @param path - The raw pathname or base path.
+ * @returns Ordered non-empty segments that satisfy {@link isNonEmptyString}.
+ *
+ * @example
+ * toSegments('/de/docs/'); // ['de', 'docs']
+ * toSegments('/');         // []
  */
-const toPathSegments = (pathname: string): Array<string> =>
-  pathname.split('/').filter(segment => segment.length > 0);
+const toSegments = (path: string): string[] =>
+  path.split('/').filter(isNonEmptyString);
 
 /**
- * Split a configured route base path into normalized path segments.
+ * Derives a locale-aware request identity for a specific target configuration.
  *
- * @param routeBasePath - Normalized target route base path.
- * @returns Ordered base-path segments.
- */
-const toRouteBasePathSegments = (routeBasePath: string): Array<string> =>
-  routeBasePath === '/'
-    ? []
-    : routeBasePath.split('/').filter(segment => segment.length > 0);
-
-/**
- * Check whether one ordered segment array starts with another.
+ * @remarks
+ * Locale Routing Behavior & Priority:
  *
- * @param segments - Candidate full segment list.
- * @param prefixSegments - Required prefix.
- * @returns `true` when `segments` starts with `prefixSegments`.
- */
-const hasSegmentPrefix = (
-  segments: Array<string>,
-  prefixSegments: Array<string>
-): boolean =>
-  prefixSegments.every((segment, index) => segments[index] === segment);
-
-/**
- * Try to derive one locale-aware request identity for a specific target config.
+ * Single vs. Multi-Locale:
+ *   Locale-prefixed paths are only accepted when multiple locales are configured.
+ *   Locale-less paths automatically resolve to the default locale.
+ *
+ * Reserved Namespace:
+ *   In multi-locale applications, locale codes function as reserved leading
+ *   path segments.
+ *   Example:
+ *     If configured locales are `['en', 'de']`, the leading segment `/de` strictly
+ *     designates the German locale namespace.
+ *
+ * Matching Precedence:
+ *   A path starting with a locale code is always interpreted as that locale,
+ *   never as a literal route base path.
+ *   Example:
+ *     A request to `/de/shop` for a root target resolves to the `de` locale with
+ *     the slug `shop`, not as a default-locale slug starting with `de`.
+ *
+ * Configuration Enforcement:
+ *   To prevent silently unreachable routes, configuration validation must
+ *   explicitly reject route base paths that begin with an active locale code.
+ *   Example:
+ *     Initializing a config with `routeBasePath: '/de/docs'` must throw a
+ *     validation error at startup if `de` is an active locale.
  *
  * @param pathname - Public pathname to interpret.
  * @param config - Candidate target config that may own the pathname.
- * @returns Locale/slug identity when the target owns the pathname, otherwise
- * `null`.
- *
- * @remarks
- * Matching rules intentionally mirror the existing rewrite behavior:
- * - locale-prefixed paths are accepted for any configured locale
- * - locale-less paths resolve to the default locale
- * - locale-prefixed matching is checked first so `/de/...` for a root target is
- *   interpreted as locale `de`, not as a default-locale slug starting with
- *   `"de"`
+ * @returns Locale/slug identity when the target owns the pathname, otherwise `null`.
  */
 const resolveRequestIdentityForConfig = (
   pathname: string,
   config: RouteHandlerLazyResolvedTarget
 ): RouteHandlerLazyRequestIdentity | null => {
-  const pathnameSegments = toPathSegments(pathname);
-  const routeBasePathSegments = toRouteBasePathSegments(config.routeBasePath);
-  const [firstSegment] = pathnameSegments;
+  const { locales, defaultLocale } = config.localeConfig;
 
-  if (
-    typeof firstSegment === 'string' &&
-    config.localeConfig.locales.includes(firstSegment)
-  ) {
-    const remainingSegments = pathnameSegments.slice(1);
+  // Normalize the pathname and the configured base path into segment arrays.
+  const allSegments = toSegments(pathname);
+  const baseSegments = toSegments(config.routeBasePath);
 
-    if (
-      hasSegmentPrefix(remainingSegments, routeBasePathSegments)
-    ) {
-      // Locale-prefixed public paths are resolved directly to the explicit
-      // locale carried in the URL. The slug is whatever remains after the route
-      // base path.
-      return {
-        pathname,
-        locale: firstSegment,
-        slugArray: remainingSegments.slice(routeBasePathSegments.length)
-      };
-    }
-  }
+  // 1. Determine if the path starts with a valid locale prefix.
+  //    Using destructuring allows us to peek at the first segment without
+  //    mutating the array.
+  const [first, ...afterFirst] = allSegments;
+  const isLocale = locales.length > 1 && locales.includes(first);
 
-  if (
-    !hasSegmentPrefix(pathnameSegments, routeBasePathSegments)
-  ) {
+  // 2. Select the active segments and the resolved locale.
+  //    If a locale prefix is present, matching starts after the locale segment.
+  const activeSegments = isLocale ? afterFirst : allSegments;
+  const locale = isLocale ? (first as string) : defaultLocale;
+
+  // 3. Verify that the active segments match the required base path prefix.
+  const isMatch = baseSegments.every(
+    (segment, index) => activeSegments[index] === segment
+  );
+
+  // 4. Validate ownership of the pathname.
+  //    If the base path prefix does not match,
+  //    the configuration does not own this pathname.
+  if (!isMatch) {
     return null;
   }
 
-  // Locale-less public paths are treated as default-locale requests. This
-  // mirrors the existing rewrite behavior for default-locale heavy routes.
+  // 5. Extract the slug segments.
+  // The slug consists of all segments remaining after the matched base path.
+  const slugArray = activeSegments.slice(baseSegments.length);
+
   return {
     pathname,
-    locale: config.localeConfig.defaultLocale,
-    slugArray: pathnameSegments.slice(routeBasePathSegments.length)
+    locale,
+    slugArray
   };
 };
 

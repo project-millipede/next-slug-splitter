@@ -9,6 +9,7 @@ import {
   resolveLocaleConfigFromArgv,
   resolveRouteHandlersConfigPathFromArgv
 } from './options';
+import { formatRouteHandlerCliSummary } from './summary';
 
 /**
  * Execute the next-slug-splitter CLI.
@@ -49,9 +50,7 @@ const main = async (): Promise<void> => {
 
   console.log(
     formatNextSlugSplitterMessage(
-      `analyzed ${result.analyzedCount} route paths, selected ${result.heavyCount} heavy paths, produced ${result.rewrites.length} rewrite entries${
-        analyzeOnly ? ' (analyze-only)' : ''
-      }.`
+      formatRouteHandlerCliSummary(result, analyzeOnly)
     )
   );
 };
