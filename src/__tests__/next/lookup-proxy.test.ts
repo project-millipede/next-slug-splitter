@@ -6,93 +6,93 @@ vi.mock(import('../../next/lookup-persisted'), () => ({
   readRouteHandlerLookupSnapshot: readRouteHandlerLookupSnapshotMock
 }));
 
-import {
-  loadRouteHandlerCacheLookup,
-  shouldFilterHeavyRoutesInStaticPaths
-} from '../../next/lookup';
+import { withHeavyRouteFilter } from '../../next/lookup';
 import { TEST_PRIMARY_ROUTE_SEGMENT } from '../helpers/fixtures';
 
-describe('route handler cache lookup proxy behavior', () => {
+const EMPTY_CONTEXT = {} as Parameters<
+  ReturnType<typeof withHeavyRouteFilter>
+>[0];
+
+describe('withHeavyRouteFilter snapshot integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  test('returns original paths when filtering is disabled in the snapshot', async () => {
     readRouteHandlerLookupSnapshotMock.mockResolvedValue({
       version: 1,
       filterHeavyRoutesInStaticPaths: false,
       targets: [
+        { targetId: TEST_PRIMARY_ROUTE_SEGMENT, heavyRoutePathKeys: [] }
+      ]
+    });
+
+    const paths = [{ params: { slug: ['a'] }, locale: 'en' }];
+    const getStaticPaths = withHeavyRouteFilter({
+      targetId: TEST_PRIMARY_ROUTE_SEGMENT,
+      getStaticPaths: async () => ({ paths, fallback: false })
+    });
+
+    const result = await getStaticPaths(EMPTY_CONTEXT);
+    expect(result.paths).toEqual(paths);
+  });
+
+  test('filters heavy routes when filtering is enabled in the snapshot', async () => {
+    readRouteHandlerLookupSnapshotMock.mockResolvedValue({
+      version: 1,
+      filterHeavyRoutesInStaticPaths: true,
+      targets: [
         {
           targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-          heavyRoutePathKeys: []
+          heavyRoutePathKeys: ['en:generated']
         }
       ]
     });
+
+    const getStaticPaths = withHeavyRouteFilter({
+      targetId: TEST_PRIMARY_ROUTE_SEGMENT,
+      getStaticPaths: async () => ({
+        paths: [
+          { params: { slug: ['generated'] }, locale: 'en' },
+          { params: { slug: ['other'] }, locale: 'en' }
+        ],
+        fallback: false
+      })
+    });
+
+    const result = await getStaticPaths(EMPTY_CONTEXT);
+    expect(result.paths).toEqual([
+      { params: { slug: ['other'] }, locale: 'en' }
+    ]);
   });
 
-  describe('shouldFilterHeavyRoutesInStaticPaths', () => {
-    test('reads the persisted lookup snapshot', async () => {
-      readRouteHandlerLookupSnapshotMock.mockResolvedValue({
-        version: 1,
-        filterHeavyRoutesInStaticPaths: true,
-        targets: []
-      });
+  test('fails with a targeted bootstrap error when the snapshot is missing', async () => {
+    readRouteHandlerLookupSnapshotMock.mockResolvedValue(null);
 
-      await expect(
-        shouldFilterHeavyRoutesInStaticPaths()
-      ).resolves.toBe(true);
+    const getStaticPaths = withHeavyRouteFilter({
+      targetId: TEST_PRIMARY_ROUTE_SEGMENT,
+      getStaticPaths: async () => ({ paths: [], fallback: false })
     });
 
-    test('fails with a targeted bootstrap error when the lookup snapshot is missing', async () => {
-      readRouteHandlerLookupSnapshotMock.mockResolvedValue(null);
-
-      await expect(
-        shouldFilterHeavyRoutesInStaticPaths()
-      ).rejects.toThrow('Missing route-handler lookup snapshot.');
-    });
+    await expect(getStaticPaths(EMPTY_CONTEXT)).rejects.toThrow(
+      'Missing route-handler lookup snapshot.'
+    );
   });
 
-  describe('loadRouteHandlerCacheLookup', () => {
-    test('reads heavy-route ownership from the persisted lookup snapshot', async () => {
-      readRouteHandlerLookupSnapshotMock.mockResolvedValue({
-        version: 1,
-        filterHeavyRoutesInStaticPaths: true,
-        targets: [
-          {
-            targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-            heavyRoutePathKeys: ['en:generated']
-          }
-        ]
-      });
-
-      const lookup = await loadRouteHandlerCacheLookup(
-        TEST_PRIMARY_ROUTE_SEGMENT
-      );
-
-      expect(lookup.isHeavyRoute('en', ['generated'])).toBe(true);
-      expect(lookup.isHeavyRoute('en', ['other'])).toBe(false);
+  test('fails when the requested target does not exist in the snapshot', async () => {
+    readRouteHandlerLookupSnapshotMock.mockResolvedValue({
+      version: 1,
+      filterHeavyRoutesInStaticPaths: true,
+      targets: [{ targetId: 'blog', heavyRoutePathKeys: [] }]
     });
 
-    test('fails with a targeted bootstrap error when no snapshot is available', async () => {
-      readRouteHandlerLookupSnapshotMock.mockResolvedValue(null);
-
-      await expect(
-        loadRouteHandlerCacheLookup(TEST_PRIMARY_ROUTE_SEGMENT)
-      ).rejects.toThrow('Missing route-handler lookup snapshot.');
+    const getStaticPaths = withHeavyRouteFilter({
+      targetId: TEST_PRIMARY_ROUTE_SEGMENT,
+      getStaticPaths: async () => ({ paths: [], fallback: false })
     });
 
-    test('fails when the requested target does not exist', async () => {
-      readRouteHandlerLookupSnapshotMock.mockResolvedValue({
-        version: 1,
-        filterHeavyRoutesInStaticPaths: true,
-        targets: [
-          {
-            targetId: 'blog',
-            heavyRoutePathKeys: []
-          }
-        ]
-      });
-
-      await expect(
-        loadRouteHandlerCacheLookup(TEST_PRIMARY_ROUTE_SEGMENT)
-      ).rejects.toThrow(`Unknown targetId "${TEST_PRIMARY_ROUTE_SEGMENT}".`);
-    });
+    await expect(getStaticPaths(EMPTY_CONTEXT)).rejects.toThrow(
+      `Unknown targetId "${TEST_PRIMARY_ROUTE_SEGMENT}".`
+    );
   });
 });

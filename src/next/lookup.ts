@@ -92,40 +92,6 @@ const createHeavyRouteLookupFromSnapshot = (
  */
 
 /**
- * Decide whether page-time `getStaticPaths` should actively filter out heavy
- * routes right now.
- *
- * @returns `true` when `getStaticPaths` should exclude heavy routes from the
- * light catch-all page, `false` when page-time filtering should be skipped.
- *
- * @remarks
- * This helper intentionally exposes the higher-level policy question instead of
- * leaking snapshot details into app code.
- */
-export const shouldFilterHeavyRoutesInStaticPaths =
-  async (): Promise<boolean> =>
-    (await readRequiredRouteHandlerLookupSnapshot())
-      .filterHeavyRoutesInStaticPaths;
-
-/**
- * Read heavy-route membership for a single target from the persisted route-
- * handler lookup snapshot.
- *
- * @param targetId - Stable target identifier whose heavy-route membership should be exposed.
- * @returns A semantic heavy-route lookup scoped to one configured target.
- *
- * @throws If the target is unknown.
- * @throws If the persisted lookup snapshot is missing or invalid.
- */
-export const loadRouteHandlerCacheLookup = async (
-  targetId: string
-): Promise<RouteHandlerHeavyRouteLookup> =>
-  createHeavyRouteLookupFromSnapshot(
-    targetId,
-    await readRequiredRouteHandlerLookupSnapshot(targetId)
-  );
-
-/**
  * Normalize a slug value to an array for heavy-route lookup.
  *
  * Handles both single-segment routes (`[slug]`) where the slug is a string
@@ -215,13 +181,20 @@ export const withHeavyRouteFilter = ({
 }: WithHeavyRouteFilterOptions): GetStaticPaths => {
   return async context => {
     const result = await getStaticPaths(context);
-    const shouldFilter = await shouldFilterHeavyRoutesInStaticPaths();
 
-    if (!shouldFilter) {
+    // 1. Load the single persisted route-handler lookup snapshot for this target.
+    const snapshot = await readRequiredRouteHandlerLookupSnapshot(targetId);
+
+    // 2. If page-time filtering is disabled, return the original paths unchanged.
+    if (!snapshot.filterHeavyRoutesInStaticPaths) {
       return result;
     }
 
-    const heavyRouteLookup = await loadRouteHandlerCacheLookup(targetId);
+    // 3. Derive target-scoped heavy-route membership and filter the path list.
+    const heavyRouteLookup = createHeavyRouteLookupFromSnapshot(
+      targetId,
+      snapshot
+    );
 
     return filterStaticPathsAgainstHeavyRoutes(
       result.paths,

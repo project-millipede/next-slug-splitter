@@ -9,10 +9,6 @@ import {
   serializeRouteHandlerLookupSnapshot,
   writeRouteHandlerLookupSnapshot
 } from '../../next/lookup-persisted';
-import {
-  loadRouteHandlerCacheLookup,
-  shouldFilterHeavyRoutesInStaticPaths
-} from '../../next/lookup';
 import { createHeavyRoute } from '../helpers/builders';
 import { withTempDir } from '../helpers/temp-dir';
 
@@ -106,15 +102,13 @@ describe('route-handler lookup snapshot persistence', () => {
         )
       );
 
-      await expect(
-        shouldFilterHeavyRoutesInStaticPaths()
-      ).resolves.toBe(true);
+      const snapshot = await readRouteHandlerLookupSnapshot(rootDir);
 
-      const lookup = await loadRouteHandlerCacheLookup('docs');
-
-      expect(lookup.targetId).toBe('docs');
-      expect(lookup.isHeavyRoute('en', ['recognition'])).toBe(true);
-      expect(lookup.isHeavyRoute('en', ['light-page'])).toBe(false);
+      expect(snapshot).not.toBeNull();
+      expect(snapshot!.filterHeavyRoutesInStaticPaths).toBe(true);
+      expect(snapshot!.targets).toEqual([
+        { targetId: 'docs', heavyRoutePathKeys: ['en:recognition'] }
+      ]);
     });
   });
 
@@ -122,9 +116,7 @@ describe('route-handler lookup snapshot persistence', () => {
     await withTempDir('next-slug-splitter-lookup-snapshot-', async rootDir => {
       process.chdir(rootDir);
 
-      await expect(
-        loadRouteHandlerCacheLookup('docs')
-      ).rejects.toThrow('Missing route-handler lookup snapshot.');
+      await expect(readRouteHandlerLookupSnapshot(rootDir)).resolves.toBeNull();
 
       await writeRouteHandlerLookupSnapshot(
         rootDir,
@@ -137,9 +129,6 @@ describe('route-handler lookup snapshot persistence', () => {
       await expect(
         readRouteHandlerLookupSnapshot(rootDir)
       ).resolves.toBeNull();
-      await expect(
-        shouldFilterHeavyRoutesInStaticPaths()
-      ).rejects.toThrow('Missing route-handler lookup snapshot.');
     });
   });
 });
