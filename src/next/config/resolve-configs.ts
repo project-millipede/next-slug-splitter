@@ -9,12 +9,9 @@ import type {
   ResolvedRouteHandlersAppConfig,
   ResolvedRouteHandlersConfig,
   RouteHandlersConfig,
-  RouteHandlersEntrypointInput,
   RouteHandlersTargetConfig
 } from '../types';
 
-import { readProvidedOrRegisteredRouteHandlersConfig } from '../integration/config-registry';
-import { resolveRouteHandlersAppConfig } from './app';
 import {
   type NormalizedRouteHandlersTargetOptions,
   normalizeRouteHandlersTargetOptions,
@@ -22,21 +19,6 @@ import {
   resolveRouteHandlersConfigBase
 } from './resolve-target';
 import { isObjectRecord, readObjectProperty } from './shared';
-
-/**
- * Input for resolving one configured target into a single target config with
- * locale information.
- */
-export type ResolveRouteHandlersConfigInput = RouteHandlersEntrypointInput & {
-  /**
-   * Already-extracted Next runtime semantics.
-   */
-  localeConfig: LocaleConfig;
-  /**
-   * App-owned `RouteHandlersConfig`.
-   */
-  routeHandlersConfig?: RouteHandlersConfig;
-};
 
 type RouteHandlersConfigLike =
   | RouteHandlersConfig
@@ -100,44 +82,6 @@ export const resolveRouteHandlersConfigBaseFromAppConfig = (
     appConfig,
     requireResolvedRouteHandlersConfig(routeHandlersConfig)
   );
-
-/**
- * Resolve one configured target into a single target config with locale
- * information.
- *
- * @param input - Config resolution input.
- * @returns Fully resolved target config with locale data attached.
- */
-export const resolveRouteHandlersConfig = ({
-  rootDir,
-  localeConfig,
-  routeHandlersConfig
-}: ResolveRouteHandlersConfigInput): ResolvedRouteHandlersConfig => {
-  const configuredRouteHandlers =
-    readProvidedOrRegisteredRouteHandlersConfig(routeHandlersConfig);
-  const appConfig = resolveRouteHandlersAppConfig({
-    rootDir,
-    routeHandlersConfig: configuredRouteHandlers
-  });
-
-  return resolveRouteHandlersConfigFromAppConfig(
-    appConfig,
-    localeConfig,
-    configuredRouteHandlers
-  );
-};
-
-/**
- * Input for resolving the base config for every configured target without
- * attaching locale data.
- */
-export type ResolveRouteHandlersConfigBasesInput =
-  RouteHandlersEntrypointInput & {
-    /**
-     * App-owned `RouteHandlersConfig`.
-     */
-    routeHandlersConfig?: RouteHandlersConfig;
-  };
 
 /**
  * Pure normalized target record used to separate target-array interpretation
@@ -242,30 +186,6 @@ export const resolveNormalizedRouteHandlersTargetsFromAppConfig = (
 };
 
 /**
- * Resolve the base config for every configured target without attaching locale
- * data.
- *
- * @param input - Config-base resolution input.
- * @returns Resolved base configs for every configured target.
- */
-export const resolveRouteHandlersConfigBases = ({
-  rootDir,
-  routeHandlersConfig
-}: ResolveRouteHandlersConfigBasesInput): Array<ResolvedRouteHandlersConfigBase> => {
-  const configuredRouteHandlers =
-    readProvidedOrRegisteredRouteHandlersConfig(routeHandlersConfig);
-  const appConfig = resolveRouteHandlersAppConfig({
-    rootDir,
-    routeHandlersConfig: configuredRouteHandlers
-  });
-
-  return resolveRouteHandlersConfigBasesFromAppConfig(
-    appConfig,
-    configuredRouteHandlers
-  );
-};
-
-/**
  * Resolve every configured target from an already-resolved app config.
  *
  * @param appConfig - Resolved app-level config shared by all targets.
@@ -285,31 +205,3 @@ export const resolveRouteHandlersConfigsFromAppConfig = (
     ...resolvedConfig,
     localeConfig: copyLocaleConfig(localeConfig)
   }));
-
-/**
- * Resolve every configured target with locale data attached.
- *
- * @param input Config resolution input.
- * @param input.rootDir Explicit root override from a true entrypoint.
- * @param input.localeConfig Already-extracted locale configuration.
- * @param input.routeHandlersConfig App-owned `RouteHandlersConfig`.
- * @returns Fully resolved target configs for all configured targets.
- */
-export const resolveRouteHandlersConfigs = ({
-  rootDir,
-  localeConfig,
-  routeHandlersConfig
-}: ResolveRouteHandlersConfigInput): Array<ResolvedRouteHandlersConfig> => {
-  const configuredRouteHandlers =
-    readProvidedOrRegisteredRouteHandlersConfig(routeHandlersConfig);
-  const appConfig = resolveRouteHandlersAppConfig({
-    rootDir,
-    routeHandlersConfig: configuredRouteHandlers
-  });
-
-  return resolveRouteHandlersConfigsFromAppConfig(
-    appConfig,
-    localeConfig,
-    configuredRouteHandlers
-  );
-};

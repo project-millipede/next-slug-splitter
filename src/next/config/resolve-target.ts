@@ -123,7 +123,7 @@ const requireSingleRouteHandlersConfig = (
       undefined
     ) {
       throw createConfigError(
-        'Multi-target routeHandlersConfig is not supported in resolveRouteHandlersConfig(...). Use resolveRouteHandlersConfigs(...).'
+        'Multi-target routeHandlersConfig is not supported in single-target resolution. Use the multi-target resolveRouteHandlersConfigsFromAppConfig(...) path.'
       );
     }
   }
