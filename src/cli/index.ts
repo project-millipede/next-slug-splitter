@@ -4,7 +4,10 @@ import process from 'process';
 
 import { loadSlugSplitterConfigFromPath } from '../next/integration/slug-splitter-config-loader';
 import { executeRouteHandlerNextPipeline } from '../next/runtime';
-import { formatNextSlugSplitterMessage } from '../utils/errors';
+import {
+  formatNextSlugSplitterMessage,
+  formatNextSlugSplitterMessageLines
+} from '../utils/messages';
 import {
   resolveLocaleConfigFromArgv,
   resolveRouteHandlersConfigPathFromArgv
@@ -36,7 +39,7 @@ const main = async (): Promise<void> => {
     routeHandlersConfigPath
   );
 
-  const result = await executeRouteHandlerNextPipeline({
+  const results = await executeRouteHandlerNextPipeline({
     rootDir,
     localeConfig,
     routeHandlersConfig,
@@ -44,13 +47,13 @@ const main = async (): Promise<void> => {
   });
 
   if (jsonOutput) {
-    process.stdout.write(`${JSON.stringify(result)}\n`);
+    process.stdout.write(`${JSON.stringify(results)}\n`);
     return;
   }
 
   console.log(
-    formatNextSlugSplitterMessage(
-      formatRouteHandlerCliSummary(result, analyzeOnly)
+    formatNextSlugSplitterMessageLines(
+      formatRouteHandlerCliSummary(results, analyzeOnly)
     )
   );
 };

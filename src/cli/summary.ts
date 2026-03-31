@@ -20,17 +20,22 @@ const formatHandlerSummary = (
  * Formats the rewrite-count clause for the standalone CLI summary.
  *
  * Mirrors the handler summary tense selection while reporting the
- * concrete number of emitted or prospective rewrite entries.
+ * concrete number of emitted or prospective rewrite entries together with the
+ * default-locale-specific rewrite contribution.
  *
- * @param rewriteCount - Number of rewrite entries in the runtime result.
+ * @param rewriteCount - Baseline rewrite count before default-locale additions.
+ * @param rewriteCountOfDefaultLocale - Extra rewrites contributed by the default locale.
  * @param analyzeOnly - Whether the CLI ran in analyze-only mode.
  * @returns Human-readable rewrite-count text.
  */
 const formatRewriteSummary = (
   rewriteCount: number,
+  rewriteCountOfDefaultLocale: number,
   analyzeOnly: boolean
 ): string =>
-  `${analyzeOnly ? 'would produce' : 'produced'} ${rewriteCount} rewrite entries`;
+  `${analyzeOnly ? 'would produce' : 'produced'} ${
+    rewriteCount + rewriteCountOfDefaultLocale
+  } rewrite entries (${rewriteCount} rewrites + ${rewriteCountOfDefaultLocale} of default locale)`;
 
 /**
  * Formats the optional analyze-only suffix for the standalone CLI summary.
@@ -47,33 +52,38 @@ const formatAnalyzeOnlySuffix = (analyzeOnly: boolean): string =>
 /**
  * Formats the standalone CLI result summary.
  *
- * Builds the full summary from smaller clauses to maintain readability
+ * Builds per-target summaries from smaller clauses to maintain readability
  * while keeping generate and analyze-only wording aligned.
  *
- * @param result - Runtime execution result.
+ * @param results - Per-target runtime execution results.
  * @param analyzeOnly - Whether the CLI ran in analyze-only mode.
  * @returns Human-readable summary text.
  */
 export const formatRouteHandlerCliSummary = (
-  result: RouteHandlerNextResult,
+  results: Array<RouteHandlerNextResult>,
   analyzeOnly: boolean
 ): string => {
-  // 1. Prepare static analysis counts.
-  const analyzedSummary = `analyzed ${result.analyzedCount} route paths`;
-  const heavyRouteSummary = `selected ${result.heavyCount} heavy paths`;
+  const summaries = results.map(result => {
+    // 1. Prepare static analysis counts.
+    const analyzedSummary = `analyzed ${result.analyzedCount} route paths`;
+    const heavyRouteSummary = `selected ${result.heavyCount} heavy paths`;
 
-  // 2. Format the handler generation summary with dynamic verb tenses.
-  const handlerSummary = formatHandlerSummary(result.heavyCount, analyzeOnly);
+    // 2. Format the handler generation summary with dynamic verb tenses.
+    const handlerSummary = formatHandlerSummary(result.heavyCount, analyzeOnly);
 
-  // 3. Format the rewrite entry summary to mirror the handler tense.
-  const rewriteSummary = formatRewriteSummary(
-    result.rewrites.length,
-    analyzeOnly
-  );
+    // 3. Format the rewrite entry summary to mirror the handler tense.
+    const rewriteSummary = formatRewriteSummary(
+      result.rewrites.length,
+      result.rewritesOfDefaultLocale.length,
+      analyzeOnly
+    );
 
-  // 4. Determine the optional trailing mode marker.
-  const modeSuffix = formatAnalyzeOnlySuffix(analyzeOnly);
+    // 4. Determine the optional trailing mode marker.
+    const modeSuffix = formatAnalyzeOnlySuffix(analyzeOnly);
 
-  // 5. Assemble the full comma-separated summary sentence.
-  return `${analyzedSummary}, ${heavyRouteSummary}, ${handlerSummary}, ${rewriteSummary}${modeSuffix}.`;
+    // 5. Assemble the full comma-separated summary sentence.
+    return `[${result.targetId}] ${analyzedSummary}, ${heavyRouteSummary}, ${handlerSummary}, ${rewriteSummary}${modeSuffix}.`;
+  });
+
+  return summaries.join('\n');
 };

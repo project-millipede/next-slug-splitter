@@ -1,5 +1,4 @@
-import { dedupeRewriteIdentities } from '../../rewrites/identity';
-import { buildRouteRewriteEntries } from '../../rewrites/index';
+import { buildRouteRewriteBuckets } from '../../rewrites/index';
 
 import type { RouteHandlerPipelineResult } from '../../../core/types';
 import type {
@@ -21,50 +20,24 @@ import type {
 export const buildRouteHandlerNextResult = (
   config: ResolvedRouteHandlersConfig,
   pipelineResult: RouteHandlerPipelineResult
-): RouteHandlerNextResult => ({
-  analyzedCount: pipelineResult.analyzedCount,
-  heavyCount: pipelineResult.heavyCount,
-  // Target tagging is what lets one shared cache record preserve docs/blog
-  // separation for later lookup and generation ownership.
-  heavyPaths: pipelineResult.heavyPaths.map(heavyRoute => ({
-    ...heavyRoute,
-    targetId: config.targetId
-  })),
-  rewrites: buildRouteRewriteEntries({
-    heavyRoutes: pipelineResult.heavyPaths,
-    localeConfig: config.localeConfig,
-    routeBasePath: config.routeBasePath
-  })
-});
-
-/**
- * Merge target-local Next results into the shared cache result shape.
- *
- * @remarks
- * The cache remains one shared record, but heavy-route entries keep their
- * `targetId` so target-local ownership can be recovered later.
- *
- * @param results - Target-local Next results.
- * @returns One merged cache result for all configured targets.
- */
-export const mergeRouteHandlerNextResults = (
-  results: Array<RouteHandlerNextResult>
 ): RouteHandlerNextResult => {
-  const analyzedCount = results.reduce(
-    (count, result) => count + result.analyzedCount,
-    0
+  const rewriteBuckets = buildRouteRewriteBuckets(
+    pipelineResult.heavyPaths,
+    config.localeConfig,
+    config.routeBasePath
   );
-  const heavyCount = results.reduce(
-    (count, result) => count + result.heavyCount,
-    0
-  );
-  const heavyPaths = results.flatMap(result => result.heavyPaths);
-  const rewrites = results.flatMap(result => result.rewrites);
 
   return {
-    analyzedCount,
-    heavyCount,
-    heavyPaths,
-    rewrites: dedupeRewriteIdentities(rewrites)
+    targetId: config.targetId,
+    analyzedCount: pipelineResult.analyzedCount,
+    heavyCount: pipelineResult.heavyCount,
+    // Target tagging is what lets one shared cache record preserve docs/blog
+    // separation for later lookup and generation ownership.
+    heavyPaths: pipelineResult.heavyPaths.map(heavyRoute => ({
+      ...heavyRoute,
+      targetId: config.targetId
+    })),
+    rewrites: rewriteBuckets.rewrites,
+    rewritesOfDefaultLocale: rewriteBuckets.rewritesOfDefaultLocale
   };
 };

@@ -110,6 +110,7 @@ export const createLoadableComponentEntry = (
 export const createPipelineResult = (
   overrides: Partial<RouteHandlerNextResult> = {}
 ): RouteHandlerNextResult => ({
+  targetId: 'test-target',
   analyzedCount: 1,
   heavyCount: 1,
   heavyPaths: [
@@ -127,6 +128,7 @@ export const createPipelineResult = (
       destination: '/content/_handlers/nested/example/de'
     }
   ],
+  rewritesOfDefaultLocale: [],
   ...overrides
 });
 

@@ -6,6 +6,7 @@ import type { RouteHandlerNextResult } from '../../next/types';
 
 describe('cli summary formatting', () => {
   const result: RouteHandlerNextResult = {
+    targetId: 'docs',
     analyzedCount: 4,
     heavyCount: 2,
     heavyPaths: [],
@@ -18,6 +19,18 @@ describe('cli summary formatting', () => {
       {
         source: '/docs/interactive',
         destination: '/docs/_handlers/interactive',
+        locale: false
+      }
+    ],
+    rewritesOfDefaultLocale: [
+      {
+        source: '/en/docs/dashboard',
+        destination: '/en/docs/_handlers/dashboard',
+        locale: false
+      },
+      {
+        source: '/en/docs/interactive',
+        destination: '/en/docs/_handlers/interactive',
         locale: false
       }
     ]
@@ -33,21 +46,23 @@ describe('cli summary formatting', () => {
   const scenarios: Scenario[] = [
     {
       id: 'Generate',
-      description: 'reports concrete handler and rewrite counts for generate mode',
+      description:
+        'reports concrete handler and rewrite counts for generate mode',
       analyzeOnly: false,
       expected:
-        'analyzed 4 route paths, selected 2 heavy paths, generated 2 handlers, produced 2 rewrite entries.'
+        '[docs] analyzed 4 route paths, selected 2 heavy paths, generated 2 handlers, produced 4 rewrite entries (2 rewrites + 2 of default locale).'
     },
     {
       id: 'Analyze',
-      description: 'reports prospective handler and rewrite counts for analyze-only mode',
+      description:
+        'reports prospective handler and rewrite counts for analyze-only mode',
       analyzeOnly: true,
       expected:
-        'analyzed 4 route paths, selected 2 heavy paths, would generate 2 handlers, would produce 2 rewrite entries (analyze-only).'
+        '[docs] analyzed 4 route paths, selected 2 heavy paths, would generate 2 handlers, would produce 4 rewrite entries (2 rewrites + 2 of default locale) (analyze-only).'
     }
   ];
 
   test.for(scenarios)('[$id] $description', ({ analyzeOnly, expected }) => {
-    expect(formatRouteHandlerCliSummary(result, analyzeOnly)).toBe(expected);
+    expect(formatRouteHandlerCliSummary([result], analyzeOnly)).toBe(expected);
   });
 });

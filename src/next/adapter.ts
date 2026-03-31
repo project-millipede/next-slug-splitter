@@ -28,9 +28,7 @@ import {
   loadRouteHandlersConfigOrRegistered,
   resolveRouteHandlersAppContext
 } from './internal/route-handlers-bootstrap';
-import {
-  resolveRegisteredSlugSplitterConfigRegistration
-} from './integration/slug-splitter-config';
+import { resolveRegisteredSlugSplitterConfigRegistration } from './integration/slug-splitter-config';
 import {
   createRouteHandlerLookupSnapshot,
   writeRouteHandlerLookupSnapshot
@@ -44,12 +42,6 @@ import { resolveRouteHandlerRoutingStrategy } from './policy/routing-strategy';
 import { deriveRouteHandlerRuntimeSemantics } from './runtime-semantics/derive';
 import { writeRouteHandlerRuntimeSemantics } from './runtime-semantics/write';
 import { executeResolvedRouteHandlerNextPipeline } from './runtime';
-
-import type {
-  ResolvedRouteHandlersConfig,
-  RouteHandlerNextResult,
-  RewriteRecord
-} from './types';
 
 /**
  * Determine whether the current Next phase should run route-handler
@@ -66,21 +58,6 @@ const isRouteOptimizedPhase = (phase: string): boolean =>
   phase === PHASE_DEVELOPMENT_SERVER ||
   phase === PHASE_PRODUCTION_BUILD ||
   phase === PHASE_PRODUCTION_SERVER;
-
-/**
- * Generate route-handler rewrites for the current app configuration.
- *
- * @param resolvedConfigs - Fully resolved target configs for generation.
- * @returns Generated route-handler rewrites.
- */
-const generateRewrites = async (
-  resolvedConfigs: Array<ResolvedRouteHandlersConfig>
-): Promise<RouteHandlerNextResult> => {
-  // This is the main hand-off from the adapter layer into the deeper runtime
-  // pipeline. Everything below this call now executes fresh target work and,
-  // in generate mode, rebuilds the emitted handler directories.
-  return executeResolvedRouteHandlerNextPipeline(resolvedConfigs, 'generate');
-};
 
 const routeHandlersAdapter: NextAdapter = {
   name: 'route-handlers-adapter',
@@ -150,7 +127,7 @@ const routeHandlersAdapter: NextAdapter = {
           // Proxy development mode keeps page-time lookup read-only and leaves
           // cold heavy-route ownership discovery to request-time proxy routing.
           false,
-          resolvedConfigs.map(config => config.targetId)
+          []
         )
       );
 
@@ -166,25 +143,32 @@ const routeHandlersAdapter: NextAdapter = {
       });
     }
 
-    // This call is the consumer-facing entrance into the adapter-side
-    // execution stack. From here the request can travel through preparation,
-    // phase-artifact ownership, and fresh runtime execution before rewrites
-    // come back.
-    const rewrites = await generateRewrites(resolvedConfigs);
+    const results = await executeResolvedRouteHandlerNextPipeline(
+      resolvedConfigs,
+      'generate'
+    );
+
     await writeRouteHandlerLookupSnapshot(
       appContext.appConfig.rootDir,
       createRouteHandlerLookupSnapshot(
         // Rewrite/build mode needs an exact heavy/light split up front so
         // `getStaticPaths` can filter heavy routes out of the light page.
         true,
-        resolvedConfigs.map(config => config.targetId),
-        rewrites
+        results
       )
     );
 
     // The returned value is the effective config for the current phase.
     // A wrapped copy is returned so the incoming config object stays unchanged.
-    return withRouteHandlerRewrites(config, rewrites.rewrites);
+    // This is the one intentional flattening boundary: runtime results remain
+    // target-local and bucketed, but Next config installation needs one final
+    // rewrite list.
+    return withRouteHandlerRewrites(config, [
+      ...results.flatMap(result => [
+        ...result.rewrites,
+        ...result.rewritesOfDefaultLocale
+      ])
+    ]);
   }
 };
 

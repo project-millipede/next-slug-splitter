@@ -3,9 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const loadRouteHandlersConfigOrRegisteredMock = vi.hoisted(() => vi.fn());
 const prepareRouteHandlersFromConfigMock = vi.hoisted(() => vi.fn());
-const resolveRouteHandlersConfigsFromAppConfigMock = vi.hoisted(() =>
-  vi.fn()
-);
+const resolveRouteHandlersConfigsFromAppConfigMock = vi.hoisted(() => vi.fn());
 const resolveRouteHandlersAppContextMock = vi.hoisted(() => vi.fn());
 const resolveRouteHandlerRoutingStrategyMock = vi.hoisted(() => vi.fn());
 const synchronizeRouteHandlerProxyFileMock = vi.hoisted(() => vi.fn());
@@ -59,16 +57,16 @@ vi.mock(import('../../next/lookup-persisted'), () => ({
   createRouteHandlerLookupSnapshot: vi.fn(
     (
       filterHeavyRoutesInStaticPaths: boolean,
-      targetIds: Array<string>,
-      result?: {
+      results: Array<{
+        targetId: string;
         heavyPaths?: Array<unknown>;
-      }
+      }>
     ) => ({
       version: 1,
       filterHeavyRoutesInStaticPaths,
-      targets: targetIds.map(targetId => ({
-        targetId,
-        heavyRoutePathKeys: result?.heavyPaths == null ? [] : ['serialized']
+      targets: results.map(result => ({
+        targetId: result.targetId,
+        heavyRoutePathKeys: result.heavyPaths == null ? [] : ['serialized']
       }))
     })
   ),
@@ -121,12 +119,16 @@ describe('route handlers adapter', () => {
     });
     synchronizeRouteHandlerPhaseArtifactsMock.mockResolvedValue(undefined);
     synchronizeRouteHandlerProxyFileMock.mockResolvedValue(undefined);
-    executeResolvedRouteHandlerNextPipelineMock.mockResolvedValue({
-      analyzedCount: 0,
-      heavyCount: 0,
-      heavyPaths: [],
-      rewrites: []
-    });
+    executeResolvedRouteHandlerNextPipelineMock.mockResolvedValue([
+      {
+        targetId: 'docs',
+        analyzedCount: 0,
+        heavyCount: 0,
+        heavyPaths: [],
+        rewrites: [],
+        rewritesOfDefaultLocale: []
+      }
+    ]);
     withRouteHandlerRewritesMock.mockImplementation(config => config);
     writeRouteHandlerRuntimeSemanticsMock.mockResolvedValue(undefined);
     writeRouteHandlerLookupSnapshotMock.mockResolvedValue(undefined);
@@ -138,7 +140,9 @@ describe('route handlers adapter', () => {
     type AdapterConfigInput = Parameters<ModifyConfig>[0];
     const nextConfig = TEST_NEXT_CONFIG as unknown as AdapterConfigInput;
 
-    loadRouteHandlersConfigOrRegisteredMock.mockResolvedValue(routeHandlersConfig);
+    loadRouteHandlersConfigOrRegisteredMock.mockResolvedValue(
+      routeHandlersConfig
+    );
     resolveRouteHandlersAppContextMock.mockReturnValue({
       ...TEST_APP_CONTEXT,
       routeHandlersConfig
@@ -194,13 +198,10 @@ describe('route handlers adapter', () => {
       kind: 'proxy'
     });
 
-    await routeHandlersAdapter.modifyConfig!(
-      TEST_NEXT_CONFIG as never,
-      {
-        phase: PHASE_PRODUCTION_BUILD,
-        nextVersion: '16.2.0'
-      }
-    );
+    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
+      phase: PHASE_PRODUCTION_BUILD,
+      nextVersion: '16.2.0'
+    });
 
     expect(executeResolvedRouteHandlerNextPipelineMock).not.toHaveBeenCalled();
     expect(writeRouteHandlerLookupSnapshotMock).toHaveBeenCalledWith(
@@ -208,12 +209,7 @@ describe('route handlers adapter', () => {
       {
         version: 1,
         filterHeavyRoutesInStaticPaths: false,
-        targets: [
-          {
-            targetId: 'docs',
-            heavyRoutePathKeys: []
-          }
-        ]
+        targets: []
       }
     );
   });

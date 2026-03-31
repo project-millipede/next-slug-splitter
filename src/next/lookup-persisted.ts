@@ -77,34 +77,24 @@ const isPersistedRouteHandlerLookupTarget = (
 
 export const resolveRouteHandlerLookupSnapshotPath = (
   rootDir: string
-): string =>
-  path.resolve(rootDir, DEFAULT_ROUTE_HANDLER_LOOKUP_SNAPSHOT_PATH);
+): string => path.resolve(rootDir, DEFAULT_ROUTE_HANDLER_LOOKUP_SNAPSHOT_PATH);
 
 export const createRouteHandlerLookupSnapshot = (
   filterHeavyRoutesInStaticPaths: boolean,
-  targetIds: Array<string>,
-  result?: RouteHandlerNextResult
+  results: Array<RouteHandlerNextResult>
 ): PersistedRouteHandlerLookupSnapshot => {
   const heavyRoutePathKeysByTargetId = new Map<string, Set<string>>();
 
-  for (const targetId of targetIds) {
-    heavyRoutePathKeysByTargetId.set(targetId, new Set());
-  }
-
-  for (const heavyRoute of result?.heavyPaths ?? []) {
-    const targetId = heavyRoute.targetId;
-
-    if (typeof targetId !== 'string' || targetId.length === 0) {
-      continue;
+  for (const result of results) {
+    if (!heavyRoutePathKeysByTargetId.has(result.targetId)) {
+      heavyRoutePathKeysByTargetId.set(result.targetId, new Set());
     }
 
-    if (!heavyRoutePathKeysByTargetId.has(targetId)) {
-      heavyRoutePathKeysByTargetId.set(targetId, new Set());
+    for (const heavyRoute of result.heavyPaths) {
+      heavyRoutePathKeysByTargetId
+        .get(result.targetId)!
+        .add(toHeavyRoutePathKey(heavyRoute.locale, heavyRoute.slugArray));
     }
-
-    heavyRoutePathKeysByTargetId.get(targetId)!.add(
-      toHeavyRoutePathKey(heavyRoute.locale, heavyRoute.slugArray)
-    );
   }
 
   return {

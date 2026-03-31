@@ -6,16 +6,11 @@ vi.mock(import('../../../next/phase-artifacts'), () => ({
   synchronizeRouteHandlerPhaseArtifacts: vi.fn()
 }));
 
-vi.mock(import('../../../next/runtime/shared/results'), () => ({
-  mergeRouteHandlerNextResults: vi.fn()
-}));
-
 vi.mock(import('../../../next/runtime/target/index'), () => ({
   executeRouteHandlerTarget: vi.fn()
 }));
 
 import * as phaseArtifacts from '../../../next/phase-artifacts';
-import * as runtimeResults from '../../../next/runtime/shared/results';
 import * as runtimeTarget from '../../../next/runtime/target/index';
 import { executeResolvedRouteHandlerNextPipeline } from '../../../next/runtime';
 
@@ -30,49 +25,46 @@ const createResolvedConfig = ({
   rootDir: string;
   targetId: string;
 }): ResolvedRouteHandlersConfig => ({
-    targetId,
-    app: {
-      rootDir,
-      routing: {
-        development: 'proxy'
-      }
-    },
-    localeConfig: {
-      locales: ['en'],
-      defaultLocale: 'en'
-    },
-    emitFormat: 'ts',
-    contentLocaleMode: 'filename',
-    handlerRouteParam: {
-      name: 'slug',
-      kind: 'catch-all'
-    },
-    baseStaticPropsImport: {
-      kind: 'absolute-file',
-      path: `${rootDir}/pages/content/[...slug].tsx`
-    },
-    processorConfig: {
-      kind: 'module',
-      processorImport: {
-        kind: 'package',
-        specifier: 'test-route-handlers/processor'
-      }
-    },
-    mdxCompileOptions: {},
-    routeBasePath: '/content',
-    paths: {
-      rootDir,
-      contentPagesDir: `${rootDir}/content`,
-      handlersDir: `${rootDir}/pages/content/_handlers`
-    },
-  });
+  targetId,
+  app: {
+    rootDir,
+    routing: {
+      development: 'proxy'
+    }
+  },
+  localeConfig: {
+    locales: ['en'],
+    defaultLocale: 'en'
+  },
+  emitFormat: 'ts',
+  contentLocaleMode: 'filename',
+  handlerRouteParam: {
+    name: 'slug',
+    kind: 'catch-all'
+  },
+  baseStaticPropsImport: {
+    kind: 'absolute-file',
+    path: `${rootDir}/pages/content/[...slug].tsx`
+  },
+  processorConfig: {
+    kind: 'module',
+    processorImport: {
+      kind: 'package',
+      specifier: 'test-route-handlers/processor'
+    }
+  },
+  mdxCompileOptions: {},
+  routeBasePath: '/content',
+  paths: {
+    rootDir,
+    contentPagesDir: `${rootDir}/content`,
+    handlersDir: `${rootDir}/pages/content/_handlers`
+  }
+});
 
 describe('runtime index fresh execution', () => {
   const synchronizeRouteHandlerPhaseArtifactsMock = vi.mocked(
     phaseArtifacts.synchronizeRouteHandlerPhaseArtifacts
-  );
-  const mergeRouteHandlerNextResultsMock = vi.mocked(
-    runtimeResults.mergeRouteHandlerNextResults
   );
   const executeRouteHandlerTargetMock = vi.mocked(
     runtimeTarget.executeRouteHandlerTarget
@@ -80,12 +72,11 @@ describe('runtime index fresh execution', () => {
 
   beforeEach(() => {
     synchronizeRouteHandlerPhaseArtifactsMock.mockReset();
-    mergeRouteHandlerNextResultsMock.mockReset();
     executeRouteHandlerTargetMock.mockReset();
     synchronizeRouteHandlerPhaseArtifactsMock.mockResolvedValue(undefined);
   });
 
-  it('executes the single-target path directly and marks generate runs as build-owned', async () => {
+  it('executes a single target and marks generate runs as build-owned', async () => {
     const freshResult = createPipelineResult({
       analyzedCount: 2,
       heavyCount: 2
@@ -97,12 +88,12 @@ describe('runtime index fresh execution', () => {
 
     executeRouteHandlerTargetMock.mockResolvedValue(freshResult);
 
-    const result = await executeResolvedRouteHandlerNextPipeline(
+    const results = await executeResolvedRouteHandlerNextPipeline(
       [resolvedConfig],
       'generate'
     );
 
-    expect(result).toEqual(freshResult);
+    expect(results).toEqual([freshResult]);
     expect(synchronizeRouteHandlerPhaseArtifactsMock).toHaveBeenCalledWith(
       [resolvedConfig],
       'build'
@@ -111,10 +102,9 @@ describe('runtime index fresh execution', () => {
       resolvedConfig,
       'generate'
     );
-    expect(mergeRouteHandlerNextResultsMock).not.toHaveBeenCalled();
   });
 
-  it('merges fresh multi-target results without consulting a persisted cache', async () => {
+  it('returns per-target results for multi-target execution', async () => {
     const docsConfig = createResolvedConfig({
       rootDir: TEST_ROOT_DIR,
       targetId: 'docs'
@@ -131,27 +121,18 @@ describe('runtime index fresh execution', () => {
       analyzedCount: 4,
       heavyCount: 2
     });
-    const mergedResult = createPipelineResult({
-      analyzedCount: 7,
-      heavyCount: 3
-    });
 
     executeRouteHandlerTargetMock
       .mockResolvedValueOnce(docsResult)
       .mockResolvedValueOnce(blogResult);
-    mergeRouteHandlerNextResultsMock.mockReturnValue(mergedResult);
 
-    const result = await executeResolvedRouteHandlerNextPipeline(
+    const results = await executeResolvedRouteHandlerNextPipeline(
       [docsConfig, blogConfig],
       'analyze'
     );
 
-    expect(result).toEqual(mergedResult);
+    expect(results).toEqual([docsResult, blogResult]);
     expect(synchronizeRouteHandlerPhaseArtifactsMock).not.toHaveBeenCalled();
     expect(executeRouteHandlerTargetMock).toHaveBeenCalledTimes(2);
-    expect(mergeRouteHandlerNextResultsMock).toHaveBeenCalledWith([
-      docsResult,
-      blogResult
-    ]);
   });
 });

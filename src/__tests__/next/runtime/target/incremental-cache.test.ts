@@ -41,7 +41,7 @@ const createCountedProcessorSource = (logPath: string): string =>
     `const logPath = ${JSON.stringify(logPath)};`,
     'export const routeHandlerProcessor = {',
     '  resolve({ route, capturedComponentKeys }) {',
-    "    appendFileSync(logPath, `${route.filePath}\\n`);",
+    '    appendFileSync(logPath, `${route.filePath}\\n`);',
     '    return {',
     "      factoryImport: { kind: 'package', specifier: 'none' },",
     "      components: capturedComponentKeys.map(key => ({ key, componentImport: { source: { kind: 'package', specifier: './components' }, kind: 'named', importedName: key } }))",
@@ -114,7 +114,13 @@ const writeSingleTargetFixture = async ({
     }
   });
   await writeTestModule(
-    path.join(rootDir, 'node_modules', 'test-route-handlers', 'primary', 'processor.js'),
+    path.join(
+      rootDir,
+      'node_modules',
+      'test-route-handlers',
+      'primary',
+      'processor.js'
+    ),
     createCountedProcessorSource(processorLogPath)
   );
 
@@ -144,10 +150,11 @@ describe('fresh target execution', () => {
   it('reanalyzes all routes on every generate run', async () => {
     await withTempDir('next-slug-splitter-fresh-target-', async rootDir => {
       const processorLogPath = path.join(rootDir, 'processor-calls.log');
-      const { firstRoutePath, secondRoutePath } = await writeSingleTargetFixture({
-        rootDir,
-        processorLogPath
-      });
+      const { firstRoutePath, secondRoutePath } =
+        await writeSingleTargetFixture({
+          rootDir,
+          processorLogPath
+        });
       const routeHandlersConfig = createSingleTargetConfig({
         rootDir
       });
@@ -157,13 +164,14 @@ describe('fresh target execution', () => {
         localeConfig: TEST_LOCALE_CONFIG,
         mode: 'generate'
       });
+
       const secondResult = await executeRouteHandlerNextPipeline({
         routeHandlersConfig,
         localeConfig: TEST_LOCALE_CONFIG,
         mode: 'generate'
       });
 
-      expect(firstResult.heavyCount).toBe(2);
+      expect(firstResult[0].heavyCount).toBe(2);
       expect(secondResult).toEqual(firstResult);
       expect(await readLogEntries(processorLogPath)).toEqual([
         firstRoutePath,
@@ -177,10 +185,11 @@ describe('fresh target execution', () => {
   it('reanalyzes every route again even when only one file changed', async () => {
     await withTempDir('next-slug-splitter-fresh-target-', async rootDir => {
       const processorLogPath = path.join(rootDir, 'processor-calls.log');
-      const { firstRoutePath, secondRoutePath } = await writeSingleTargetFixture({
-        rootDir,
-        processorLogPath
-      });
+      const { firstRoutePath, secondRoutePath } =
+        await writeSingleTargetFixture({
+          rootDir,
+          processorLogPath
+        });
       const routeHandlersConfig = createSingleTargetConfig({
         rootDir
       });
@@ -203,7 +212,7 @@ describe('fresh target execution', () => {
         mode: 'generate'
       });
 
-      expect(secondResult.heavyCount).toBe(2);
+      expect(secondResult[0].heavyCount).toBe(2);
       expect(await readLogEntries(processorLogPath)).toEqual([
         firstRoutePath,
         secondRoutePath,

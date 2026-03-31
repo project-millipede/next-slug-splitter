@@ -20,24 +20,31 @@ describe('route-handler lookup snapshot persistence', () => {
   });
 
   it('serializes and parses route-handler lookup snapshots without Next runtime semantics fields', () => {
-    const snapshot = createRouteHandlerLookupSnapshot(
-      true,
-      ['blog', 'docs'],
+    const snapshot = createRouteHandlerLookupSnapshot(true, [
       {
+        targetId: 'blog',
+        analyzedCount: 0,
+        heavyCount: 0,
+        heavyPaths: [],
+        rewrites: [],
+        rewritesOfDefaultLocale: []
+      },
+      {
+        targetId: 'docs',
         analyzedCount: 1,
         heavyCount: 1,
         heavyPaths: [
           createHeavyRoute({
-            targetId: 'docs',
             locale: 'en',
             slugArray: ['guides', 'intro'],
             handlerId: 'docs-en-guides-intro',
             handlerRelativePath: 'guides/intro/en'
           })
         ],
-        rewrites: []
+        rewrites: [],
+        rewritesOfDefaultLocale: []
       }
-    );
+    ]);
 
     const serialized = serializeRouteHandlerLookupSnapshot(snapshot);
     const parsed = parseRouteHandlerLookupSnapshot(serialized);
@@ -82,24 +89,23 @@ describe('route-handler lookup snapshot persistence', () => {
 
       await writeRouteHandlerLookupSnapshot(
         rootDir,
-        createRouteHandlerLookupSnapshot(
-          true,
-          ['docs'],
+        createRouteHandlerLookupSnapshot(true, [
           {
+            targetId: 'docs',
             analyzedCount: 1,
             heavyCount: 1,
             heavyPaths: [
               createHeavyRoute({
-                targetId: 'docs',
                 locale: 'en',
                 slugArray: ['recognition'],
                 handlerId: 'docs-en-recognition',
                 handlerRelativePath: 'recognition/en'
               })
             ],
-            rewrites: []
+            rewrites: [],
+            rewritesOfDefaultLocale: []
           }
-        )
+        ])
       );
 
       const snapshot = await readRouteHandlerLookupSnapshot(rootDir);
@@ -120,15 +126,13 @@ describe('route-handler lookup snapshot persistence', () => {
 
       await writeRouteHandlerLookupSnapshot(
         rootDir,
-        createRouteHandlerLookupSnapshot(false, ['docs'])
+        createRouteHandlerLookupSnapshot(false, [])
       );
 
       const snapshotPath = resolveRouteHandlerLookupSnapshotPath(rootDir);
       await writeFile(snapshotPath, '{"invalid":true}\n', 'utf8');
 
-      await expect(
-        readRouteHandlerLookupSnapshot(rootDir)
-      ).resolves.toBeNull();
+      await expect(readRouteHandlerLookupSnapshot(rootDir)).resolves.toBeNull();
     });
   });
 });

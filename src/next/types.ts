@@ -258,10 +258,7 @@ export type ResolvedRouteHandlersAppConfig = Required<AppConfigBase> & {
 
 // DynamicRouteParamKind and DynamicRouteParam are defined in core/types.ts
 // and re-exported here for public API consumers.
-export type {
-  DynamicRouteParamKind,
-  DynamicRouteParam
-} from '../core/types';
+export type { DynamicRouteParamKind, DynamicRouteParam } from '../core/types';
 
 // ---------------------------------------------------------------------------
 // Route-param value resolution
@@ -529,15 +526,35 @@ export type ResolvedRouteHandlersConfig = ResolvedRouteHandlersConfigBase & {
   localeConfig: LocaleConfig;
 };
 
+export type RouteHandlerRewriteBuckets = {
+  /**
+   * Baseline rewrite rules for Next.js routing.
+   *
+   * Canonical locale-less paths (default locale) and explicit `/<locale>/...`
+   * paths (non-default locales), without the default-locale-prefixed extras.
+   */
+  rewrites: Array<RewriteRecord>;
+
+  /**
+   * Rewrite rules contributed specifically by default-locale-prefixed paths.
+   *
+   * These are the extra `/<defaultLocale>/...` rewrites emitted in addition to
+   * the baseline route rewrite for heavy routes that belong to the default
+   * locale.
+   */
+  rewritesOfDefaultLocale: Array<RewriteRecord>;
+};
+
 /**
  * Result of the route handler pipeline with Next-specific additions.
  */
-export type RouteHandlerNextResult = RouteHandlerPipelineResult & {
+export type RouteHandlerNextResult = {
   /**
-   * Rewrite rules for Next.js routing.
+   * Target identifier that produced this result.
    */
-  rewrites: Array<RewriteRecord>;
-};
+  targetId: string;
+} & RouteHandlerPipelineResult &
+  RouteHandlerRewriteBuckets;
 
 /**
  * API for looking up heavy route membership at page runtime.

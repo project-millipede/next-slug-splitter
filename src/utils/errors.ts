@@ -1,7 +1,4 @@
-/**
- * Shared package prefix used in user-facing logs and error messages.
- */
-export const NEXT_SLUG_SPLITTER_PREFIX = '[next-slug-splitter]';
+import { formatNextSlugSplitterMessage } from './messages';
 
 /**
  * Machine-readable error codes for package-originated failures.
@@ -32,15 +29,6 @@ export type NextSlugSplitterErrorCode =
  * Structured context attached to package-originated errors.
  */
 export type NextSlugSplitterErrorContext = Readonly<Record<string, unknown>>;
-
-/**
- * Prefix a message with the package identifier.
- *
- * @param message - Message body without prefix.
- * @returns Prefixed message ready for display.
- */
-export const formatNextSlugSplitterMessage = (message: string): string =>
-  `${NEXT_SLUG_SPLITTER_PREFIX} ${message}`;
 
 /**
  * Package-specific error class with structured codes and context.

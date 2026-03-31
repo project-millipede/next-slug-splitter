@@ -9,7 +9,7 @@
  * 1. configs are resolved from source-of-truth inputs
  * 2. generate mode first enforces build ownership of shared artifacts
  * 3. each resolved target executes directly against the core pipeline
- * 4. multi-target callers merge fresh per-target results here
+ * 4. callers receive one fresh Next-facing result per resolved target
  *
  * There is no longer any persisted build-side runtime cache in this layer.
  */
@@ -18,7 +18,6 @@ import {
   loadResolvedRouteHandlersConfigs,
   type LoadResolvedRouteHandlersConfigsInput
 } from './config';
-import { mergeRouteHandlerNextResults } from './shared/results';
 import { executeRouteHandlerTarget } from './target/index';
 
 import type { PipelineMode } from '../../core/types';
@@ -43,12 +42,12 @@ export type ExecuteRouteHandlerNextPipelineInput =
  *
  * @param resolvedConfigs - Already-resolved target configs.
  * @param mode - Pipeline execution mode.
- * @returns The merged Next integration result for the configured targets.
+ * @returns Per-target Next integration results.
  */
 export const executeResolvedRouteHandlerNextPipeline = async (
   resolvedConfigs: Array<ResolvedRouteHandlersConfig>,
   mode: PipelineMode = 'generate'
-): Promise<RouteHandlerNextResult> => {
+): Promise<Array<RouteHandlerNextResult>> => {
   if (mode === 'generate') {
     // Generate mode first establishes build ownership of emitted handlers and
     // other shared artifacts. That keeps build/generate independent from prior
@@ -56,34 +55,16 @@ export const executeResolvedRouteHandlerNextPipeline = async (
     await synchronizeRouteHandlerPhaseArtifacts(resolvedConfigs, 'build');
   }
 
-  if (resolvedConfigs.length === 1) {
-    const [singleResolvedTarget] = resolvedConfigs;
-
-    // Single-target execution is now a direct hand-off. After phase
-    // synchronization, this layer just executes the one resolved target and
-    // returns its Next-facing result.
-    return executeRouteHandlerTarget(singleResolvedTarget, mode);
-  }
-
-  const freshResults = await Promise.all(
-    resolvedConfigs.map(config =>
-      // Multi-target execution is equally direct. Each resolved target runs
-      // fresh against the core pipeline, and this layer only collects the
-      // per-target results for the final merge step.
-      executeRouteHandlerTarget(config, mode)
-    )
+  return Promise.all(
+    resolvedConfigs.map(config => executeRouteHandlerTarget(config, mode))
   );
-
-  // Merging is the remaining orchestration responsibility after the fresh
-  // per-target executions above complete.
-  return mergeRouteHandlerNextResults(freshResults);
 };
 
 /**
  * Execute the full Next-integrated route-handler pipeline.
  *
  * @param input - Pipeline execution input.
- * @returns The merged Next integration result for the configured targets.
+ * @returns Per-target Next integration results.
  *
  * @remarks
  * This module stays orchestration-focused. Config loading, shared-cache
@@ -95,14 +76,15 @@ export const executeResolvedRouteHandlerNextPipeline = async (
  * - preparation while config is being loaded
  * - phase-artifact ownership in generate mode
  * - fresh per-target pipeline execution
- * - result merging for multi-target callers
  */
 export const executeRouteHandlerNextPipeline = async ({
   rootDir,
   localeConfig,
   routeHandlersConfig,
   mode = 'generate'
-}: ExecuteRouteHandlerNextPipelineInput): Promise<RouteHandlerNextResult> => {
+}: ExecuteRouteHandlerNextPipelineInput): Promise<
+  Array<RouteHandlerNextResult>
+> => {
   // Consumer entry into the runtime config-loading group. This stage is where
   // app-owned preparation may run before the actual target execution phase.
   const resolvedConfigs = await loadResolvedRouteHandlersConfigs({

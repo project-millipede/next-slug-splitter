@@ -79,7 +79,7 @@ describe('rewrite generation', () => {
     },
     {
       id: 'Single-Locale',
-      description: 'suppresses the default-locale-prefixed alias in single-locale apps',
+      description: 'keeps the default-locale-prefixed alias in single-locale apps',
       heavyRoutes: singleLocaleHeavyRoutes,
       localeConfig: {
         locales: ['en'],
@@ -95,9 +95,19 @@ describe('rewrite generation', () => {
           source: '/content/interactive',
           destination: '/content/_handlers/interactive',
           locale: false
+        },
+        {
+          source: '/en/content/dashboard',
+          destination: '/en/content/_handlers/dashboard',
+          locale: false
+        },
+        {
+          source: '/en/content/interactive',
+          destination: '/en/content/_handlers/interactive',
+          locale: false
         }
       ],
-      expectedLength: 2
+      expectedLength: 4
     }
   ];
 
