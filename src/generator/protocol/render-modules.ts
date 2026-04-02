@@ -25,13 +25,16 @@ import type {
   ComponentImportKind,
   DynamicRouteParam,
   EmitFormat,
-  LoadableComponentEntry
+  LoadableComponentEntry,
+  ResolvedComponentImportSpec,
+  ResolvedFactoryBindings,
+  ResolvedFactoryBindingValue
 } from '../../core/types';
 
 /**
- * Component import record before alias resolution.
+ * Module import record before alias resolution.
  */
-type PendingComponentImportRecord = {
+type PendingModuleImportRecord = {
   /**
    * Resolved module reference for the component source.
    */
@@ -56,13 +59,17 @@ type PendingComponentImportRecord = {
 /**
  * Nested map of pending imports indexed by kind, source, and imported name.
  */
-type PendingComponentImportsByKind = Map<
+type PendingModuleImportsByKind = Map<
   ComponentImportKind,
-  Map<string, Map<string, PendingComponentImportRecord>>
+  Map<string, Map<string, PendingModuleImportRecord>>
 >;
 
 const isSafeIdentifier = (value: string): boolean =>
   /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value);
+
+const isResolvedFactoryBindingArray = (
+  value: ResolvedFactoryBindingValue
+): value is readonly ResolvedComponentImportSpec[] => Array.isArray(value);
 
 /**
  * Builds a usable identifier candidate from an arbitrary component key or
@@ -119,10 +126,10 @@ const getSourceLocalNameCandidate = (source: string): string => {
  * @param importRecord - Pending import record that may map to multiple
  * loadable component keys.
  * @param usedLocalNames - Local names already claimed in the current module.
- * @returns A collision-free local identifier.
+ * @returns A collision-free local identifier for the emitted module.
  */
-const resolveComponentLocalName = (
-  importRecord: PendingComponentImportRecord,
+const resolveImportLocalName = (
+  importRecord: PendingModuleImportRecord,
   usedLocalNames: Set<string>
 ): string => {
   const candidates: Array<string> = [];
@@ -138,7 +145,9 @@ const resolveComponentLocalName = (
     candidates.push(toIdentifierCandidate(entryKey));
   }
 
-  candidates.push(getSourceLocalNameCandidate(getModuleReferenceValue(importRecord.source)));
+  candidates.push(
+    getSourceLocalNameCandidate(getModuleReferenceValue(importRecord.source))
+  );
 
   const seenCandidates = new Set<string>();
   for (const candidate of candidates) {
@@ -154,15 +163,20 @@ const resolveComponentLocalName = (
 
   const [primaryCandidate] = candidates;
   const fallbackBase = primaryCandidate ?? 'Component';
-  let suffix = 2;
-  let fallback = `${fallbackBase}${suffix}`;
+  let suffixNumber = 2;
+  let fallback = `${fallbackBase}${suffixNumber}`;
   while (usedLocalNames.has(fallback)) {
-    suffix += 1;
-    fallback = `${fallbackBase}${suffix}`;
+    suffixNumber += 1;
+    fallback = `${fallbackBase}${suffixNumber}`;
   }
 
   return fallback;
 };
+
+const resolveComponentLocalName = (
+  importRecord: PendingModuleImportRecord,
+  usedLocalNames: Set<string>
+): string => resolveImportLocalName(importRecord, usedLocalNames);
 
 /**
  * Compare two pending component import records in emitted import order.
@@ -172,8 +186,8 @@ const resolveComponentLocalName = (
  * @returns A stable ordering based on source, imported name, and import kind.
  */
 const comparePendingComponentImportRecords = (
-  left: PendingComponentImportRecord,
-  right: PendingComponentImportRecord
+  left: PendingModuleImportRecord,
+  right: PendingModuleImportRecord
 ): number => {
   const sourceComparison = getModuleReferenceValue(left.source).localeCompare(getModuleReferenceValue(right.source));
   if (sourceComparison !== 0) {
@@ -198,18 +212,15 @@ const comparePendingComponentImportRecords = (
  * @returns The nested source bucket for the requested import kind.
  */
 const getOrCreateSourceImportMap = (
-  importsByKind: PendingComponentImportsByKind,
+  importsByKind: PendingModuleImportsByKind,
   kind: ComponentImportKind
-): Map<string, Map<string, PendingComponentImportRecord>> => {
+): Map<string, Map<string, PendingModuleImportRecord>> => {
   const existingSourceImportMap = importsByKind.get(kind);
   if (existingSourceImportMap) {
     return existingSourceImportMap;
   }
 
-  const sourceImportMap = new Map<
-    string,
-    Map<string, PendingComponentImportRecord>
-  >();
+  const sourceImportMap = new Map<string, Map<string, PendingModuleImportRecord>>();
   importsByKind.set(kind, sourceImportMap);
   return sourceImportMap;
 };
@@ -223,15 +234,15 @@ const getOrCreateSourceImportMap = (
  * @returns The nested imported-name bucket for the requested source.
  */
 const getOrCreateImportedNameMap = (
-  sourceImportMap: Map<string, Map<string, PendingComponentImportRecord>>,
+  sourceImportMap: Map<string, Map<string, PendingModuleImportRecord>>,
   source: string
-): Map<string, PendingComponentImportRecord> => {
+): Map<string, PendingModuleImportRecord> => {
   const existingImportedNameMap = sourceImportMap.get(source);
   if (existingImportedNameMap) {
     return existingImportedNameMap;
   }
 
-  const importedNameMap = new Map<string, PendingComponentImportRecord>();
+  const importedNameMap = new Map<string, PendingModuleImportRecord>();
   sourceImportMap.set(source, importedNameMap);
   return importedNameMap;
 };
@@ -245,9 +256,9 @@ const getOrCreateImportedNameMap = (
  * @returns Pending import records sorted in emitted import order.
  */
 const flattenPendingComponentImportRecords = (
-  importsByKind: PendingComponentImportsByKind
-): Array<PendingComponentImportRecord> => {
-  const importRecords: Array<PendingComponentImportRecord> = [];
+  importsByKind: PendingModuleImportsByKind
+): Array<PendingModuleImportRecord> => {
+  const importRecords: Array<PendingModuleImportRecord> = [];
 
   for (const sourceImportMap of importsByKind.values()) {
     for (const importedNameMap of sourceImportMap.values()) {
@@ -261,26 +272,31 @@ const flattenPendingComponentImportRecords = (
 };
 
 /**
- * Collapses selected component entries into normalized component import records
- * and a lookup from entry key to emitted local alias.
+ * Collapses selected component entries and optional route-level factory
+ * bindings into emitted import records plus local-alias lookups.
  *
  * @param selectedComponentEntries - Loadable component entries selected for one handler.
- * @returns Grouped component imports and alias lookup data.
+ * @param pageFilePath - Absolute page file path used to relativize imports.
+ * @param factoryBindings - Optional resolved route-level factory bindings.
+ * @returns Emitted imports, component aliases, and factory-binding alias values.
  */
 const buildHandlerImports = (
   selectedComponentEntries: Array<LoadableComponentEntry>,
-  pageFilePath: string
+  pageFilePath: string,
+  factoryBindings?: ResolvedFactoryBindings
 ): {
-  componentImports: Array<HandlerComponentImportRecord>;
+  imports: Array<HandlerComponentImportRecord>;
   componentAliasByKey: Map<string, string>;
+  factoryBindingValues: Record<string, string | Array<string>>;
 } => {
-  const importsByKind: PendingComponentImportsByKind = new Map();
+  const componentImportsByKind: PendingModuleImportsByKind = new Map();
   const componentAliasByKey = new Map<string, string>();
+  const factoryBindingValues: Record<string, string | Array<string>> = {};
 
   for (const entry of selectedComponentEntries) {
     const componentImport = entry.componentImport;
     const sourceImportMap = getOrCreateSourceImportMap(
-      importsByKind,
+      componentImportsByKind,
       componentImport.kind
     );
     const sourceKey = `${componentImport.source.kind}:${getModuleReferenceValue(componentImport.source)}`;
@@ -303,11 +319,11 @@ const buildHandlerImports = (
     importRecord.entryKeys.add(entry.key);
   }
 
-  const sortedImportRecords =
-    flattenPendingComponentImportRecords(importsByKind);
+  const sortedComponentImportRecords =
+    flattenPendingComponentImportRecords(componentImportsByKind);
 
   const usedLocalNames = new Set<string>();
-  const componentImports = sortedImportRecords.map(importRecord => {
+  const componentImports = sortedComponentImportRecords.map(importRecord => {
     const alias = resolveComponentLocalName(importRecord, usedLocalNames);
     usedLocalNames.add(alias);
 
@@ -323,9 +339,81 @@ const buildHandlerImports = (
     };
   });
 
+  const factoryBindingImports: Array<HandlerComponentImportRecord> = [];
+
+  const resolveFactoryBindingAlias = (
+    bindingValue: ResolvedFactoryBindingValue
+  ): string | Array<string> => {
+    const resolveSingleBindingAlias = (
+      importRecordValue: ResolvedComponentImportSpec
+    ): string => {
+      const importRecord: PendingModuleImportRecord = {
+        source: importRecordValue.source,
+        kind: importRecordValue.kind,
+        importedName: importRecordValue.importedName,
+        entryKeys: new Set<string>()
+      };
+      const alias = resolveImportLocalName(importRecord, usedLocalNames);
+      usedLocalNames.add(alias);
+
+      factoryBindingImports.push({
+        alias,
+        source: toEmittedImportSpecifier(pageFilePath, importRecordValue.source),
+        kind: importRecordValue.kind,
+        importedName: importRecordValue.importedName
+      });
+
+      return alias;
+    };
+
+    if (isResolvedFactoryBindingArray(bindingValue)) {
+      return bindingValue.map(importRecordValue =>
+        resolveSingleBindingAlias(importRecordValue)
+      );
+    }
+
+    return resolveSingleBindingAlias(bindingValue);
+  };
+
+  for (const bindingKey of sortStringArray(Object.keys(factoryBindings ?? {}))) {
+    const bindingValue = factoryBindings?.[bindingKey];
+    if (bindingValue == null) {
+      continue;
+    }
+
+    factoryBindingValues[bindingKey] = resolveFactoryBindingAlias(
+      bindingValue
+    );
+  }
+
+  const imports = [
+    ...componentImports,
+    ...factoryBindingImports
+  ].sort((left, right) => {
+    const sourceComparison = left.source.localeCompare(right.source);
+    if (sourceComparison !== 0) {
+      return sourceComparison;
+    }
+
+    const importedNameComparison = left.importedName.localeCompare(
+      right.importedName
+    );
+    if (importedNameComparison !== 0) {
+      return importedNameComparison;
+    }
+
+    const kindComparison = left.kind.localeCompare(right.kind);
+    if (kindComparison !== 0) {
+      return kindComparison;
+    }
+
+    return left.alias.localeCompare(right.alias);
+  });
+
   return {
-    componentImports,
-    componentAliasByKey
+    imports,
+    componentAliasByKey,
+    factoryBindingValues
   };
 };
 
@@ -408,6 +496,10 @@ type HandlerSourceInput = {
    */
   usedLoadableComponentKeys: Array<string>;
   /**
+   * Optional resolved route-level factory bindings forwarded into emission.
+   */
+  factoryBindings?: ResolvedFactoryBindings;
+  /**
    * Loadable component entries selected for this handler.
    */
   selectedComponentEntries: Array<LoadableComponentEntry>;
@@ -439,12 +531,18 @@ export const renderRouteHandlerModules = ({
   slugArray,
   handlerId,
   usedLoadableComponentKeys,
+  factoryBindings,
   selectedComponentEntries,
   renderConfig
 }: HandlerSourceInput): HandlerSources => {
-  const { componentImports, componentAliasByKey } = buildHandlerImports(
+  const {
+    imports,
+    componentAliasByKey,
+    factoryBindingValues
+  } = buildHandlerImports(
     selectedComponentEntries,
-    renderConfig.pageFilePath
+    renderConfig.pageFilePath,
+    factoryBindings
   );
   const componentEntries = selectedComponentEntries.map(entry =>
     buildComponentEmitEntry(entry, componentAliasByKey)
@@ -459,8 +557,9 @@ export const renderRouteHandlerModules = ({
     baseStaticPropsImport: renderConfig.baseStaticPropsImport,
     handlerRouteParam: renderConfig.handlerRouteParam,
     routeBasePath: renderConfig.routeBasePath,
-    componentImports,
+    componentImports: imports,
     componentEntries,
+    factoryBindingValues,
     emitFormat: renderConfig.emitFormat
   });
 

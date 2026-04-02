@@ -4,6 +4,8 @@ import type {
   DynamicRouteParam,
   DynamicRouteParamKind,
   EmitFormat,
+  FactoryBindings,
+  FactoryBindingValue,
   LocaleConfig,
   ProcessorResolveInput,
   ResolvedRouteHandlerProcessorConfig,
@@ -64,6 +66,8 @@ export type RouteHandlerRewriteLike = {
    */
   basePath?: false;
 };
+
+export type { FactoryBindings, FactoryBindingValue };
 
 /**
  * Backwards-compatible alias for route handler rewrite entries.
@@ -482,11 +486,26 @@ export type CreateCatchAllRouteHandlersPresetOptions = Pick<
 };
 
 /**
- * Resolved target configuration base (internal type).
+ * Runtime/executable attachments for one resolved target config.
+ *
+ * @remarks
+ * These values are intentionally separated from the structural target config
+ * because they may carry live executable data that should not be treated as a
+ * manifest-safe persisted contract.
  */
-type ResolvedTargetConfigBase = Omit<
+export type ResolvedRouteHandlersRuntimeAttachments = {
+  /**
+   * MDX compile plugins forwarded into the capture build.
+   */
+  mdxCompileOptions: RouteHandlerMdxCompileOptions;
+};
+
+/**
+ * Resolved target configuration base (internal structural type).
+ */
+type ResolvedTargetStructuralConfigBase = Omit<
   Required<TargetConfigBase>,
-  'handlerBinding' | 'baseStaticPropsImport' | 'paths'
+  'handlerBinding' | 'baseStaticPropsImport' | 'paths' | 'mdxCompileOptions'
 > & {
   /**
    * Resolved import path for the base static props module.
@@ -497,13 +516,20 @@ type ResolvedTargetConfigBase = Omit<
    */
   processorConfig: ResolvedRouteHandlerProcessorConfig;
   /**
-   * MDX compile plugins forwarded into the capture build.
-   */
-  mdxCompileOptions: RouteHandlerMdxCompileOptions;
-  /**
    * Resolved filesystem paths for the target.
    */
   paths: RouteHandlerNextPaths;
+};
+
+/**
+ * Resolved target configuration base (internal type).
+ */
+type ResolvedTargetConfigBase = ResolvedTargetStructuralConfigBase & {
+  /**
+   * Runtime/executable attachments that are not part of the structural target
+   * contract.
+   */
+  runtime: ResolvedRouteHandlersRuntimeAttachments;
 };
 
 /**
@@ -543,6 +569,33 @@ export type RouteHandlerRewriteBuckets = {
    * locale.
    */
   rewritesOfDefaultLocale: Array<RewriteRecord>;
+};
+
+/**
+ * Narrow planning config shared by target-wide and lazy one-file analysis.
+ *
+ * @remarks
+ * This shape intentionally excludes app-level config that planners do not
+ * need, while preserving the runtime attachment bucket required by MDX-aware
+ * capture.
+ */
+export type RouteHandlerPlannerConfig = Pick<
+  ResolvedRouteHandlersConfig,
+  | 'targetId'
+  | 'emitFormat'
+  | 'contentLocaleMode'
+  | 'handlerRouteParam'
+  | 'baseStaticPropsImport'
+  | 'routeBasePath'
+  | 'localeConfig'
+  | 'processorConfig'
+  | 'runtime'
+> & {
+  /**
+   * Filesystem paths required during route analysis, planning, emission, and
+   * stale-output cleanup.
+   */
+  paths: RouteHandlerNextPaths;
 };
 
 /**

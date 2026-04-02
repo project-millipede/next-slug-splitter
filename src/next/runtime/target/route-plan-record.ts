@@ -13,16 +13,18 @@ import type {
   LoadableComponentEntry,
   LocalizedRoutePath,
   PlannedHeavyRoute,
+  ResolvedFactoryBindingValue,
+  ResolvedFactoryBindings,
   ResolvedComponentImportSpec
 } from '../../../core/types';
-import { isArrayOf, isString } from '../../../utils/type-guards';
+import { isArrayOf, isObjectOf, isString } from '../../../utils/type-guards';
 import {
   isObjectRecordOf,
   readObjectProperty
 } from '../../../utils/type-guards-custom';
 import { isJsonObject } from '../../../utils/type-guards-json';
 
-import type { ResolvedRouteHandlersConfig } from '../../types';
+import type { RouteHandlerPlannerConfig } from '../../types';
 
 /**
  * Version number for persisted one-file route-plan records.
@@ -36,7 +38,7 @@ import type { ResolvedRouteHandlersConfig } from '../../types';
  * layers can reuse the same validation and record-construction logic while
  * still remaining separate higher-level subsystems.
  */
-const ROUTE_PLAN_RECORD_VERSION = 1;
+const ROUTE_PLAN_RECORD_VERSION = 4;
 
 /**
  * Persisted planning result for one localized content file.
@@ -72,6 +74,58 @@ const isResolvedComponentImportSpec = (
     isString(readObjectProperty(value, 'importedName'))
   );
 };
+
+/**
+ * Runtime validator for an ordered factory-binding import list.
+ *
+ * @param value - Candidate persisted binding value.
+ * @returns `true` when the value is an array of resolved component imports.
+ */
+const isResolvedComponentImportSpecArray = isArrayOf(
+  isResolvedComponentImportSpec
+);
+
+/**
+ * Runtime validator for one persisted factory-binding value.
+ *
+ * Factory bindings may persist as either:
+ * - one resolved component import descriptor, or
+ * - an ordered array of resolved component import descriptors
+ *
+ * @param value - Candidate persisted binding value.
+ * @returns `true` when the value matches either supported binding shape.
+ */
+const isResolvedFactoryBindingValue = (
+  value: unknown
+): value is ResolvedFactoryBindingValue =>
+  isResolvedComponentImportSpec(value) ||
+  isResolvedComponentImportSpecArray(value);
+
+/**
+ * Runtime validator for persisted route-level factory bindings.
+ *
+ * @param value - Candidate persisted bindings object.
+ * @returns `true` when the value is a non-null object whose values all match
+ * supported factory-binding shapes.
+ */
+const isResolvedFactoryBindings = (
+  value: unknown
+): value is ResolvedFactoryBindings =>
+  isObjectOf(isResolvedFactoryBindingValue)(value);
+
+/**
+ * Runtime validator for the optional persisted `factoryBindings` field.
+ *
+ * The persisted route-plan shape allows this property to be absent. When it is
+ * present, it must satisfy {@link isResolvedFactoryBindings}.
+ *
+ * @param value - Candidate persisted `factoryBindings` field value.
+ * @returns `true` when the field is absent or a valid bindings object.
+ */
+const isOptionalResolvedFactoryBindings = (
+  value: unknown
+): value is ResolvedFactoryBindings | undefined =>
+  value == null || isResolvedFactoryBindings(value);
 
 /**
  * Runtime validator for one persisted loadable-component entry.
@@ -116,6 +170,9 @@ const isPlannedHeavyRoute = (value: unknown): value is PlannedHeavyRoute => {
     isString(readObjectProperty(value, 'handlerRelativePath')) &&
     isStringArray(readObjectProperty(value, 'usedLoadableComponentKeys')) &&
     isModuleReference(readObjectProperty(value, 'factoryImport')) &&
+    isOptionalResolvedFactoryBindings(
+      readObjectProperty(value, 'factoryBindings')
+    ) &&
     isComponentEntryArray(readObjectProperty(value, 'componentEntries'))
   );
 };
@@ -169,13 +226,13 @@ export const readPersistedRoutePlanRecord = (
  */
 export const createPersistedRoutePlanRecord = async (
   routePath: LocalizedRoutePath,
-  config: ResolvedRouteHandlersConfig,
+  config: RouteHandlerPlannerConfig,
   planRoute: Awaited<ReturnType<typeof createRouteHandlerRoutePlanner>>
 ): Promise<PersistedRoutePlanRecord> => {
   const usedLoadableComponentKeys = sortStringArray(
     await captureReferencedComponentNames({
       filePath: routePath.filePath,
-      mdxCompileOptions: config.mdxCompileOptions
+      mdxCompileOptions: config.runtime.mdxCompileOptions
     })
   );
 
@@ -190,7 +247,7 @@ export const createPersistedRoutePlanRecord = async (
 
   const plannedRouteBase: Omit<
     PlannedHeavyRoute,
-    'factoryImport' | 'componentEntries'
+    'factoryImport' | 'factoryBindings' | 'componentEntries'
   > = {
     locale: routePath.locale,
     slugArray: routePath.slugArray,
@@ -215,7 +272,7 @@ export const createPersistedRoutePlanRecord = async (
     targetId: config.targetId
   });
 
-  const { factoryImport, componentEntries } = await planRoute({
+  const { factoryImport, factoryBindings, componentEntries } = await planRoute({
     route,
     capturedComponentKeys: usedLoadableComponentKeys
   });
@@ -225,6 +282,7 @@ export const createPersistedRoutePlanRecord = async (
     plannedHeavyRoute: {
       ...plannedRouteBase,
       factoryImport,
+      factoryBindings,
       componentEntries
     }
   };

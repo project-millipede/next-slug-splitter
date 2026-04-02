@@ -245,6 +245,22 @@ export type ComponentImportSpec = {
 };
 
 /**
+ * Route-level factory binding value forwarded into `createHandlerPage(...)`.
+ *
+ * Bindings can be either one imported value or an ordered list of imported
+ * values. The library preserves the shape and does not interpret binding
+ * semantics.
+ */
+export type FactoryBindingValue =
+  | ComponentImportSpec
+  | readonly ComponentImportSpec[];
+
+/**
+ * Route-level factory bindings forwarded into `createHandlerPage(...)`.
+ */
+export type FactoryBindings = Readonly<Record<string, FactoryBindingValue>>;
+
+/**
  * Config-facing module reference alias used across the public route-handler
  * contract.
  */
@@ -328,6 +344,15 @@ export type ProcessorResolveInput = {
 
 /**
  * Generic processor-facing component instruction.
+ *
+ * One entry represents one captured component key after the app-owned
+ * processor has resolved how that key should be emitted into the generated
+ * handler.
+ *
+ * The processor is also where per-component runtime metadata must be decided.
+ * The library does not perform any later metadata lookup by key or module
+ * import, so whatever metadata belongs to the component must travel on this
+ * same entry object.
  */
 export type RouteHandlerGeneratorComponent<TMeta = JsonObject> = {
   /**
@@ -341,7 +366,27 @@ export type RouteHandlerGeneratorComponent<TMeta = JsonObject> = {
   componentImport: ComponentImportSpec;
 
   /**
-   * Opaque metadata preserved on the emitted runtime entry.
+   * Inline metadata preserved on the emitted runtime entry.
+   *
+   * This value is chosen inside `RouteHandlerProcessor.resolve(...)` while the
+   * processor is already iterating or branching over `capturedComponentKeys`.
+   * In practice, that means metadata is decided at the same moment the
+   * processor decides which `componentImport` belongs to this key.
+   *
+   * The library validates this value as a JSON object and then emits its
+   * fields directly into the generated entry object next to `component`, for
+   * example:
+   * `{ component: SomeComponent, runtimeTraits: ["selection"] }`.
+   *
+   * Inlining serves two purposes:
+   * 1. generated handlers stay self-contained and do not need extra metadata
+   *    imports or follow-up registry resolution at runtime;
+   * 2. metadata stays explicitly tied to the resolved component entry instead
+   *    of being matched again later by naming convention or key lookup.
+   *
+   * Prefer small, stable, per-component runtime hints here. Omit the field
+   * when no metadata is needed; the planner normalizes that case to an empty
+   * object.
    */
   metadata?: TMeta;
 };
@@ -356,7 +401,20 @@ export type RouteHandlerGeneratorPlan<TMeta = JsonObject> = {
   factoryImport: ModuleReference;
 
   /**
+   * Optional route-level imported bindings forwarded into the generated
+   * `createHandlerPage(...)` call unchanged.
+   */
+  factoryBindings?: FactoryBindings;
+
+  /**
    * Component instructions selected for the generated handler.
+   *
+   * Each entry must fully describe one captured component key:
+   * - which component import to emit
+   * - which inline metadata fields, if any, should travel with that component
+   *
+   * The library preserves the order of `capturedComponentKeys` when it
+   * normalizes this array into the final generated route plan.
    */
   components: readonly RouteHandlerGeneratorComponent<TMeta>[];
 };
@@ -376,8 +434,9 @@ export type RouteHandlerProcessor<TMeta = JsonObject> = {
    * handler page should use.
    *
    * Processor implementations can still use private local helpers to stage
-   * registry lookups, metadata assembly, or other route-local preparation
-   * before returning the final plan.
+   * metadata assembly or other route-local preparation before returning the
+   * final plan, but the final returned component entries must already contain
+   * any metadata that should appear on the emitted runtime entry objects.
    */
   resolve: (input: ProcessorResolveInput) =>
     | RouteHandlerGeneratorPlan<TMeta>
@@ -407,7 +466,27 @@ export type ResolvedComponentImportSpec = {
 };
 
 /**
+ * Resolved route-level factory binding value forwarded into
+ * `createHandlerPage(...)`.
+ */
+export type ResolvedFactoryBindingValue =
+  | ResolvedComponentImportSpec
+  | readonly ResolvedComponentImportSpec[];
+
+/**
+ * Resolved route-level factory bindings forwarded into `createHandlerPage(...)`.
+ */
+export type ResolvedFactoryBindings = Readonly<
+  Record<string, ResolvedFactoryBindingValue>
+>;
+
+/**
  * Single emitted component entry used during handler generation.
+ *
+ * This is the normalized form of one `RouteHandlerGeneratorComponent` after
+ * module references have been resolved against the app root. The metadata is
+ * still carried inline and is emitted directly into the generated handler's
+ * `loadableRegistrySubset`.
  */
 export type LoadableComponentEntry = {
   /**
@@ -421,7 +500,7 @@ export type LoadableComponentEntry = {
   componentImport: ResolvedComponentImportSpec;
 
   /**
-   * Opaque metadata emitted alongside the component reference.
+   * Inline JSON metadata emitted alongside the component reference.
    */
   metadata: JsonObject;
 };
@@ -434,6 +513,11 @@ export type PlannedHeavyRoute = HeavyRouteCandidate & {
    * Resolved runtime handler factory module reference for this route.
    */
   factoryImport: ResolvedModuleReference;
+
+  /**
+   * Optional resolved route-level bindings forwarded into `createHandlerPage`.
+   */
+  factoryBindings?: ResolvedFactoryBindings;
 
   /**
    * Fully normalized component entries selected for the route.

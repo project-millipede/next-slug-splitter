@@ -28,6 +28,14 @@ const fileExists = async (filePath: string): Promise<boolean> => {
   }
 };
 
+const createRuntimeTraitsBlock = (trait: string): string =>
+  `runtimeTraits: [
+        '${trait}'
+      ]`;
+
+const wrapperRuntimeTraitsBlock = createRuntimeTraitsBlock('wrapper');
+const selectionRuntimeTraitsBlock = createRuntimeTraitsBlock('selection');
+
 describe('generator handlers', () => {
   it('emits static handler page module with inline runtime traits', () => {
     const selectedComponentEntries: Array<LoadableComponentEntry> = [
@@ -78,8 +86,8 @@ describe('generator handlers', () => {
     expect(pageSource).toContain(
       "from '../../../../../../test-runtime/factory/selection';"
     );
-    expect(pageSource).toContain('runtimeTraits: ["wrapper"]');
-    expect(pageSource).toContain('runtimeTraits: ["selection"]');
+    expect(pageSource).toContain(wrapperRuntimeTraitsBlock);
+    expect(pageSource).toContain(selectionRuntimeTraitsBlock);
     expect(pageSource).toContain("() => import('../../../../[...entry]')");
     expect(pageSource).toContain('const HandlerPage = createHandlerPage({');
     expect(pageSource).toContain(
@@ -210,6 +218,113 @@ describe('generator handlers', () => {
       )
         ?.length ?? 0
     ).toBe(1);
+  });
+
+  it('emits inline metadata fields alongside the component entry', () => {
+    const { pageSource } = renderRouteHandlerModules({
+      locale: 'en',
+      slugArray: ['content', 'selection'],
+      handlerId: 'en-content-selection',
+      usedLoadableComponentKeys: ['SelectionComponent'],
+      selectedComponentEntries: [
+        createLoadableComponentEntry({
+          key: 'SelectionComponent',
+          componentImport: {
+            source: packageModule('@next-slug-splitter-test/content-components'),
+            kind: 'named',
+            importedName: 'SelectionComponent'
+          },
+          metadata: {
+            runtimeTraits: ['selection']
+          }
+        })
+      ],
+      renderConfig: {
+        pageFilePath: '/repo/pages/_handlers/en/content/selection.tsx',
+        runtimeHandlerFactoryImport: '../../../../../test-runtime/factory/selection',
+        baseStaticPropsImport: '../../../[...entry]',
+        routeBasePath: '/content',
+        emitFormat: 'ts',
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
+      }
+    });
+
+    expect(pageSource).toContain(
+      "import { SelectionComponent } from '@next-slug-splitter-test/content-components';"
+    );
+    expect(pageSource).toContain(selectionRuntimeTraitsBlock);
+    expect(pageSource).not.toContain('createLoadableRegistrySubset');
+    expect(pageSource).not.toContain('SelectionComponentMetadata');
+
+    const componentIndex = pageSource.indexOf('component: SelectionComponent');
+    const inlineMetadataIndex = pageSource.indexOf(selectionRuntimeTraitsBlock);
+
+    expect(componentIndex).toBeGreaterThan(-1);
+    expect(inlineMetadataIndex).toBeGreaterThan(componentIndex);
+  });
+
+  it('emits route-level factory bindings unchanged into createHandlerPage', () => {
+    const { pageSource } = renderRouteHandlerModules({
+      locale: 'en',
+      slugArray: ['content', 'selection'],
+      handlerId: 'en-content-selection',
+      usedLoadableComponentKeys: ['SelectionComponent'],
+      factoryBindings: {
+        loadableRuntime: {
+          source: packageModule('@next-slug-splitter-test/runtime'),
+          kind: 'default',
+          importedName: 'loadableRuntime'
+        },
+        runtimeEnhancers: [
+          {
+            source: packageModule('@next-slug-splitter-test/runtime-wrapper'),
+            kind: 'named',
+            importedName: 'wrapperEnhancer'
+          },
+          {
+            source: packageModule('@next-slug-splitter-test/runtime-selection'),
+            kind: 'named',
+            importedName: 'selectionEnhancer'
+          }
+        ]
+      },
+      selectedComponentEntries: [
+        createLoadableComponentEntry({
+          key: 'SelectionComponent',
+          componentImport: {
+            source: packageModule('@next-slug-splitter-test/content-components'),
+            kind: 'named',
+            importedName: 'SelectionComponent'
+          }
+        })
+      ],
+      renderConfig: {
+        pageFilePath: '/repo/pages/_handlers/en/content/selection.tsx',
+        runtimeHandlerFactoryImport:
+          '../../../../../test-runtime/factory/selection',
+        baseStaticPropsImport: '../../../[...entry]',
+        routeBasePath: '/content',
+        emitFormat: 'ts',
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
+      }
+    });
+
+    expect(pageSource).toContain("from '@next-slug-splitter-test/runtime';");
+    expect(pageSource).toContain(
+      "import { wrapperEnhancer } from '@next-slug-splitter-test/runtime-wrapper';"
+    );
+    expect(pageSource).toContain(
+      "import { selectionEnhancer } from '@next-slug-splitter-test/runtime-selection';"
+    );
+    expect(pageSource).toContain('loadableRuntime: runtime');
+    expect(pageSource).toContain(
+      [
+        'runtimeEnhancers: [',
+        '    wrapperEnhancer,',
+        '    selectionEnhancer',
+        '  ]'
+      ].join('\n')
+    );
   });
 
   it('rewrites absolute component sources relative to the generated handler file', () => {

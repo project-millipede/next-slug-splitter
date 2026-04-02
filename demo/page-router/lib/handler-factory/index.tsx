@@ -20,6 +20,12 @@ type LoadableEntry = {
    * The React component to render when the corresponding tag appears in MDX.
    */
   component: ComponentType<Record<string, unknown>>;
+
+  /**
+   * Optional runtime traits used by the demo to showcase metadata-driven
+   * behavior in generated handlers.
+   */
+  runtimeTraits?: ReadonlyArray<string>;
 };
 
 /**
@@ -51,6 +57,86 @@ export type HandlerPageFactoryInput<T> = {
   loadableRegistrySubset: T;
 };
 
+const hasRuntimeTrait = (
+  entry: LoadableEntry,
+  runtimeTrait: string
+): boolean => entry.runtimeTraits?.includes(runtimeTrait) ?? false;
+
+const enhanceComponent = (
+  entry: LoadableEntry
+): ComponentType<Record<string, unknown>> => {
+  const BaseComponent = entry.component;
+  const requireWrapper = hasRuntimeTrait(entry, 'wrapper');
+  const injectSelection = hasRuntimeTrait(entry, 'selection');
+
+  if (!requireWrapper && !injectSelection) {
+    return BaseComponent;
+  }
+
+  return props => {
+    let content = <BaseComponent {...props} />;
+
+    if (injectSelection) {
+      content = (
+        <div
+          style={{
+            margin: '1rem 0',
+            border: '2px dashed #2563eb',
+            borderRadius: '0.75rem',
+            padding: '0.75rem',
+            background: '#eff6ff'
+          }}
+        >
+          <div
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              color: '#1d4ed8',
+              marginBottom: '0.5rem'
+            }}
+          >
+            Selection Trait
+          </div>
+          {content}
+        </div>
+      );
+    }
+
+    if (requireWrapper) {
+      content = (
+        <div
+          style={{
+            margin: '1rem 0',
+            border: '2px solid #f59e0b',
+            borderRadius: '0.9rem',
+            padding: '0.9rem',
+            background: '#fffbeb',
+            boxShadow: '0 0 0 4px rgba(245, 158, 11, 0.14)'
+          }}
+        >
+          <div
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              color: '#b45309',
+              marginBottom: '0.5rem'
+            }}
+          >
+            Wrapper Trait
+          </div>
+          {content}
+        </div>
+      );
+    }
+
+    return content;
+  };
+};
+
 /**
  * Create a handler page component bound to a specific set of heavy components.
  *
@@ -64,7 +150,7 @@ export function createHandlerPageFromRuntime<T extends LoadableRegistrySubset>({
   const components: MDXComponentMap = Object.fromEntries(
     Object.entries(loadableRegistrySubset).map(([key, entry]) => [
       key,
-      entry.component
+      enhanceComponent(entry)
     ])
   );
 

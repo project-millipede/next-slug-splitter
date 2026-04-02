@@ -34,7 +34,9 @@ type RouteHandlerPipelineOptions = {
   emitFormat?: EmitFormat;
   baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
   processorConfig: ResolvedRouteHandlerProcessorConfig;
-  mdxCompileOptions?: RouteHandlerMdxCompileOptions;
+  runtime?: {
+    mdxCompileOptions?: RouteHandlerMdxCompileOptions;
+  };
   handlerRouteParam: DynamicRouteParam;
   routeBasePath: string;
   paths: RouteHandlerPaths;
@@ -102,7 +104,7 @@ export const executeRouteHandlerPipeline = async (
     const usedLoadableComponentKeys = sortStringArray(
       await captureReferencedComponentNames({
         filePath: routePath.filePath,
-        mdxCompileOptions: config.mdxCompileOptions
+        mdxCompileOptions: config.runtime?.mdxCompileOptions
       })
     );
 
@@ -127,7 +129,11 @@ export const executeRouteHandlerPipeline = async (
       slugArray: routePath.slugArray,
       targetId: config.targetId
     });
-    const { factoryImport, componentEntries } = await planRoute({
+    const {
+      factoryImport,
+      factoryBindings,
+      componentEntries
+    } = await planRoute({
       route,
       capturedComponentKeys: usedLoadableComponentKeys
     });
@@ -139,6 +145,7 @@ export const executeRouteHandlerPipeline = async (
       handlerRelativePath,
       usedLoadableComponentKeys,
       factoryImport,
+      factoryBindings,
       componentEntries
     });
   }

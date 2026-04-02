@@ -2,10 +2,14 @@ export type {
   ComponentImportSpec,
   DynamicRouteParam,
   DynamicRouteParamKind,
+  FactoryBindings,
+  FactoryBindingValue,
   ModuleReference,
   RouteHandlerGeneratorComponent,
+  RouteHandlerGeneratorPlan,
   RouteHandlerProcessor,
-  RouteHandlersConfig
+  RouteHandlersConfig,
+  RouteHandlersTargetConfig
 } from './types';
 
 export {

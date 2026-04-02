@@ -187,6 +187,7 @@ export const renderRouteHandlerPage = ({
     slugArray: heavyRoute.slugArray,
     handlerId: heavyRoute.handlerId,
     usedLoadableComponentKeys: heavyRoute.usedLoadableComponentKeys,
+    factoryBindings: heavyRoute.factoryBindings,
     selectedComponentEntries: heavyRoute.componentEntries,
     renderConfig
   });
