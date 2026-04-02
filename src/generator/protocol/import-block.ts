@@ -10,9 +10,13 @@
  * while still using `CodeBlockWriter` from `ts-morph` for quoting and
  * indentation behavior.
  */
-import { CodeBlockWriter } from 'ts-morph';
 import type { ComponentImportKind } from '../../core/types';
 import { isString } from '../../utils/type-guards';
+import {
+  createGeneratorWriter,
+  type Writer,
+  writeStringLiteral
+} from './emitter-utils';
 
 /**
  * Component import record with resolved local alias and emitted source specifier.
@@ -67,23 +71,13 @@ export type HandlerImportDeclarationRecord = {
 };
 
 /**
- * Writes one quoted import string literal.
- *
- * @param writer - Writer receiving the generated syntax.
- * @param value - Import source value to emit.
- */
-const writeStringLiteral = (writer: CodeBlockWriter, value: string): void => {
-  writer.quote(value);
-};
-
-/**
  * Writes one named import specifier, preserving aliases only when needed.
  *
  * @param writer - Writer receiving the generated syntax.
  * @param importSpecifier - Named import specifier to emit.
  */
 const writeNamedImportSpecifier = (
-  writer: CodeBlockWriter,
+  writer: Writer,
   importSpecifier: NamedImportSpecifier
 ): void => {
   if (isString(importSpecifier)) {
@@ -108,7 +102,7 @@ const writeNamedImportSpecifier = (
  * @param importDeclaration - Normalized import declaration to emit.
  */
 const writeImportDeclaration = (
-  writer: CodeBlockWriter,
+  writer: Writer,
   importDeclaration: HandlerImportDeclarationRecord
 ): void => {
   const namedImports = importDeclaration.namedImports;
@@ -157,11 +151,7 @@ const writeImportDeclaration = (
 export const renderImportBlock = (
   importDeclarations: Array<HandlerImportDeclarationRecord>
 ): string => {
-  const writer = new CodeBlockWriter({
-    indentNumberOfSpaces: 2,
-    newLine: '\n',
-    useSingleQuote: true
-  });
+  const writer = createGeneratorWriter();
 
   importDeclarations.forEach((importDeclaration, index) => {
     writeImportDeclaration(writer, importDeclaration);

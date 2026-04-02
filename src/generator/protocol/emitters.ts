@@ -18,7 +18,6 @@ import type { DynamicRouteParam, EmitFormat, LoadableComponentEntry } from '../.
 import { createGeneratorError } from '../../utils/errors';
 import { isNonEmptyString } from '../../utils/type-guards-extended';
 import {
-  createStringArrayInitializer,
   createSerializableValueInitializer,
   createGeneratedSourceFile,
   renderStringArrayLiteral,
@@ -26,6 +25,7 @@ import {
   type Writer,
   writeStringLiteral
 } from './emitter-utils';
+import { writeExpressionArray, writeStringArray } from './array-literal';
 import {
   groupComponentImports,
   type HandlerComponentImportRecord,
@@ -91,13 +91,20 @@ type HandlerPageEmitInput = {
    */
   componentEntries: Array<HandlerLoadableComponentEmitEntry>;
   /**
+   * Route-level bindings forwarded into `createHandlerPage(...)`.
+   */
+  factoryBindingValues: Record<string, string | Array<string>>;
+  /**
    * Output format for the generated file.
    */
   emitFormat: EmitFormat;
 };
 
 /**
- * Writes one loadable component entry object into the generated handler module.
+ * Writes one emitted loadable-registry entry object into the generated handler.
+ *
+ * The emitted shape is `component: <alias>` followed by any inline metadata
+ * fields carried on the normalized entry.
  *
  * @param writer - Writer receiving the generated syntax.
  * @param entry - Loadable component entry data already normalized for emission.
@@ -174,20 +181,90 @@ const createComponentSubsetInitializer = (
 };
 
 /**
+ * Creates the writer for optional route-level factory binding properties inside
+ * the generated `createHandlerPage({...})` call.
+ *
+ * Example emitted block:
+ * ```ts
+ * primaryBinding: runtime,
+ * helperBindings: [
+ *   wrapperEnhancer,
+ *   selectionEnhancer
+ * ]
+ * ```
+ *
+ * Responsibilities:
+ * - write one property key/value pair for each factory binding
+ * - choose between single-value and array-value emission
+ * - insert `,` plus a newline only between sibling properties
+ *
+ * It intentionally does not write the leading separator from the previous
+ * `loadableRegistrySubset` field. The caller owns that outer object-level
+ * boundary.
+ *
+ * @param factoryBindingValues - Route-level binding aliases prepared for emission.
+ * @returns A writer function that emits only the binding properties, without a
+ * leading separator from the previous field.
+ */
+const createFactoryBindingPropertiesInitializer = (
+  factoryBindingValues: Record<string, string | Array<string>>
+): WriterFunction => {
+  const factoryBindingEntries = Object.entries(factoryBindingValues);
+
+  return writer => {
+    factoryBindingEntries.forEach(
+      ([factoryBindingKey, bindingValue], index) => {
+        writePropertyName(writer, factoryBindingKey);
+        writer.write(': ');
+
+        if (Array.isArray(bindingValue)) {
+          // Binding arrays contain imported identifier aliases, so they use the
+          // expression-array writer rather than JSON-like value emission.
+          writeExpressionArray(writer, bindingValue, { layout: 'multiline' });
+        } else {
+          // Single binding values are already resolved local aliases such as
+          // `runtime`, so they can be written directly.
+          writer.write(bindingValue);
+        }
+
+        if (index < factoryBindingEntries.length - 1) {
+          // Separate sibling properties, but avoid a trailing comma after the
+          // last emitted binding.
+          writer.write(',');
+          writer.newLine();
+        }
+      }
+    );
+  };
+};
+
+/**
  * Creates the initializer for the generated handler page instance.
  *
- * @param entries - Ordered loadable component entries selected for the handler.
+ * @param componentEntries - Ordered loadable component entries selected for the
+ * handler.
  * @returns A writer function that emits the `createHandlerPage(...)` call.
  */
 const createHandlerPageInitializer = (
-  entries: Array<HandlerLoadableComponentEmitEntry>
+  componentEntries: Array<HandlerLoadableComponentEmitEntry>,
+  factoryBindingValues: Record<string, string | Array<string>>
 ): WriterFunction => {
+  const hasFactoryBindings = Object.keys(factoryBindingValues).length > 0;
+
   return writer => {
     writer.write('createHandlerPage({');
     writer.newLine();
     writer.indent(() => {
       writer.write('loadableRegistrySubset: ');
-      createComponentSubsetInitializer(entries)(writer);
+
+      createComponentSubsetInitializer(componentEntries)(writer);
+
+      if (hasFactoryBindings) {
+        writer.write(',');
+        writer.newLine();
+        createFactoryBindingPropertiesInitializer(factoryBindingValues)(writer);
+      }
+
       writer.newLine();
     });
     writer.write('})');
@@ -282,6 +359,7 @@ export const renderHandlerPageSource = ({
   routeBasePath,
   componentImports,
   componentEntries,
+  factoryBindingValues,
   emitFormat
 }: HandlerPageEmitInput): string => {
   /**
@@ -319,7 +397,7 @@ export const renderHandlerPageSource = ({
     declarations: [
       {
         name: 'handlerSlug',
-        initializer: createStringArrayInitializer(sourceSlugArray)
+        initializer: writer => writeStringArray(writer, sourceSlugArray)
       }
     ]
   });
@@ -329,7 +407,10 @@ export const renderHandlerPageSource = ({
     declarations: [
       {
         name: 'HandlerPage',
-        initializer: createHandlerPageInitializer(componentEntries)
+        initializer: createHandlerPageInitializer(
+          componentEntries,
+          factoryBindingValues
+        )
       }
     ]
   });
