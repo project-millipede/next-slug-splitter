@@ -12,7 +12,7 @@
 
 import type { NextConfig } from 'next';
 import { withSlugSplitter } from 'next-slug-splitter/next';
-import { routeHandlersConfigPath } from './route-handlers-config';
+import { routeHandlersConfig } from './route-handlers-config';
 
 const nextConfig: NextConfig = {
   i18n: {
@@ -26,5 +26,5 @@ const nextConfig: NextConfig = {
 };
 
 export default withSlugSplitter(nextConfig, {
-  configPath: routeHandlersConfigPath
+  routeHandlersConfig
 });

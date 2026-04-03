@@ -1,36 +1,32 @@
-import path from 'node:path';
 import process from 'node:process';
+
+import type { RouteHandlersConfig } from 'next-slug-splitter/next';
+
+import { routeHandlersConfig as javascriptRouteHandlersConfig } from './config-variants/javascript/route-handlers-config.mjs';
+// @ts-expect-error The dev proxy imports this stable selector through native
+// ESM resolution, which requires the explicit `.ts` extension here.
+import { routeHandlersConfig as typescriptRouteHandlersConfig } from './config-variants/typescript/route-handlers-config.ts';
+import { routeHandlersConfig as javascriptPackageRouteHandlersConfig } from './config-variants/javascript-package/route-handlers-config.mjs';
+// @ts-expect-error The dev proxy imports this stable selector through native
+// ESM resolution, which requires the explicit `.ts` extension here.
+import { routeHandlersConfig as typescriptPackageRouteHandlersConfig } from './config-variants/typescript-package/route-handlers-config.ts';
 
 /**
  * Stable demo route-handlers config selector.
  *
  * The active variant is derived from the current package-runner lifecycle
- * event, but this file exports only the selected config module path.
+ * event, and this file exports the selected config object.
  *
- * Keeping the selector path-based avoids eagerly importing all variants into
- * the stable root entrypoint, which would force TypeScript to validate
- * inactive `.ts`-extension imports before the lifecycle-based selection runs.
+ * The TypeScript variant imports keep their `.ts` extensions explicitly so
+ * the dev-only proxy runtime can resolve the inactive variants correctly when
+ * this stable selector module is imported outside the main Next build flow.
  */
 
-const rootDir = process.cwd();
-
 const supportedVariants = {
-  javascript: path.resolve(
-    rootDir,
-    'config-variants/javascript/route-handlers-config.mjs'
-  ),
-  typescript: path.resolve(
-    rootDir,
-    'config-variants/typescript/route-handlers-config.ts'
-  ),
-  'javascript-package': path.resolve(
-    rootDir,
-    'config-variants/javascript-package/route-handlers-config.mjs'
-  ),
-  'typescript-package': path.resolve(
-    rootDir,
-    'config-variants/typescript-package/route-handlers-config.ts'
-  )
+  javascript: javascriptRouteHandlersConfig,
+  typescript: typescriptRouteHandlersConfig,
+  'javascript-package': javascriptPackageRouteHandlersConfig,
+  'typescript-package': typescriptPackageRouteHandlersConfig
 };
 
 type SupportedVariant = keyof typeof supportedVariants;
@@ -79,7 +75,7 @@ const resolveActiveVariant = (
   return 'javascript';
 };
 
-export const routeHandlersConfigPath =
+export const routeHandlersConfig: RouteHandlersConfig =
   supportedVariants[resolveActiveVariant(process.env.npm_lifecycle_event)];
 
-export default routeHandlersConfigPath;
+export default routeHandlersConfig;
