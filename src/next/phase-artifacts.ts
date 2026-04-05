@@ -10,22 +10,45 @@ import {
 import type { ResolvedRouteHandlersConfig } from './types';
 
 const ROUTE_HANDLER_PHASE_RECORD_VERSION = 1;
+
+/**
+ * Direct JSON artifacts written by next-slug-splitter itself.
+ *
+ * These paths point to one-file JSON documents whose serialization format is
+ * owned directly by this codebase.
+ *
+ * Producers:
+ * - `ROUTE_HANDLER_PHASE_RECORD_PATH` is written by
+ *   `writeRouteHandlerPhaseOwner(...)` in this module
+ * - `PROXY_BOOTSTRAP_MANIFEST_PATH` is written by
+ *   `writeRouteHandlerProxyBootstrap(...)` in `bootstrap-persisted.ts`
+ */
 const ROUTE_HANDLER_PHASE_RECORD_PATH = path.join(
   '.next',
   'cache',
   'route-handlers-phase-owner.json'
 );
+const PROXY_BOOTSTRAP_MANIFEST_PATH = path.join(
+  '.next',
+  'cache',
+  'route-handlers-worker-bootstrap.json'
+);
+
+/**
+ * Cache directories whose on-disk layout is owned by a cache helper.
+ *
+ * This path is storage for persisted one-file route-plan records managed by
+ * `file-entry-cache`, not one directly serialized JSON artifact.
+ *
+ * Producer:
+ * - `DEV_LAZY_SINGLE_ROUTE_CACHE_DIRECTORY` is used by
+ *   `createLazySingleRouteFileCache(...)` in `single-route-cache.ts`
+ */
 const DEV_LAZY_SINGLE_ROUTE_CACHE_DIRECTORY = path.join(
   '.next',
   'cache',
   'route-handlers-lazy-single-routes'
 );
-const LEGACY_ROUTE_HANDLER_CACHE_PATHS = [
-  path.join('.next', 'cache', 'route-handlers.json'),
-  path.join('.next', 'cache', 'route-handlers-targets'),
-  path.join('.next', 'cache', 'route-handlers-emission'),
-  path.join('.next', 'cache', 'route-handlers-lazy-discovery.json')
-] as const;
 
 type RouteHandlerPhaseOwner = 'dev' | 'build';
 
@@ -81,17 +104,13 @@ const writeRouteHandlerPhaseOwner = async (
   await writeFile(recordPath, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
 };
 
-const clearLegacyRouteHandlerCacheArtifacts = async (
+const clearRouteHandlerProxyBootstrapManifest = async (
   rootDir: string
 ): Promise<void> => {
-  await Promise.all(
-    LEGACY_ROUTE_HANDLER_CACHE_PATHS.map(relativePath =>
-      rm(path.join(rootDir, relativePath), {
-        recursive: true,
-        force: true
-      })
-    )
-  );
+  await rm(path.join(rootDir, PROXY_BOOTSTRAP_MANIFEST_PATH), {
+    recursive: true,
+    force: true
+  });
 };
 
 const clearDevLazySingleRouteCacheArtifacts = async (
@@ -112,8 +131,8 @@ const clearDevLazySingleRouteCacheArtifacts = async (
  * That reuse is only safe when the previous owning phase was also `dev`.
  *
  * Transition rules:
- * 1. Legacy persisted cache artifacts from older cache layers are always
- *    removed because the current architecture no longer trusts them.
+ * 1. The proxy bootstrap manifest is cleared before the current phase writes
+ *    fresh structural worker state.
  * 2. Entering `build` clears dev-only lazy route-plan cache artifacts so build
  *    never reads or validates dev cache state.
  * 3. Entering `dev` after any non-dev owner clears both dev-only route-plan
@@ -140,7 +159,7 @@ export const synchronizeRouteHandlerPhaseArtifacts = async (
   const rootDir = referenceConfig.app.rootDir;
   const previousPhase = await readRouteHandlerPhaseOwner(rootDir);
 
-  await clearLegacyRouteHandlerCacheArtifacts(rootDir);
+  await clearRouteHandlerProxyBootstrapManifest(rootDir);
 
   if (phase === 'build') {
     await clearDevLazySingleRouteCacheArtifacts(rootDir);

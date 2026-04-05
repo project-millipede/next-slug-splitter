@@ -1,17 +1,21 @@
-import { resolveRouteHandlersConfigsFromAppConfig } from '../../config/resolve-configs';
+import process from 'node:process';
+
+import { createRuntimeError } from '../../../utils/errors';
+import { loadRouteHandlerProxyRuntimeAttachments } from '../../internal/runtime-attachments';
+import { doesRouteHandlerProxyLocaleConfigMatch } from '../runtime/shared';
 import {
-  loadRouteHandlersConfigOrRegistered,
-  resolveRouteHandlersAppContext
-} from '../../internal/route-handlers-bootstrap';
-import { prepareRouteHandlersFromConfig } from '../../prepare/index';
-import { resolveRouteHandlerLazyResolvedTargetsFromAppConfig } from '../lazy/request-resolution';
+  createRouteHandlerLazyResolvedTargetsFromProxyBootstrap,
+  createRouteHandlerPlannerConfigsByIdFromProxyBootstrap,
+  readRouteHandlerProxyBootstrap
+} from '../bootstrap-persisted';
 
 import type { LocaleConfig } from '../../../core/types';
-import type { ResolvedRouteHandlersConfig } from '../../types';
+import type { RouteHandlerPlannerConfig } from '../../types';
 import type { RouteHandlerLazyResolvedTarget } from '../lazy/types';
-import type { BootstrapGenerationToken } from '../runtime/types';
-
-const SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV = 'SLUG_SPLITTER_CONFIG_ROOT_DIR';
+import type {
+  BootstrapGenerationToken,
+  RouteHandlerProxyConfigRegistration
+} from '../runtime/types';
 
 /**
  * In-memory worker bootstrap state reused across many lazy-miss requests.
@@ -20,8 +24,8 @@ const SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV = 'SLUG_SPLITTER_CONFIG_ROOT_DIR';
  * State aspects:
  * - Identity: `bootstrapGenerationToken` ties all derived state to one parent
  *   bootstrap generation.
- * - Reuse: lazy-miss requests reuse resolved targets and configs from this
- *   value object instead of repeating bootstrap work.
+ * - Reuse: lazy-miss requests reuse resolved targets and planner configs from
+ *   this value object instead of repeating bootstrap work.
  * - Boundary: the state contains derived values only; it does not keep the
  *   original app config-loading inputs around for request-time use.
  */
@@ -35,9 +39,9 @@ export type RouteHandlerProxyWorkerBootstrapState = {
    */
   lazyResolvedTargets: Array<RouteHandlerLazyResolvedTarget>;
   /**
-   * Fully resolved heavy-analysis configs keyed by stable target id.
+   * Fully prepared planner configs keyed by stable target id.
    */
-  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
+  resolvedConfigsByTargetId: ReadonlyMap<string, RouteHandlerPlannerConfig>;
 };
 
 /**
@@ -45,66 +49,86 @@ export type RouteHandlerProxyWorkerBootstrapState = {
  *
  * @param bootstrapGenerationToken - Parent-issued bootstrap generation token.
  * @param localeConfig - Locale semantics for the current worker generation.
- * @returns Bootstrapped heavy-analysis state for later lazy-miss requests.
+ * @param configRegistration - Adapter-owned config registration for runtime
+ * attachment reloading.
+ * @returns Bootstrapped planning state for later lazy-miss requests.
  *
  * @remarks
  * Bootstrap aspects:
- * - Ownership: this is the only worker-side phase allowed to load
- *   `routeHandlersConfig`, run `prepare`, and resolve the heavy planning
- *   graph.
+ * - Ownership: this reads the adapter-written structural manifest and uses the
+ *   bootstrap request's config registration to reload runtime attachments
+ *   instead of re-running full config loading, app-context resolution,
+ *   `prepare`, and target resolution.
  * - Timing: bootstrap work runs once per generation, not once per lazy miss.
  * - Output: per-request lazy misses consume only the derived value state
  *   returned here.
  */
 export const bootstrapRouteHandlerProxyWorker = async (
   bootstrapGenerationToken: BootstrapGenerationToken,
-  localeConfig: LocaleConfig
+  localeConfig: LocaleConfig,
+  configRegistration: RouteHandlerProxyConfigRegistration
 ): Promise<RouteHandlerProxyWorkerBootstrapState> => {
-  const routeHandlersConfig = await loadRouteHandlersConfigOrRegistered();
+  const rootDir = configRegistration.rootDir ?? process.cwd();
+  const manifest = await readRouteHandlerProxyBootstrap(rootDir);
 
-  if (routeHandlersConfig == null) {
-    return {
-      bootstrapGenerationToken,
-      lazyResolvedTargets: [],
-      resolvedConfigsByTargetId: new Map()
-    };
-  }
-
-  const appContext = resolveRouteHandlersAppContext(
-    routeHandlersConfig,
-    process.env[SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV]
-  );
-  const bootstrappedRouteHandlersConfig = appContext.routeHandlersConfig;
-
-  if (bootstrappedRouteHandlersConfig == null) {
-    throw new Error(
-      'next-slug-splitter proxy worker bootstrap lost routeHandlersConfig after loading it.'
+  if (manifest == null) {
+    throw createRuntimeError(
+      'Missing route-handler proxy bootstrap manifest. Proxy worker bootstrap requires a bootstrap-generated `.next/cache/route-handlers-worker-bootstrap.json` manifest.'
     );
   }
 
-  await prepareRouteHandlersFromConfig(
-    appContext.appConfig.rootDir,
-    bootstrappedRouteHandlersConfig
-  );
+  if (manifest.bootstrapGenerationToken !== bootstrapGenerationToken) {
+    throw createRuntimeError(
+      'Route-handler proxy worker bootstrap manifest does not match the requested bootstrap generation token.'
+    );
+  }
 
-  const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig(
-    appContext.appConfig,
-    localeConfig,
-    bootstrappedRouteHandlersConfig
-  );
+  if (
+    !doesRouteHandlerProxyLocaleConfigMatch(
+      localeConfig,
+      manifest.localeConfig
+    )
+  ) {
+    throw createRuntimeError(
+      'Route-handler proxy worker bootstrap manifest localeConfig does not match the requested worker localeConfig.'
+    );
+  }
+
+  // Structural target state comes from the persisted manifest; runtime
+  // attachments are reloaded separately from the explicit bootstrap request.
+  const runtimeAttachmentsByTargetId =
+    await loadRouteHandlerProxyRuntimeAttachments(configRegistration);
+  const structuralConfigsByTargetId =
+    createRouteHandlerPlannerConfigsByIdFromProxyBootstrap(manifest);
+  const resolvedConfigsByTargetId = new Map<string, RouteHandlerPlannerConfig>();
+
+  for (const [targetId, structuralConfig] of structuralConfigsByTargetId) {
+    const runtimeAttachments = runtimeAttachmentsByTargetId[targetId];
+
+    if (runtimeAttachments == null) {
+      throw createRuntimeError(
+        `Route-handler proxy runtime attachments are missing target "${targetId}".`
+      );
+    }
+
+    resolvedConfigsByTargetId.set(targetId, {
+      ...structuralConfig,
+      runtime: runtimeAttachments
+    });
+  }
+
+  for (const targetId of Object.keys(runtimeAttachmentsByTargetId)) {
+    if (!structuralConfigsByTargetId.has(targetId)) {
+      throw createRuntimeError(
+        `Route-handler proxy runtime attachments returned unexpected target "${targetId}".`
+      );
+    }
+  }
 
   return {
     bootstrapGenerationToken,
-    lazyResolvedTargets: resolveRouteHandlerLazyResolvedTargetsFromAppConfig(
-      appContext.appConfig,
-      localeConfig,
-      bootstrappedRouteHandlersConfig
-    ),
-    resolvedConfigsByTargetId: new Map(
-      resolvedConfigs.map(resolvedConfig => [
-        resolvedConfig.targetId,
-        resolvedConfig
-      ])
-    )
+    lazyResolvedTargets:
+      createRouteHandlerLazyResolvedTargetsFromProxyBootstrap(manifest),
+    resolvedConfigsByTargetId
   };
 };

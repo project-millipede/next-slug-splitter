@@ -14,6 +14,8 @@ import type {
 
 import {
   type NormalizedRouteHandlersTargetOptions,
+  type NormalizedRouteHandlersTargetRuntimeAttachments,
+  normalizeRouteHandlersTargetRuntimeAttachments,
   normalizeRouteHandlersTargetOptions,
   type ResolvedRouteHandlersConfigBase,
   resolveRouteHandlersConfigBase
@@ -90,6 +92,7 @@ export const resolveRouteHandlersConfigBaseFromAppConfig = (
 export type NormalizedRouteHandlersTargetRecord = {
   routeHandlersConfig: RouteHandlersConfig | RouteHandlersTargetConfig;
   options: NormalizedRouteHandlersTargetOptions;
+  runtime: NormalizedRouteHandlersTargetRuntimeAttachments;
 };
 
 /**
@@ -143,6 +146,9 @@ export const resolveNormalizedRouteHandlersTargetsFromAppConfig = (
         options: normalizeRouteHandlersTargetOptions(
           appConfig,
           configuredRouteHandlers
+        ),
+        runtime: normalizeRouteHandlersTargetRuntimeAttachments(
+          configuredRouteHandlers
         )
       }
     ];
@@ -178,7 +184,10 @@ export const resolveNormalizedRouteHandlersTargetsFromAppConfig = (
     seenTargetIds.add(options.targetId);
     normalizedTargets.push({
       routeHandlersConfig: normalizedTargetConfig,
-      options
+      options,
+      runtime: normalizeRouteHandlersTargetRuntimeAttachments(
+        normalizedTargetConfig
+      )
     });
   }
 

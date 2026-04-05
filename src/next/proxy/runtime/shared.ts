@@ -1,3 +1,4 @@
+import type { LocaleConfig } from '../../../core/types';
 import type { ResolvedRouteHandlersConfig } from '../../types';
 import { normalizeRouteBasePath } from '../../config/options';
 
@@ -23,6 +24,21 @@ export const ROUTE_HANDLER_PROXY_HEADER =
  */
 export const ROUTE_HANDLER_PROXY_TARGET_HEADER =
   'x-next-slug-splitter-synthetic-proxy-target';
+
+/**
+ * Compare two locale-config objects for exact proxy-bootstrap equality.
+ *
+ * @param left - Expected locale semantics.
+ * @param right - Candidate locale semantics.
+ * @returns `true` when both configs have the same default locale and locale order.
+ */
+export const doesRouteHandlerProxyLocaleConfigMatch = (
+  left: LocaleConfig,
+  right: LocaleConfig
+): boolean =>
+  left.defaultLocale === right.defaultLocale &&
+  left.locales.length === right.locales.length &&
+  left.locales.every((locale, index) => locale === right.locales[index]);
 
 /**
  * Convert one route base path into the non-locale matcher used by Proxy.

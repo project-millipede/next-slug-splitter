@@ -5,7 +5,7 @@ import type {
 } from '../../../core/types';
 import type { PlannedHeavyRoute } from '../../../core/types';
 import type { LocaleConfig } from '../../../core/types';
-import type { ResolvedRouteHandlersConfig } from '../../types';
+import type { RouteHandlerPlannerConfig } from '../../types';
 import type { BootstrapGenerationToken } from '../runtime/types';
 
 /**
@@ -116,7 +116,7 @@ export type RouteHandlerLazyMatchedRouteInput = {
   targetId: string;
   routePath: LocalizedRoutePath;
   bootstrapGenerationToken: BootstrapGenerationToken;
-  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
+  resolvedConfigsByTargetId: ReadonlyMap<string, RouteHandlerPlannerConfig>;
 };
 
 /**
@@ -204,9 +204,9 @@ export type RouteHandlerLazySingleRouteAnalysisResult =
        */
       source: 'cache' | 'fresh';
       /**
-       * Fully resolved target config used by analysis.
+       * Narrow planner config used by analysis.
        */
-      config: ResolvedRouteHandlersConfig;
+      config: RouteHandlerPlannerConfig;
       /**
        * Concrete localized content file that was analyzed.
        */
@@ -223,9 +223,9 @@ export type RouteHandlerLazySingleRouteAnalysisResult =
        */
       source: 'cache' | 'fresh';
       /**
-       * Fully resolved target config used by analysis.
+       * Narrow planner config used by analysis.
        */
-      config: ResolvedRouteHandlersConfig;
+      config: RouteHandlerPlannerConfig;
       /**
        * Concrete localized content file that was analyzed.
        */

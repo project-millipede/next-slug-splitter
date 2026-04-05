@@ -20,6 +20,7 @@ import type {
 import { isArrayOf, isObjectOf, isString } from '../../../utils/type-guards';
 import {
   isObjectRecordOf,
+  isStringArray,
   readObjectProperty
 } from '../../../utils/type-guards-custom';
 import { isJsonObject } from '../../../utils/type-guards-json';
@@ -150,6 +151,14 @@ const isLoadableComponentEntry = (
 };
 
 /**
+ * Runtime validator for an ordered persisted component-entry list.
+ *
+ * @param value - Candidate persisted value.
+ * @returns `true` when the value is an array of persisted component entries.
+ */
+const isLoadableComponentEntryArray = isArrayOf(isLoadableComponentEntry);
+
+/**
  * Runtime validator for one persisted heavy-route payload.
  *
  * @param value - Candidate persisted value.
@@ -159,9 +168,6 @@ const isPlannedHeavyRoute = (value: unknown): value is PlannedHeavyRoute => {
   if (!isObjectRecordOf<PlannedHeavyRoute>(value)) {
     return false;
   }
-
-  const isStringArray = isArrayOf(isString);
-  const isComponentEntryArray = isArrayOf(isLoadableComponentEntry);
 
   return (
     isString(readObjectProperty(value, 'locale')) &&
@@ -173,7 +179,7 @@ const isPlannedHeavyRoute = (value: unknown): value is PlannedHeavyRoute => {
     isOptionalResolvedFactoryBindings(
       readObjectProperty(value, 'factoryBindings')
     ) &&
-    isComponentEntryArray(readObjectProperty(value, 'componentEntries'))
+    isLoadableComponentEntryArray(readObjectProperty(value, 'componentEntries'))
   );
 };
 

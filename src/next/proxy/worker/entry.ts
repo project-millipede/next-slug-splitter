@@ -65,7 +65,8 @@ const handleRouteHandlerProxyWorkerRequest = async ({
     if (request.kind === 'bootstrap') {
       const bootstrapState = await bootstrapRouteHandlerProxyWorker(
         request.bootstrapGenerationToken,
-        request.localeConfig
+        request.localeConfig,
+        request.configRegistration
       );
 
       setBootstrapState(bootstrapState);

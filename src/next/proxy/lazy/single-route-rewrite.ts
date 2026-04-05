@@ -1,7 +1,7 @@
 import { buildRouteRewriteEntries } from '../../rewrites/index';
 
 import type { PlannedHeavyRoute } from '../../../core/types';
-import type { ResolvedRouteHandlersConfig } from '../../types';
+import type { RouteHandlerPlannerConfig } from '../../types';
 import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
 
 /**
@@ -23,7 +23,7 @@ import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
  */
 export const resolveRouteHandlerHeavyRewriteDestination = (
   pathname: string,
-  config: ResolvedRouteHandlersConfig,
+  config: RouteHandlerPlannerConfig,
   plannedHeavyRoute: PlannedHeavyRoute
 ): string | null => {
   const rewrites = buildRouteRewriteEntries({

@@ -53,7 +53,9 @@ const createResolvedConfig = ({
       specifier: 'test-route-handlers/processor'
     }
   },
-  mdxCompileOptions: {},
+  runtime: {
+    mdxCompileOptions: {}
+  },
   routeBasePath: '/content',
   paths: {
     rootDir,

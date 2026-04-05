@@ -1,0 +1,239 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const loadRouteHandlerProxyRuntimeAttachmentsMock = vi.hoisted(() => vi.fn());
+const readRouteHandlerProxyBootstrapMock = vi.hoisted(() => vi.fn());
+
+vi.mock(import('../../../../next/internal/runtime-attachments'), () => ({
+  loadRouteHandlerProxyRuntimeAttachments:
+    loadRouteHandlerProxyRuntimeAttachmentsMock
+}));
+
+vi.mock(import('../../../../next/proxy/bootstrap-persisted'), async importOriginal => {
+  const actual = await importOriginal<
+    typeof import('../../../../next/proxy/bootstrap-persisted')
+  >();
+
+  return {
+    ...actual,
+    readRouteHandlerProxyBootstrap: readRouteHandlerProxyBootstrapMock
+  };
+});
+
+import { bootstrapRouteHandlerProxyWorker } from '../../../../next/proxy/worker/bootstrap';
+
+const TEST_LOCALE_CONFIG = {
+  locales: ['en'],
+  defaultLocale: 'en'
+};
+
+const createBootstrapManifest = ({
+  bootstrapGenerationToken = 'bootstrap-token',
+  localeConfig = TEST_LOCALE_CONFIG,
+  targets = [createBootstrapTarget()]
+}: {
+  bootstrapGenerationToken?: string;
+  localeConfig?: {
+    locales: readonly string[];
+    defaultLocale: string;
+  };
+  targets?: Array<unknown>;
+} = {}) => ({
+  version: 1,
+  bootstrapGenerationToken,
+  localeConfig,
+  targets
+});
+
+function createBootstrapTarget() {
+  return {
+    targetId: 'docs',
+    routeBasePath: '/docs',
+    contentLocaleMode: 'filename',
+    emitFormat: 'ts',
+    handlerRouteParam: {
+      name: 'slug',
+      kind: 'catch-all'
+    },
+    baseStaticPropsImport: {
+      kind: 'package',
+      specifier: '@test/base-static-props'
+    },
+    processorConfig: {
+      kind: 'module',
+      processorImport: {
+        kind: 'package',
+        specifier: '@test/processor'
+      }
+    },
+    paths: {
+      rootDir: '/repo/app',
+      contentPagesDir: '/repo/app/content/pages',
+      handlersDir: '/repo/app/pages/_handlers'
+    }
+  };
+}
+
+const TEST_CONFIG_REGISTRATION = {
+  rootDir: '/repo/app',
+  configPath: '/repo/app/route-handlers-config.mjs'
+};
+
+describe('proxy worker bootstrap', () => {
+  const ORIGINAL_ROOT_DIR_ENV = process.env.SLUG_SPLITTER_CONFIG_ROOT_DIR;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.SLUG_SPLITTER_CONFIG_ROOT_DIR = '/repo/app';
+    readRouteHandlerProxyBootstrapMock.mockResolvedValue(createBootstrapManifest());
+    loadRouteHandlerProxyRuntimeAttachmentsMock.mockResolvedValue({
+      docs: {
+        mdxCompileOptions: {
+          remarkPlugins: [() => null]
+        }
+      }
+    });
+  });
+
+  afterEach(() => {
+    if (ORIGINAL_ROOT_DIR_ENV == null) {
+      delete process.env.SLUG_SPLITTER_CONFIG_ROOT_DIR;
+      return;
+    }
+
+    process.env.SLUG_SPLITTER_CONFIG_ROOT_DIR = ORIGINAL_ROOT_DIR_ENV;
+  });
+
+  it('combines structural manifest data with runtime attachments', async () => {
+    const state = await bootstrapRouteHandlerProxyWorker(
+      'bootstrap-token',
+      TEST_LOCALE_CONFIG,
+      TEST_CONFIG_REGISTRATION
+    );
+    const resolvedConfig = state.resolvedConfigsByTargetId.get('docs');
+
+    expect(readRouteHandlerProxyBootstrapMock).toHaveBeenCalledWith('/repo/app');
+    expect(loadRouteHandlerProxyRuntimeAttachmentsMock).toHaveBeenCalledWith(
+      TEST_CONFIG_REGISTRATION
+    );
+    expect(state.bootstrapGenerationToken).toBe('bootstrap-token');
+    expect(state.lazyResolvedTargets).toEqual([
+      {
+        targetId: 'docs',
+        routeBasePath: '/docs',
+        contentLocaleMode: 'filename',
+        localeConfig: TEST_LOCALE_CONFIG,
+        emitFormat: 'ts',
+        paths: {
+          contentPagesDir: '/repo/app/content/pages',
+          handlersDir: '/repo/app/pages/_handlers'
+        }
+      }
+    ]);
+    expect(state.resolvedConfigsByTargetId.size).toBe(1);
+    expect(resolvedConfig).toMatchObject({
+      targetId: 'docs',
+      routeBasePath: '/docs',
+      contentLocaleMode: 'filename',
+      emitFormat: 'ts',
+      handlerRouteParam: {
+        name: 'slug',
+        kind: 'catch-all'
+      },
+      baseStaticPropsImport: {
+        kind: 'package',
+        specifier: '@test/base-static-props'
+      },
+      processorConfig: {
+        kind: 'module',
+        processorImport: {
+          kind: 'package',
+          specifier: '@test/processor'
+        }
+      },
+      localeConfig: TEST_LOCALE_CONFIG,
+      paths: {
+        rootDir: '/repo/app',
+        contentPagesDir: '/repo/app/content/pages',
+        handlersDir: '/repo/app/pages/_handlers'
+      }
+    });
+    expect(
+      resolvedConfig?.runtime.mdxCompileOptions.remarkPlugins
+    ).toEqual([expect.any(Function)]);
+  });
+
+  it('throws when the structural manifest is missing', async () => {
+    readRouteHandlerProxyBootstrapMock.mockResolvedValue(null);
+
+    await expect(
+      bootstrapRouteHandlerProxyWorker(
+        'bootstrap-token',
+        TEST_LOCALE_CONFIG,
+        TEST_CONFIG_REGISTRATION
+      )
+    ).rejects.toThrow('Missing route-handler proxy bootstrap manifest.');
+    expect(loadRouteHandlerProxyRuntimeAttachmentsMock).not.toHaveBeenCalled();
+  });
+
+  it('throws when the requested bootstrap token does not match the manifest token', async () => {
+    await expect(
+      bootstrapRouteHandlerProxyWorker(
+        'other-bootstrap-token',
+        TEST_LOCALE_CONFIG,
+        TEST_CONFIG_REGISTRATION
+      )
+    ).rejects.toThrow(
+      'Route-handler proxy worker bootstrap manifest does not match the requested bootstrap generation token.'
+    );
+  });
+
+  it('throws when the requested localeConfig does not match the manifest localeConfig', async () => {
+    await expect(
+      bootstrapRouteHandlerProxyWorker(
+        'bootstrap-token',
+        {
+          locales: ['en', 'de'],
+          defaultLocale: 'en'
+        },
+        TEST_CONFIG_REGISTRATION
+      )
+    ).rejects.toThrow(
+      'Route-handler proxy worker bootstrap manifest localeConfig does not match the requested worker localeConfig.'
+    );
+  });
+
+  it('throws when runtime attachments are missing a structural target', async () => {
+    loadRouteHandlerProxyRuntimeAttachmentsMock.mockResolvedValue({});
+
+    await expect(
+      bootstrapRouteHandlerProxyWorker(
+        'bootstrap-token',
+        TEST_LOCALE_CONFIG,
+        TEST_CONFIG_REGISTRATION
+      )
+    ).rejects.toThrow(
+      'Route-handler proxy runtime attachments are missing target "docs".'
+    );
+  });
+
+  it('throws when runtime attachments return an unexpected target', async () => {
+    loadRouteHandlerProxyRuntimeAttachmentsMock.mockResolvedValue({
+      docs: {
+        mdxCompileOptions: {}
+      },
+      extra: {
+        mdxCompileOptions: {}
+      }
+    });
+
+    await expect(
+      bootstrapRouteHandlerProxyWorker(
+        'bootstrap-token',
+        TEST_LOCALE_CONFIG,
+        TEST_CONFIG_REGISTRATION
+      )
+    ).rejects.toThrow(
+      'Route-handler proxy runtime attachments returned unexpected target "extra".'
+    );
+  });
+});

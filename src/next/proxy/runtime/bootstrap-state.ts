@@ -1,10 +1,6 @@
-import {
-  resolveNormalizedRouteHandlersTargetsFromAppConfig
-} from '../../config/resolve-configs';
-import {
-  loadRouteHandlersConfigOrRegistered,
-  resolveRouteHandlersAppContext
-} from '../../internal/route-handlers-bootstrap';
+import { createRuntimeError } from '../../../utils/errors';
+import { readRouteHandlerProxyBootstrap } from '../bootstrap-persisted';
+import { doesRouteHandlerProxyLocaleConfigMatch } from './shared';
 
 import type {
   BootstrapGenerationToken,
@@ -16,9 +12,9 @@ import type {
  * Lightweight proxy bootstrap state kept in the parent process.
  *
  * @remarks
- * This state deliberately stops before heavy planner loading. Its job is only
- * to establish:
- * - whether splitter config exists
+ * This state deliberately stops before runtime attachment loading and heavy
+ * planner construction. Its job is only to establish:
+ * - whether splitter targets exist
  * - which route bases are configured for diagnostics
  * - which bootstrap generation token the lazy worker should use
  */
@@ -28,7 +24,6 @@ export type RouteHandlerProxyBootstrapState = {
   bootstrapGenerationToken: BootstrapGenerationToken;
 };
 
-let bootstrapGenerationSequence = 0;
 // Cache-policy note: this is lightweight parent-side value reuse only. It does
 // not contain the heavy planning graph or emitted-handler semantics. See
 // `docs/architecture/cache-policy.md`.
@@ -44,44 +39,37 @@ const createRouteHandlerProxyBootstrapStateKey = (
 ): string =>
   JSON.stringify([
     localeConfig,
-    configRegistration.configPath ?? null,
     configRegistration.rootDir ?? null
   ]);
 
-const createRouteHandlerProxyBootstrapGenerationToken =
-  (): BootstrapGenerationToken =>
-    `route-handler-proxy-bootstrap-${String(++bootstrapGenerationSequence)}`;
-
 const loadFreshRouteHandlerProxyBootstrapState = async (
+  localeConfig: RouteHandlerProxyOptions['localeConfig'],
   configRegistration: RouteHandlerProxyConfigRegistration = {}
 ): Promise<RouteHandlerProxyBootstrapState> => {
-  const routeHandlersConfig = await loadRouteHandlersConfigOrRegistered();
-  const bootstrapGenerationToken =
-    createRouteHandlerProxyBootstrapGenerationToken();
+  const rootDir = configRegistration.rootDir ?? process.cwd();
+  const manifest = await readRouteHandlerProxyBootstrap(rootDir);
 
-  if (routeHandlersConfig == null) {
-    return {
-      hasConfiguredTargets: false,
-      targetRouteBasePaths: [],
-      bootstrapGenerationToken
-    };
+  if (manifest == null) {
+    throw createRuntimeError(
+      'Missing route-handler proxy bootstrap manifest. Proxy request routing requires a bootstrap-generated `.next/cache/route-handlers-worker-bootstrap.json` manifest.'
+    );
   }
 
-  const appContext = resolveRouteHandlersAppContext(
-    routeHandlersConfig,
-    configRegistration.rootDir
-  );
-  const normalizedTargets = resolveNormalizedRouteHandlersTargetsFromAppConfig(
-    appContext.appConfig,
-    appContext.routeHandlersConfig
-  );
+  if (
+    !doesRouteHandlerProxyLocaleConfigMatch(
+      localeConfig,
+      manifest.localeConfig
+    )
+  ) {
+    throw createRuntimeError(
+      'Route-handler proxy bootstrap manifest localeConfig does not match the generated proxy localeConfig.'
+    );
+  }
 
   return {
-    hasConfiguredTargets: normalizedTargets.length > 0,
-    targetRouteBasePaths: normalizedTargets.map(
-      ({ options }) => options.routeBasePath
-    ),
-    bootstrapGenerationToken
+    hasConfiguredTargets: manifest.targets.length > 0,
+    targetRouteBasePaths: manifest.targets.map(target => target.routeBasePath),
+    bootstrapGenerationToken: manifest.bootstrapGenerationToken
   };
 };
 
@@ -113,6 +101,7 @@ export const getRouteHandlerProxyBootstrapState = async (
   }
 
   const bootstrapPromise = loadFreshRouteHandlerProxyBootstrapState(
+    localeConfig,
     configRegistration
   ).then(state => {
     cachedBootstrapStates.set(stateKey, state);

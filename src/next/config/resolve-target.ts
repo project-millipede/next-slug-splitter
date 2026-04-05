@@ -12,6 +12,7 @@ import type {
   ModuleReference,
   ResolvedRouteHandlersAppConfig,
   ResolvedRouteHandlersConfigBase,
+  ResolvedRouteHandlersRuntimeAttachments,
   RouteHandlerNextPaths,
   RouteHandlersConfig,
   RouteHandlersTargetConfig
@@ -95,10 +96,15 @@ export type NormalizedRouteHandlersTargetOptions = Pick<
   | 'emitFormat'
   | 'contentLocaleMode'
   | 'handlerRouteParam'
-  | 'mdxCompileOptions'
   | 'routeBasePath'
   | 'paths'
 >;
+
+/**
+ * Pure normalized runtime attachments derived from one configured target.
+ */
+export type NormalizedRouteHandlersTargetRuntimeAttachments =
+  ResolvedRouteHandlersRuntimeAttachments;
 
 const requireSingleRouteHandlersConfig = (
   routeHandlersConfig: RouteHandlersConfig | RouteHandlersTargetConfig | undefined
@@ -129,6 +135,26 @@ const requireSingleRouteHandlersConfig = (
   }
 
   return configuredRouteHandlers;
+};
+
+/**
+ * Normalize runtime/executable attachments that should remain separate from
+ * the structural resolved target config.
+ *
+ * @param routeHandlersConfig - Single-target `RouteHandlersConfig`.
+ * @returns Pure normalized runtime attachments.
+ */
+export const normalizeRouteHandlersTargetRuntimeAttachments = (
+  routeHandlersConfig?: RouteHandlersConfig | RouteHandlersTargetConfig
+): NormalizedRouteHandlersTargetRuntimeAttachments => {
+  const configuredRouteHandlers =
+    requireSingleRouteHandlersConfig(routeHandlersConfig);
+
+  return {
+    mdxCompileOptions: readMdxCompileOptions(
+      readObjectProperty(configuredRouteHandlers, 'mdxCompileOptions')
+    )
+  };
 };
 
 /**
@@ -182,9 +208,6 @@ export const normalizeRouteHandlersTargetOptions = (
       'routeBasePath'
     )
   );
-  const mdxCompileOptions = readMdxCompileOptions(
-    readObjectProperty(configuredRouteHandlers, 'mdxCompileOptions')
-  );
   const handlerRouteParam = normalizeHandlerRouteParam(
     configuredRouteHandlers.handlerRouteParam
   );
@@ -200,7 +223,6 @@ export const normalizeRouteHandlersTargetOptions = (
       configuredRouteHandlers.contentLocaleMode
     ),
     handlerRouteParam,
-    mdxCompileOptions,
     routeBasePath,
     paths: resolvedPaths
   };
@@ -262,6 +284,9 @@ export const resolveRouteHandlersConfigBase = (
   return {
     app: appConfig,
     ...normalizedTargetOptions,
+    runtime: normalizeRouteHandlersTargetRuntimeAttachments(
+      configuredRouteHandlers
+    ),
     baseStaticPropsImport: resolvedBaseStaticPropsImport,
     processorConfig: resolvedHandlerBinding.processorConfig,
   };

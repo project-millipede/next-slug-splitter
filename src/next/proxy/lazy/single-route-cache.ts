@@ -1,18 +1,19 @@
 import path from 'node:path';
 
 import fileEntryCache, { type FileEntryCache } from 'file-entry-cache';
+import { isString } from '../../../utils/type-guards';
 
 import {
   readPersistedRoutePlanRecord,
   type PersistedRoutePlanRecord
 } from '../../runtime/target/route-plan-record';
 import {
-  isObjectRecordOf,
+  isObjectRecord,
   readObjectProperty
 } from '../../../utils/type-guards-custom';
 
 import type { LocalizedRoutePath } from '../../../core/types';
-import type { ResolvedRouteHandlersConfig } from '../../types';
+import type { RouteHandlerPlannerConfig } from '../../types';
 import type { BootstrapGenerationToken } from '../runtime/types';
 
 const LAZY_SINGLE_ROUTE_CACHE_DIRECTORY = path.join(
@@ -47,6 +48,14 @@ type LazySingleRouteCacheRecord = {
  * @param rootDir - Application root directory.
  * @param targetId - Stable target identifier.
  * @returns Cache instance scoped to one target.
+ *
+ * @remarks
+ * Hashing aspects:
+ * - checksums are used only for local content-change detection of one source
+ *   route file
+ * - this cache is not a security boundary or cross-system integrity contract
+ * - the default `md5` algorithm from `file-entry-cache` / Node
+ *   `crypto.createHash` is sufficient for this purpose
  */
 const createLazySingleRouteFileCache = (
   rootDir: string,
@@ -60,8 +69,7 @@ const createLazySingleRouteFileCache = (
       restrictAccessToCwd: false,
       useAbsolutePathAsKey: true,
       useCheckSum: true,
-      useModifiedTime: true,
-      hashAlgorithm: 'sha256'
+      useModifiedTime: true
     }
   );
 
@@ -74,28 +82,37 @@ const createLazySingleRouteFileCache = (
 const readLazySingleRouteCacheRecord = (
   value: unknown
 ): LazySingleRouteCacheRecord | null => {
-  if (!isObjectRecordOf<LazySingleRouteCacheRecord>(value)) {
+  // Reject non-record cache metadata early before reading persisted fields.
+  if (!isObjectRecord(value)) {
     return null;
   }
 
+  // The outer cache record must match the current metadata format version.
+  const version = readObjectProperty(value, 'version');
+  if (version !== LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION) {
+    return null;
+  }
+
+  // Validate the generation token here so the returned record needs no cast.
+  const bootstrapGenerationToken = readObjectProperty(
+    value,
+    'bootstrapGenerationToken'
+  );
+  if (!isString(bootstrapGenerationToken)) {
+    return null;
+  }
+
+  // Delegate nested route-plan decoding to the dedicated persisted reader.
   const routePlanRecord = readPersistedRoutePlanRecord(
     readObjectProperty(value, 'routePlanRecord')
   );
-
-  if (
-    readObjectProperty(value, 'version') !==
-      LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION ||
-    routePlanRecord == null
-  ) {
+  if (routePlanRecord == null) {
     return null;
   }
 
   return {
     version: LAZY_SINGLE_ROUTE_CACHE_RECORD_VERSION,
-    bootstrapGenerationToken: readObjectProperty(
-      value,
-      'bootstrapGenerationToken'
-    ) as BootstrapGenerationToken,
+    bootstrapGenerationToken,
     routePlanRecord
   };
 };
@@ -117,12 +134,12 @@ const readLazySingleRouteCacheRecord = (
  *   `LazySingleRouteCacheRecord` for the current cache version
  */
 export const readLazySingleRouteCachedPlanRecord = (
-  config: ResolvedRouteHandlersConfig,
+  config: RouteHandlerPlannerConfig,
   routePath: LocalizedRoutePath,
   bootstrapGenerationToken: BootstrapGenerationToken
 ): PersistedRoutePlanRecord | null => {
   const fileCache = createLazySingleRouteFileCache(
-    config.app.rootDir,
+    config.paths.rootDir,
     config.targetId
   );
   const analysis = fileCache.analyzeFiles([routePath.filePath]);
@@ -155,13 +172,13 @@ export const readLazySingleRouteCachedPlanRecord = (
  * @param bootstrapGenerationToken - Current lazy-bootstrap generation token.
  */
 export const writeLazySingleRouteCachedPlanRecord = (
-  config: ResolvedRouteHandlersConfig,
+  config: RouteHandlerPlannerConfig,
   routePath: LocalizedRoutePath,
   routePlanRecord: PersistedRoutePlanRecord,
   bootstrapGenerationToken: BootstrapGenerationToken
 ): void => {
   const fileCache = createLazySingleRouteFileCache(
-    config.app.rootDir,
+    config.paths.rootDir,
     config.targetId
   );
   const descriptor = fileCache.getFileDescriptor(routePath.filePath);

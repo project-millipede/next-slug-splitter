@@ -22,7 +22,10 @@ import {
 import { createCatchAllRouteHandlersPreset } from '../../../next/config/index';
 import { resolveRouteHandlersAppConfig } from '../../../next/config/app';
 import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../../next/config/resolve-configs';
-import { normalizeRouteHandlersTargetOptions } from '../../../next/config/resolve-target';
+import {
+  normalizeRouteHandlersTargetOptions,
+  normalizeRouteHandlersTargetRuntimeAttachments
+} from '../../../next/config/resolve-target';
 import { resolveRouteHandlerPreparations } from '../../../next/config/app';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
@@ -321,8 +324,7 @@ describe('next config helpers', () => {
       });
 
       expect(
-        normalizeRouteHandlersTargetOptions(
-          TEST_RESOLVED_APP_CONFIG,
+        normalizeRouteHandlersTargetRuntimeAttachments(
           routeHandlersConfig
         ).mdxCompileOptions
       ).toEqual({
@@ -333,8 +335,7 @@ describe('next config helpers', () => {
 
     test('rejects invalid mdxCompileOptions plugin lists', () => {
       expect(() =>
-        normalizeRouteHandlersTargetOptions(
-          TEST_RESOLVED_APP_CONFIG,
+        normalizeRouteHandlersTargetRuntimeAttachments(
           {
             app: createAppConfig(TEST_APP.rootDir),
             ...createCatchAllRouteHandlersPreset({

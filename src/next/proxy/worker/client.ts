@@ -8,8 +8,7 @@ import { debugRouteHandlerProxy } from '../observability/debug-log';
 import type { LocaleConfig } from '../../../core/types';
 import type {
   BootstrapGenerationToken,
-  RouteHandlerProxyConfigRegistration,
-  RouteHandlerProxyOptions
+  RouteHandlerProxyConfigRegistration
 } from '../runtime/types';
 import type {
   RouteHandlerProxyWorkerBootstrapResponse,
@@ -461,10 +460,13 @@ const createRouteHandlerProxyWorkerSession = ({
     sendRouteHandlerProxyWorkerRequest<RouteHandlerProxyWorkerBootstrapResponse>(
       session,
       {
+        // Bootstrap carries the clear adapter-owned registration values the
+        // worker needs to reload runtime attachments for this generation.
         requestId: createRouteHandlerProxyWorkerRequestId(),
         kind: 'bootstrap',
         bootstrapGenerationToken,
-        localeConfig
+        localeConfig,
+        configRegistration
       }
     ).then(response => {
       if (

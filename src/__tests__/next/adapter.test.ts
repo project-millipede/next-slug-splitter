@@ -12,6 +12,8 @@ const executeResolvedRouteHandlerNextPipelineMock = vi.hoisted(() => vi.fn());
 const withRouteHandlerRewritesMock = vi.hoisted(() => vi.fn());
 const writeRouteHandlerRuntimeSemanticsMock = vi.hoisted(() => vi.fn());
 const writeRouteHandlerLookupSnapshotMock = vi.hoisted(() => vi.fn());
+const createRouteHandlerProxyBootstrapManifestMock = vi.hoisted(() => vi.fn());
+const writeRouteHandlerProxyBootstrapMock = vi.hoisted(() => vi.fn());
 
 vi.mock(import('../../next/internal/route-handlers-bootstrap'), () => ({
   loadRouteHandlersConfigOrRegistered: loadRouteHandlersConfigOrRegisteredMock,
@@ -73,6 +75,15 @@ vi.mock(import('../../next/lookup-persisted'), () => ({
   writeRouteHandlerLookupSnapshot: writeRouteHandlerLookupSnapshotMock
 }));
 
+vi.mock(import('../../next/proxy/bootstrap-persisted'), () => ({
+  createRouteHandlerProxyBootstrapGenerationToken: vi.fn(
+    () => 'route-handler-proxy-bootstrap-test'
+  ),
+  createRouteHandlerProxyBootstrapManifest:
+    createRouteHandlerProxyBootstrapManifestMock,
+  writeRouteHandlerProxyBootstrap: writeRouteHandlerProxyBootstrapMock
+}));
+
 import routeHandlersAdapter from '../../next/adapter';
 
 const TEST_ROUTE_HANDLERS_CONFIG = {
@@ -132,6 +143,16 @@ describe('route handlers adapter', () => {
     withRouteHandlerRewritesMock.mockImplementation(config => config);
     writeRouteHandlerRuntimeSemanticsMock.mockResolvedValue(undefined);
     writeRouteHandlerLookupSnapshotMock.mockResolvedValue(undefined);
+    createRouteHandlerProxyBootstrapManifestMock.mockReturnValue({
+      version: 1,
+      bootstrapGenerationToken: 'route-handler-proxy-bootstrap-test',
+      localeConfig: {
+        locales: ['en', 'fr'],
+        defaultLocale: 'fr'
+      },
+      targets: []
+    });
+    writeRouteHandlerProxyBootstrapMock.mockResolvedValue(undefined);
   });
 
   it('refreshes runtime semantics from the resolved Next config during adapter execution', async () => {
@@ -204,6 +225,30 @@ describe('route handlers adapter', () => {
     });
 
     expect(executeResolvedRouteHandlerNextPipelineMock).not.toHaveBeenCalled();
+    expect(createRouteHandlerProxyBootstrapManifestMock).toHaveBeenCalledWith(
+      'route-handler-proxy-bootstrap-test',
+      {
+        locales: ['en', 'fr'],
+        defaultLocale: 'fr'
+      },
+      [
+        {
+          targetId: 'docs'
+        }
+      ]
+    );
+    expect(writeRouteHandlerProxyBootstrapMock).toHaveBeenCalledWith(
+      TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
+      {
+        version: 1,
+        bootstrapGenerationToken: 'route-handler-proxy-bootstrap-test',
+        localeConfig: {
+          locales: ['en', 'fr'],
+          defaultLocale: 'fr'
+        },
+        targets: []
+      }
+    );
     expect(writeRouteHandlerLookupSnapshotMock).toHaveBeenCalledWith(
       TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
       {
@@ -212,5 +257,56 @@ describe('route handlers adapter', () => {
         targets: []
       }
     );
+  });
+
+  it('writes explicit empty proxy bootstrap artifacts when proxy mode resolves zero targets', async () => {
+    resolveRouteHandlerRoutingStrategyMock.mockReturnValue({
+      kind: 'proxy'
+    });
+    resolveRouteHandlersConfigsFromAppConfigMock.mockReturnValue([]);
+
+    await routeHandlersAdapter.modifyConfig!(
+      TEST_NEXT_CONFIG as never,
+      {
+        phase: PHASE_PRODUCTION_BUILD,
+        nextVersion: '16.2.0'
+      }
+    );
+
+    expect(createRouteHandlerProxyBootstrapManifestMock).toHaveBeenCalledWith(
+      'route-handler-proxy-bootstrap-test',
+      {
+        locales: ['en', 'fr'],
+        defaultLocale: 'fr'
+      },
+      []
+    );
+    expect(writeRouteHandlerProxyBootstrapMock).toHaveBeenCalled();
+    expect(writeRouteHandlerLookupSnapshotMock).toHaveBeenCalledWith(
+      TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
+      {
+        version: 1,
+        filterHeavyRoutesInStaticPaths: false,
+        targets: []
+      }
+    );
+  });
+
+  it('does not write proxy bootstrap artifacts in rewrite mode', async () => {
+    resolveRouteHandlerRoutingStrategyMock.mockReturnValue({
+      kind: 'rewrites'
+    });
+
+    await routeHandlersAdapter.modifyConfig!(
+      TEST_NEXT_CONFIG as never,
+      {
+        phase: PHASE_PRODUCTION_BUILD,
+        nextVersion: '16.2.0'
+      }
+    );
+
+    expect(createRouteHandlerProxyBootstrapManifestMock).not.toHaveBeenCalled();
+    expect(writeRouteHandlerProxyBootstrapMock).not.toHaveBeenCalled();
+    expect(executeResolvedRouteHandlerNextPipelineMock).toHaveBeenCalledTimes(1);
   });
 });

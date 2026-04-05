@@ -33,6 +33,11 @@ import {
   createRouteHandlerLookupSnapshot,
   writeRouteHandlerLookupSnapshot
 } from './lookup-persisted';
+import {
+  createRouteHandlerProxyBootstrapGenerationToken,
+  createRouteHandlerProxyBootstrapManifest,
+  writeRouteHandlerProxyBootstrap
+} from './proxy/bootstrap-persisted';
 import { withRouteHandlerRewrites } from './rewrites/plugin';
 import { prepareRouteHandlersFromConfig } from './prepare/index';
 import { applyRouteHandlerProxyNextConfigPolicy } from './policy/proxy-next-config';
@@ -101,6 +106,9 @@ const routeHandlersAdapter: NextAdapter = {
       phase,
       appContext.appConfig.routing
     );
+    const configRegistration = resolveRegisteredSlugSplitterConfigRegistration(
+      appContext.appConfig.rootDir
+    );
 
     await synchronizeRouteHandlerPhaseArtifacts(
       resolvedConfigs,
@@ -115,12 +123,21 @@ const routeHandlersAdapter: NextAdapter = {
       rootDir: appContext.appConfig.rootDir,
       strategy: routingStrategy,
       resolvedConfigs,
-      configRegistration: resolveRegisteredSlugSplitterConfigRegistration(
-        appContext.appConfig.rootDir
-      )
+      configRegistration
     });
 
     if (routingStrategy.kind === 'proxy') {
+      const bootstrapGenerationToken =
+        createRouteHandlerProxyBootstrapGenerationToken();
+
+      await writeRouteHandlerProxyBootstrap(
+        appContext.appConfig.rootDir,
+        createRouteHandlerProxyBootstrapManifest(
+          bootstrapGenerationToken,
+          runtimeSemantics.localeConfig,
+          resolvedConfigs
+        )
+      );
       await writeRouteHandlerLookupSnapshot(
         appContext.appConfig.rootDir,
         createRouteHandlerLookupSnapshot(

@@ -8,7 +8,7 @@ import {
   writeLazySingleRouteCachedPlanRecord
 } from './single-route-cache';
 
-import type { ResolvedRouteHandlersConfig } from '../../types';
+import type { RouteHandlerPlannerConfig } from '../../types';
 import type {
   RouteHandlerLazyMatchedRouteInput,
   RouteHandlerLazySingleRouteAnalysisResult
@@ -49,8 +49,8 @@ import type {
  */
 const resolveLazyAnalysisTargetConfig = (
   targetId: string,
-  resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>
-): ResolvedRouteHandlersConfig | null =>
+  resolvedConfigsByTargetId: ReadonlyMap<string, RouteHandlerPlannerConfig>
+): RouteHandlerPlannerConfig | null =>
   resolvedConfigsByTargetId.get(targetId) ?? null;
 
 /**
@@ -67,7 +67,7 @@ const toLazySingleRouteAnalysisResult = ({
   routePlanRecord
 }: {
   source: 'cache' | 'fresh';
-  config: ResolvedRouteHandlersConfig;
+  config: RouteHandlerPlannerConfig;
   routePath: RouteHandlerLazySingleRouteAnalysisResult['routePath'];
   routePlanRecord: PersistedRoutePlanRecord;
 }): RouteHandlerLazySingleRouteAnalysisResult =>
