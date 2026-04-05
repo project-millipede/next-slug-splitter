@@ -510,21 +510,11 @@ type HandlerSourceInput = {
 };
 
 /**
- * Generated handler source artifacts.
- */
-type HandlerSources = {
-  /**
-   * Complete source text for the generated handler page.
-   */
-  pageSource: string;
-};
-
-/**
  * Resolves the final semantic inputs required to emit one generated route
  * handler module and delegates actual source rendering to `emitters.ts`.
  *
  * @param input - Semantic handler source input.
- * @returns Emitted handler source artifacts.
+ * @returns Complete source text for the generated handler page.
  */
 export const renderRouteHandlerModules = ({
   locale,
@@ -534,7 +524,7 @@ export const renderRouteHandlerModules = ({
   factoryBindings,
   selectedComponentEntries,
   renderConfig
-}: HandlerSourceInput): HandlerSources => {
+}: HandlerSourceInput): string => {
   const {
     imports,
     componentAliasByKey,
@@ -548,7 +538,7 @@ export const renderRouteHandlerModules = ({
     buildComponentEmitEntry(entry, componentAliasByKey)
   );
 
-  const pageSource = renderHandlerPageSource({
+  return renderHandlerPageSource({
     sourceLocale: locale,
     sourceSlugArray: slugArray,
     handlerId,
@@ -563,7 +553,4 @@ export const renderRouteHandlerModules = ({
     emitFormat: renderConfig.emitFormat
   });
 
-  return {
-    pageSource
-  };
 };

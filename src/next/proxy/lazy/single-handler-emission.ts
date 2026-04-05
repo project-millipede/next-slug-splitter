@@ -1,37 +1,18 @@
 import {
   doesRouteHandlerOutputFileExist,
-  synchronizeRenderedRouteHandlerPage,
-  type RenderedHandlerPageSynchronizationStatus
+  synchronizeRenderedRouteHandlerPage
 } from '../../../generator/protocol/output-lifecycle';
 import {
   renderRouteHandlerPage,
   resolveRenderedHandlerPageLocation
 } from '../../../generator/protocol/rendered-page';
 
-import type {
-  RenderedHandlerPage
-} from '../../../generator/protocol/rendered-page';
 import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
-
-/**
- * Result of synchronizing one lazily emitted handler page to disk.
- */
-export type RouteHandlerLazySingleRouteEmissionResult = {
-  /**
-   * Whether the file had to be written or was already current on disk.
-   */
-  status: RenderedHandlerPageSynchronizationStatus;
-  /**
-   * Fully rendered emitted page artifact.
-   */
-  renderedPage: RenderedHandlerPage;
-};
 
 /**
  * Emit exactly one lazily analyzed heavy route to disk.
  *
  * @param analysisResult - One-file heavy-route analysis result.
- * @returns Synchronization result for the single emitted page.
  *
  * @remarks
  * This module is intentionally different from the target-wide selective
@@ -45,7 +26,7 @@ export type RouteHandlerLazySingleRouteEmissionResult = {
  */
 export const emitRouteHandlerLazySingleHandler = async (
   analysisResult: RouteHandlerLazyHeavyAnalysisResult
-): Promise<RouteHandlerLazySingleRouteEmissionResult> => {
+): Promise<void> => {
   const renderedPage = renderRouteHandlerPage({
     paths: analysisResult.config.paths,
     heavyRoute: analysisResult.plannedHeavyRoute,
@@ -54,12 +35,7 @@ export const emitRouteHandlerLazySingleHandler = async (
     handlerRouteParam: analysisResult.config.handlerRouteParam,
     routeBasePath: analysisResult.config.routeBasePath
   });
-  const status = await synchronizeRenderedRouteHandlerPage(renderedPage);
-
-  return {
-    status,
-    renderedPage
-  };
+  await synchronizeRenderedRouteHandlerPage(renderedPage);
 };
 
 /**

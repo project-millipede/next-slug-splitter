@@ -63,7 +63,7 @@ describe('generator handlers', () => {
       })
     ];
 
-    const { pageSource } = renderRouteHandlerModules({
+    const pageSource = renderRouteHandlerModules({
       locale: 'de',
       slugArray: ['nested', 'example'],
       handlerId: 'de-nested-example',
@@ -119,7 +119,7 @@ describe('generator handlers', () => {
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' }
       }
-    }).pageSource;
+    });
 
     const packageFactorySource = renderRouteHandlerModules({
       locale: 'en',
@@ -147,7 +147,7 @@ describe('generator handlers', () => {
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' }
       }
-    }).pageSource;
+    });
 
     expect(defaultFactorySource).toContain(
       "from 'next-slug-splitter/next/handler';"
@@ -164,7 +164,7 @@ describe('generator handlers', () => {
   });
 
   it('groups named component imports from the same source into one declaration', () => {
-    const { pageSource } = renderRouteHandlerModules({
+    const pageSource = renderRouteHandlerModules({
       locale: 'en',
       slugArray: ['content', 'concepts'],
       handlerId: 'en-content-concepts',
@@ -221,7 +221,7 @@ describe('generator handlers', () => {
   });
 
   it('emits inline metadata fields alongside the component entry', () => {
-    const { pageSource } = renderRouteHandlerModules({
+    const pageSource = renderRouteHandlerModules({
       locale: 'en',
       slugArray: ['content', 'selection'],
       handlerId: 'en-content-selection',
@@ -264,7 +264,7 @@ describe('generator handlers', () => {
   });
 
   it('emits route-level factory bindings unchanged into createHandlerPage', () => {
-    const { pageSource } = renderRouteHandlerModules({
+    const pageSource = renderRouteHandlerModules({
       locale: 'en',
       slugArray: ['content', 'selection'],
       handlerId: 'en-content-selection',
@@ -328,7 +328,7 @@ describe('generator handlers', () => {
   });
 
   it('rewrites absolute component sources relative to the generated handler file', () => {
-    const { pageSource } = renderRouteHandlerModules({
+    const pageSource = renderRouteHandlerModules({
       locale: 'en',
       slugArray: ['content', 'concepts'],
       handlerId: 'en-content-concepts',

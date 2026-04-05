@@ -12,8 +12,6 @@
  */
 import path from 'node:path';
 
-import { hashSync, HashAlgorithm } from '@cacheable/utils';
-
 import { toEmittedImportSpecifier } from '../../module-reference';
 import {
   type PreparedHandlerRenderConfig,
@@ -44,10 +42,6 @@ export type RenderedHandlerPage = {
    * Full emitted module source.
    */
   pageSource: string;
-  /**
-   * Stable output hash of the emitted source.
-   */
-  outputHash: string;
 };
 
 /**
@@ -182,7 +176,7 @@ export const renderRouteHandlerPage = ({
     handlerRouteParam
   });
 
-  const { pageSource } = renderRouteHandlerModules({
+  const pageSource = renderRouteHandlerModules({
     locale: heavyRoute.locale,
     slugArray: heavyRoute.slugArray,
     handlerId: heavyRoute.handlerId,
@@ -195,9 +189,6 @@ export const renderRouteHandlerPage = ({
   return {
     relativePath,
     pageFilePath,
-    pageSource,
-    outputHash: hashSync(pageSource, {
-      algorithm: HashAlgorithm.DJB2
-    })
+    pageSource
   };
 };

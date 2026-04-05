@@ -150,20 +150,20 @@ describe('proxy lazy single-handler emission', () => {
           throw new Error('Expected heavy single-route analysis.');
         }
 
-        const firstEmission = await emitRouteHandlerLazySingleHandler(
-          analysisResult
-        );
-        const secondEmission = await emitRouteHandlerLazySingleHandler(
-          analysisResult
-        );
-        const emittedSource = await readFile(
-          firstEmission.renderedPage.pageFilePath,
-          'utf8'
+        const emittedPageFilePath = path.join(
+          rootDir,
+          'pages',
+          TEST_PRIMARY_ROUTE_SEGMENT,
+          '_handlers',
+          'guides',
+          'en.tsx'
         );
 
-        expect(firstEmission.status).toBe('written');
-        expect(secondEmission.status).toBe('unchanged');
-        expect(firstEmission.renderedPage.pageFilePath).toBe(
+        await emitRouteHandlerLazySingleHandler(analysisResult);
+        await emitRouteHandlerLazySingleHandler(analysisResult);
+        const emittedSource = await readFile(emittedPageFilePath, 'utf8');
+
+        expect(emittedPageFilePath).toBe(
           path.join(
             rootDir,
             'pages',

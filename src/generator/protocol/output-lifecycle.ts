@@ -33,13 +33,6 @@ import path from 'node:path';
 import type { RenderedHandlerPage } from './rendered-page';
 
 /**
- * Result of synchronizing one rendered handler page to disk.
- */
-export type RenderedHandlerPageSynchronizationStatus =
-  | 'written'
-  | 'unchanged';
-
-/**
  * Result of removing one emitted handler page path.
  */
 export type EmittedHandlerPageRemovalStatus = 'removed' | 'missing';
@@ -140,30 +133,39 @@ const removeEmptyRouteHandlerDirectoriesUpTo = async (
  * Synchronize one rendered handler page to disk by contents.
  *
  * @param page - Fully rendered handler page artifact.
- * @returns Whether the page had to be written or was already current.
  *
  * @remarks
  * This is the narrow "ensure present and current" primitive shared by:
  * - target-wide selective emission for desired pages
  * - lazy one-file dev emission after a heavy-route analysis result
  *
- * It compares full source text rather than output hashes so callers do not
- * need to repeat that logic or own direct file reads.
+ * Callers arrive here only after the expected handler module has already been
+ * rendered in memory. That render step happens in
+ * `renderRouteHandlerPage(...)`, which produces the `page.pageSource` string
+ * for the concrete heavy route being synchronized.
+ *
+ * This function then performs the actual on-disk synchronization step:
+ * - read the current emitted handler file, if one exists
+ * - compare its full contents to the freshly rendered `page.pageSource`
+ * - write only when those contents differ
+ *
+ * There is no separate emitted-handler manifest or output-hash trust check in
+ * this path. Handler rewrite decisions are based on direct file read plus full
+ * source comparison against the freshly rendered in-memory module source.
  */
 export const synchronizeRenderedRouteHandlerPage = async (
   page: RenderedHandlerPage
-): Promise<RenderedHandlerPageSynchronizationStatus> => {
+): Promise<void> => {
   const existingSource = await readRouteHandlerOutputFileIfPresent(
     page.pageFilePath
   );
 
   if (existingSource === page.pageSource) {
-    return 'unchanged';
+    return;
   }
 
   await mkdir(path.dirname(page.pageFilePath), { recursive: true });
   await writeFile(page.pageFilePath, page.pageSource, 'utf8');
-  return 'written';
 };
 
 /**
