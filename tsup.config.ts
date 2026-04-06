@@ -37,7 +37,7 @@ export default defineConfig([
        * This file is intentionally built into `dist/`, but it is not part of
        * the published `package.json#exports` surface.
        */
-      'next/proxy-lazy-worker': 'src/next/proxy/worker/entry.ts'
+      'next/proxy-lazy-worker': 'src/next/proxy/worker/runtime/entry.ts'
     },
     format: ['esm'],
     clean: false,

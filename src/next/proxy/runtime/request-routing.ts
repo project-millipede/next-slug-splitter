@@ -9,7 +9,7 @@ import {
   ROUTE_HANDLER_PROXY_HEADER,
   ROUTE_HANDLER_PROXY_TARGET_HEADER
 } from './shared';
-import { resolveRouteHandlerProxyLazyMissWithWorker } from '../worker/client';
+import { resolveRouteHandlerProxyLazyMissWithWorker } from '../worker/host/client';
 
 import type {
   RouteHandlerProxyDecision,

@@ -18,9 +18,13 @@ vi.mock(import('../../../../next/proxy/lazy/single-handler-emission'), () => ({
 
 import { prepareRouteHandlerLazyMatchedRoute } from '../../../../next/proxy/lazy/cold-request-dedupe';
 
+import type { RouteHandlerLazySingleRouteCacheManager } from '../../../../next/proxy/lazy/single-route-cache-manager';
+
 const bootstrapGenerationToken = 'bootstrap-1';
 const resolvedConfigsByTargetId = new Map();
 const routePath = { locale: 'en', slugArray: ['post'], filePath: '/tmp/post.mdx' };
+const lazySingleRouteCacheManager =
+  {} as RouteHandlerLazySingleRouteCacheManager;
 
 describe('cold-request dedupe — unit', () => {
   beforeEach(() => {
@@ -35,13 +39,15 @@ describe('cold-request dedupe — unit', () => {
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
     await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'docs',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
 
     expect(analyzeRouteHandlerLazyMatchedRouteMock).toHaveBeenCalledTimes(2);
@@ -54,13 +60,15 @@ describe('cold-request dedupe — unit', () => {
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
     await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
 
     expect(analyzeRouteHandlerLazyMatchedRouteMock).toHaveBeenCalledTimes(2);
@@ -77,7 +85,8 @@ describe('cold-request dedupe — unit', () => {
         targetId: 'blog',
         routePath,
         bootstrapGenerationToken,
-        resolvedConfigsByTargetId
+        resolvedConfigsByTargetId,
+        lazySingleRouteCacheManager
       })
     ).rejects.toThrow('analysis failed');
 
@@ -86,7 +95,8 @@ describe('cold-request dedupe — unit', () => {
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
 
     expect(analyzeRouteHandlerLazyMatchedRouteMock).toHaveBeenCalledTimes(2);
@@ -112,7 +122,8 @@ describe('cold-request dedupe — composite', () => {
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
 
     expect(result).toEqual({ kind: 'light', analysisResult });
@@ -127,7 +138,8 @@ describe('cold-request dedupe — composite', () => {
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
 
     expect(result).toEqual({ kind: 'heavy', analysisResult });
@@ -145,7 +157,8 @@ describe('cold-request dedupe — composite', () => {
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
 
     expect(result).toEqual({ kind: 'heavy', analysisResult });
@@ -164,7 +177,8 @@ describe('cold-request dedupe — composite', () => {
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
 
     expect(result).toEqual({ kind: 'heavy', analysisResult });
@@ -183,7 +197,8 @@ describe('cold-request dedupe — composite', () => {
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
 
     expect(result).toBeNull();
@@ -198,13 +213,15 @@ describe('cold-request dedupe — composite', () => {
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
     const second = prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
 
     deferred.resolve({ kind: 'heavy', source: 'fresh' });
@@ -223,13 +240,15 @@ describe('cold-request dedupe — composite', () => {
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
     const second = prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
 
     deferred.reject(new Error('analysis failed'));

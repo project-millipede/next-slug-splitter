@@ -19,7 +19,7 @@ vi.mock(import('../../../../next/proxy/bootstrap-persisted'), async importOrigin
   };
 });
 
-import { bootstrapRouteHandlerProxyWorker } from '../../../../next/proxy/worker/bootstrap';
+import { bootstrapRouteHandlerProxyWorker } from '../../../../next/proxy/worker/runtime/bootstrap';
 
 const TEST_LOCALE_CONFIG = {
   locales: ['en'],

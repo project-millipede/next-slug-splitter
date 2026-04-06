@@ -19,9 +19,13 @@ vi.mock(import('../../../../next/proxy/lazy/single-handler-emission'), () => ({
 
 import { prepareRouteHandlerLazyMatchedRoute } from '../../../../next/proxy/lazy/cold-request-dedupe';
 
+import type { RouteHandlerLazySingleRouteCacheManager } from '../../../../next/proxy/lazy/single-route-cache-manager';
+
 const bootstrapGenerationToken = 'bootstrap-1';
 const resolvedConfigsByTargetId = new Map();
 const routePath = { locale: 'en', slugArray: ['post'], filePath: '/tmp/post.mdx' };
+const lazySingleRouteCacheManager =
+  {} as RouteHandlerLazySingleRouteCacheManager;
 
 describe('composeKey', () => {
   it('creates same key for same inputs', () => {
@@ -66,13 +70,15 @@ describe('prepareRouteHandlerLazyMatchedRoute deduplication', () => {
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
     prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
 
     expect(analyzeRouteHandlerLazyMatchedRouteMock).toHaveBeenCalledTimes(1);
@@ -87,7 +93,8 @@ describe('prepareRouteHandlerLazyMatchedRoute deduplication', () => {
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
 
     expect(emitRouteHandlerLazySingleHandlerMock).not.toHaveBeenCalled();
@@ -102,7 +109,8 @@ describe('prepareRouteHandlerLazyMatchedRoute deduplication', () => {
       targetId: 'blog',
       routePath,
       bootstrapGenerationToken,
-      resolvedConfigsByTargetId
+      resolvedConfigsByTargetId,
+      lazySingleRouteCacheManager
     });
 
     expect(doesRouteHandlerLazySingleHandlerExistMock).toHaveBeenCalledWith(

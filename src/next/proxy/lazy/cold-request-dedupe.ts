@@ -75,6 +75,8 @@ const inFlightLazyMatchedRoutePreparations = new Map<
  * @param input.bootstrapGenerationToken - Current worker bootstrap generation token.
  * @param input.resolvedConfigsByTargetId - Bootstrapped heavy target configs keyed by
  * target id.
+ * @param input.lazySingleRouteCacheManager - Generation-scoped worker cache
+ * manager used for RAM-first lazy-route reuse.
  * @returns Preparation result for the matched route, or `null` when the target
  * can no longer be resolved.
  */
@@ -82,14 +84,16 @@ const analyzeAndPrepare = async ({
   targetId,
   routePath,
   bootstrapGenerationToken,
-  resolvedConfigsByTargetId
+  resolvedConfigsByTargetId,
+  lazySingleRouteCacheManager
 }: RouteHandlerLazyMatchedRouteInput
 ): Promise<RouteHandlerLazyMatchedRoutePreparationResult | null> => {
   const analysisResult = await analyzeRouteHandlerLazyMatchedRoute({
     targetId,
     routePath,
     bootstrapGenerationToken,
-    resolvedConfigsByTargetId
+    resolvedConfigsByTargetId,
+    lazySingleRouteCacheManager
   });
 
   if (analysisResult?.kind === 'heavy') {
@@ -150,6 +154,8 @@ const analyzeAndPrepare = async ({
  * @param input.bootstrapGenerationToken - Current worker bootstrap generation token.
  * @param input.resolvedConfigsByTargetId - Bootstrapped heavy target configs keyed by
  * target id.
+ * @param input.lazySingleRouteCacheManager - Generation-scoped worker cache
+ * manager used for RAM-first lazy-route reuse.
  * @returns Preparation result from {@link analyzeAndPrepare}, or `null` when the
  * target can no longer be analyzed.
  */
@@ -157,7 +163,8 @@ export const prepareRouteHandlerLazyMatchedRoute = async ({
   targetId,
   routePath,
   bootstrapGenerationToken,
-  resolvedConfigsByTargetId
+  resolvedConfigsByTargetId,
+  lazySingleRouteCacheManager
 }: RouteHandlerLazyMatchedRouteInput
 ): Promise<RouteHandlerLazyMatchedRoutePreparationResult | null> => {
   const preparationKey = composeKey(targetId, routePath.filePath);
@@ -177,7 +184,8 @@ export const prepareRouteHandlerLazyMatchedRoute = async ({
     targetId,
     routePath,
     bootstrapGenerationToken,
-    resolvedConfigsByTargetId
+    resolvedConfigsByTargetId,
+    lazySingleRouteCacheManager
   }).finally(() => {
     inFlightLazyMatchedRoutePreparations.delete(preparationKey);
   });

@@ -7,6 +7,7 @@ import type { PlannedHeavyRoute } from '../../../core/types';
 import type { LocaleConfig } from '../../../core/types';
 import type { RouteHandlerPlannerConfig } from '../../types';
 import type { BootstrapGenerationToken } from '../runtime/types';
+import type { RouteHandlerLazySingleRouteCacheManager } from './single-route-cache-manager';
 
 /**
  * Locale-aware request identity derived from one incoming public pathname.
@@ -113,10 +114,26 @@ export type RouteHandlerLazyOutputConfig = {
 };
 
 export type RouteHandlerLazyMatchedRouteInput = {
+  /**
+   * Stable target identifier selected by lazy request resolution.
+   */
   targetId: string;
+  /**
+   * Concrete localized content route file to analyze.
+   */
   routePath: LocalizedRoutePath;
+  /**
+   * Current worker bootstrap generation token.
+   */
   bootstrapGenerationToken: BootstrapGenerationToken;
+  /**
+   * Bootstrapped heavy target configs keyed by target id.
+   */
   resolvedConfigsByTargetId: ReadonlyMap<string, RouteHandlerPlannerConfig>;
+  /**
+   * Generation-scoped cache manager retained by the worker session.
+   */
+  lazySingleRouteCacheManager: RouteHandlerLazySingleRouteCacheManager;
 };
 
 /**

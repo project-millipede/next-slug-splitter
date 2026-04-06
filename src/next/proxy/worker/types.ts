@@ -48,6 +48,8 @@ export type RouteHandlerProxyWorkerSessionInput = {
  *   structural manifest, reload runtime attachments, validate that both match
  *   the current generation, and keep the derived planner state in memory for
  *   later lazy-miss requests.
+ * - `shutdown`: graceful session teardown request used when the parent is
+ *   replacing or explicitly clearing the current worker session.
  * - `resolve-lazy-miss`: classify one pathname using the in-memory state
  *   prepared by an earlier `bootstrap` request.
  */
@@ -86,6 +88,27 @@ export type RouteHandlerProxyWorkerRequest =
           configRegistration: RouteHandlerProxyConfigRegistration;
         }
       | {
+          /**
+           * Graceful worker-session teardown request from the host process.
+           *
+           * @remarks
+           * The host sends this when it wants the current long-lived worker
+           * session to stop accepting further work, flush retained state, and
+           * acknowledge that shutdown is complete before the host falls back to
+           * forceful termination.
+           */
+          kind: 'shutdown';
+        }
+      | {
+          /**
+           * Lazy request-classification request for one public pathname.
+           *
+           * @remarks
+           * This reuses worker-local bootstrap state prepared by an earlier
+           * `bootstrap` request so the host proxy can ask for one cold lazy
+           * miss to be classified without importing the heavy MDX-analysis
+           * graph into the main proxy runtime.
+           */
           kind: 'resolve-lazy-miss';
 
           /**
@@ -103,6 +126,14 @@ export type RouteHandlerProxyWorkerRequest =
 export type RouteHandlerProxyWorkerBootstrapResponse = {
   kind: 'bootstrapped';
   bootstrapGenerationToken: BootstrapGenerationToken;
+};
+
+/**
+ * Acknowledgement returned when the worker has flushed retained caches and is
+ * ready to terminate.
+ */
+export type RouteHandlerProxyWorkerShutdownResponse = {
+  kind: 'shutdown-complete';
 };
 
 /**
@@ -151,6 +182,7 @@ export type RouteHandlerProxyWorkerResponseEnvelope =
       ok: true;
       response:
         | RouteHandlerProxyWorkerBootstrapResponse
+        | RouteHandlerProxyWorkerShutdownResponse
         | RouteHandlerProxyWorkerResponse;
     }
   | {

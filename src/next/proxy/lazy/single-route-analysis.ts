@@ -3,10 +3,6 @@ import {
   createPersistedRoutePlanRecord,
   type PersistedRoutePlanRecord
 } from '../../runtime/target/route-plan-record';
-import {
-  readLazySingleRouteCachedPlanRecord,
-  writeLazySingleRouteCachedPlanRecord
-} from './single-route-cache';
 
 import type { RouteHandlerPlannerConfig } from '../../types';
 import type {
@@ -95,6 +91,8 @@ const toLazySingleRouteAnalysisResult = ({
  * @param input.bootstrapGenerationToken - Current worker bootstrap generation token.
  * @param input.resolvedConfigsByTargetId - Bootstrapped heavy target configs keyed by
  * target id.
+ * @param input.lazySingleRouteCacheManager - Generation-scoped worker cache
+ * manager used for RAM-first reuse.
  * @returns One-file lazy analysis result, or `null` when the target can no
  * longer be resolved by the time analysis begins.
  */
@@ -102,10 +100,9 @@ export const analyzeRouteHandlerLazyMatchedRoute = async ({
   targetId,
   routePath,
   bootstrapGenerationToken,
-  resolvedConfigsByTargetId
-}: RouteHandlerLazyMatchedRouteInput): Promise<
-  RouteHandlerLazySingleRouteAnalysisResult | null
-> => {
+  resolvedConfigsByTargetId,
+  lazySingleRouteCacheManager
+}: RouteHandlerLazyMatchedRouteInput): Promise<RouteHandlerLazySingleRouteAnalysisResult | null> => {
   const config = resolveLazyAnalysisTargetConfig(
     targetId,
     resolvedConfigsByTargetId
@@ -118,11 +115,12 @@ export const analyzeRouteHandlerLazyMatchedRoute = async ({
     return null;
   }
 
-  const cachedRoutePlanRecord = readLazySingleRouteCachedPlanRecord(
-    config,
-    routePath,
-    bootstrapGenerationToken
-  );
+  const cachedRoutePlanRecord =
+    lazySingleRouteCacheManager.readCachedRoutePlanRecord(
+      config,
+      routePath,
+      bootstrapGenerationToken
+    );
 
   if (cachedRoutePlanRecord != null) {
     return toLazySingleRouteAnalysisResult({
@@ -145,8 +143,7 @@ export const analyzeRouteHandlerLazyMatchedRoute = async ({
     config,
     planRoute
   );
-
-  writeLazySingleRouteCachedPlanRecord(
+  lazySingleRouteCacheManager.writeCachedRoutePlanRecord(
     config,
     routePath,
     routePlanRecord,

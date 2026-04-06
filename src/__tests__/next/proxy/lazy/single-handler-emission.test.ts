@@ -16,6 +16,7 @@ import {
   resolveRouteHandlerLazyRequest,
   resolveRouteHandlerLazyResolvedTargetsFromAppConfig
 } from '../../../../next/proxy/lazy/request-resolution';
+import { createRouteHandlerLazySingleRouteCacheManager } from '../../../../next/proxy/lazy/single-route-cache-manager';
 import { emitRouteHandlerLazySingleHandler } from '../../../../next/proxy/lazy/single-handler-emission';
 import { analyzeRouteHandlerLazyMatchedRoute } from '../../../../next/proxy/lazy/single-route-analysis';
 import { resolveRouteHandlerLazyRewriteDestination } from '../../../../next/proxy/lazy/single-route-rewrite';
@@ -70,6 +71,9 @@ const createBootstrappedLazyAnalysisState = ({
 }): {
   resolvedTargets: Array<RouteHandlerLazyResolvedTarget>;
   resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
+  lazySingleRouteCacheManager: ReturnType<
+    typeof createRouteHandlerLazySingleRouteCacheManager
+  >;
 } => {
   const appContext = resolveRouteHandlersAppContext(
     routeHandlersConfig,
@@ -89,6 +93,8 @@ const createBootstrappedLazyAnalysisState = ({
       TEST_LOCALE_CONFIG,
       bootstrappedRouteHandlersConfig
     ),
+    lazySingleRouteCacheManager:
+      createRouteHandlerLazySingleRouteCacheManager(),
     resolvedConfigsByTargetId: new Map(
       resolvedConfigs.map(resolvedConfig => [
         resolvedConfig.targetId,
@@ -144,7 +150,8 @@ describe('proxy lazy single-handler emission', () => {
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
-          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
+          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
         if (analysisResult?.kind !== 'heavy') {
           throw new Error('Expected heavy single-route analysis.');

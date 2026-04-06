@@ -5,12 +5,12 @@ vi.mock(import('../../../../next/proxy/runtime/routing-state'), () => ({
   getRouteHandlerProxyRoutingState: vi.fn()
 }));
 
-vi.mock(import('../../../../next/proxy/worker/client'), () => ({
+vi.mock(import('../../../../next/proxy/worker/host/client'), () => ({
   resolveRouteHandlerProxyLazyMissWithWorker: vi.fn()
 }));
 
 import * as proxyRoutingState from '../../../../next/proxy/runtime/routing-state';
-import * as proxyWorkerClient from '../../../../next/proxy/worker/client';
+import * as proxyWorkerClient from '../../../../next/proxy/worker/host/client';
 import { handleRouteHandlerProxyRequest } from '../../../../next/proxy/runtime/request-routing';
 
 import type {

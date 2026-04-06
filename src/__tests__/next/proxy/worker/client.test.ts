@@ -17,7 +17,7 @@ vi.mock(import('node:fs'), () => ({
 import {
   clearRouteHandlerProxyWorkerClientSessions,
   resolveRouteHandlerProxyLazyMissWithWorker
-} from '../../../../next/proxy/worker/client';
+} from '../../../../next/proxy/worker/host/client';
 
 import type {
   RouteHandlerProxyWorkerRequest,
@@ -35,15 +35,22 @@ type WorkerChildStub = EventEmitter & {
   requests: Array<RouteHandlerProxyWorkerRequest>;
 };
 
+type CreateWorkerSessionChildOptions = {
+  acknowledgeShutdown?: boolean;
+};
+
 /**
  * Create a minimal persistent worker-session stub for client tests.
  *
  * @param lazyResponses - Sequential responses for `resolve-lazy-miss` requests.
+ * @param options - Shutdown-behavior overrides for the child stub.
  * @returns Event-emitting child-process lookalike.
  */
 const createWorkerSessionChild = (
-  lazyResponses: Array<RouteHandlerProxyWorkerResponse>
+  lazyResponses: Array<RouteHandlerProxyWorkerResponse>,
+  options: CreateWorkerSessionChildOptions = {}
 ): WorkerChildStub => {
+  const { acknowledgeShutdown = true } = options;
   const child = new EventEmitter() as WorkerChildStub;
 
   child.stdout = new PassThrough();
@@ -71,6 +78,24 @@ const createWorkerSessionChild = (
         return;
       }
 
+      if (message.kind === 'shutdown') {
+        if (!acknowledgeShutdown) {
+          return;
+        }
+
+        child.emit('message', {
+          requestId: message.requestId,
+          ok: true,
+          response: {
+            kind: 'shutdown-complete'
+          }
+        });
+        queueMicrotask(() => {
+          child.emit('close', 0);
+        });
+        return;
+      }
+
       const response = lazyResponses.shift();
 
       if (response == null) {
@@ -92,12 +117,13 @@ const createWorkerSessionChild = (
 };
 
 describe('proxy worker client', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    clearRouteHandlerProxyWorkerClientSessions();
+    await clearRouteHandlerProxyWorkerClientSessions();
     existsSyncMock.mockReturnValue(false);
     delete process.env.SLUG_SPLITTER_CONFIG_PATH;
     delete process.env.SLUG_SPLITTER_CONFIG_ROOT_DIR;
+    vi.useRealTimers();
   });
 
   it('launches the long-lived worker with Node strip-types support for TS config files', async () => {
@@ -269,7 +295,7 @@ describe('proxy worker client', () => {
     });
   });
 
-  it('restarts the worker session when the bootstrap generation changes', async () => {
+  it('restarts the worker session when the bootstrap generation changes via graceful shutdown', async () => {
     const firstChild = createWorkerSessionChild([
       {
         kind: 'heavy',
@@ -307,6 +333,77 @@ describe('proxy worker client', () => {
     });
 
     expect(spawnMock).toHaveBeenCalledTimes(2);
-    expect(firstChild.kill).toHaveBeenCalledTimes(1);
+    expect(firstChild.requests.map(request => request.kind)).toEqual([
+      'bootstrap',
+      'resolve-lazy-miss',
+      'shutdown'
+    ]);
+    expect(firstChild.kill).not.toHaveBeenCalled();
+  });
+
+  it('waits for graceful shutdown when clearing worker client sessions explicitly', async () => {
+    const child = createWorkerSessionChild([
+      {
+        kind: 'pass-through',
+        reason: 'no-target'
+      }
+    ]);
+    spawnMock.mockReturnValue(child);
+
+    await resolveRouteHandlerProxyLazyMissWithWorker({
+      pathname: '/docs/getting-started',
+      localeConfig: {
+        locales: ['en'],
+        defaultLocale: 'en'
+      },
+      bootstrapGenerationToken: 'bootstrap-1'
+    });
+
+    await clearRouteHandlerProxyWorkerClientSessions();
+
+    expect(child.requests.map(request => request.kind)).toEqual([
+      'bootstrap',
+      'resolve-lazy-miss',
+      'shutdown'
+    ]);
+    expect(child.kill).not.toHaveBeenCalled();
+  });
+
+  it('falls back to kill when graceful shutdown does not acknowledge in time', async () => {
+    vi.useFakeTimers();
+
+    const child = createWorkerSessionChild(
+      [
+        {
+          kind: 'pass-through',
+          reason: 'no-target'
+        }
+      ],
+      {
+        acknowledgeShutdown: false
+      }
+    );
+    spawnMock.mockReturnValue(child);
+
+    await resolveRouteHandlerProxyLazyMissWithWorker({
+      pathname: '/docs/getting-started',
+      localeConfig: {
+        locales: ['en'],
+        defaultLocale: 'en'
+      },
+      bootstrapGenerationToken: 'bootstrap-1'
+    });
+
+    const clearPromise = clearRouteHandlerProxyWorkerClientSessions();
+
+    await vi.advanceTimersByTimeAsync(2000);
+    await clearPromise;
+
+    expect(child.requests.map(request => request.kind)).toEqual([
+      'bootstrap',
+      'resolve-lazy-miss',
+      'shutdown'
+    ]);
+    expect(child.kill).toHaveBeenCalledTimes(1);
   });
 });

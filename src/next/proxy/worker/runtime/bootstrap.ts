@@ -1,21 +1,40 @@
 import process from 'node:process';
 
-import { createRuntimeError } from '../../../utils/errors';
-import { loadRouteHandlerProxyRuntimeAttachments } from '../../internal/runtime-attachments';
-import { doesRouteHandlerProxyLocaleConfigMatch } from '../runtime/shared';
+import { createRuntimeError } from '../../../../utils/errors';
+import { loadRouteHandlerProxyRuntimeAttachments } from '../../../internal/runtime-attachments';
+import { doesRouteHandlerProxyLocaleConfigMatch } from '../../runtime/shared';
+import {
+  createRouteHandlerLazySingleRouteCacheManager,
+  type RouteHandlerLazySingleRouteCacheManager
+} from '../../lazy/single-route-cache-manager';
 import {
   createRouteHandlerLazyResolvedTargetsFromProxyBootstrap,
   createRouteHandlerPlannerConfigsByIdFromProxyBootstrap,
   readRouteHandlerProxyBootstrap
-} from '../bootstrap-persisted';
+} from '../../bootstrap-persisted';
 
-import type { LocaleConfig } from '../../../core/types';
-import type { RouteHandlerPlannerConfig } from '../../types';
-import type { RouteHandlerLazyResolvedTarget } from '../lazy/types';
+import type { LocaleConfig } from '../../../../core/types';
+import type { RouteHandlerPlannerConfig } from '../../../types';
+import type { RouteHandlerLazyResolvedTarget } from '../../lazy/types';
 import type {
   BootstrapGenerationToken,
   RouteHandlerProxyConfigRegistration
-} from '../runtime/types';
+} from '../../runtime/types';
+
+/**
+ * Worker-runtime bootstrap for one proxy generation.
+ *
+ * @remarks
+ * This module builds the derived in-memory state that the long-lived worker
+ * reuses across many lazy-miss requests:
+ * - load the persisted bootstrap manifest
+ * - reload runtime attachments from the app-owned config registration
+ * - combine structural and runtime target config
+ * - create the generation-scoped lazy single-route cache manager
+ *
+ * The resulting bootstrap state is intentionally value-oriented so request-time
+ * code can consume prepared state instead of repeating bootstrap work.
+ */
 
 /**
  * In-memory worker bootstrap state reused across many lazy-miss requests.
@@ -42,6 +61,10 @@ export type RouteHandlerProxyWorkerBootstrapState = {
    * Fully prepared planner configs keyed by stable target id.
    */
   resolvedConfigsByTargetId: ReadonlyMap<string, RouteHandlerPlannerConfig>;
+  /**
+   * Generation-scoped lazy single-route cache manager retained by the worker.
+   */
+  lazySingleRouteCacheManager: RouteHandlerLazySingleRouteCacheManager;
 };
 
 /**
@@ -84,10 +107,7 @@ export const bootstrapRouteHandlerProxyWorker = async (
   }
 
   if (
-    !doesRouteHandlerProxyLocaleConfigMatch(
-      localeConfig,
-      manifest.localeConfig
-    )
+    !doesRouteHandlerProxyLocaleConfigMatch(localeConfig, manifest.localeConfig)
   ) {
     throw createRuntimeError(
       'Route-handler proxy worker bootstrap manifest localeConfig does not match the requested worker localeConfig.'
@@ -100,7 +120,10 @@ export const bootstrapRouteHandlerProxyWorker = async (
     await loadRouteHandlerProxyRuntimeAttachments(configRegistration);
   const structuralConfigsByTargetId =
     createRouteHandlerPlannerConfigsByIdFromProxyBootstrap(manifest);
-  const resolvedConfigsByTargetId = new Map<string, RouteHandlerPlannerConfig>();
+  const resolvedConfigsByTargetId = new Map<
+    string,
+    RouteHandlerPlannerConfig
+  >();
 
   for (const [targetId, structuralConfig] of structuralConfigsByTargetId) {
     const runtimeAttachments = runtimeAttachmentsByTargetId[targetId];
@@ -129,6 +152,21 @@ export const bootstrapRouteHandlerProxyWorker = async (
     bootstrapGenerationToken,
     lazyResolvedTargets:
       createRouteHandlerLazyResolvedTargetsFromProxyBootstrap(manifest),
-    resolvedConfigsByTargetId
+    resolvedConfigsByTargetId,
+    lazySingleRouteCacheManager: createRouteHandlerLazySingleRouteCacheManager()
   };
+};
+
+/**
+ * Close all generation-scoped resources retained by one worker bootstrap
+ * state.
+ *
+ * @param bootstrapState - Bootstrapped worker state whose retained resources
+ * should be released.
+ * @returns `void` after the lazy single-route cache manager has been closed.
+ */
+export const closeRouteHandlerProxyWorkerBootstrapState = (
+  bootstrapState: RouteHandlerProxyWorkerBootstrapState
+): void => {
+  bootstrapState.lazySingleRouteCacheManager.close();
 };

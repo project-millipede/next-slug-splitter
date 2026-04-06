@@ -16,6 +16,7 @@ import {
   resolveRouteHandlerLazyRequest,
   resolveRouteHandlerLazyResolvedTargetsFromAppConfig
 } from '../../../../next/proxy/lazy/request-resolution';
+import { createRouteHandlerLazySingleRouteCacheManager } from '../../../../next/proxy/lazy/single-route-cache-manager';
 import { analyzeRouteHandlerLazyMatchedRoute } from '../../../../next/proxy/lazy/single-route-analysis';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
@@ -93,6 +94,9 @@ const createBootstrappedLazyAnalysisState = ({
 }): {
   resolvedTargets: Array<RouteHandlerLazyResolvedTarget>;
   resolvedConfigsByTargetId: ReadonlyMap<string, ResolvedRouteHandlersConfig>;
+  lazySingleRouteCacheManager: ReturnType<
+    typeof createRouteHandlerLazySingleRouteCacheManager
+  >;
 } => {
   const appContext = resolveRouteHandlersAppContext(
     routeHandlersConfig,
@@ -112,6 +116,8 @@ const createBootstrappedLazyAnalysisState = ({
       TEST_LOCALE_CONFIG,
       bootstrappedRouteHandlersConfig
     ),
+    lazySingleRouteCacheManager:
+      createRouteHandlerLazySingleRouteCacheManager(),
     resolvedConfigsByTargetId: new Map(
       resolvedConfigs.map(resolvedConfig => [
         resolvedConfig.targetId,
@@ -147,7 +153,9 @@ describe('proxy lazy single-route analysis', () => {
         slugArray: ['guides']
       },
       bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
-      resolvedConfigsByTargetId: new Map()
+      resolvedConfigsByTargetId: new Map(),
+      lazySingleRouteCacheManager:
+        createRouteHandlerLazySingleRouteCacheManager()
     });
 
     expect(result).toBeNull();
@@ -207,13 +215,15 @@ describe('proxy lazy single-route analysis', () => {
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
-          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
+          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
         const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
-          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
+          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
 
         expect(firstResult?.kind).toBe('heavy');
@@ -279,13 +289,15 @@ describe('proxy lazy single-route analysis', () => {
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
-          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
+          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
         const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
-          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
+          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
 
         expect(firstResult?.kind).toBe('light');
@@ -362,7 +374,9 @@ describe('proxy lazy single-route analysis', () => {
           routePath: firstResolution.routePath,
           bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
           resolvedConfigsByTargetId:
-            baseBootstrapState.resolvedConfigsByTargetId
+            baseBootstrapState.resolvedConfigsByTargetId,
+          lazySingleRouteCacheManager:
+            baseBootstrapState.lazySingleRouteCacheManager
         });
 
         const secondResolution = await resolveRouteHandlerLazyRequest(
@@ -378,7 +392,9 @@ describe('proxy lazy single-route analysis', () => {
           routePath: secondResolution.routePath,
           bootstrapGenerationToken: TEST_NEXT_BOOTSTRAP_GENERATION_TOKEN,
           resolvedConfigsByTargetId:
-            invalidatedBootstrapState.resolvedConfigsByTargetId
+            invalidatedBootstrapState.resolvedConfigsByTargetId,
+          lazySingleRouteCacheManager:
+            invalidatedBootstrapState.lazySingleRouteCacheManager
         });
 
         expect(secondResult?.kind).toBe('heavy');
@@ -443,7 +459,8 @@ describe('proxy lazy single-route analysis', () => {
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
-          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
+          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
 
         await writeTestModule(routeFilePath, '# Guides updated\n');
@@ -452,7 +469,8 @@ describe('proxy lazy single-route analysis', () => {
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
-          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+          resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
+          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
 
         expect(firstResult?.kind).toBe('heavy');

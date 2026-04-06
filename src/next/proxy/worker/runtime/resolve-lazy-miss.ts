@@ -1,11 +1,26 @@
-import { prepareRouteHandlerLazyMatchedRoute } from '../lazy/cold-request-dedupe';
-import { resolveRouteHandlerLazyRequest } from '../lazy/request-resolution';
-import { resolveRouteHandlerLazyRewriteDestination } from '../lazy/single-route-rewrite';
-import { removeRouteHandlerLazyOutputForIdentity } from '../lazy/stale-output-cleanup';
-import { debugRouteHandlerProxyWorker } from './debug-log';
+import { prepareRouteHandlerLazyMatchedRoute } from '../../lazy/cold-request-dedupe';
+import { resolveRouteHandlerLazyRequest } from '../../lazy/request-resolution';
+import { resolveRouteHandlerLazyRewriteDestination } from '../../lazy/single-route-rewrite';
+import { removeRouteHandlerLazyOutputForIdentity } from '../../lazy/stale-output-cleanup';
+import { debugRouteHandlerProxyWorker } from '../debug-log';
 
 import type { RouteHandlerProxyWorkerBootstrapState } from './bootstrap';
-import type { RouteHandlerProxyWorkerResponse } from './types';
+import type { RouteHandlerProxyWorkerResponse } from '../types';
+
+/**
+ * Worker-runtime lazy-miss resolution pipeline.
+ *
+ * @remarks
+ * This module owns the semantic cold-path work that the thin host proxy must
+ * not import directly:
+ * - resolve a public pathname to one concrete content route when possible
+ * - prepare that route as light or heavy
+ * - compute rewrite destinations for heavy routes
+ * - emit or clean up lazy output as required
+ *
+ * The host process intentionally receives only the compact serialized result so
+ * the heavy MDX-analysis graph stays isolated inside the worker runtime.
+ */
 
 /**
  * Resolve one proxy lazy miss completely inside the worker process.
@@ -53,7 +68,8 @@ export const resolveRouteHandlerProxyLazyMiss = async (
         targetId: lazyRequestResolution.config.targetId,
         routePath: lazyRequestResolution.routePath,
         bootstrapGenerationToken: bootstrapState.bootstrapGenerationToken,
-        resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId
+        resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
+        lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
       });
 
     if (lazyMatchedRoutePreparation?.kind === 'heavy') {
