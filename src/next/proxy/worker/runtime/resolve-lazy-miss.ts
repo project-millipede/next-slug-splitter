@@ -25,10 +25,6 @@ import type { RouteHandlerProxyWorkerResponse } from '../types';
 /**
  * Resolve one proxy lazy miss completely inside the worker process.
  *
- * @param pathname - Public pathname being handled by proxy.
- * @param bootstrapState - Bootstrapped worker state for the current generation.
- * @returns Serialized semantic result for the thin proxy runtime.
- *
  * @remarks
  * This worker owns the full cold lazy-miss protocol that would otherwise drag
  * the heavy MDX-analysis graph into the main proxy bundle:
@@ -41,6 +37,10 @@ import type { RouteHandlerProxyWorkerResponse } from '../types';
  * The parent proxy runtime intentionally receives only a compact semantic
  * result so it can stay focused on request transport and response
  * materialization.
+ *
+ * @param pathname - Public pathname being handled by proxy.
+ * @param bootstrapState - Bootstrapped worker state for the current generation.
+ * @returns Serialized semantic result for the thin proxy runtime.
  */
 export const resolveRouteHandlerProxyLazyMiss = async (
   pathname: string,

@@ -63,15 +63,15 @@ type RouteHandlerProxyWorkerSessionRegistry = Map<
  * Resolve the explicit config registration this proxy request wants the worker
  * to use.
  *
- * @param configRegistration - Adapter-time registration forwarded by the
- * generated root Proxy file.
- * @returns Normalized registration values with environment fallback.
- *
  * @remarks
  * The explicit request options are the preferred source of truth. Environment
  * fallback still exists for tests and older integration edges, but the real
  * production of these values should happen at adapter time and travel through
  * the generated `proxy.ts` bridge.
+ *
+ * @param configRegistration - Adapter-time registration forwarded by the
+ * generated root Proxy file.
+ * @returns Normalized registration values with environment fallback.
  */
 const resolveRouteHandlerProxyWorkerConfigRegistration = (
   configRegistration: RouteHandlerProxyConfigRegistration = {}
@@ -85,16 +85,16 @@ const resolveRouteHandlerProxyWorkerConfigRegistration = (
 /**
  * Resolve the bundled worker entry path.
  *
- * @param configRegistration - Adapter-time registration forwarded by the
- * generated root Proxy file.
- * @returns Absolute worker bundle path.
- *
  * @remarks
  * This path resolution must stay purely filesystem-based. Even a seemingly
  * harmless module-style lookup such as `require.resolve('./proxy-lazy-worker')`
  * gives Turbopack a concrete module edge from the thin Proxy bundle into the
  * heavy worker bundle, which is exactly what we must avoid. The worker file is
  * a sibling artifact on disk, so we resolve it like one.
+ *
+ * @param configRegistration - Adapter-time registration forwarded by the
+ * generated root Proxy file.
+ * @returns Absolute worker bundle path.
  */
 const resolveRouteHandlerProxyWorkerEntryPath = (
   configRegistration: RouteHandlerProxyConfigRegistration = {}
@@ -263,16 +263,16 @@ const unregisterRouteHandlerProxyWorkerSession = (
 /**
  * Force-close one worker session immediately.
  *
+ * @remarks
+ * This is the hard-stop fallback path used for bootstrap failures, protocol
+ * corruption, and graceful-shutdown fallback. Normal replacement and explicit
+ * cleanup should use the graceful shutdown helper instead.
+ *
  * @param workerSessions - Active host-side worker sessions.
  * @param session - Worker session being closed.
  * @param reason - Diagnostic reason recorded for the close event.
  * @returns `void` after the session has been marked closed and the child has
  * been killed.
- *
- * @remarks
- * This is the hard-stop fallback path used for bootstrap failures, protocol
- * corruption, and graceful-shutdown fallback. Normal replacement and explicit
- * cleanup should use the graceful shutdown helper instead.
  */
 const forceCloseRouteHandlerProxyWorkerSession = (
   workerSessions: RouteHandlerProxyWorkerSessionRegistry,
@@ -416,13 +416,6 @@ export const shutdownRouteHandlerProxyWorkerSessionGracefully = async ({
 /**
  * Spawn and bootstrap one persistent worker session.
  *
- * @param input - Session-creation input.
- * @param input.workerSessions - Active host-side worker sessions.
- * @param input.localeConfig - Locale semantics for the current worker generation.
- * @param input.bootstrapGenerationToken - Parent-issued bootstrap generation token.
- * @param input.configRegistration - Adapter-time config registration.
- * @returns Persistent worker session for one bootstrap generation.
- *
  * @remarks
  * Session-creation aspects:
  * - Transport: the child is spawned with an IPC channel in addition to stderr
@@ -431,6 +424,13 @@ export const shutdownRouteHandlerProxyWorkerSessionGracefully = async ({
  *   session is considered ready.
  * - Diagnostics: stderr is still collected for error surfacing and debug
  *   logging, but it is not part of the request protocol.
+ *
+ * @param input - Session-creation input.
+ * @param input.workerSessions - Active host-side worker sessions.
+ * @param input.localeConfig - Locale semantics for the current worker generation.
+ * @param input.bootstrapGenerationToken - Parent-issued bootstrap generation token.
+ * @param input.configRegistration - Adapter-time config registration.
+ * @returns Persistent worker session for one bootstrap generation.
  */
 const createRouteHandlerProxyWorkerSession = ({
   workerSessions,
@@ -577,19 +577,19 @@ const createRouteHandlerProxyWorkerSession = ({
 /**
  * Resolve or restart the worker session for the requested bootstrap generation.
  *
- * @param input - Session-resolution input.
- * @param input.workerSessions - Active host-side worker sessions.
- * @param input.localeConfig - Locale semantics for the current worker generation.
- * @param input.bootstrapGenerationToken - Parent-issued bootstrap generation token.
- * @param input.configRegistration - Adapter-time config registration.
- * @returns Ready worker session for the current generation.
- *
  * @remarks
  * Resolution aspects:
  * - Reuse: an existing session is reused only when the generation token still
  *   matches.
  * - Restart: generation changes force a full session restart and re-bootstrap.
  * - Readiness: callers await bootstrap completion before using the session.
+ *
+ * @param input - Session-resolution input.
+ * @param input.workerSessions - Active host-side worker sessions.
+ * @param input.localeConfig - Locale semantics for the current worker generation.
+ * @param input.bootstrapGenerationToken - Parent-issued bootstrap generation token.
+ * @param input.configRegistration - Adapter-time config registration.
+ * @returns Ready worker session for the current generation.
  */
 export const resolveRouteHandlerProxyWorkerSession = async ({
   workerSessions,

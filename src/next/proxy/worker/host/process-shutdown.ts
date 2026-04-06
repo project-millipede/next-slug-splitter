@@ -57,11 +57,6 @@ const resolveRouteHandlerProxyWorkerProcessShutdownExitCode = (
 /**
  * Run graceful proxy-worker cleanup for one parent-process shutdown signal.
  *
- * @param signal - Process signal that initiated shutdown.
- * @param hooks - Parent-owned worker-session callbacks.
- * @returns `void` after worker cleanup has completed and the parent process is
- * ready to exit.
- *
  * @remarks
  * Direct user shutdown is the primary requirement here. When a user stops
  * `next dev` with `Ctrl+C`, the parent process should translate that into the
@@ -71,6 +66,11 @@ const resolveRouteHandlerProxyWorkerProcessShutdownExitCode = (
  * This hook remains intentionally scoped to graceful shutdown only:
  * - it improves controlled user/process-manager exits
  * - it does not promise durability for hard crashes or forced kills
+ *
+ * @param signal - Process signal that initiated shutdown.
+ * @param hooks - Parent-owned worker-session callbacks.
+ * @returns `void` after worker cleanup has completed and the parent process is
+ * ready to exit.
  */
 const handleRouteHandlerProxyWorkerProcessShutdownSignal = async (
   signal: RouteHandlerProxyWorkerProcessShutdownSignal,
@@ -113,9 +113,6 @@ const handleRouteHandlerProxyWorkerProcessShutdownSignal = async (
 /**
  * Install one-time process shutdown hooks for graceful proxy-worker cleanup.
  *
- * @param hooks - Parent-owned worker-session callbacks.
- * @returns `void` after the relevant signal handlers have been installed.
- *
  * @remarks
  * Separation of concerns:
  * - this module owns only process-lifecycle translation
@@ -129,6 +126,9 @@ const handleRouteHandlerProxyWorkerProcessShutdownSignal = async (
  *
  * Hooks are installed lazily on first worker use so unrelated processes do not
  * pay any process-wide side effects before the proxy worker path is active.
+ *
+ * @param hooks - Parent-owned worker-session callbacks.
+ * @returns `void` after the relevant signal handlers have been installed.
  */
 export const installRouteHandlerProxyWorkerProcessShutdownHooks = (
   hooks: RouteHandlerProxyWorkerProcessShutdownHooks

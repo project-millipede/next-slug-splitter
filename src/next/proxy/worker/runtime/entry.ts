@@ -29,14 +29,14 @@ import type {
 /**
  * Send one response envelope back to the parent process over IPC.
  *
- * @param response - Serialized worker response envelope.
- *
  * @remarks
  * Transport aspects:
  * - Channel: protocol traffic uses Node IPC instead of stdout.
  * - Separation: app-owned stdout/stderr activity remains outside the request
  *   protocol.
  * - Validation: the worker requires an IPC-capable spawn contract.
+ *
+ * @param response - Serialized worker response envelope.
  */
 const writeRouteHandlerProxyWorkerResponse = (
   response: RouteHandlerProxyWorkerResponseEnvelope
@@ -120,12 +120,6 @@ const clearRouteHandlerProxyWorkerBootstrapState = ({
 /**
  * Handle one request on the long-lived worker session.
  *
- * @param input - Session request input.
- * @param input.request - Parsed worker request.
- * @param input.getBootstrapState - Current session bootstrap-state accessor.
- * @param input.setBootstrapState - Session bootstrap-state updater.
- * @returns `void` after the request has been fully handled.
- *
  * @remarks
  * Request-handling aspects:
  * - Bootstrap requests replace the current derived worker state for the active
@@ -133,6 +127,12 @@ const clearRouteHandlerProxyWorkerBootstrapState = ({
  * - Lazy-miss requests are rejected until bootstrap has completed.
  * - Each request is answered independently over IPC with either a success or
  *   error envelope.
+ *
+ * @param input - Session request input.
+ * @param input.request - Parsed worker request.
+ * @param input.getBootstrapState - Current session bootstrap-state accessor.
+ * @param input.setBootstrapState - Session bootstrap-state updater.
+ * @returns `void` after the request has been fully handled.
  */
 const handleRouteHandlerProxyWorkerRequest = async ({
   request,

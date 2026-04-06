@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDeferred } from '../../../helpers/deferred';
 
 const analyzeRouteHandlerLazyMatchedRouteMock = vi.hoisted(() => vi.fn());
-const doesRouteHandlerLazySingleHandlerExistMock = vi.hoisted(() => vi.fn());
 const emitRouteHandlerLazySingleHandlerMock = vi.hoisted(() => vi.fn());
 
 vi.mock(import('../../../../next/proxy/lazy/single-route-analysis'), () => ({
@@ -11,8 +10,6 @@ vi.mock(import('../../../../next/proxy/lazy/single-route-analysis'), () => ({
 }));
 
 vi.mock(import('../../../../next/proxy/lazy/single-handler-emission'), () => ({
-  doesRouteHandlerLazySingleHandlerExist:
-    doesRouteHandlerLazySingleHandlerExistMock,
   emitRouteHandlerLazySingleHandler: emitRouteHandlerLazySingleHandlerMock
 }));
 
@@ -29,7 +26,6 @@ const lazySingleRouteCacheManager =
 describe('cold-request dedupe — unit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    doesRouteHandlerLazySingleHandlerExistMock.mockResolvedValue(false);
   });
 
   it('starts independent analysis for different target/file keys', async () => {
@@ -107,7 +103,6 @@ describe('cold-request dedupe — unit', () => {
 describe('cold-request dedupe — composite', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    doesRouteHandlerLazySingleHandlerExistMock.mockResolvedValue(false);
     emitRouteHandlerLazySingleHandlerMock.mockResolvedValue({
       status: 'written',
       renderedPage: {}
@@ -148,10 +143,9 @@ describe('cold-request dedupe — composite', () => {
     );
   });
 
-  it('returns { kind: "heavy" } without emission for cached heavy routes whose handler already exists', async () => {
+  it('returns { kind: "heavy" } and still synchronizes cached heavy routes in Stage 1', async () => {
     const analysisResult = { kind: 'heavy', source: 'cache' };
     analyzeRouteHandlerLazyMatchedRouteMock.mockResolvedValue(analysisResult);
-    doesRouteHandlerLazySingleHandlerExistMock.mockResolvedValue(true);
 
     const result = await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
@@ -162,16 +156,14 @@ describe('cold-request dedupe — composite', () => {
     });
 
     expect(result).toEqual({ kind: 'heavy', analysisResult });
-    expect(doesRouteHandlerLazySingleHandlerExistMock).toHaveBeenCalledWith(
+    expect(emitRouteHandlerLazySingleHandlerMock).toHaveBeenCalledWith(
       analysisResult
     );
-    expect(emitRouteHandlerLazySingleHandlerMock).not.toHaveBeenCalled();
   });
 
-  it('returns { kind: "heavy" } and emits when a cached heavy route has no handler on disk', async () => {
+  it('returns { kind: "heavy" } and synchronizes when a cached heavy route is reused', async () => {
     const analysisResult = { kind: 'heavy', source: 'cache' };
     analyzeRouteHandlerLazyMatchedRouteMock.mockResolvedValue(analysisResult);
-    doesRouteHandlerLazySingleHandlerExistMock.mockResolvedValue(false);
 
     const result = await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
@@ -182,9 +174,6 @@ describe('cold-request dedupe — composite', () => {
     });
 
     expect(result).toEqual({ kind: 'heavy', analysisResult });
-    expect(doesRouteHandlerLazySingleHandlerExistMock).toHaveBeenCalledWith(
-      analysisResult
-    );
     expect(emitRouteHandlerLazySingleHandlerMock).toHaveBeenCalledWith(
       analysisResult
     );

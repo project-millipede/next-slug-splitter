@@ -1,7 +1,7 @@
 import { emitRouteHandlerPages } from '../generator/target/handlers';
 import { createPipelineError } from '../utils/errors';
 import { isDefined, isNonEmptyArray } from '../utils/type-guards-extended';
-import { captureReferencedComponentNames } from './capture';
+import { captureRouteHandlerComponentGraph } from './capture';
 import {
   compareLocalizedRouteIdentity,
   discoverLocalizedContentRoutes,
@@ -101,12 +101,11 @@ export const executeRouteHandlerPipeline = async (
 
   const plannedHeavyRoutes: Array<PlannedHeavyRoute> = [];
   for (const routePath of routePaths) {
-    const usedLoadableComponentKeys = sortStringArray(
-      await captureReferencedComponentNames({
-        filePath: routePath.filePath,
-        mdxCompileOptions: config.runtime?.mdxCompileOptions
-      })
+    const { usedComponentNames } = await captureRouteHandlerComponentGraph(
+      routePath.filePath,
+      config.runtime?.mdxCompileOptions
     );
+    const usedLoadableComponentKeys = sortStringArray(usedComponentNames);
 
     if (usedLoadableComponentKeys.length === 0) {
       continue;

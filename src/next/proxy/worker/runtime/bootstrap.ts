@@ -70,12 +70,6 @@ export type RouteHandlerProxyWorkerBootstrapState = {
 /**
  * Bootstrap the long-lived worker session for one proxy generation.
  *
- * @param bootstrapGenerationToken - Parent-issued bootstrap generation token.
- * @param localeConfig - Locale semantics for the current worker generation.
- * @param configRegistration - Adapter-owned config registration for runtime
- * attachment reloading.
- * @returns Bootstrapped planning state for later lazy-miss requests.
- *
  * @remarks
  * Bootstrap aspects:
  * - Ownership: this reads the adapter-written structural manifest and uses the
@@ -85,6 +79,12 @@ export type RouteHandlerProxyWorkerBootstrapState = {
  * - Timing: bootstrap work runs once per generation, not once per lazy miss.
  * - Output: per-request lazy misses consume only the derived value state
  *   returned here.
+ *
+ * @param bootstrapGenerationToken - Parent-issued bootstrap generation token.
+ * @param localeConfig - Locale semantics for the current worker generation.
+ * @param configRegistration - Adapter-owned config registration for runtime
+ * attachment reloading.
+ * @returns Bootstrapped planning state for later lazy-miss requests.
  */
 export const bootstrapRouteHandlerProxyWorker = async (
   bootstrapGenerationToken: BootstrapGenerationToken,

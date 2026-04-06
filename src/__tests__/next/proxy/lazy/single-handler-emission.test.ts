@@ -3,10 +3,10 @@ import path from 'node:path';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const captureReferencedComponentNamesMock = vi.hoisted(() => vi.fn());
+const captureRouteHandlerComponentGraphMock = vi.hoisted(() => vi.fn());
 
 vi.mock(import('../../../../core/capture'), () => ({
-  captureReferencedComponentNames: captureReferencedComponentNamesMock
+  captureRouteHandlerComponentGraph: captureRouteHandlerComponentGraphMock
 }));
 
 import { createCatchAllRouteHandlersPreset } from '../../../../next/config';
@@ -42,6 +42,24 @@ const TEST_LOCALE_CONFIG = {
   defaultLocale: 'en'
 };
 const TEST_BOOTSTRAP_GENERATION_TOKEN = 'bootstrap-1';
+
+/**
+ * Create a minimal captured MDX graph result for one route file.
+ *
+ * @param routeFilePath - Root route file path.
+ * @param usedComponentNames - Captured component names for the route.
+ * @returns Minimal captured graph result used by lazy tests.
+ */
+const createCapturedRouteHandlerGraphResult = (
+  _routeFilePath: string,
+  usedComponentNames: Array<string>
+): {
+  usedComponentNames: Array<string>;
+  transitiveModulePaths: Array<string>;
+} => ({
+  usedComponentNames,
+  transitiveModulePaths: []
+});
 
 const createSingleTargetConfig = ({
   rootDir
@@ -123,7 +141,11 @@ describe('proxy lazy single-handler emission', () => {
           'en.mdx'
         );
 
-        captureReferencedComponentNamesMock.mockResolvedValue(['CustomComponent']);
+        captureRouteHandlerComponentGraphMock.mockResolvedValue(
+          createCapturedRouteHandlerGraphResult(routeFilePath, [
+            'CustomComponent'
+          ])
+        );
         await writeTestRouteHandlerPackage(rootDir);
         await writeTestBaseStaticPropsPage(rootDir, {
           routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,

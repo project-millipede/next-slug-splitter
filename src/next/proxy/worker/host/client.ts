@@ -71,14 +71,14 @@ const workerSessions = new Map<string, RouteHandlerProxyWorkerSession>();
 /**
  * Clear all persistent worker client state.
  *
- * @returns `void` after every known worker session has been shut down and all
- * client-side worker bookkeeping has been cleared.
- *
  * @remarks
  * Cleanup aspects:
  * - Tests use this to isolate worker-session state.
  * - Explicit refresh work can reuse the same teardown path later.
  * - Every known session is closed through the normal lifecycle helper.
+ *
+ * @returns `void` after every known worker session has been shut down and all
+ * client-side worker bookkeeping has been cleared.
  */
 export const clearRouteHandlerProxyWorkerClientSessions = async (): Promise<void> => {
   const activeWorkerSessions = [...workerSessions.values()];
@@ -99,6 +99,11 @@ export const clearRouteHandlerProxyWorkerClientSessions = async (): Promise<void
 /**
  * Resolve one proxy lazy miss through the dedicated persistent worker session.
  *
+ * @remarks
+ * This client keeps only in-flight dedupe in the parent process. Warm reuse
+ * now comes from keeping the worker session itself alive across revisits while
+ * the bootstrap generation remains unchanged.
+ *
  * @param input - Worker client input.
  * @param input.pathname - Public pathname that missed the stable routing state.
  * @param input.localeConfig - Locale config captured by the generated root proxy.
@@ -106,11 +111,6 @@ export const clearRouteHandlerProxyWorkerClientSessions = async (): Promise<void
  * @param input.configRegistration - Optional adapter-time config registration
  * forwarded by the generated root proxy.
  * @returns Semantic lazy-miss outcome.
- *
- * @remarks
- * This client keeps only in-flight dedupe in the parent process. Warm reuse
- * now comes from keeping the worker session itself alive across revisits while
- * the bootstrap generation remains unchanged.
  */
 export const resolveRouteHandlerProxyLazyMissWithWorker = async ({
   pathname,

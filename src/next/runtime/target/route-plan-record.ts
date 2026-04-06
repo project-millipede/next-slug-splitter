@@ -1,4 +1,4 @@
-import { captureReferencedComponentNames } from '../../../core/capture';
+import { captureRouteHandlerComponentGraph } from '../../../core/capture';
 import {
   sortStringArray,
   toHandlerId,
@@ -8,266 +8,235 @@ import {
   createRouteContext,
   createRouteHandlerRoutePlanner
 } from '../../../core/processor-runner';
-import { isModuleReference } from '../../../module-reference';
-import type {
-  LoadableComponentEntry,
-  LocalizedRoutePath,
-  PlannedHeavyRoute,
-  ResolvedFactoryBindingValue,
-  ResolvedFactoryBindings,
-  ResolvedComponentImportSpec
-} from '../../../core/types';
-import { isArrayOf, isObjectOf, isString } from '../../../utils/type-guards';
+import type { LocalizedRoutePath, PlannedHeavyRoute } from '../../../core/types';
 import {
   isObjectRecordOf,
   isStringArray,
   readObjectProperty
 } from '../../../utils/type-guards-custom';
-import { isJsonObject } from '../../../utils/type-guards-json';
 
 import type { RouteHandlerPlannerConfig } from '../../types';
 
 /**
- * Version number for persisted one-file route-plan records.
+ * Stage 1 persisted record helpers for lazy single-route reuse.
  *
  * @remarks
- * This version is shared by:
- * - target-wide incremental planning cache
- * - dev-proxy lazy single-route cache
+ * This module intentionally keeps two closely related responsibilities
+ * together:
+ * - persist only MDX-capture facts needed for Stage 1 reuse
+ * - reconstruct full in-memory heavy-route plans from cached component keys
  *
- * Keeping the persisted one-file record format centralized means both cache
- * layers can reuse the same validation and record-construction logic while
- * still remaining separate higher-level subsystems.
+ * The persisted record is deliberately smaller than `PlannedHeavyRoute`. It
+ * stores only the route-derived capture facts that let the lazy path skip MDX
+ * analysis when the root entry file and all persisted transitive MDX module
+ * paths remain unchanged.
  */
-const ROUTE_PLAN_RECORD_VERSION = 4;
 
 /**
- * Persisted planning result for one localized content file.
+ * Version number for persisted Stage 1 route-capture records.
+ */
+const ROUTE_CAPTURE_RECORD_VERSION = 5;
+
+/**
+ * Persisted Stage 1 capture facts for one localized route file.
  *
  * @remarks
- * `plannedHeavyRoute: null` is intentional and meaningful. It records that the
- * file was analyzed and definitively classified as light for the current target
- * identity, which is valuable reusable knowledge in both target-wide and
- * single-route lazy caching flows.
+ * The root entry file is always `routePath.filePath` and is intentionally not
+ * duplicated here. `transitiveModulePaths` therefore contains only non-root
+ * reachable MDX module paths discovered during capture. Stage 1 validity must
+ * always validate the root entry file separately before validating each
+ * persisted transitive module path.
  */
-export type PersistedRoutePlanRecord = {
+export type PersistedRouteCaptureRecord = {
+  /**
+   * App-owned schema version for this persisted record.
+   */
   version: number;
-  plannedHeavyRoute: PlannedHeavyRoute | null;
+  /**
+   * Sorted component keys captured from the reachable MDX graph.
+   */
+  usedLoadableComponentKeys: Array<string>;
+  /**
+   * Sorted non-root reachable MDX module paths discovered during capture.
+   *
+   * @remarks
+   * This array must never contain the root entry file path. The root entry
+   * file is always known separately as `routePath.filePath` and is validated
+   * separately from these transitive module paths.
+   */
+  transitiveModulePaths: Array<string>;
 };
 
 /**
- * Runtime validator for one persisted component-import descriptor.
+ * Normalize one unordered string array into a sorted unique list.
  *
- * @param value - Candidate persisted value.
- * @returns `true` when the value matches the expected persisted shape.
+ * @param values - Candidate string values to normalize.
+ * @returns Sorted unique string values.
  */
-const isResolvedComponentImportSpec = (
-  value: unknown
-): value is ResolvedComponentImportSpec => {
-  if (!isObjectRecordOf<ResolvedComponentImportSpec>(value)) {
-    return false;
-  }
+const normalizeSortedUniqueStrings = (values: Array<string>): Array<string> =>
+  sortStringArray(Array.from(new Set(values)));
 
-  const kind = readObjectProperty(value, 'kind');
-  return (
-    isModuleReference(readObjectProperty(value, 'source')) &&
-    (kind === 'default' || kind === 'named') &&
-    isString(readObjectProperty(value, 'importedName'))
+/**
+ * Normalize one route's persisted transitive MDX module paths.
+ *
+ * @remarks
+ * The root entry path is filtered here even though the capture seam already
+ * excludes it. That keeps the root-versus-transitive separation enforced at
+ * the persistence boundary rather than relying only on capture internals.
+ *
+ * @param entryFilePath - Absolute path to the root entry MDX file.
+ * @param transitiveModulePaths - Candidate non-root module paths discovered
+ * during capture.
+ * @returns Sorted unique non-root transitive module paths.
+ */
+const normalizePersistedTransitiveModulePaths = (
+  entryFilePath: string,
+  transitiveModulePaths: Array<string>
+): Array<string> =>
+  normalizeSortedUniqueStrings(
+    transitiveModulePaths.filter(
+      transitiveModulePath => transitiveModulePath !== entryFilePath
+    )
   );
-};
 
 /**
- * Runtime validator for an ordered factory-binding import list.
+ * Read and validate one persisted Stage 1 route-capture record.
  *
- * @param value - Candidate persisted binding value.
- * @returns `true` when the value is an array of resolved component imports.
- */
-const isResolvedComponentImportSpecArray = isArrayOf(
-  isResolvedComponentImportSpec
-);
-
-/**
- * Runtime validator for one persisted factory-binding value.
- *
- * Factory bindings may persist as either:
- * - one resolved component import descriptor, or
- * - an ordered array of resolved component import descriptors
- *
- * @param value - Candidate persisted binding value.
- * @returns `true` when the value matches either supported binding shape.
- */
-const isResolvedFactoryBindingValue = (
-  value: unknown
-): value is ResolvedFactoryBindingValue =>
-  isResolvedComponentImportSpec(value) ||
-  isResolvedComponentImportSpecArray(value);
-
-/**
- * Runtime validator for persisted route-level factory bindings.
- *
- * @param value - Candidate persisted bindings object.
- * @returns `true` when the value is a non-null object whose values all match
- * supported factory-binding shapes.
- */
-const isResolvedFactoryBindings = (
-  value: unknown
-): value is ResolvedFactoryBindings =>
-  isObjectOf(isResolvedFactoryBindingValue)(value);
-
-/**
- * Runtime validator for the optional persisted `factoryBindings` field.
- *
- * The persisted route-plan shape allows this property to be absent. When it is
- * present, it must satisfy {@link isResolvedFactoryBindings}.
- *
- * @param value - Candidate persisted `factoryBindings` field value.
- * @returns `true` when the field is absent or a valid bindings object.
- */
-const isOptionalResolvedFactoryBindings = (
-  value: unknown
-): value is ResolvedFactoryBindings | undefined =>
-  value == null || isResolvedFactoryBindings(value);
-
-/**
- * Runtime validator for one persisted loadable-component entry.
- *
- * @param value - Candidate persisted value.
- * @returns `true` when the value matches the expected persisted shape.
- */
-const isLoadableComponentEntry = (
-  value: unknown
-): value is LoadableComponentEntry => {
-  if (!isObjectRecordOf<LoadableComponentEntry>(value)) {
-    return false;
-  }
-
-  return (
-    isString(readObjectProperty(value, 'key')) &&
-    isResolvedComponentImportSpec(
-      readObjectProperty(value, 'componentImport')
-    ) &&
-    isJsonObject(readObjectProperty(value, 'metadata'))
-  );
-};
-
-/**
- * Runtime validator for an ordered persisted component-entry list.
- *
- * @param value - Candidate persisted value.
- * @returns `true` when the value is an array of persisted component entries.
- */
-const isLoadableComponentEntryArray = isArrayOf(isLoadableComponentEntry);
-
-/**
- * Runtime validator for one persisted heavy-route payload.
- *
- * @param value - Candidate persisted value.
- * @returns `true` when the value matches the expected persisted shape.
- */
-const isPlannedHeavyRoute = (value: unknown): value is PlannedHeavyRoute => {
-  if (!isObjectRecordOf<PlannedHeavyRoute>(value)) {
-    return false;
-  }
-
-  return (
-    isString(readObjectProperty(value, 'locale')) &&
-    isStringArray(readObjectProperty(value, 'slugArray')) &&
-    isString(readObjectProperty(value, 'handlerId')) &&
-    isString(readObjectProperty(value, 'handlerRelativePath')) &&
-    isStringArray(readObjectProperty(value, 'usedLoadableComponentKeys')) &&
-    isModuleReference(readObjectProperty(value, 'factoryImport')) &&
-    isOptionalResolvedFactoryBindings(
-      readObjectProperty(value, 'factoryBindings')
-    ) &&
-    isLoadableComponentEntryArray(readObjectProperty(value, 'componentEntries'))
-  );
-};
-
-/**
- * Read and validate a persisted route-plan record.
+ * @remarks
+ * Persisted metadata must be self-healing. If old on-disk data no longer
+ * matches the current Stage 1 record shape, callers treat that value as a
+ * cache miss and recompute rather than trusting malformed state.
  *
  * @param value - Candidate persisted metadata value.
- * @returns Valid record when the value matches the expected shape, otherwise
- * `null`.
- *
- * @remarks
- * Persisted metadata should be self-healing. If the on-disk shape no longer
- * matches what the current code expects, callers treat the record as a cache
- * miss and recompute rather than trusting malformed state.
+ * @returns Valid Stage 1 capture record when the value matches the expected
+ * shape, otherwise `null`.
  */
-export const readPersistedRoutePlanRecord = (
+export const readPersistedRouteCaptureRecord = (
   value: unknown
-): PersistedRoutePlanRecord | null => {
-  if (!isObjectRecordOf<PersistedRoutePlanRecord>(value)) {
+): PersistedRouteCaptureRecord | null => {
+  if (!isObjectRecordOf<PersistedRouteCaptureRecord>(value)) {
     return null;
   }
 
-  const plannedHeavyRoute = readObjectProperty(value, 'plannedHeavyRoute');
-  return readObjectProperty(value, 'version') === ROUTE_PLAN_RECORD_VERSION &&
-    (plannedHeavyRoute === null || isPlannedHeavyRoute(plannedHeavyRoute))
-    ? {
-        version: ROUTE_PLAN_RECORD_VERSION,
-        plannedHeavyRoute
-      }
-    : null;
+  const version = readObjectProperty(value, 'version');
+  const usedLoadableComponentKeys = readObjectProperty(
+    value,
+    'usedLoadableComponentKeys'
+  );
+  const transitiveModulePaths = readObjectProperty(
+    value,
+    'transitiveModulePaths'
+  );
+
+  if (version !== ROUTE_CAPTURE_RECORD_VERSION) {
+    return null;
+  }
+
+  if (!isStringArray(usedLoadableComponentKeys)) {
+    return null;
+  }
+
+  if (!isStringArray(transitiveModulePaths)) {
+    return null;
+  }
+
+  return {
+    version: ROUTE_CAPTURE_RECORD_VERSION,
+    usedLoadableComponentKeys: normalizeSortedUniqueStrings(
+      usedLoadableComponentKeys
+    ),
+    transitiveModulePaths: normalizeSortedUniqueStrings(transitiveModulePaths)
+  };
 };
 
 /**
- * Build the persisted one-file route-plan record for a localized route file.
- *
- * @param routePath - Localized content route to analyze.
- * @param config - Fully resolved target config used for planning.
- * @param planRoute - Prepared processor-backed route planner.
- * @returns Persisted one-file route-plan record.
+ * Create one persisted Stage 1 route-capture record for a localized route
+ * file.
  *
  * @remarks
- * This helper is the shared "one file in, one persisted plan record out" seam
- * used by both cache subsystems. It performs:
- * - MDX capture for the single route file
- * - light/heavy classification based on captured component keys
- * - heavy-route processor planning when needed
+ * This helper performs only MDX capture work. It intentionally does not
+ * perform heavy-route processor planning, because Stage 1 reuse persists only
+ * the capture facts needed to skip MDX analysis on later valid hits.
  *
- * It intentionally does not know anything about higher-level cache layout or
- * request routing.
+ * @param routePath - Localized route file to capture.
+ * @param config - Fully resolved target config used for route capture.
+ * @returns Persisted Stage 1 route-capture record.
  */
-export const createPersistedRoutePlanRecord = async (
+export const createPersistedRouteCaptureRecord = async (
+  routePath: LocalizedRoutePath,
+  config: RouteHandlerPlannerConfig
+): Promise<PersistedRouteCaptureRecord> => {
+  const { usedComponentNames, transitiveModulePaths } =
+    await captureRouteHandlerComponentGraph(
+      routePath.filePath,
+      config.runtime.mdxCompileOptions
+    );
+
+  return {
+    version: ROUTE_CAPTURE_RECORD_VERSION,
+    usedLoadableComponentKeys: normalizeSortedUniqueStrings(usedComponentNames),
+    transitiveModulePaths: normalizePersistedTransitiveModulePaths(
+      routePath.filePath,
+      transitiveModulePaths
+    )
+  };
+};
+
+/**
+ * Build the derived non-processor fields for one heavy route.
+ *
+ * @param routePath - Localized route file being planned.
+ * @param config - Fully resolved target config used for planning.
+ * @param usedLoadableComponentKeys - Captured component keys for the route.
+ * @returns Derived heavy-route fields that do not depend on processor output.
+ */
+const createPlannedHeavyRouteBase = (
   routePath: LocalizedRoutePath,
   config: RouteHandlerPlannerConfig,
+  usedLoadableComponentKeys: Array<string>
+): Omit<
+  PlannedHeavyRoute,
+  'factoryImport' | 'factoryBindings' | 'componentEntries'
+> => ({
+  locale: routePath.locale,
+  slugArray: routePath.slugArray,
+  handlerId: toHandlerId(routePath.locale, routePath.slugArray),
+  handlerRelativePath: toHandlerRelativePath(
+    routePath.locale,
+    routePath.slugArray,
+    {
+      includeLocaleLeaf: config.contentLocaleMode !== 'default-locale'
+    }
+  ),
+  usedLoadableComponentKeys
+});
+
+/**
+ * Reconstruct one in-memory heavy-route plan from cached component keys.
+ *
+ * @remarks
+ * This helper intentionally performs processor planning fresh every time it is
+ * called. Stage 1 reuse persists only MDX-capture facts, so heavy-route
+ * processor output is reconstructed in memory on each valid heavy hit.
+ *
+ * @param routePath - Localized route file being planned.
+ * @param config - Fully resolved target config used for planning.
+ * @param usedLoadableComponentKeys - Captured component keys trusted from the
+ * Stage 1 cache hit or freshly captured on a miss.
+ * @param planRoute - Prepared processor-backed route planner.
+ * @returns Fully planned heavy route for one localized content file.
+ */
+export const createPlannedHeavyRouteFromUsedLoadableComponentKeys = async (
+  routePath: LocalizedRoutePath,
+  config: RouteHandlerPlannerConfig,
+  usedLoadableComponentKeys: Array<string>,
   planRoute: Awaited<ReturnType<typeof createRouteHandlerRoutePlanner>>
-): Promise<PersistedRoutePlanRecord> => {
-  const usedLoadableComponentKeys = sortStringArray(
-    await captureReferencedComponentNames({
-      filePath: routePath.filePath,
-      mdxCompileOptions: config.runtime.mdxCompileOptions
-    })
-  );
-
-  if (usedLoadableComponentKeys.length === 0) {
-    // Negative-result caching is first-class here. Light routes are still
-    // analyzed knowledge and should be reusable without another capture build.
-    return {
-      version: ROUTE_PLAN_RECORD_VERSION,
-      plannedHeavyRoute: null
-    };
-  }
-
-  const plannedRouteBase: Omit<
-    PlannedHeavyRoute,
-    'factoryImport' | 'factoryBindings' | 'componentEntries'
-  > = {
-    locale: routePath.locale,
-    slugArray: routePath.slugArray,
-    handlerId: toHandlerId(routePath.locale, routePath.slugArray),
-    handlerRelativePath: toHandlerRelativePath(
-      routePath.locale,
-      routePath.slugArray,
-      {
-        includeLocaleLeaf: config.contentLocaleMode !== 'default-locale'
-      }
-    ),
+): Promise<PlannedHeavyRoute> => {
+  const plannedRouteBase = createPlannedHeavyRouteBase(
+    routePath,
+    config,
     usedLoadableComponentKeys
-  };
-
+  );
   const route = createRouteContext({
     filePath: routePath.filePath,
     handlerId: plannedRouteBase.handlerId,
@@ -277,19 +246,15 @@ export const createPersistedRoutePlanRecord = async (
     slugArray: routePath.slugArray,
     targetId: config.targetId
   });
-
   const { factoryImport, factoryBindings, componentEntries } = await planRoute({
     route,
     capturedComponentKeys: usedLoadableComponentKeys
   });
 
   return {
-    version: ROUTE_PLAN_RECORD_VERSION,
-    plannedHeavyRoute: {
-      ...plannedRouteBase,
-      factoryImport,
-      factoryBindings,
-      componentEntries
-    }
+    ...plannedRouteBase,
+    factoryImport,
+    factoryBindings,
+    componentEntries
   };
 };

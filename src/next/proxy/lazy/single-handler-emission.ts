@@ -12,8 +12,6 @@ import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
 /**
  * Emit exactly one lazily analyzed heavy route to disk.
  *
- * @param analysisResult - One-file heavy-route analysis result.
- *
  * @remarks
  * This module is intentionally different from the target-wide selective
  * emission subsystem:
@@ -23,6 +21,8 @@ import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
  *
  * That means this module never deletes other generated handlers. Its job is
  * strictly "ensure this one heavy route's handler file is ready right now."
+ *
+ * @param analysisResult - One-file heavy-route analysis result.
  */
 export const emitRouteHandlerLazySingleHandler = async (
   analysisResult: RouteHandlerLazyHeavyAnalysisResult
@@ -49,10 +49,10 @@ export const emitRouteHandlerLazySingleHandler = async (
  * 1. derive the expected emitted handler file path from `analysisResult`
  * 2. check whether that file currently exists on disk
  *
- * The caller combines this filesystem check with plan reuse from cached heavy
- * analysis. Emission may be skipped only when both are true:
- * - analysis says the route is already known to be heavy
- * - the corresponding emitted handler file still exists on disk
+ * Stage 1 no longer uses this helper because cached Stage 1 hits still rerun
+ * processor planning and synchronize one emitted handler file. This helper is
+ * retained for the later Stage 2 fast path, where a cached processor-plan hit
+ * plus an existing handler file can safely skip one-file synchronization.
  *
  * @param analysisResult - Cached heavy-route analysis result whose emitted
  * handler file should be checked.

@@ -1,9 +1,11 @@
 import { createRouteHandlerRoutePlanner } from '../../../core/processor-runner';
 import {
-  createPersistedRoutePlanRecord,
-  type PersistedRoutePlanRecord
+  createPersistedRouteCaptureRecord,
+  createPlannedHeavyRouteFromUsedLoadableComponentKeys,
+  type PersistedRouteCaptureRecord
 } from '../../runtime/target/route-plan-record';
 
+import type { PlannedHeavyRoute } from '../../../core/types';
 import type { RouteHandlerPlannerConfig } from '../../types';
 import type {
   RouteHandlerLazyMatchedRouteInput,
@@ -18,8 +20,9 @@ import type {
  *
  * Responsibilities:
  * - read the already-bootstrapped target config required for real route planning
- * - consult the lazy single-route cache for reusable one-file results
- * - run capture + processor planning for exactly one content file on a miss
+ * - consult the Stage 1 lazy single-route cache for reusable MDX-capture facts
+ * - run capture for exactly one content file on a Stage 1 miss
+ * - reconstruct heavy-route processor planning in memory when needed
  *
  * Non-responsibilities:
  * - deciding whether the request should rewrite or pass through
@@ -30,57 +33,85 @@ import type {
  */
 
 /**
- * Read the already-bootstrapped target config needed for one-file planning.
+ * Create the public lazy-analysis result shape for one light route.
  *
- * @param targetId - Target identifier selected by lazy request resolution.
- * @param resolvedConfigsByTargetId - Bootstrapped target configs keyed by
- * stable target id.
- * @returns Fully resolved target config, or `null` when the target is no
- * longer present.
- *
- * @remarks
- * Worker bootstrap intentionally pays the heavy config-resolution cost once up
- * front. The request-time analysis path then reads the bootstrapped config
- * from memory instead of reloading config or running prepare again.
+ * @param input - Result input.
+ * @returns Light lazy single-route analysis result.
  */
-const resolveLazyAnalysisTargetConfig = (
-  targetId: string,
-  resolvedConfigsByTargetId: ReadonlyMap<string, RouteHandlerPlannerConfig>
-): RouteHandlerPlannerConfig | null =>
-  resolvedConfigsByTargetId.get(targetId) ?? null;
-
-/**
- * Convert a persisted one-file route-plan record into the public lazy-analysis
- * result shape.
- *
- * @param input - Conversion input.
- * @returns Lazy single-route analysis result.
- */
-const toLazySingleRouteAnalysisResult = ({
+const createLazyLightAnalysisResult = ({
   source,
   config,
-  routePath,
-  routePlanRecord
+  routePath
 }: {
   source: 'cache' | 'fresh';
   config: RouteHandlerPlannerConfig;
   routePath: RouteHandlerLazySingleRouteAnalysisResult['routePath'];
-  routePlanRecord: PersistedRoutePlanRecord;
-}): RouteHandlerLazySingleRouteAnalysisResult =>
-  routePlanRecord.plannedHeavyRoute == null
-    ? {
-        kind: 'light',
-        source,
-        config,
-        routePath
-      }
-    : {
-        kind: 'heavy',
-        source,
-        config,
-        routePath,
-        plannedHeavyRoute: routePlanRecord.plannedHeavyRoute
-      };
+}): RouteHandlerLazySingleRouteAnalysisResult => ({
+  kind: 'light',
+  source,
+  config,
+  routePath
+});
+
+/**
+ * Create the public lazy-analysis result shape for one heavy route.
+ *
+ * @param input - Result input.
+ * @returns Heavy lazy single-route analysis result.
+ */
+const createLazyHeavyAnalysisResult = ({
+  source,
+  config,
+  routePath,
+  plannedHeavyRoute
+}: {
+  source: 'cache' | 'fresh';
+  config: RouteHandlerPlannerConfig;
+  routePath: RouteHandlerLazySingleRouteAnalysisResult['routePath'];
+  plannedHeavyRoute: PlannedHeavyRoute;
+}): RouteHandlerLazySingleRouteAnalysisResult => ({
+  kind: 'heavy',
+  source,
+  config,
+  routePath,
+  plannedHeavyRoute
+});
+
+/**
+ * Reconstruct one heavy-route analysis result from trusted Stage 1 capture
+ * facts.
+ *
+ * @param input - Reconstruction input.
+ * @returns Heavy lazy single-route analysis result.
+ */
+const createLazyHeavyAnalysisResultFromCaptureRecord = async ({
+  source,
+  config,
+  routePath,
+  routeCaptureRecord,
+  planRoute
+}: {
+  source: 'cache' | 'fresh';
+  config: RouteHandlerPlannerConfig;
+  routePath: RouteHandlerLazySingleRouteAnalysisResult['routePath'];
+  routeCaptureRecord: PersistedRouteCaptureRecord;
+  planRoute: Awaited<ReturnType<typeof createRouteHandlerRoutePlanner>>;
+}): Promise<RouteHandlerLazySingleRouteAnalysisResult> => {
+  const plannedHeavyRoute =
+    await createPlannedHeavyRouteFromUsedLoadableComponentKeys(
+      routePath,
+      config,
+      routeCaptureRecord.usedLoadableComponentKeys,
+      planRoute
+    );
+
+  return createLazyHeavyAnalysisResult({
+    source,
+    config,
+    routePath,
+    plannedHeavyRoute
+  });
+};
 
 /**
  * Analyze one lazy matched route file and return the one-file planning result.
@@ -88,7 +119,6 @@ const toLazySingleRouteAnalysisResult = ({
  * @param input - Analysis input.
  * @param input.targetId - Target identifier selected by lazy request resolution.
  * @param input.routePath - Concrete localized content route file to analyze.
- * @param input.bootstrapGenerationToken - Current worker bootstrap generation token.
  * @param input.resolvedConfigsByTargetId - Bootstrapped heavy target configs keyed by
  * target id.
  * @param input.lazySingleRouteCacheManager - Generation-scoped worker cache
@@ -99,14 +129,12 @@ const toLazySingleRouteAnalysisResult = ({
 export const analyzeRouteHandlerLazyMatchedRoute = async ({
   targetId,
   routePath,
-  bootstrapGenerationToken,
   resolvedConfigsByTargetId,
   lazySingleRouteCacheManager
 }: RouteHandlerLazyMatchedRouteInput): Promise<RouteHandlerLazySingleRouteAnalysisResult | null> => {
-  const config = resolveLazyAnalysisTargetConfig(
-    targetId,
-    resolvedConfigsByTargetId
-  );
+  // Worker bootstrap already resolved target configs up front, so request-time
+  // analysis reads the target config directly from that in-memory map.
+  const config = resolvedConfigsByTargetId.get(targetId) ?? null;
 
   if (config == null) {
     // Config churn between request resolution and analysis should degrade
@@ -115,45 +143,74 @@ export const analyzeRouteHandlerLazyMatchedRoute = async ({
     return null;
   }
 
-  const cachedRoutePlanRecord =
-    lazySingleRouteCacheManager.readCachedRoutePlanRecord(
-      config,
-      routePath,
-      bootstrapGenerationToken
-    );
+  let planRoutePromise: Promise<
+    Awaited<ReturnType<typeof createRouteHandlerRoutePlanner>>
+  > | null = null;
+  const resolvePlanRoute = async (): Promise<
+    Awaited<ReturnType<typeof createRouteHandlerRoutePlanner>>
+  > => {
+    if (planRoutePromise == null) {
+      // Stage 1 hits with empty `usedLoadableComponentKeys` return `light`
+      // immediately, so processor planner construction stays lazy and happens
+      // only when a heavy route needs in-memory reconstruction.
+      planRoutePromise = createRouteHandlerRoutePlanner({
+        rootDir: config.paths.rootDir,
+        processorConfig: config.processorConfig
+      });
+    }
 
-  if (cachedRoutePlanRecord != null) {
-    return toLazySingleRouteAnalysisResult({
+    return planRoutePromise;
+  };
+  const cachedRouteCaptureRecord =
+    lazySingleRouteCacheManager.readCachedRouteCaptureRecord(config, routePath);
+
+  if (cachedRouteCaptureRecord != null) {
+    // The cache manager already validated the root entry file separately from
+    // every persisted transitive MDX module path, so this Stage 1 hit can
+    // trust cached component keys and skip MDX capture entirely.
+    if (cachedRouteCaptureRecord.usedLoadableComponentKeys.length === 0) {
+      return createLazyLightAnalysisResult({
+        source: 'cache',
+        config,
+        routePath
+      });
+    }
+
+    return createLazyHeavyAnalysisResultFromCaptureRecord({
       source: 'cache',
       config,
       routePath,
-      routePlanRecord: cachedRoutePlanRecord
+      routeCaptureRecord: cachedRouteCaptureRecord,
+      planRoute: await resolvePlanRoute()
     });
   }
 
-  // Planner construction is intentionally deferred until the first true single-
-  // route cache miss. This keeps the warm path cheap and matches the
-  // just-in-time design goal of the lazy proxy flow.
-  const planRoute = await createRouteHandlerRoutePlanner({
-    rootDir: config.paths.rootDir,
-    processorConfig: config.processorConfig
-  });
-  const routePlanRecord = await createPersistedRoutePlanRecord(
+  const routeCaptureRecord = await createPersistedRouteCaptureRecord(
     routePath,
-    config,
-    planRoute
+    config
   );
-  lazySingleRouteCacheManager.writeCachedRoutePlanRecord(
+  lazySingleRouteCacheManager.writeCachedRouteCaptureRecord(
     config,
     routePath,
-    routePlanRecord,
-    bootstrapGenerationToken
+    routeCaptureRecord
   );
 
-  return toLazySingleRouteAnalysisResult({
+  if (routeCaptureRecord.usedLoadableComponentKeys.length === 0) {
+    // Negative-result caching is a first-class Stage 1 outcome. Once the root
+    // and transitive MDX files remain unchanged, later requests can trust this
+    // empty key set and skip MDX capture plus planner creation entirely.
+    return createLazyLightAnalysisResult({
+      source: 'fresh',
+      config,
+      routePath
+    });
+  }
+
+  return createLazyHeavyAnalysisResultFromCaptureRecord({
     source: 'fresh',
     config,
     routePath,
-    routePlanRecord
+    routeCaptureRecord,
+    planRoute: await resolvePlanRoute()
   });
 };

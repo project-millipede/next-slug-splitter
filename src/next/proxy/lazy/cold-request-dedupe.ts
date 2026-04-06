@@ -1,8 +1,5 @@
 import { analyzeRouteHandlerLazyMatchedRoute } from './single-route-analysis';
-import {
-  doesRouteHandlerLazySingleHandlerExist,
-  emitRouteHandlerLazySingleHandler
-} from './single-handler-emission';
+import { emitRouteHandlerLazySingleHandler } from './single-handler-emission';
 import { composeKey } from './key-builder';
 
 import type {
@@ -36,30 +33,29 @@ const inFlightLazyMatchedRoutePreparations = new Map<
  * This function combines two separate checks:
  * - route analysis answers the planning question:
  *   "is `routePath` currently light or heavy?"
- * - a filesystem check answers the file question:
- *   "does the emitted handler file for this heavy route still exist on disk?"
+ * - single-file synchronization answers the file question:
+ *   "is the emitted handler file for this heavy route current on disk?"
  *
  * The full protocol is:
  * 1. Analyze `routePath`.
  * 2. If the result is light, return that result immediately.
- * 3. If the result is heavy and came from cache, check the filesystem for the
- *    emitted handler file.
- * 4. If both the cached heavy result and the handler file are present, return
- *    immediately without emitting.
- * 5. In every other heavy case, emit the handler file so the rewrite target
- *    exists on disk.
+ * 3. If the result is heavy, synchronize exactly one emitted handler file.
+ * 4. Return the heavy analysis result after that one-file synchronization
+ *    finishes.
  *
  * The safety rule is:
- * - cached heavy analysis is not trusted by itself
- * - emission is skipped only when the handler file is also confirmed on disk
+ * - Stage 1 cache reuse skips MDX capture only
+ * - heavy-route processor planning is still reconstructed in memory
+ * - one-file synchronization still runs for every heavy result so the emitted
+ *   handler file is guaranteed current on disk
  *
  * Example:
  * 1. `/docs/dashboard` was visited earlier in development.
- * 2. The lazy one-file cache already knows that route is heavy.
- * 3. The emitted handler file for `/docs/_handlers/dashboard` is still on
- *    disk.
- * 4. A later visit to `/docs/dashboard` can reuse the cached heavy result,
- *    skip emission, and rewrite immediately.
+ * 2. The lazy Stage 1 cache already knows which component keys that route uses.
+ * 3. A later visit to `/docs/dashboard` can skip MDX capture, rerun only
+ *    processor planning, and synchronize that one emitted handler file.
+ * 4. The synchronization step still avoids unnecessary rewrites because it
+ *    compares rendered output against the on-disk file before writing.
  *
  * The return value is:
  * - `{ kind: 'light', analysisResult }` when the matched route is light
@@ -97,31 +93,11 @@ const analyzeAndPrepare = async ({
   });
 
   if (analysisResult?.kind === 'heavy') {
-    const hasCachedHeavyResult = analysisResult.source === 'cache';
-    let handlerExistsOnDisk = false;
-
-    if (hasCachedHeavyResult) {
-      handlerExistsOnDisk =
-        await doesRouteHandlerLazySingleHandlerExist(analysisResult);
-    }
-
-    const canReuseExistingHandler =
-      hasCachedHeavyResult && handlerExistsOnDisk;
-
-    // Plan reuse comes from the cached heavy analysis result.
-    // File reuse comes from the filesystem check above.
-    // Emission is skipped only when both agree that the handler is reusable.
-    if (canReuseExistingHandler) {
-      return {
-        kind: 'heavy',
-        analysisResult
-      };
-    }
-
     // Lazy single-route emission: render and write exactly one handler file
     // to disk so the subsequent rewrite has a valid target. Unlike build-mode
     // batch emission, this only ensures the one requested route is ready and
-    // never removes other handler files.
+    // never removes other handler files. In Stage 1, this synchronization
+    // still runs for cached heavy routes because only MDX capture is reused.
     await emitRouteHandlerLazySingleHandler(analysisResult);
 
     return {

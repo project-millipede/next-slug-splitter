@@ -1,17 +1,84 @@
 import { type FileEntryCache } from 'file-entry-cache';
 
 import type { LocalizedRoutePath } from '../../../core/types';
-import type { PersistedRoutePlanRecord } from '../../runtime/target/route-plan-record';
+import type { PersistedRouteCaptureRecord } from '../../runtime/target/route-plan-record';
 import type { RouteHandlerPlannerConfig } from '../../types';
-import type { BootstrapGenerationToken } from '../runtime/types';
 
 import {
   createRouteHandlerLazySingleRouteFileCache,
   enableRouteHandlerLazySingleRouteFileCacheAutoPersist,
-  readRouteHandlerLazySingleRouteCacheRecord,
   writeRouteHandlerLazySingleRouteCacheRecordToDescriptor
 } from './single-route-cache';
-import { debugRouteHandlerProxyWorker } from '../worker/debug-log';
+import { readPersistedRouteCaptureRecord } from '../../runtime/target/route-plan-record';
+
+/**
+ * File-entry descriptor used during Stage 1 lazy cache validation.
+ */
+type RouteHandlerLazyDependencyFileDescriptor =
+  ReturnType<FileEntryCache['getFileDescriptor']>;
+
+/**
+ * Read one dependency descriptor and return it only when the cached file state
+ * remains reusable.
+ *
+ * @remarks
+ * Stage 1 validity trusts cached `usedLoadableComponentKeys` only when the
+ * root entry file and every persisted transitive MDX module path remain
+ * unchanged. Any changed or missing dependency invalidates the cached Stage 1
+ * record and forces a fresh capture path.
+ *
+ * @param targetFileCache - Retained target-scoped file-entry cache.
+ * @param dependencyFilePath - Absolute dependency file path to validate.
+ * @returns Reusable descriptor when the dependency is unchanged and still
+ * present, otherwise `null`.
+ */
+const readReusableRouteHandlerLazyDependencyFileDescriptor = (
+  targetFileCache: FileEntryCache,
+  dependencyFilePath: string
+): RouteHandlerLazyDependencyFileDescriptor | null => {
+  const dependencyFileDescriptor = targetFileCache.getFileDescriptor(
+    dependencyFilePath
+  );
+
+  if (dependencyFileDescriptor.changed) {
+    return null;
+  }
+
+  if (dependencyFileDescriptor.notFound) {
+    return null;
+  }
+
+  return dependencyFileDescriptor;
+};
+
+/**
+ * Validate the persisted transitive MDX module paths for one cached Stage 1
+ * record.
+ *
+ * @param targetFileCache - Retained target-scoped file-entry cache.
+ * @param transitiveModulePaths - Persisted non-root transitive MDX module
+ * paths.
+ * @returns `true` when every transitive module path remains unchanged and
+ * present, otherwise `false`.
+ */
+const areRouteHandlerLazyTransitiveModulePathsReusable = (
+  targetFileCache: FileEntryCache,
+  transitiveModulePaths: Array<string>
+): boolean => {
+  for (const transitiveModulePath of transitiveModulePaths) {
+    const reusableDependencyFileDescriptor =
+      readReusableRouteHandlerLazyDependencyFileDescriptor(
+        targetFileCache,
+        transitiveModulePath
+      );
+
+    if (reusableDependencyFileDescriptor == null) {
+      return false;
+    }
+  }
+
+  return true;
+};
 
 /**
  * Generation-scoped lifecycle wrapper for RAM-first lazy single-route caches.
@@ -24,23 +91,21 @@ import { debugRouteHandlerProxyWorker } from '../worker/debug-log';
  */
 export type RouteHandlerLazySingleRouteCacheManager = {
   /**
-   * Read one reusable one-file route-plan record from the retained target
-   * cache.
+   * Read one reusable persisted Stage 1 route-capture record from the
+   * retained target cache.
    */
-  readCachedRoutePlanRecord: (
+  readCachedRouteCaptureRecord: (
     config: RouteHandlerPlannerConfig,
-    routePath: LocalizedRoutePath,
-    bootstrapGenerationToken: BootstrapGenerationToken
-  ) => PersistedRoutePlanRecord | null;
+    routePath: LocalizedRoutePath
+  ) => PersistedRouteCaptureRecord | null;
   /**
-   * Persist one freshly planned one-file route-plan record into the retained
-   * target cache without forcing an immediate reconcile.
+   * Persist one freshly captured Stage 1 route-capture record into the
+   * retained target cache without forcing an immediate reconcile.
    */
-  writeCachedRoutePlanRecord: (
+  writeCachedRouteCaptureRecord: (
     config: RouteHandlerPlannerConfig,
     routePath: LocalizedRoutePath,
-    routePlanRecord: PersistedRoutePlanRecord,
-    bootstrapGenerationToken: BootstrapGenerationToken
+    routeCaptureRecord: PersistedRouteCaptureRecord
   ) => void;
   /**
    * Reconcile every retained target cache to disk.
@@ -109,85 +174,87 @@ export const createRouteHandlerLazySingleRouteCacheManager =
     };
 
     /**
-     * Read one cached route-plan record from the retained target cache.
+     * Read one cached Stage 1 route-capture record from the retained target
+     * cache.
      *
      * @param config - Fully resolved target config for the route's target.
      * @param routePath - Localized route file whose cached record should be
      * checked.
-     * @param bootstrapGenerationToken - Current lazy-bootstrap generation
-     * token.
-     * @returns Cached route-plan record when reusable, otherwise `null`.
+     * @returns Cached Stage 1 route-capture record when reusable, otherwise
+     * `null`.
      */
-    const readCachedRoutePlanRecord = (
+    const readCachedRouteCaptureRecord = (
       config: RouteHandlerPlannerConfig,
-      routePath: LocalizedRoutePath,
-      bootstrapGenerationToken: BootstrapGenerationToken
-    ): PersistedRoutePlanRecord | null => {
+      routePath: LocalizedRoutePath
+    ): PersistedRouteCaptureRecord | null => {
       const targetFileCache = resolveTargetFileCache(config);
-      // This validates only the root localized route file for the current
-      // cache entry, such as the entry `en.mdx` file. Transitive imported MDX
-      // files are not part of this freshness check yet.
-      const fileAnalysis = targetFileCache.analyzeFiles([routePath.filePath]);
+      const entryFileDescriptor =
+        readReusableRouteHandlerLazyDependencyFileDescriptor(
+          targetFileCache,
+          routePath.filePath
+        );
 
-      debugRouteHandlerProxyWorker('routePath.filePath:', {
-        pathname: routePath.filePath
-      });
-
-      if (
-        fileAnalysis.changedFiles.length > 0 ||
-        fileAnalysis.notFoundFiles.length > 0
-      ) {
-        // Content changed or checksum data is unavailable, so the route must
-        // be re-analyzed before the cache can be trusted again.
+      if (entryFileDescriptor == null) {
+        // The root entry file is always validated separately from persisted
+        // transitive module paths. If the root changed or disappeared, the
+        // cached Stage 1 record cannot be trusted.
         return null;
       }
 
-      const targetFileDescriptor = targetFileCache.getFileDescriptor(
-        routePath.filePath
-      );
-      const cachedRoutePlanRecord = readRouteHandlerLazySingleRouteCacheRecord(
-        targetFileDescriptor.meta.data
+      // Descriptor metadata already stores the persisted Stage 1 capture
+      // record directly, so read and validate that value without an extra alias.
+      const cachedRouteCaptureRecord = readPersistedRouteCaptureRecord(
+        entryFileDescriptor.meta.data
       );
 
+      if (cachedRouteCaptureRecord == null) {
+        return null;
+      }
+
       if (
-        cachedRoutePlanRecord == null ||
-        cachedRoutePlanRecord.bootstrapGenerationToken !==
-          bootstrapGenerationToken
+        !areRouteHandlerLazyTransitiveModulePathsReusable(
+          targetFileCache,
+          cachedRouteCaptureRecord.transitiveModulePaths
+        )
       ) {
         return null;
       }
 
-      return cachedRoutePlanRecord.routePlanRecord;
+      return cachedRouteCaptureRecord;
     };
 
     /**
-     * Persist one freshly computed route-plan record into the retained target
-     * cache without forcing an immediate reconcile.
+     * Persist one freshly captured Stage 1 route-capture record into the
+     * retained target cache without forcing an immediate reconcile.
      *
      * @param config - Fully resolved target config for the route's target.
      * @param routePath - Localized route file whose cache entry should be
      * updated.
-     * @param routePlanRecord - Freshly computed one-file route-plan record for
-     * `routePath`.
-     * @param bootstrapGenerationToken - Current lazy-bootstrap generation
-     * token.
+     * @param routeCaptureRecord - Freshly captured Stage 1 route-capture
+     * record for `routePath`.
      * @returns `void` after the in-memory descriptor metadata has been updated.
      */
-    const writeCachedRoutePlanRecord = (
+    const writeCachedRouteCaptureRecord = (
       config: RouteHandlerPlannerConfig,
       routePath: LocalizedRoutePath,
-      routePlanRecord: PersistedRoutePlanRecord,
-      bootstrapGenerationToken: BootstrapGenerationToken
+      routeCaptureRecord: PersistedRouteCaptureRecord
     ): void => {
       const targetFileCache = resolveTargetFileCache(config);
       const targetFileDescriptor = targetFileCache.getFileDescriptor(
         routePath.filePath
       );
 
+      for (const transitiveModulePath of routeCaptureRecord.transitiveModulePaths) {
+        // `file-entry-cache` only tracks files it has actually seen. Seeding
+        // each transitive path on write ensures the next read can compare that
+        // dependency's current file state against persisted cached metadata
+        // instead of treating the first read as a synthetic change.
+        targetFileCache.getFileDescriptor(transitiveModulePath);
+      }
+
       writeRouteHandlerLazySingleRouteCacheRecordToDescriptor(
         targetFileDescriptor,
-        routePlanRecord,
-        bootstrapGenerationToken
+        routeCaptureRecord
       );
     };
 
@@ -225,8 +292,8 @@ export const createRouteHandlerLazySingleRouteCacheManager =
     };
 
     return {
-      readCachedRoutePlanRecord,
-      writeCachedRoutePlanRecord,
+      readCachedRouteCaptureRecord,
+      writeCachedRouteCaptureRecord,
       flushAll,
       close
     };

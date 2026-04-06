@@ -3,12 +3,15 @@ import path from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
-const captureReferencedComponentNamesMock = vi.hoisted(() =>
-  vi.fn(async () => ['CustomComponent'])
+const captureRouteHandlerComponentGraphMock = vi.hoisted(() =>
+  vi.fn(async (filePath: string) => ({
+    usedComponentNames: ['CustomComponent'],
+    transitiveModulePaths: []
+  }))
 );
 
 vi.mock(import('../../../../core/capture'), () => ({
-  captureReferencedComponentNames: captureReferencedComponentNamesMock
+  captureRouteHandlerComponentGraph: captureRouteHandlerComponentGraphMock
 }));
 
 import { createCatchAllRouteHandlersPreset } from '../../../../next/config';

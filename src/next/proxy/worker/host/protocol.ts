@@ -72,10 +72,6 @@ export const rejectRouteHandlerProxyWorkerSessionPendingRequests = (
 /**
  * Write one request into the persistent worker session.
  *
- * @param session - Worker session that should receive the request.
- * @param request - Serialized worker request payload.
- * @returns One typed worker response.
- *
  * @remarks
  * Request-send aspects:
  * - Transport: requests travel over the child IPC channel, not stdin.
@@ -83,6 +79,10 @@ export const rejectRouteHandlerProxyWorkerSessionPendingRequests = (
  *   response arrives.
  * - Failure mode: a missing IPC channel is treated as a session-level
  *   contract violation.
+ *
+ * @param session - Worker session that should receive the request.
+ * @param request - Serialized worker request payload.
+ * @returns One typed worker response.
  */
 export const sendRouteHandlerProxyWorkerRequest = <
   TResponse extends

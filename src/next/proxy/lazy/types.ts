@@ -124,6 +124,10 @@ export type RouteHandlerLazyMatchedRouteInput = {
   routePath: LocalizedRoutePath;
   /**
    * Current worker bootstrap generation token.
+   *
+   * @remarks
+   * This remains a live worker/bootstrap input even though Stage 1 persisted
+   * lazy single-route cache entries no longer store or validate this token.
    */
   bootstrapGenerationToken: BootstrapGenerationToken;
   /**
@@ -217,7 +221,8 @@ export type RouteHandlerLazySingleRouteAnalysisResult =
        */
       kind: 'light';
       /**
-       * Whether the one-file result was reused from cache or freshly computed.
+       * Whether the Stage 1 capture facts were reused from cache or freshly
+       * computed.
        */
       source: 'cache' | 'fresh';
       /**
@@ -236,7 +241,13 @@ export type RouteHandlerLazySingleRouteAnalysisResult =
        */
       kind: 'heavy';
       /**
-       * Whether the one-file result was reused from cache or freshly computed.
+       * Whether the Stage 1 capture facts were reused from cache or freshly
+       * computed.
+       *
+       * @remarks
+       * A cached Stage 1 hit still reconstructs heavy-route processor planning
+       * in memory. `source: 'cache'` therefore means MDX analysis was skipped,
+       * not that a full `PlannedHeavyRoute` object was persisted and reused.
        */
       source: 'cache' | 'fresh';
       /**

@@ -14,13 +14,14 @@ import { createRouteHandlerLazySingleRouteCacheManager } from '../../../../next/
 import type { RouteHandlerPlannerConfig } from '../../../../next/types';
 
 type MockFileDescriptor = {
+  changed: boolean;
   meta: {
     data?: unknown;
   };
+  notFound: boolean;
 };
 
 type MockFileEntryCache = {
-  analyzeFiles: ReturnType<typeof vi.fn>;
   getFileDescriptor: ReturnType<typeof vi.fn>;
   reconcile: ReturnType<typeof vi.fn>;
   cache: {
@@ -39,15 +40,12 @@ type MockFileEntryCache = {
  */
 const createMockFileEntryCache = (): MockFileEntryCache => {
   const descriptor: MockFileDescriptor = {
-    meta: {}
+    changed: false,
+    meta: {},
+    notFound: false
   };
 
   return {
-    analyzeFiles: vi.fn(() => ({
-      changedFiles: [],
-      notFoundFiles: [],
-      notChangedFiles: []
-    })),
     getFileDescriptor: vi.fn(() => descriptor),
     reconcile: vi.fn(),
     cache: {
@@ -79,9 +77,10 @@ const routePath = {
   locale: 'en',
   slugArray: ['post']
 };
-const routePlanRecord = {
-  version: 4,
-  plannedHeavyRoute: null
+const routeCaptureRecord = {
+  version: 5,
+  usedLoadableComponentKeys: [],
+  transitiveModulePaths: []
 };
 
 describe('lazy single-route cache manager', () => {
@@ -98,17 +97,17 @@ describe('lazy single-route cache manager', () => {
       createRouteHandlerLazySingleRouteCacheManager();
     const plannerConfig = createPlannerConfig('docs');
 
-    lazySingleRouteCacheManager.writeCachedRoutePlanRecord(
+    lazySingleRouteCacheManager.writeCachedRouteCaptureRecord(
       plannerConfig,
       routePath,
-      routePlanRecord,
-      'bootstrap-1'
+      routeCaptureRecord
     );
-    lazySingleRouteCacheManager.readCachedRoutePlanRecord(
-      plannerConfig,
-      routePath,
-      'bootstrap-1'
-    );
+    expect(
+      lazySingleRouteCacheManager.readCachedRouteCaptureRecord(
+        plannerConfig,
+        routePath
+      )
+    ).toEqual(routeCaptureRecord);
 
     expect(createFileEntryCacheMock).toHaveBeenCalledTimes(1);
     expect(firstTargetFileCache.cache.persistInterval).toBe(5000);
@@ -123,11 +122,10 @@ describe('lazy single-route cache manager', () => {
     const lazySingleRouteCacheManager =
       createRouteHandlerLazySingleRouteCacheManager();
 
-    lazySingleRouteCacheManager.writeCachedRoutePlanRecord(
+    lazySingleRouteCacheManager.writeCachedRouteCaptureRecord(
       createPlannerConfig('docs'),
       routePath,
-      routePlanRecord,
-      'bootstrap-1'
+      routeCaptureRecord
     );
 
     expect(targetFileCache.reconcile).not.toHaveBeenCalled();
@@ -148,20 +146,18 @@ describe('lazy single-route cache manager', () => {
     const lazySingleRouteCacheManager =
       createRouteHandlerLazySingleRouteCacheManager();
 
-    lazySingleRouteCacheManager.writeCachedRoutePlanRecord(
+    lazySingleRouteCacheManager.writeCachedRouteCaptureRecord(
       createPlannerConfig('docs'),
       routePath,
-      routePlanRecord,
-      'bootstrap-1'
+      routeCaptureRecord
     );
-    lazySingleRouteCacheManager.writeCachedRoutePlanRecord(
+    lazySingleRouteCacheManager.writeCachedRouteCaptureRecord(
       createPlannerConfig('blog'),
       {
         ...routePath,
         filePath: '/app/content/blog/post.mdx'
       },
-      routePlanRecord,
-      'bootstrap-1'
+      routeCaptureRecord
     );
 
     lazySingleRouteCacheManager.close();
@@ -172,5 +168,44 @@ describe('lazy single-route cache manager', () => {
     expect(secondTargetFileCache.cache.stopAutoPersist).toHaveBeenCalledTimes(1);
     expect(firstTargetFileCache.cache.destroy).not.toHaveBeenCalled();
     expect(secondTargetFileCache.cache.destroy).not.toHaveBeenCalled();
+  });
+
+  it('returns null when a persisted transitive module path changes', () => {
+    const targetFileCache = createMockFileEntryCache();
+    const changedTransitiveDescriptor: MockFileDescriptor = {
+      changed: true,
+      meta: {},
+      notFound: false
+    };
+
+    targetFileCache.getFileDescriptor = vi.fn((filePath: string) => {
+      if (filePath === '/app/content/shared/fragment.mdx') {
+        return changedTransitiveDescriptor;
+      }
+
+      return targetFileCache.descriptor;
+    });
+    createFileEntryCacheMock.mockReturnValue(targetFileCache);
+
+    const lazySingleRouteCacheManager =
+      createRouteHandlerLazySingleRouteCacheManager();
+    const plannerConfig = createPlannerConfig('docs');
+
+    lazySingleRouteCacheManager.writeCachedRouteCaptureRecord(
+      plannerConfig,
+      routePath,
+      {
+        ...routeCaptureRecord,
+        usedLoadableComponentKeys: ['CustomComponent'],
+        transitiveModulePaths: ['/app/content/shared/fragment.mdx']
+      }
+    );
+
+    expect(
+      lazySingleRouteCacheManager.readCachedRouteCaptureRecord(
+        plannerConfig,
+        routePath
+      )
+    ).toBeNull();
   });
 });
