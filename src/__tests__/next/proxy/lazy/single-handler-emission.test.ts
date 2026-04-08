@@ -171,7 +171,6 @@ describe('proxy lazy single-handler emission', () => {
         const analysisResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
-          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
           lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });

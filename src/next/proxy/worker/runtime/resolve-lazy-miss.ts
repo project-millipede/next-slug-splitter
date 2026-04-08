@@ -67,7 +67,6 @@ export const resolveRouteHandlerProxyLazyMiss = async (
       await prepareRouteHandlerLazyMatchedRoute({
         targetId: lazyRequestResolution.config.targetId,
         routePath: lazyRequestResolution.routePath,
-        bootstrapGenerationToken: bootstrapState.bootstrapGenerationToken,
         resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
         lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
       });

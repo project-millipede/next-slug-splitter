@@ -18,7 +18,6 @@ import { prepareRouteHandlerLazyMatchedRoute } from '../../../../next/proxy/lazy
 
 import type { RouteHandlerLazySingleRouteCacheManager } from '../../../../next/proxy/lazy/single-route-cache-manager';
 
-const bootstrapGenerationToken = 'bootstrap-1';
 const resolvedConfigsByTargetId = new Map();
 const routePath = { locale: 'en', slugArray: ['post'], filePath: '/tmp/post.mdx' };
 const lazySingleRouteCacheManager =
@@ -66,14 +65,12 @@ describe('prepareRouteHandlerLazyMatchedRoute deduplication', () => {
     prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
     prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
@@ -89,7 +86,6 @@ describe('prepareRouteHandlerLazyMatchedRoute deduplication', () => {
     await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
@@ -104,7 +100,6 @@ describe('prepareRouteHandlerLazyMatchedRoute deduplication', () => {
     await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });

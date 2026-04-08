@@ -71,7 +71,6 @@ const inFlightLazyMatchedRoutePreparations = new Map<
  * @param input - Analysis/emission input.
  * @param input.targetId - Target identifier selected by lazy request resolution.
  * @param input.routePath - Concrete localized content route file to analyze.
- * @param input.bootstrapGenerationToken - Current worker bootstrap generation token.
  * @param input.resolvedConfigsByTargetId - Bootstrapped heavy target configs keyed by
  * target id.
  * @param input.lazySingleRouteCacheManager - Generation-scoped worker cache
@@ -82,7 +81,6 @@ const inFlightLazyMatchedRoutePreparations = new Map<
 const analyzeAndPrepare = async ({
   targetId,
   routePath,
-  bootstrapGenerationToken,
   resolvedConfigsByTargetId,
   lazySingleRouteCacheManager
 }: RouteHandlerLazyMatchedRouteInput
@@ -90,7 +88,6 @@ const analyzeAndPrepare = async ({
   const analysisResult = await analyzeRouteHandlerLazyMatchedRoute({
     targetId,
     routePath,
-    bootstrapGenerationToken,
     resolvedConfigsByTargetId,
     lazySingleRouteCacheManager
   });
@@ -132,7 +129,6 @@ const analyzeAndPrepare = async ({
  * @param input - Preparation input.
  * @param input.targetId - Target identifier selected by lazy request resolution.
  * @param input.routePath - Concrete localized content route file to analyze.
- * @param input.bootstrapGenerationToken - Current worker bootstrap generation token.
  * @param input.resolvedConfigsByTargetId - Bootstrapped heavy target configs keyed by
  * target id.
  * @param input.lazySingleRouteCacheManager - Generation-scoped worker cache
@@ -143,7 +139,6 @@ const analyzeAndPrepare = async ({
 export const prepareRouteHandlerLazyMatchedRoute = async ({
   targetId,
   routePath,
-  bootstrapGenerationToken,
   resolvedConfigsByTargetId,
   lazySingleRouteCacheManager
 }: RouteHandlerLazyMatchedRouteInput
@@ -164,7 +159,6 @@ export const prepareRouteHandlerLazyMatchedRoute = async ({
   const preparationPromise = analyzeAndPrepare({
     targetId,
     routePath,
-    bootstrapGenerationToken,
     resolvedConfigsByTargetId,
     lazySingleRouteCacheManager
   }).finally(() => {

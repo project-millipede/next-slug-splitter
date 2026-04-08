@@ -17,7 +17,6 @@ import { prepareRouteHandlerLazyMatchedRoute } from '../../../../next/proxy/lazy
 
 import type { RouteHandlerLazySingleRouteCacheManager } from '../../../../next/proxy/lazy/single-route-cache-manager';
 
-const bootstrapGenerationToken = 'bootstrap-1';
 const resolvedConfigsByTargetId = new Map();
 const routePath = { locale: 'en', slugArray: ['post'], filePath: '/tmp/post.mdx' };
 const lazySingleRouteCacheManager =
@@ -34,14 +33,12 @@ describe('cold-request dedupe — unit', () => {
     await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
     await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'docs',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
@@ -55,14 +52,12 @@ describe('cold-request dedupe — unit', () => {
     await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
     await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
@@ -80,7 +75,6 @@ describe('cold-request dedupe — unit', () => {
       prepareRouteHandlerLazyMatchedRoute({
         targetId: 'blog',
         routePath,
-        bootstrapGenerationToken,
         resolvedConfigsByTargetId,
         lazySingleRouteCacheManager
       })
@@ -90,7 +84,6 @@ describe('cold-request dedupe — unit', () => {
     const result = await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
@@ -113,7 +106,6 @@ describe('cold-request dedupe — composite', () => {
     const result = await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
@@ -129,7 +121,6 @@ describe('cold-request dedupe — composite', () => {
     const result = await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
@@ -151,7 +142,6 @@ describe('cold-request dedupe — composite', () => {
     const result = await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
@@ -173,7 +163,6 @@ describe('cold-request dedupe — composite', () => {
     const result = await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
@@ -194,7 +183,6 @@ describe('cold-request dedupe — composite', () => {
     const result = await prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
@@ -210,14 +198,12 @@ describe('cold-request dedupe — composite', () => {
     const first = prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
     const second = prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
@@ -237,14 +223,12 @@ describe('cold-request dedupe — composite', () => {
     const first = prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });
     const second = prepareRouteHandlerLazyMatchedRoute({
       targetId: 'blog',
       routePath,
-      bootstrapGenerationToken,
       resolvedConfigsByTargetId,
       lazySingleRouteCacheManager
     });

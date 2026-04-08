@@ -7,7 +7,6 @@ import type { PlannedHeavyRoute } from '../../../core/types';
 import type { LocaleConfig } from '../../../core/types';
 import type { RouteHandlerOutputSynchronizationStatus } from '../../../generator/protocol/output-lifecycle';
 import type { RouteHandlerPlannerConfig } from '../../types';
-import type { BootstrapGenerationToken } from '../runtime/types';
 import type { RouteHandlerLazySingleRouteCacheManager } from './single-route-cache-manager';
 
 /**
@@ -123,14 +122,6 @@ export type RouteHandlerLazyMatchedRouteInput = {
    * Concrete localized content route file to analyze.
    */
   routePath: LocalizedRoutePath;
-  /**
-   * Current worker bootstrap generation token.
-   *
-   * @remarks
-   * This remains a live worker/bootstrap input even though Stage 1 persisted
-   * lazy single-route cache entries no longer store or validate this token.
-   */
-  bootstrapGenerationToken: BootstrapGenerationToken;
   /**
    * Bootstrapped heavy target configs keyed by target id.
    */

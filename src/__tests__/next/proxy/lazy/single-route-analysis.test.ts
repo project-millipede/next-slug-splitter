@@ -170,7 +170,6 @@ describe('proxy lazy single-route analysis', () => {
         locale: 'en',
         slugArray: ['guides']
       },
-      bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
       resolvedConfigsByTargetId: new Map(),
       lazySingleRouteCacheManager:
         createRouteHandlerLazySingleRouteCacheManager()
@@ -236,14 +235,12 @@ describe('proxy lazy single-route analysis', () => {
         const firstResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
-          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
           lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
         const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
-          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
           lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
@@ -318,14 +315,12 @@ describe('proxy lazy single-route analysis', () => {
         const firstResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
-          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
           lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
         const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
-          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
           lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
@@ -395,7 +390,6 @@ describe('proxy lazy single-route analysis', () => {
         await analyzeRouteHandlerLazyMatchedRoute({
           targetId: firstResolution.config.targetId,
           routePath: firstResolution.routePath,
-          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
           resolvedConfigsByTargetId:
             baseBootstrapState.resolvedConfigsByTargetId,
           lazySingleRouteCacheManager:
@@ -419,7 +413,6 @@ describe('proxy lazy single-route analysis', () => {
         const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: secondResolution.config.targetId,
           routePath: secondResolution.routePath,
-          bootstrapGenerationToken: TEST_NEXT_BOOTSTRAP_GENERATION_TOKEN,
           resolvedConfigsByTargetId:
             nextBootstrapState.resolvedConfigsByTargetId,
           lazySingleRouteCacheManager:
@@ -492,7 +485,6 @@ describe('proxy lazy single-route analysis', () => {
         const firstResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
-          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
           lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
@@ -502,7 +494,6 @@ describe('proxy lazy single-route analysis', () => {
         const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
-          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
           lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
@@ -583,7 +574,6 @@ describe('proxy lazy single-route analysis', () => {
         const firstResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
-          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
           lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
@@ -593,7 +583,6 @@ describe('proxy lazy single-route analysis', () => {
         const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
-          bootstrapGenerationToken: TEST_BOOTSTRAP_GENERATION_TOKEN,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
           lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
         });
