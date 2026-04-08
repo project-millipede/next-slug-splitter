@@ -188,8 +188,10 @@ describe('proxy lazy single-handler emission', () => {
           'en.tsx'
         );
 
-        await emitRouteHandlerLazySingleHandler(analysisResult);
-        await emitRouteHandlerLazySingleHandler(analysisResult);
+        const firstStatus =
+          await emitRouteHandlerLazySingleHandler(analysisResult);
+        const secondStatus =
+          await emitRouteHandlerLazySingleHandler(analysisResult);
         const emittedSource = await readFile(emittedPageFilePath, 'utf8');
 
         expect(emittedPageFilePath).toBe(
@@ -205,6 +207,8 @@ describe('proxy lazy single-handler emission', () => {
         expect(emittedSource).toContain(
           '// AUTO-GENERATED ROUTE HANDLER. DO NOT EDIT.'
         );
+        expect(firstStatus).toBe('created');
+        expect(secondStatus).toBe('unchanged');
         expect(
           resolveRouteHandlerLazyRewriteDestination(
             '/content/guides',

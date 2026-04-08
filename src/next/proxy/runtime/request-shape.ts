@@ -7,8 +7,9 @@ import { debugRouteHandlerProxy } from '../observability/debug-log';
  *
  * @remarks
  * Next normalizes `/_next/data/...json` requests into public page pathnames
- * before the proxy sees them. The proxy therefore only receives public page
- * URLs.
+ * before the proxy sees them. The proxy therefore only receives browser-visible
+ * public page URLs, even when the underlying transport was the Pages Router
+ * data path.
  *
  * The `kind` field is kept for diagnostic completeness: if Next ever delivers
  * a request with the `x-nextjs-data` header, the debug log will still
@@ -61,8 +62,9 @@ const isHeaderMarkedNextDataRequest = (request: NextRequest): boolean =>
  *
  * @remarks
  * With URL normalization enabled, the proxy only receives public page
- * pathnames. The `x-nextjs-data` header is checked purely for diagnostic
- * logging — the routing decision is identical regardless of kind.
+ * pathnames. The `x-nextjs-data` header is still checked so the runtime can
+ * distinguish ordinary page requests from Pages Router data transport when
+ * a dev-only stabilization safeguard needs that separation.
  */
 export const analyzeRouteHandlerProxyRequestShape = (
   request: NextRequest

@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server.js';
 import { NextResponse } from 'next/server.js';
 
+import { resolveRouteHandlerProxyRewriteResponseDecision } from '../../rewrite-readiness';
 import { debugRouteHandlerProxy } from '../observability/debug-log';
 import { analyzeRouteHandlerProxyRequestShape } from './request-shape';
 import { getRouteHandlerProxyRoutingState } from './routing-state';
@@ -16,6 +17,7 @@ import type {
   RouteHandlerProxyConfigRegistration,
   RouteHandlerProxyOptions
 } from './types';
+import type { RouteHandlerProxyRequestShape } from './request-shape';
 import type { RouteHandlerProxyRoutingState } from './types';
 
 /**
@@ -87,7 +89,10 @@ const getRouteHandlerProxyRoutingStateWithFallback = async (
   configRegistration: RouteHandlerProxyConfigRegistration
 ): Promise<RouteHandlerProxyRoutingState> => {
   try {
-    return await getRouteHandlerProxyRoutingState(localeConfig, configRegistration);
+    return await getRouteHandlerProxyRoutingState(
+      localeConfig,
+      configRegistration
+    );
   } catch (error) {
     if (!shouldUseWorkerOnlyProxyFallback(error)) {
       throw error;
@@ -104,24 +109,24 @@ const getRouteHandlerProxyRoutingStateWithFallback = async (
 /**
  * Create the final request decision for a lazily prepared heavy route.
  *
+ * @remarks
+ * This helper keeps the final request-routing result narrow and focused:
+ * once a concrete heavy rewrite destination is known, the response path is
+ * simply a rewrite to that generated handler page.
+ *
  * @param pathname - Original public request pathname.
  * @param routeBasePaths - Known splitter target route bases for headers.
  * @param fallbackRouteBasePath - Target-local route base used when the shared
  * routing state does not yet have any discovered base paths.
  * @param rewriteDestination - Concrete generated handler destination.
  * @returns Final proxy decision for this heavy route.
- *
- * @remarks
- * This helper keeps the final request-routing result narrow and focused:
- * once a concrete heavy rewrite destination is known, the response path is
- * simply a rewrite to that generated handler page.
  */
-const createRouteHandlerProxyDecisionForLazyHeavyRoute = async (
+const createRouteHandlerProxyDecisionForLazyHeavyRoute = (
   pathname: string,
   routeBasePaths: Array<string>,
   fallbackRouteBasePath: string,
   rewriteDestination: string
-): Promise<RouteHandlerProxyDecision> => {
+): Extract<RouteHandlerProxyDecision, { kind: 'rewrite' }> => {
   const decisionRouteBasePaths =
     routeBasePaths.length > 0 ? routeBasePaths : [fallbackRouteBasePath];
 
@@ -134,12 +139,8 @@ const createRouteHandlerProxyDecisionForLazyHeavyRoute = async (
 };
 
 /**
- * Resolve the high-level routing decision for one incoming proxy request.
- *
- * @param input - Request-decision input.
- * @param input.request - Incoming Next proxy request.
- * @param input.options - Proxy runtime options captured by the generated root file.
- * @returns High-level routing decision for the request.
+ * Resolve the route decision plus the one raw response-side fact needed by the
+ * updated-handler redirect safeguard.
  *
  * @remarks
  * This is the main conditional split for the conservative dev proxy mode:
@@ -149,21 +150,29 @@ const createRouteHandlerProxyDecisionForLazyHeavyRoute = async (
  * - unknown routes then continue through the isolated lazy request-resolution
  *   seam
  *
- * A cold miss can still discover and emit a heavy route on demand, but once
- * that heavy rewrite destination is known the proxy response stays simple:
- * rewrite to the generated handler page.
+ * A cold miss can still discover and emit a heavy route on demand. When that
+ * happens, route resolution still stays close to `main`: it returns the pure
+ * route decision plus one raw fact that the later response path can use for
+ * the updated-handler safeguard.
+ *
+ * The response layer then decides whether an updated generated handler should
+ * pay one temporary refresh boundary before the browser enters that route.
+ *
+ * @param request - Incoming Next proxy request.
+ * @param requestShape - Normalized proxy request shape reused across route
+ * resolution and response materialization.
+ * @param options - Proxy runtime options captured by the generated root file.
+ * @returns Route decision plus the updated-handler rewrite fact needed for
+ * response postprocessing.
  */
-const resolveRouteHandlerProxyDecision = async ({
-  request,
-  options: {
-    localeConfig,
-    configRegistration = {}
-  }
-}: {
-  request: NextRequest;
-  options: RouteHandlerProxyOptions;
-}): Promise<RouteHandlerProxyDecision> => {
-  const requestShape = analyzeRouteHandlerProxyRequestShape(request);
+const resolveRouteHandlerProxyResponseInput = async (
+  request: NextRequest,
+  requestShape: RouteHandlerProxyRequestShape,
+  { localeConfig, configRegistration = {} }: RouteHandlerProxyOptions
+): Promise<{
+  decision: RouteHandlerProxyDecision;
+  updatedHandlerWasRewritten: boolean;
+}> => {
   const pathname = requestShape.publicPathname;
 
   debugRouteHandlerProxy('request:start', {
@@ -187,9 +196,12 @@ const resolveRouteHandlerProxyDecision = async ({
 
     if (!routingState.hasConfiguredTargets) {
       return {
-        kind: 'pass-through',
-        pathname,
-        routeBasePaths: []
+        decision: {
+          kind: 'pass-through',
+          pathname,
+          routeBasePaths: []
+        },
+        updatedHandlerWasRewritten: false
       };
     }
 
@@ -219,12 +231,20 @@ const resolveRouteHandlerProxyDecision = async ({
         });
       }
 
-      return createRouteHandlerProxyDecisionForLazyHeavyRoute(
+      const updatedHandlerWasRewritten =
+        lazyWorkerResult.handlerSynchronizationStatus === 'updated';
+
+      const rewriteDecision = createRouteHandlerProxyDecisionForLazyHeavyRoute(
         pathname,
         routingState.targetRouteBasePaths,
         lazyWorkerResult.routeBasePath,
         lazyWorkerResult.rewriteDestination
       );
+
+      return {
+        decision: rewriteDecision,
+        updatedHandlerWasRewritten
+      };
     }
 
     debugRouteHandlerProxy('lazy-worker:pass-through', {
@@ -247,9 +267,12 @@ const resolveRouteHandlerProxyDecision = async ({
     // If the worker reports a non-heavy outcome, the request still falls
     // through to normal app routing.
     return {
-      kind: 'pass-through',
-      pathname,
-      routeBasePaths: routingState.targetRouteBasePaths
+      decision: {
+        kind: 'pass-through',
+        pathname,
+        routeBasePaths: routingState.targetRouteBasePaths
+      },
+      updatedHandlerWasRewritten: false
     };
   }
 
@@ -259,12 +282,15 @@ const resolveRouteHandlerProxyDecision = async ({
     rewriteDestination: knownRewriteDestination
   });
 
-  return createRouteHandlerProxyDecisionForLazyHeavyRoute(
-    pathname,
-    routingState.targetRouteBasePaths,
-    routingState.targetRouteBasePaths[0] ?? '/',
-    knownRewriteDestination
-  );
+  return {
+    decision: createRouteHandlerProxyDecisionForLazyHeavyRoute(
+      pathname,
+      routingState.targetRouteBasePaths,
+      routingState.targetRouteBasePaths[0] ?? '/',
+      knownRewriteDestination
+    ),
+    updatedHandlerWasRewritten: false
+  };
 };
 
 /**
@@ -301,47 +327,103 @@ const decorateRouteHandlerProxyResponse = (
 };
 
 /**
- * Translate a high-level request decision into the concrete Next response that
- * should be returned from Proxy.
+ * Translate the resolved proxy decision into the concrete Next response that
+ * Proxy should return for this request.
+ *
+ * Response flow:
+ * 1. The route decision first passes through the updated-handler redirect
+ *    safeguard. Most decisions materialize unchanged, but a rewrite for a
+ *    just-updated generated handler may become one temporary self-redirect on
+ *    the primary HTML navigation request.
+ * 2. `pass-through` materializes as `NextResponse.next()`.
+ * 3. `redirect` materializes as `NextResponse.redirect(...)` back to the same
+ *    public pathname. This is the conservative dev-only refresh boundary used
+ *    before the browser enters a just-updated generated handler route.
+ * 4. `rewrite` materializes as `NextResponse.rewrite(...)` to the internal
+ *    generated handler page pathname.
  *
  * @param request - Incoming Next proxy request.
- * @param decision - High-level routing decision for the request.
+ * @param requestShape - Normalized proxy request shape.
+ * @param decision - Route decision to materialize.
+ * @param updatedHandlerWasRewritten - Whether lazy heavy preparation
+ * overwrote an existing emitted handler file during this request.
  * @returns Concrete proxy response.
  */
 const createRouteHandlerProxyResponse = async (
   request: NextRequest,
-  decision: RouteHandlerProxyDecision
+  requestShape: RouteHandlerProxyRequestShape,
+  decision: RouteHandlerProxyDecision,
+  updatedHandlerWasRewritten: boolean
 ): Promise<NextResponse> => {
-  const requestShape = analyzeRouteHandlerProxyRequestShape(request);
+  // 1. First apply the updated-handler redirect safeguard.
+  const responseDecision = resolveRouteHandlerProxyRewriteResponseDecision(
+    request,
+    requestShape,
+    decision,
+    updatedHandlerWasRewritten
+  );
 
-  if (decision.kind === 'pass-through') {
+  // 2. Pass-through stays on ordinary Next routing.
+  if (responseDecision.kind === 'pass-through') {
     debugRouteHandlerProxy('response:pass-through', {
-      pathname: decision.pathname,
+      pathname: responseDecision.pathname,
       requestKind: requestShape.kind
     });
-    return decorateRouteHandlerProxyResponse(NextResponse.next(), decision);
+    return decorateRouteHandlerProxyResponse(
+      NextResponse.next(),
+      responseDecision
+    );
   }
 
-  // Rewrite responses always target the generated handler *page* pathname.
-  // Next handles data-route translation internally when needed.
-  const rewriteUrl = new URL(decision.rewriteDestination, request.url);
+  // 3. Redirect pays one temporary refresh boundary on the same public URL
+  // before the browser enters a just-updated generated handler route.
+  if (responseDecision.kind === 'redirect') {
+    const redirectUrl = new URL(
+      responseDecision.redirectDestination,
+      request.url
+    );
+    redirectUrl.search = request.nextUrl.search;
+
+    debugRouteHandlerProxy('response:redirect', {
+      pathname: responseDecision.pathname,
+      requestKind: requestShape.kind,
+      redirectDestination: responseDecision.redirectDestination,
+      redirectUrl: redirectUrl.toString()
+    });
+
+    return decorateRouteHandlerProxyResponse(
+      NextResponse.redirect(redirectUrl),
+      responseDecision
+    );
+  }
+
+  // 4. Rewrite enters the generated handler directly. Rewrite responses always
+  // target the generated handler *page* pathname, and Next handles data-route
+  // translation internally when needed.
+  const rewriteUrl = new URL(responseDecision.rewriteDestination, request.url);
   rewriteUrl.search = request.nextUrl.search;
 
   debugRouteHandlerProxy('response:rewrite', {
-    pathname: decision.pathname,
+    pathname: responseDecision.pathname,
     requestKind: requestShape.kind,
-    rewriteDestination: decision.rewriteDestination,
+    rewriteDestination: responseDecision.rewriteDestination,
     rewriteUrl: rewriteUrl.toString()
   });
 
   return decorateRouteHandlerProxyResponse(
     NextResponse.rewrite(rewriteUrl),
-    decision
+    responseDecision
   );
 };
 
 /**
  * Resolve and materialize the final proxy response for one request.
+ *
+ * @remarks
+ * Final orchestration happens in three steps:
+ * 1. Classify the incoming request once into a reusable `requestShape`.
+ * 2. Resolve the route decision plus the updated-handler rewrite fact.
+ * 3. Materialize the final `NextResponse` from that shared request context.
  *
  * @param input - Proxy request input.
  * @param input.request - Incoming Next proxy request.
@@ -355,10 +437,15 @@ export const handleRouteHandlerProxyRequest = async ({
   request: NextRequest;
   options: RouteHandlerProxyOptions;
 }): Promise<NextResponse> => {
-  const decision = await resolveRouteHandlerProxyDecision({
-    request,
-    options
-  });
+  const requestShape = analyzeRouteHandlerProxyRequestShape(request);
 
-  return createRouteHandlerProxyResponse(request, decision);
+  const { decision, updatedHandlerWasRewritten } =
+    await resolveRouteHandlerProxyResponseInput(request, requestShape, options);
+
+  return createRouteHandlerProxyResponse(
+    request,
+    requestShape,
+    decision,
+    updatedHandlerWasRewritten
+  );
 };

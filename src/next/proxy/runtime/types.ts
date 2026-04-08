@@ -126,6 +126,32 @@ export type RouteHandlerProxyDecision =
     }
   | {
       /**
+       * Path should receive one temporary redirect back to its own public URL.
+       *
+       * @remarks
+       * This is used only after a later dev-only stabilization policy converts
+       * a rewrite into one temporary refresh step. The extra request boundary
+       * gives Next/Turbopack a chance to pick up the new module contents before
+       * the next request
+       * rewrites into that handler.
+       */
+      kind: 'redirect';
+      /**
+       * Public request pathname.
+       */
+      pathname: string;
+      /**
+       * Known splitter target base paths for diagnostic headers.
+       */
+      routeBasePaths: Array<string>;
+      /**
+       * Public redirect destination, usually the same pathname that was
+       * originally requested.
+       */
+      redirectDestination: string;
+    }
+  | {
+      /**
        * Path is known-heavy and should rewrite to a generated handler.
        */
       kind: 'rewrite';

@@ -5,6 +5,7 @@ import type {
 } from '../../../core/types';
 import type { PlannedHeavyRoute } from '../../../core/types';
 import type { LocaleConfig } from '../../../core/types';
+import type { RouteHandlerOutputSynchronizationStatus } from '../../../generator/protocol/output-lifecycle';
 import type { RouteHandlerPlannerConfig } from '../../types';
 import type { BootstrapGenerationToken } from '../runtime/types';
 import type { RouteHandlerLazySingleRouteCacheManager } from './single-route-cache-manager';
@@ -295,7 +296,8 @@ export type RouteHandlerLazyHeavyAnalysisResult = Extract<
  * 1. request a heavy page first
  * 2. lazily analyze the one backing MDX file
  * 3. lazily emit the one generated handler page
- * 4. immediately rewrite to that new handler in the same request
+ * 4. if the handler path was overwritten in place, give Next one extra request
+ *    boundary before rewriting to it
  * 5. receive a transient 500
  *
  * This is also route-local, not process-global. If a developer navigates from
@@ -324,4 +326,20 @@ export type RouteHandlerLazyMatchedRoutePreparationResult =
        * lazy discovery publication.
        */
       analysisResult: RouteHandlerLazyHeavyAnalysisResult;
+      /**
+       * Filesystem synchronization result for the emitted heavy handler file.
+       *
+       * Synchronization aspects:
+       * 1. `unchanged` means the emitted handler file already matched the
+       *    freshly prepared source.
+       * 2. `created` means no emitted handler file existed before this
+       *    request.
+       * 3. `updated` means an existing emitted handler file was overwritten
+       *    with new source during this request.
+       *
+       * The proxy runtime treats `updated` more conservatively than
+       * `created` or `unchanged`, because a just-overwritten handler path may
+       * need one more request boundary before it is safe to rewrite into.
+       */
+      handlerSynchronizationStatus: RouteHandlerOutputSynchronizationStatus;
     };

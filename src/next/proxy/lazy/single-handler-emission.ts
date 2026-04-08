@@ -1,6 +1,7 @@
 import {
   doesRouteHandlerOutputFileExist,
-  synchronizeRenderedRouteHandlerPage
+  synchronizeRenderedRouteHandlerPage,
+  type RouteHandlerOutputSynchronizationStatus
 } from '../../../generator/protocol/output-lifecycle';
 import {
   renderRouteHandlerPage,
@@ -23,10 +24,12 @@ import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
  * strictly "ensure this one heavy route's handler file is ready right now."
  *
  * @param analysisResult - One-file heavy-route analysis result.
+ * @returns Synchronization status describing whether the emitted handler file
+ * was unchanged, newly created, or updated in place.
  */
 export const emitRouteHandlerLazySingleHandler = async (
   analysisResult: RouteHandlerLazyHeavyAnalysisResult
-): Promise<void> => {
+): Promise<RouteHandlerOutputSynchronizationStatus> => {
   const renderedPage = renderRouteHandlerPage({
     paths: analysisResult.config.paths,
     heavyRoute: analysisResult.plannedHeavyRoute,
@@ -35,7 +38,7 @@ export const emitRouteHandlerLazySingleHandler = async (
     handlerRouteParam: analysisResult.config.handlerRouteParam,
     routeBasePath: analysisResult.config.routeBasePath
   });
-  await synchronizeRenderedRouteHandlerPage(renderedPage);
+  return synchronizeRenderedRouteHandlerPage(renderedPage);
 };
 
 /**

@@ -103,10 +103,7 @@ describe('cold-request dedupe — unit', () => {
 describe('cold-request dedupe — composite', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    emitRouteHandlerLazySingleHandlerMock.mockResolvedValue({
-      status: 'written',
-      renderedPage: {}
-    });
+    emitRouteHandlerLazySingleHandlerMock.mockResolvedValue('created');
   });
 
   it('returns { kind: "light" } without emission for light routes', async () => {
@@ -137,7 +134,11 @@ describe('cold-request dedupe — composite', () => {
       lazySingleRouteCacheManager
     });
 
-    expect(result).toEqual({ kind: 'heavy', analysisResult });
+    expect(result).toEqual({
+      kind: 'heavy',
+      analysisResult,
+      handlerSynchronizationStatus: 'created'
+    });
     expect(emitRouteHandlerLazySingleHandlerMock).toHaveBeenCalledWith(
       analysisResult
     );
@@ -155,7 +156,11 @@ describe('cold-request dedupe — composite', () => {
       lazySingleRouteCacheManager
     });
 
-    expect(result).toEqual({ kind: 'heavy', analysisResult });
+    expect(result).toEqual({
+      kind: 'heavy',
+      analysisResult,
+      handlerSynchronizationStatus: 'created'
+    });
     expect(emitRouteHandlerLazySingleHandlerMock).toHaveBeenCalledWith(
       analysisResult
     );
@@ -173,7 +178,11 @@ describe('cold-request dedupe — composite', () => {
       lazySingleRouteCacheManager
     });
 
-    expect(result).toEqual({ kind: 'heavy', analysisResult });
+    expect(result).toEqual({
+      kind: 'heavy',
+      analysisResult,
+      handlerSynchronizationStatus: 'created'
+    });
     expect(emitRouteHandlerLazySingleHandlerMock).toHaveBeenCalledWith(
       analysisResult
     );

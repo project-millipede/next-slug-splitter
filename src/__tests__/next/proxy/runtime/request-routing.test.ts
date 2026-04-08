@@ -26,12 +26,18 @@ const createProxyRequest = (
   options: {
     cookies?: Record<string, string>;
     headers?: Record<string, string>;
+    method?: string;
     nextUrlPathname?: string;
   } = {}
 ): NextRequest =>
   ({
     url,
-    headers: new Headers(options.headers),
+    method: options.method ?? 'GET',
+    headers: new Headers({
+      accept:
+        'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      ...options.headers
+    }),
     nextUrl: Object.assign(new URL(url), {
       pathname: options.nextUrlPathname ?? new URL(url).pathname
     }),
@@ -120,6 +126,7 @@ describe('proxy request routing', () => {
     resolveRouteHandlerProxyLazyMissWithWorkerMock.mockResolvedValue({
       kind: 'heavy',
       source: 'fresh',
+      handlerSynchronizationStatus: 'created',
       rewriteDestination: '/en/docs/_handlers/getting-started/en',
       routeBasePath: '/docs'
     });
@@ -260,9 +267,10 @@ describe('proxy request routing', () => {
       };
       targetRouteBasePaths: Array<string>;
       workerResult: RouteHandlerProxyWorkerResponse;
-      expectedMode: 'rewrite' | 'pass-through';
+      expectedMode: 'rewrite' | 'pass-through' | 'redirect';
       expectedTarget?: string;
       expectedRewrite: string | null;
+      expectedLocation?: string | null;
         expectedWorkerArgs: {
           pathname: string;
           localeConfig: {
@@ -287,6 +295,7 @@ describe('proxy request routing', () => {
         workerResult: {
           kind: 'heavy',
           source: 'discovery',
+          handlerSynchronizationStatus: 'created',
           rewriteDestination: '/en/blog/_handlers/application-extensibility',
           routeBasePath: '/blog'
         },
@@ -294,6 +303,7 @@ describe('proxy request routing', () => {
         expectedTarget: '/blog',
         expectedRewrite:
           'https://example.com/en/blog/_handlers/application-extensibility?view=full',
+        expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/blog/application-extensibility',
           localeConfig: {
@@ -306,7 +316,7 @@ describe('proxy request routing', () => {
       },
       {
         id: 'Fresh-Rewrite',
-        description: 'rewrites immediately when a cold heavy request had to write a brand-new handler file',
+        description: 'rewrites immediately when a cold heavy request created a brand-new handler file',
         requestUrl: 'https://example.com/blog/application-extensibility?view=full',
         localeConfig: {
           locales: ['en'],
@@ -316,6 +326,7 @@ describe('proxy request routing', () => {
         workerResult: {
           kind: 'heavy',
           source: 'fresh',
+          handlerSynchronizationStatus: 'created',
           rewriteDestination: '/en/blog/_handlers/application-extensibility',
           routeBasePath: '/blog'
         },
@@ -323,6 +334,7 @@ describe('proxy request routing', () => {
         expectedTarget: '/blog',
         expectedRewrite:
           'https://example.com/en/blog/_handlers/application-extensibility?view=full',
+        expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/blog/application-extensibility',
           localeConfig: {
@@ -345,6 +357,7 @@ describe('proxy request routing', () => {
         workerResult: {
           kind: 'heavy',
           source: 'cache',
+          handlerSynchronizationStatus: 'unchanged',
           rewriteDestination: '/en/blog/_handlers/application-extensibility',
           routeBasePath: '/blog'
         },
@@ -352,6 +365,73 @@ describe('proxy request routing', () => {
         expectedTarget: '/blog',
         expectedRewrite:
           'https://example.com/en/blog/_handlers/application-extensibility?view=full',
+        expectedLocation: null,
+        expectedWorkerArgs: {
+          pathname: '/blog/application-extensibility',
+          localeConfig: {
+            locales: ['en'],
+            defaultLocale: 'en'
+          },
+          bootstrapGenerationToken: 'bootstrap-1',
+          configRegistration: {}
+        }
+      },
+      {
+        id: 'Updated-Redirect',
+        description: 'redirects the primary HTML navigation request when a heavy handler file was overwritten in place',
+        requestUrl: 'https://example.com/blog/application-extensibility?view=full',
+        localeConfig: {
+          locales: ['en'],
+          defaultLocale: 'en'
+        },
+        targetRouteBasePaths: ['/blog'],
+        workerResult: {
+          kind: 'heavy',
+          source: 'discovery',
+          handlerSynchronizationStatus: 'updated',
+          rewriteDestination: '/en/blog/_handlers/application-extensibility',
+          routeBasePath: '/blog'
+        },
+        expectedMode: 'redirect',
+        expectedTarget: '/blog',
+        expectedRewrite: null,
+        expectedLocation:
+          'https://example.com/blog/application-extensibility?view=full',
+        expectedWorkerArgs: {
+          pathname: '/blog/application-extensibility',
+          localeConfig: {
+            locales: ['en'],
+            defaultLocale: 'en'
+          },
+          bootstrapGenerationToken: 'bootstrap-1',
+          configRegistration: {}
+        }
+      },
+      {
+        id: 'Updated-Data-Rewrite',
+        description: 'keeps Pages Router data transport on the fast rewrite path when a heavy handler file was overwritten in place',
+        requestUrl: 'https://example.com/blog/application-extensibility?view=full',
+        headers: {
+          accept: '*/*',
+          'x-nextjs-data': '1'
+        },
+        localeConfig: {
+          locales: ['en'],
+          defaultLocale: 'en'
+        },
+        targetRouteBasePaths: ['/blog'],
+        workerResult: {
+          kind: 'heavy',
+          source: 'cache',
+          handlerSynchronizationStatus: 'updated',
+          rewriteDestination: '/en/blog/_handlers/application-extensibility',
+          routeBasePath: '/blog'
+        },
+        expectedMode: 'rewrite',
+        expectedTarget: '/blog',
+        expectedRewrite:
+          'https://example.com/en/blog/_handlers/application-extensibility?view=full',
+        expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/blog/application-extensibility',
           localeConfig: {
@@ -378,6 +458,7 @@ describe('proxy request routing', () => {
         expectedMode: 'pass-through',
         expectedTarget: '/blog',
         expectedRewrite: null,
+        expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/blog/application-extensibility',
           localeConfig: {
@@ -404,6 +485,7 @@ describe('proxy request routing', () => {
         expectedMode: 'pass-through',
         expectedTarget: '/docs',
         expectedRewrite: null,
+        expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/docs/missing-page',
           localeConfig: {
@@ -430,6 +512,7 @@ describe('proxy request routing', () => {
         expectedMode: 'pass-through',
         expectedTarget: '/blog',
         expectedRewrite: null,
+        expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/blog/application-extensibility',
           localeConfig: {
@@ -453,6 +536,7 @@ describe('proxy request routing', () => {
         workerResult: {
           kind: 'heavy',
           source: 'fresh',
+          handlerSynchronizationStatus: 'created',
           rewriteDestination: '/en/docs/_handlers/ai/reverse/hooks/en',
           routeBasePath: '/docs'
         },
@@ -460,6 +544,7 @@ describe('proxy request routing', () => {
         expectedTarget: '/docs',
         expectedRewrite:
           'https://example.com/en/docs/_handlers/ai/reverse/hooks/en?slug=ai&slug=reverse&slug=hooks',
+        expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/en/docs/ai/reverse/hooks',
           localeConfig: {
@@ -481,6 +566,7 @@ describe('proxy request routing', () => {
       expectedMode,
       expectedTarget,
       expectedRewrite,
+      expectedLocation,
       expectedWorkerArgs
     }) => {
       getRouteHandlerProxyRoutingStateMock.mockResolvedValue(
@@ -516,12 +602,14 @@ describe('proxy request routing', () => {
       expect(response.headers.get('x-middleware-rewrite')).toBe(
         expectedRewrite
       );
+      expect(response.headers.get('location')).toBe(expectedLocation ?? null);
     });
   });
 
   it('materializes exactly one response mode per request', async () => {
     const nextSpy = vi.spyOn(NextResponse, 'next');
     const rewriteSpy = vi.spyOn(NextResponse, 'rewrite');
+    const redirectSpy = vi.spyOn(NextResponse, 'redirect');
 
     getRouteHandlerProxyRoutingStateMock.mockResolvedValue(
       createRoutingState({
@@ -541,9 +629,11 @@ describe('proxy request routing', () => {
 
     expect(nextSpy).toHaveBeenCalledTimes(1);
     expect(rewriteSpy).not.toHaveBeenCalled();
+    expect(redirectSpy).not.toHaveBeenCalled();
 
     nextSpy.mockClear();
     rewriteSpy.mockClear();
+    redirectSpy.mockClear();
 
     getRouteHandlerProxyRoutingStateMock.mockResolvedValue(
       createRoutingState({
@@ -571,5 +661,39 @@ describe('proxy request routing', () => {
 
     expect(rewriteSpy).toHaveBeenCalledTimes(1);
     expect(nextSpy).not.toHaveBeenCalled();
+    expect(redirectSpy).not.toHaveBeenCalled();
+
+    nextSpy.mockClear();
+    rewriteSpy.mockClear();
+    redirectSpy.mockClear();
+
+    getRouteHandlerProxyRoutingStateMock.mockResolvedValue(
+      createRoutingState({
+        targetRouteBasePaths: ['/blog']
+      })
+    );
+    resolveRouteHandlerProxyLazyMissWithWorkerMock.mockResolvedValue({
+      kind: 'heavy',
+      source: 'discovery',
+      handlerSynchronizationStatus: 'updated',
+      rewriteDestination: '/en/blog/_handlers/application-extensibility',
+      routeBasePath: '/blog'
+    });
+
+    await handleRouteHandlerProxyRequest({
+      request: createProxyRequest(
+        'https://example.com/blog/application-extensibility?view=full'
+      ),
+      options: {
+        localeConfig: {
+          locales: ['en'],
+          defaultLocale: 'en'
+        }
+      }
+    });
+
+    expect(redirectSpy).toHaveBeenCalledTimes(1);
+    expect(nextSpy).not.toHaveBeenCalled();
+    expect(rewriteSpy).not.toHaveBeenCalled();
   });
 });

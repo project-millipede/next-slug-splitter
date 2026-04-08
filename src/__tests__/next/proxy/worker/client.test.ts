@@ -216,12 +216,14 @@ describe('proxy worker client', () => {
         {
           kind: 'heavy',
           source: 'discovery',
+          handlerSynchronizationStatus: 'created',
           rewriteDestination: '/en/docs/_handlers/getting-started/en',
           routeBasePath: '/docs'
         },
         {
           kind: 'heavy',
           source: 'cache',
+          handlerSynchronizationStatus: 'unchanged',
           rewriteDestination: '/en/docs/_handlers/getting-started/en',
           routeBasePath: '/docs'
         }
@@ -250,6 +252,7 @@ describe('proxy worker client', () => {
     expect(secondResult).toEqual({
       kind: 'heavy',
       source: 'cache',
+      handlerSynchronizationStatus: 'unchanged',
       rewriteDestination: '/en/docs/_handlers/getting-started/en',
       routeBasePath: '/docs'
     });
@@ -260,6 +263,7 @@ describe('proxy worker client', () => {
       {
         kind: 'heavy',
         source: 'discovery',
+        handlerSynchronizationStatus: 'created',
         rewriteDestination: '/en/docs/_handlers/getting-started/en',
         routeBasePath: '/docs'
       }
@@ -290,6 +294,7 @@ describe('proxy worker client', () => {
     ).resolves.toEqual({
       kind: 'heavy',
       source: 'discovery',
+      handlerSynchronizationStatus: 'created',
       rewriteDestination: '/en/docs/_handlers/getting-started/en',
       routeBasePath: '/docs'
     });
@@ -300,6 +305,7 @@ describe('proxy worker client', () => {
       {
         kind: 'heavy',
         source: 'discovery',
+        handlerSynchronizationStatus: 'created',
         rewriteDestination: '/en/docs/_handlers/getting-started/en',
         routeBasePath: '/docs'
       }
@@ -308,6 +314,7 @@ describe('proxy worker client', () => {
       {
         kind: 'heavy',
         source: 'discovery',
+        handlerSynchronizationStatus: 'created',
         rewriteDestination: '/en/docs/_handlers/getting-started/en',
         routeBasePath: '/docs'
       }

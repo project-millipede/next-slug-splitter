@@ -63,7 +63,10 @@ const inFlightLazyMatchedRoutePreparations = new Map<
  * - `null` when the target can no longer be resolved by the time analysis runs
  *
  * In the heavy case, `analysisResult` carries the planned heavy-route data
- * needed to resolve the rewrite destination.
+ * needed to resolve the rewrite destination, and the returned handler
+ * synchronization status gives the later rewrite-readiness policy the extra
+ * fact it needs to decide whether that rewrite can proceed immediately or
+ * should pay one temporary refresh boundary.
  *
  * @param input - Analysis/emission input.
  * @param input.targetId - Target identifier selected by lazy request resolution.
@@ -98,11 +101,13 @@ const analyzeAndPrepare = async ({
     // batch emission, this only ensures the one requested route is ready and
     // never removes other handler files. In Stage 1, this synchronization
     // still runs for cached heavy routes because only MDX capture is reused.
-    await emitRouteHandlerLazySingleHandler(analysisResult);
+    const handlerSynchronizationStatus =
+      await emitRouteHandlerLazySingleHandler(analysisResult);
 
     return {
       kind: 'heavy',
-      analysisResult
+      analysisResult,
+      handlerSynchronizationStatus
     };
   }
 

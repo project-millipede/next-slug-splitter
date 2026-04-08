@@ -38,6 +38,24 @@ import type { RenderedHandlerPage } from './rendered-page';
 export type EmittedHandlerPageRemovalStatus = 'removed' | 'missing';
 
 /**
+ * Result of synchronizing one rendered handler page to disk.
+ *
+ * @remarks
+ * The lazy dev proxy path needs to distinguish:
+ * - `unchanged`: on-disk source already matched the freshly rendered handler
+ * - `created`: no handler file existed before this synchronization
+ * - `updated`: a handler file existed and was overwritten with new source
+ *
+ * That distinction matters because overwriting an already-known handler path
+ * can require one extra request boundary before Next/Turbopack executes the
+ * new module graph reliably.
+ */
+export type RouteHandlerOutputSynchronizationStatus =
+  | 'unchanged'
+  | 'created'
+  | 'updated';
+
+/**
  * Ensure the generated handlers directory exists.
  *
  * @param handlersDir - Absolute handlers directory path.
@@ -51,13 +69,13 @@ export const ensureRouteHandlerOutputDirectory = async (
 /**
  * Clear the full generated handlers directory and recreate it empty.
  *
- * @param handlersDir - Absolute handlers directory path.
- *
  * @remarks
  * This is intentionally still available because the full target reconciler has
  * a historical fallback mode when there is no trustworthy prior manifest. The
  * lazy one-route path should not normally call this because it only owns
  * narrow route-local reconciliation.
+ *
+ * @param handlersDir - Absolute handlers directory path.
  */
 export const clearRouteHandlerOutputDirectory = async (
   handlersDir: string
@@ -102,15 +120,15 @@ const readRouteHandlerOutputFileIfPresent = async (
 /**
  * Remove empty parent directories after one emitted page file was deleted.
  *
- * @param startPath - Directory to start pruning from.
- * @param stopPath - Directory boundary that must be preserved.
- * @returns A promise that settles after empty directories have been pruned.
- *
  * @remarks
  * Generated handler directories are nested by slug/locale. When one emitted
  * page disappears, some of those intermediate directories may become empty and
  * should be removed as well. The stop boundary keeps pruning scoped to the
  * handlers directory owned by the current target.
+ *
+ * @param startPath - Directory to start pruning from.
+ * @param stopPath - Directory boundary that must be preserved.
+ * @returns A promise that settles after empty directories have been pruned.
  */
 const removeEmptyRouteHandlerDirectoriesUpTo = async (
   startPath: string,
@@ -132,8 +150,6 @@ const removeEmptyRouteHandlerDirectoriesUpTo = async (
 /**
  * Synchronize one rendered handler page to disk by contents.
  *
- * @param page - Fully rendered handler page artifact.
- *
  * @remarks
  * This is the narrow "ensure present and current" primitive shared by:
  * - target-wide selective emission for desired pages
@@ -152,35 +168,41 @@ const removeEmptyRouteHandlerDirectoriesUpTo = async (
  * There is no separate emitted-handler manifest or output-hash trust check in
  * this path. Handler rewrite decisions are based on direct file read plus full
  * source comparison against the freshly rendered in-memory module source.
+ *
+ * @param page - Fully rendered handler page artifact.
  */
 export const synchronizeRenderedRouteHandlerPage = async (
   page: RenderedHandlerPage
-): Promise<void> => {
+): Promise<RouteHandlerOutputSynchronizationStatus> => {
   const existingSource = await readRouteHandlerOutputFileIfPresent(
     page.pageFilePath
   );
 
   if (existingSource === page.pageSource) {
-    return;
+    return 'unchanged';
   }
+
+  const synchronizationStatus =
+    existingSource == null ? 'created' : 'updated';
 
   await mkdir(path.dirname(page.pageFilePath), { recursive: true });
   await writeFile(page.pageFilePath, page.pageSource, 'utf8');
+  return synchronizationStatus;
 };
 
 /**
  * Remove one emitted handler page if it exists.
- *
- * @param pageFilePath - Absolute emitted page path.
- * @param handlersDir - Handlers-directory boundary for empty-directory
- * pruning.
- * @returns Whether a file was removed or nothing existed to remove.
  *
  * @remarks
  * This primitive is shared by:
  * - full target-wide stale-file reconciliation
  * - lazy stale-output cleanup when one previously emitted route becomes light
  *   or disappears
+ *
+ * @param pageFilePath - Absolute emitted page path.
+ * @param handlersDir - Handlers-directory boundary for empty-directory
+ * pruning.
+ * @returns Whether a file was removed or nothing existed to remove.
  */
 export const removeRenderedRouteHandlerPageIfPresent = async (
   pageFilePath: string,

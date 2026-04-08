@@ -56,6 +56,7 @@ describe('composeKey', () => {
 describe('prepareRouteHandlerLazyMatchedRoute deduplication', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    emitRouteHandlerLazySingleHandlerMock.mockResolvedValue('created');
   });
 
   it('deduplicates concurrent calls with same target and file', async () => {

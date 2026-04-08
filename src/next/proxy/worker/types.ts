@@ -1,4 +1,5 @@
 import type { LocaleConfig } from '../../../core/types';
+import type { RouteHandlerOutputSynchronizationStatus } from '../../../generator/protocol/output-lifecycle';
 import type {
   BootstrapGenerationToken,
   RouteHandlerProxyConfigRegistration
@@ -151,6 +152,22 @@ export type RouteHandlerProxyWorkerResponse =
   | {
       kind: 'heavy';
       source: 'discovery' | 'fresh' | 'cache';
+      /**
+       * Filesystem synchronization result for the emitted heavy handler file.
+       *
+       * Synchronization aspects:
+       * 1. `unchanged` means the emitted handler file already matched the
+       *    freshly prepared source.
+       * 2. `created` means no emitted handler file existed before this
+       *    request.
+       * 3. `updated` means an existing emitted handler file was overwritten
+       *    with new source during this request.
+       *
+       * The proxy runtime treats `updated` more conservatively than
+       * `created` or `unchanged`, because a just-overwritten handler path may
+       * need one more request boundary before it is safe to rewrite into.
+       */
+      handlerSynchronizationStatus: RouteHandlerOutputSynchronizationStatus;
       rewriteDestination: string;
       routeBasePath: string;
     }
