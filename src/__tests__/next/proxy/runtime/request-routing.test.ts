@@ -125,7 +125,6 @@ describe('proxy request routing', () => {
     );
     resolveRouteHandlerProxyLazyMissWithWorkerMock.mockResolvedValue({
       kind: 'heavy',
-      source: 'fresh',
       handlerSynchronizationStatus: 'created',
       rewriteDestination: '/en/docs/_handlers/getting-started/en',
       routeBasePath: '/docs'
@@ -284,38 +283,7 @@ describe('proxy request routing', () => {
 
     const scenarios: ReadonlyArray<Scenario> = [
       {
-        id: 'Discovery-Rewrite',
-        description: 'rewrites from a worker-side discovered heavy route before re-entering the cold path again',
-        requestUrl: 'https://example.com/blog/application-extensibility?view=full',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
-        targetRouteBasePaths: ['/blog'],
-        workerResult: {
-          kind: 'heavy',
-          source: 'discovery',
-          handlerSynchronizationStatus: 'created',
-          rewriteDestination: '/en/blog/_handlers/application-extensibility',
-          routeBasePath: '/blog'
-        },
-        expectedMode: 'rewrite',
-        expectedTarget: '/blog',
-        expectedRewrite:
-          'https://example.com/en/blog/_handlers/application-extensibility?view=full',
-        expectedLocation: null,
-        expectedWorkerArgs: {
-          pathname: '/blog/application-extensibility',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          },
-          bootstrapGenerationToken: 'bootstrap-1',
-          configRegistration: {}
-        }
-      },
-      {
-        id: 'Fresh-Rewrite',
+        id: 'Created-Rewrite',
         description: 'rewrites immediately when a cold heavy request created a brand-new handler file',
         requestUrl: 'https://example.com/blog/application-extensibility?view=full',
         localeConfig: {
@@ -325,7 +293,6 @@ describe('proxy request routing', () => {
         targetRouteBasePaths: ['/blog'],
         workerResult: {
           kind: 'heavy',
-          source: 'fresh',
           handlerSynchronizationStatus: 'created',
           rewriteDestination: '/en/blog/_handlers/application-extensibility',
           routeBasePath: '/blog'
@@ -346,7 +313,7 @@ describe('proxy request routing', () => {
         }
       },
       {
-        id: 'Cache-Rewrite',
+        id: 'Unchanged-Rewrite',
         description: 'still rewrites immediately when the heavy handler was already present before the request',
         requestUrl: 'https://example.com/blog/application-extensibility?view=full',
         localeConfig: {
@@ -356,7 +323,6 @@ describe('proxy request routing', () => {
         targetRouteBasePaths: ['/blog'],
         workerResult: {
           kind: 'heavy',
-          source: 'cache',
           handlerSynchronizationStatus: 'unchanged',
           rewriteDestination: '/en/blog/_handlers/application-extensibility',
           routeBasePath: '/blog'
@@ -387,7 +353,6 @@ describe('proxy request routing', () => {
         targetRouteBasePaths: ['/blog'],
         workerResult: {
           kind: 'heavy',
-          source: 'discovery',
           handlerSynchronizationStatus: 'updated',
           rewriteDestination: '/en/blog/_handlers/application-extensibility',
           routeBasePath: '/blog'
@@ -422,7 +387,6 @@ describe('proxy request routing', () => {
         targetRouteBasePaths: ['/blog'],
         workerResult: {
           kind: 'heavy',
-          source: 'cache',
           handlerSynchronizationStatus: 'updated',
           rewriteDestination: '/en/blog/_handlers/application-extensibility',
           routeBasePath: '/blog'
@@ -524,7 +488,7 @@ describe('proxy request routing', () => {
         }
       },
       {
-        id: 'Fresh-Page-Rewrite',
+        id: 'Created-Page-Rewrite',
         description: 'rewrites immediately for a cold heavy page request',
         requestUrl:
           'https://example.com/en/docs/ai/reverse/hooks?slug=ai&slug=reverse&slug=hooks',
@@ -535,7 +499,6 @@ describe('proxy request routing', () => {
         targetRouteBasePaths: ['/docs'],
         workerResult: {
           kind: 'heavy',
-          source: 'fresh',
           handlerSynchronizationStatus: 'created',
           rewriteDestination: '/en/docs/_handlers/ai/reverse/hooks/en',
           routeBasePath: '/docs'
@@ -674,7 +637,6 @@ describe('proxy request routing', () => {
     );
     resolveRouteHandlerProxyLazyMissWithWorkerMock.mockResolvedValue({
       kind: 'heavy',
-      source: 'discovery',
       handlerSynchronizationStatus: 'updated',
       rewriteDestination: '/en/blog/_handlers/application-extensibility',
       routeBasePath: '/blog'

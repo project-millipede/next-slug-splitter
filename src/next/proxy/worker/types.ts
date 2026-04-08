@@ -151,7 +151,6 @@ export type RouteHandlerProxyWorkerShutdownResponse = {
 export type RouteHandlerProxyWorkerResponse =
   | {
       kind: 'heavy';
-      source: 'discovery' | 'fresh' | 'cache';
       /**
        * Filesystem synchronization result for the emitted heavy handler file.
        *

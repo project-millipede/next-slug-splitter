@@ -216,20 +216,13 @@ const resolveRouteHandlerProxyResponseInput = async (
     });
 
     if (lazyWorkerResult.kind === 'heavy') {
-      if (lazyWorkerResult.source === 'discovery') {
-        debugRouteHandlerProxy('lazy-discovery:hit', {
-          pathname,
-          rewriteDestination: lazyWorkerResult.rewriteDestination,
-          requestKind: requestShape.kind
-        });
-      } else {
-        debugRouteHandlerProxy('lazy-worker:heavy', {
-          pathname,
-          requestKind: requestShape.kind,
-          source: lazyWorkerResult.source,
-          rewriteDestination: lazyWorkerResult.rewriteDestination
-        });
-      }
+      debugRouteHandlerProxy('lazy-worker:heavy', {
+        pathname,
+        requestKind: requestShape.kind,
+        handlerSynchronizationStatus:
+          lazyWorkerResult.handlerSynchronizationStatus,
+        rewriteDestination: lazyWorkerResult.rewriteDestination
+      });
 
       const updatedHandlerWasRewritten =
         lazyWorkerResult.handlerSynchronizationStatus === 'updated';

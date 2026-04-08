@@ -215,14 +215,12 @@ describe('proxy worker client', () => {
       createWorkerSessionChild([
         {
           kind: 'heavy',
-          source: 'discovery',
           handlerSynchronizationStatus: 'created',
           rewriteDestination: '/en/docs/_handlers/getting-started/en',
           routeBasePath: '/docs'
         },
         {
           kind: 'heavy',
-          source: 'cache',
           handlerSynchronizationStatus: 'unchanged',
           rewriteDestination: '/en/docs/_handlers/getting-started/en',
           routeBasePath: '/docs'
@@ -251,7 +249,6 @@ describe('proxy worker client', () => {
     expect(spawnMock).toHaveBeenCalledTimes(1);
     expect(secondResult).toEqual({
       kind: 'heavy',
-      source: 'cache',
       handlerSynchronizationStatus: 'unchanged',
       rewriteDestination: '/en/docs/_handlers/getting-started/en',
       routeBasePath: '/docs'
@@ -262,7 +259,6 @@ describe('proxy worker client', () => {
     const child = createWorkerSessionChild([
       {
         kind: 'heavy',
-        source: 'discovery',
         handlerSynchronizationStatus: 'created',
         rewriteDestination: '/en/docs/_handlers/getting-started/en',
         routeBasePath: '/docs'
@@ -293,7 +289,6 @@ describe('proxy worker client', () => {
       })
     ).resolves.toEqual({
       kind: 'heavy',
-      source: 'discovery',
       handlerSynchronizationStatus: 'created',
       rewriteDestination: '/en/docs/_handlers/getting-started/en',
       routeBasePath: '/docs'
@@ -304,7 +299,6 @@ describe('proxy worker client', () => {
     const firstChild = createWorkerSessionChild([
       {
         kind: 'heavy',
-        source: 'discovery',
         handlerSynchronizationStatus: 'created',
         rewriteDestination: '/en/docs/_handlers/getting-started/en',
         routeBasePath: '/docs'
@@ -313,7 +307,6 @@ describe('proxy worker client', () => {
     const secondChild = createWorkerSessionChild([
       {
         kind: 'heavy',
-        source: 'discovery',
         handlerSynchronizationStatus: 'created',
         rewriteDestination: '/en/docs/_handlers/getting-started/en',
         routeBasePath: '/docs'

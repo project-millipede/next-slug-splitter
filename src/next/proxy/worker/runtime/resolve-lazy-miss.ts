@@ -81,10 +81,6 @@ export const resolveRouteHandlerProxyLazyMiss = async (
       if (rewriteDestination != null) {
         return {
           kind: 'heavy',
-          source:
-            lazyMatchedRoutePreparation.analysisResult.source === 'fresh'
-              ? 'discovery'
-              : 'cache',
           handlerSynchronizationStatus:
             lazyMatchedRoutePreparation.handlerSynchronizationStatus,
           rewriteDestination,
