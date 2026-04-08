@@ -37,7 +37,12 @@
     "react": "^19.2.4",
     "tsup": "^8.5.0",
     "typescript": "6.0.2",
-    "vitest": "^4.1.2"
+    "vitest": "4.1.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": "7.3.1"
+    }
   },
   "main": "./dist/next/index.js",
   "module": "./dist/next/index.js",
