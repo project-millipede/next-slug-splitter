@@ -36,7 +36,8 @@ const createResolvedConfigFixture = (
     app: {
       rootDir,
       routing: {
-        development: 'proxy'
+        development: 'proxy',
+        workerPrewarm: 'off'
       }
     },
     targetId,

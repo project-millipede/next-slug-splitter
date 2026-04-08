@@ -190,6 +190,16 @@ export type RouteHandlerPreparationsInput =
 export type RouteHandlerDevelopmentRoutingMode = 'proxy' | 'rewrites';
 
 /**
+ * Optional development-only worker prewarm mode.
+ *
+ * @remarks
+ * This controls only whether the long-lived lazy worker session should be
+ * bootstrapped earlier during Next startup. It does not change request-time
+ * routing strategy, heavy-route discovery, or handler emission semantics.
+ */
+export type RouteHandlerWorkerPrewarmMode = 'off' | 'instrumentation';
+
+/**
  * User-facing app-level routing policy.
  *
  * @remarks
@@ -204,6 +214,12 @@ export type RouteHandlersRoutingPolicy = {
    * Defaults to `'proxy'` when omitted.
    */
   development?: RouteHandlerDevelopmentRoutingMode;
+  /**
+   * Optional startup prewarm strategy for the dev-only proxy worker.
+   *
+   * Defaults to `'off'` when omitted.
+   */
+  workerPrewarm?: RouteHandlerWorkerPrewarmMode;
 };
 
 /**
@@ -214,6 +230,10 @@ export type ResolvedRouteHandlersRoutingPolicy = {
    * Development-server routing mode after defaults are applied.
    */
   development: RouteHandlerDevelopmentRoutingMode;
+  /**
+   * Startup prewarm strategy after defaults are applied.
+   */
+  workerPrewarm: RouteHandlerWorkerPrewarmMode;
 };
 
 /**

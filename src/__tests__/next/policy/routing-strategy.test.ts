@@ -19,7 +19,8 @@ describe('route handler routing strategy', () => {
       resolveRouteHandlerRoutingStrategy(
         PHASE_DEVELOPMENT_SERVER,
         {
-          development: 'proxy'
+          development: 'proxy',
+          workerPrewarm: 'off'
         }
       )
     ).toEqual({
@@ -34,7 +35,8 @@ describe('route handler routing strategy', () => {
       resolveRouteHandlerRoutingStrategy(
         PHASE_DEVELOPMENT_SERVER,
         {
-          development: 'rewrites'
+          development: 'rewrites',
+          workerPrewarm: 'off'
         }
       )
     ).toEqual({
@@ -50,7 +52,8 @@ describe('route handler routing strategy', () => {
       resolveRouteHandlerRoutingStrategy(
         PHASE_DEVELOPMENT_SERVER,
         {
-          development: 'proxy'
+          development: 'proxy',
+          workerPrewarm: 'off'
         }
       )
     ).toEqual({
@@ -66,7 +69,8 @@ describe('route handler routing strategy', () => {
       resolveRouteHandlerRoutingStrategy(
         PHASE_DEVELOPMENT_SERVER,
         {
-          development: 'rewrites'
+          development: 'rewrites',
+          workerPrewarm: 'off'
         }
       )
     ).toEqual({
@@ -83,7 +87,8 @@ describe('route handler routing strategy', () => {
       resolveRouteHandlerRoutingStrategy(
         PHASE_PRODUCTION_BUILD,
         {
-          development: 'proxy'
+          development: 'proxy',
+          workerPrewarm: 'off'
         }
       )
     ).toEqual({
@@ -99,7 +104,8 @@ describe('route handler routing strategy', () => {
       resolveRouteHandlerRoutingStrategy(
         PHASE_PRODUCTION_BUILD,
         {
-          development: 'proxy'
+          development: 'proxy',
+          workerPrewarm: 'off'
         }
       )
     ).toEqual({

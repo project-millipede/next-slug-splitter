@@ -16,6 +16,7 @@ vi.mock(import('node:fs'), () => ({
 
 import {
   clearRouteHandlerProxyWorkerClientSessions,
+  resolveRouteHandlerProxyWorkerClientSession,
   resolveRouteHandlerProxyLazyMissWithWorker
 } from '../../../../next/proxy/worker/host/client';
 
@@ -253,6 +254,65 @@ describe('proxy worker client', () => {
       rewriteDestination: '/en/docs/_handlers/getting-started/en',
       routeBasePath: '/docs'
     });
+  });
+
+  it('reuses the same bootstrapped worker session across repeated prewarm calls', async () => {
+    const child = createWorkerSessionChild([]);
+    spawnMock.mockReturnValue(child);
+
+    await resolveRouteHandlerProxyWorkerClientSession({
+      localeConfig: {
+        locales: ['en'],
+        defaultLocale: 'en'
+      },
+      bootstrapGenerationToken: 'bootstrap-1'
+    });
+
+    await resolveRouteHandlerProxyWorkerClientSession({
+      localeConfig: {
+        locales: ['en'],
+        defaultLocale: 'en'
+      },
+      bootstrapGenerationToken: 'bootstrap-1'
+    });
+
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    expect(child.requests.map(request => request.kind)).toEqual(['bootstrap']);
+  });
+
+  it('reuses a prewarmed worker session for the first later lazy miss', async () => {
+    const child = createWorkerSessionChild([
+      {
+        kind: 'heavy',
+        handlerSynchronizationStatus: 'created',
+        rewriteDestination: '/en/docs/_handlers/getting-started/en',
+        routeBasePath: '/docs'
+      }
+    ]);
+    spawnMock.mockReturnValue(child);
+
+    await resolveRouteHandlerProxyWorkerClientSession({
+      localeConfig: {
+        locales: ['en'],
+        defaultLocale: 'en'
+      },
+      bootstrapGenerationToken: 'bootstrap-1'
+    });
+
+    await resolveRouteHandlerProxyLazyMissWithWorker({
+      pathname: '/en/docs/getting-started',
+      localeConfig: {
+        locales: ['en'],
+        defaultLocale: 'en'
+      },
+      bootstrapGenerationToken: 'bootstrap-1'
+    });
+
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    expect(child.requests.map(request => request.kind)).toEqual([
+      'bootstrap',
+      'resolve-lazy-miss'
+    ]);
   });
 
   it('does not let worker stdout noise interfere with IPC responses', async () => {

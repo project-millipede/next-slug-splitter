@@ -26,12 +26,13 @@ const createResolvedConfig = ({
   targetId: string;
 }): ResolvedRouteHandlersConfig => ({
   targetId,
-  app: {
-    rootDir,
-    routing: {
-      development: 'proxy'
-    }
-  },
+    app: {
+      rootDir,
+      routing: {
+        development: 'proxy',
+        workerPrewarm: 'off'
+      }
+    },
   localeConfig: {
     locales: ['en'],
     defaultLocale: 'en'

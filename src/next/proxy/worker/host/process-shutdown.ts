@@ -1,4 +1,5 @@
 import { debugRouteHandlerProxy } from '../../observability/debug-log';
+import { getRouteHandlerProxyWorkerHostGlobalState } from './global-state';
 
 /**
  * Process-lifecycle hooks for graceful proxy-worker cleanup.
@@ -34,8 +35,11 @@ type RouteHandlerProxyWorkerProcessShutdownHooks = {
   clearWorkerSessions: () => Promise<void>;
 };
 
-let hasInstalledRouteHandlerProxyWorkerProcessShutdownHooks = false;
-let routeHandlerProxyWorkerProcessShutdownPromise: Promise<void> | null = null;
+/**
+ * Shared process-shutdown state for the current parent process.
+ */
+const routeHandlerProxyWorkerProcessShutdownState =
+  getRouteHandlerProxyWorkerHostGlobalState().processShutdown;
 
 /**
  * Resolve the process exit code used after graceful worker cleanup for one
@@ -76,12 +80,12 @@ const handleRouteHandlerProxyWorkerProcessShutdownSignal = async (
   signal: RouteHandlerProxyWorkerProcessShutdownSignal,
   hooks: RouteHandlerProxyWorkerProcessShutdownHooks
 ): Promise<void> => {
-  if (routeHandlerProxyWorkerProcessShutdownPromise != null) {
-    await routeHandlerProxyWorkerProcessShutdownPromise;
+  if (routeHandlerProxyWorkerProcessShutdownState.shutdownPromise != null) {
+    await routeHandlerProxyWorkerProcessShutdownState.shutdownPromise;
     return;
   }
 
-  routeHandlerProxyWorkerProcessShutdownPromise = (async () => {
+  routeHandlerProxyWorkerProcessShutdownState.shutdownPromise = (async () => {
     const exitCode =
       resolveRouteHandlerProxyWorkerProcessShutdownExitCode(signal);
 
@@ -107,7 +111,7 @@ const handleRouteHandlerProxyWorkerProcessShutdownSignal = async (
     process.exit(exitCode);
   })();
 
-  await routeHandlerProxyWorkerProcessShutdownPromise;
+  await routeHandlerProxyWorkerProcessShutdownState.shutdownPromise;
 };
 
 /**
@@ -133,11 +137,11 @@ const handleRouteHandlerProxyWorkerProcessShutdownSignal = async (
 export const installRouteHandlerProxyWorkerProcessShutdownHooks = (
   hooks: RouteHandlerProxyWorkerProcessShutdownHooks
 ): void => {
-  if (hasInstalledRouteHandlerProxyWorkerProcessShutdownHooks) {
+  if (routeHandlerProxyWorkerProcessShutdownState.hasInstalledHooks) {
     return;
   }
 
-  hasInstalledRouteHandlerProxyWorkerProcessShutdownHooks = true;
+  routeHandlerProxyWorkerProcessShutdownState.hasInstalledHooks = true;
 
   process.once('SIGINT', () => {
     void handleRouteHandlerProxyWorkerProcessShutdownSignal('SIGINT', hooks);

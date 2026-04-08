@@ -3,7 +3,8 @@ import { readObjectProperty } from './shared';
 
 import type {
   ResolvedRouteHandlersRoutingPolicy,
-  RouteHandlerDevelopmentRoutingMode
+  RouteHandlerDevelopmentRoutingMode,
+  RouteHandlerWorkerPrewarmMode
 } from '../types';
 
 /**
@@ -17,7 +18,8 @@ import type {
  */
 const DEFAULT_ROUTE_HANDLERS_ROUTING_POLICY: ResolvedRouteHandlersRoutingPolicy =
   {
-    development: 'proxy'
+    development: 'proxy',
+    workerPrewarm: 'off'
   };
 
 /**
@@ -31,6 +33,17 @@ const isRouteHandlerDevelopmentRoutingMode = (
   value: unknown
 ): value is RouteHandlerDevelopmentRoutingMode =>
   value === 'proxy' || value === 'rewrites';
+
+/**
+ * Determine whether a candidate value is a supported proxy prewarm mode.
+ *
+ * @param value - Unknown candidate value.
+ * @returns `true` when the value is one of the supported prewarm modes.
+ */
+const isRouteHandlerWorkerPrewarmMode = (
+  value: unknown
+): value is RouteHandlerWorkerPrewarmMode =>
+  value === 'off' || value === 'instrumentation';
 
 /**
  * Resolve the app-level routing policy from the raw `routeHandlersConfig.app`
@@ -69,20 +82,35 @@ export const resolveRouteHandlersRoutingPolicy = (
     configuredRouting as Record<string, unknown>,
     'development'
   );
+  const configuredWorkerPrewarm = readObjectProperty(
+    configuredRouting as Record<string, unknown>,
+    'workerPrewarm'
+  );
 
-  if (configuredDevelopment == null) {
-    return {
-      ...DEFAULT_ROUTE_HANDLERS_ROUTING_POLICY
-    };
-  }
-
-  if (!isRouteHandlerDevelopmentRoutingMode(configuredDevelopment)) {
+  if (
+    configuredDevelopment != null &&
+    !isRouteHandlerDevelopmentRoutingMode(configuredDevelopment)
+  ) {
     throw createConfigError(
       'routeHandlersConfig.app.routing.development must be "proxy" or "rewrites" when provided.'
     );
   }
 
+  if (
+    configuredWorkerPrewarm != null &&
+    !isRouteHandlerWorkerPrewarmMode(configuredWorkerPrewarm)
+  ) {
+    throw createConfigError(
+      'routeHandlersConfig.app.routing.workerPrewarm must be "off" or "instrumentation" when provided.'
+    );
+  }
+
   return {
-    development: configuredDevelopment
+    development:
+      configuredDevelopment ??
+      DEFAULT_ROUTE_HANDLERS_ROUTING_POLICY.development,
+    workerPrewarm:
+      configuredWorkerPrewarm ??
+      DEFAULT_ROUTE_HANDLERS_ROUTING_POLICY.workerPrewarm
   };
 };

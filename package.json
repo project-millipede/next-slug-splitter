@@ -71,6 +71,11 @@
       "import": "./dist/next/adapter.js",
       "default": "./dist/next/adapter.js"
     },
+    "./next/instrumentation": {
+      "types": "./dist/next/instrumentation.d.ts",
+      "import": "./dist/next/instrumentation.js",
+      "default": "./dist/next/instrumentation.js"
+    },
     "./next/lookup": {
       "types": "./dist/next/lookup.d.ts",
       "import": "./dist/next/lookup.js",

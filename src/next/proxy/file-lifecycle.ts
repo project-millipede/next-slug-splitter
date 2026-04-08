@@ -1,9 +1,15 @@
-import { readFile, unlink } from 'node:fs/promises';
+import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 
 import { Project, IndentationText, QuoteKind, ScriptKind } from 'ts-morph';
 
 import { createRuntimeError } from '../../utils/errors';
+import {
+  readFileIfExists,
+  renderConfigRegistrationLiteral,
+  renderLocaleConfigLiteral,
+  renderStaticStringArray
+} from '../file-conventions/shared';
 import { type RouteHandlerRoutingStrategy } from '../policy/routing-strategy';
 import {
   buildRouteHandlerProxyMatchers,
@@ -55,24 +61,6 @@ const resolveProxyConflictCandidates = (rootDir: string): Array<string> => [
 ];
 
 /**
- * Read a file when present and return `null` when it does not exist.
- *
- * @param filePath - Absolute file path.
- * @returns Source text or `null`.
- */
-const readFileIfExists = async (filePath: string): Promise<string | null> => {
-  try {
-    return await readFile(filePath, 'utf8');
-  } catch {
-    // Existence probing is the only purpose of this helper. Missing files are a
-    // normal outcome during cleanup and conflict checks, so callers get `null`
-    // instead of an exception and can keep their branch logic focused on
-    // ownership semantics rather than filesystem error handling.
-    return null;
-  }
-};
-
-/**
  * Determine whether a file is owned by the plugin-generated proxy lifecycle.
  *
  * @param sourceText - Source text to inspect.
@@ -80,80 +68,6 @@ const readFileIfExists = async (filePath: string): Promise<string | null> => {
  */
 const isPluginOwnedProxyFile = (sourceText: string): boolean =>
   sourceText.includes(ROUTE_HANDLER_PROXY_OWNERSHIP_MARKER);
-
-/**
- * Render a single-quoted JavaScript string literal.
- *
- * @param value - Raw string value.
- * @returns Stable single-quoted literal.
- */
-const renderStringLiteral = (value: string): string =>
-  JSON.stringify(value).replaceAll('"', "'");
-
-/**
- * Render either a stable single-quoted string literal or `undefined`.
- *
- * @param value - Optional raw string value.
- * @returns Literal source text.
- */
-const renderOptionalStringLiteral = (value: string | undefined): string =>
-  value == null ? 'undefined' : renderStringLiteral(value);
-
-/**
- * Render a static array of single-quoted strings.
- *
- * @param values - Raw string values.
- * @returns Static array literal for generated source.
- */
-const renderStaticStringArray = (values: Array<string>): string =>
-  `[${values.map(renderStringLiteral).join(', ')}]`;
-
-/**
- * Render a static locale-config object literal for generated source.
- *
- * @param localeConfig - Shared app locale configuration.
- * @returns Stable object literal text.
- */
-const renderLocaleConfigLiteral = (localeConfig: LocaleConfig): string =>
-  // Locale config is embedded into the generated root file so the package-owned
-  // proxy runtime does not need to import the app's `next.config.*` at request
-  // time. That keeps the runtime path independent from Next's config loading
-  // mechanics and avoids `.ts` config import problems inside Proxy execution.
-  [
-    '{',
-    `  locales: ${renderStaticStringArray(localeConfig.locales)},`,
-    `  defaultLocale: ${renderStringLiteral(localeConfig.defaultLocale)}`,
-    '}'
-  ].join('\n');
-
-/**
- * Render the adapter-time config registration that the thin Proxy runtime must
- * forward into the dev-only worker boundary.
- *
- * @param configPath - Absolute app-owned config path when one exists.
- * @param rootDir - True app root captured during `next.config.*`
- * evaluation.
- * @returns Stable object literal text.
- *
- * @remarks
- * Locale config alone is not enough for the dev-only worker path. The worker
- * must also know where the app-owned splitter config lives so it can load it
- * in a fresh child Node process. We intentionally embed that registration into
- * the generated root `proxy.ts` instead of hoping it survives later through
- * `process.env`, because the special Next Proxy runtime does not guarantee that
- * request-time access to ad-hoc process registration behaves like ordinary
- * Node.
- */
-const renderConfigRegistrationLiteral = (
-  configPath?: string,
-  rootDir?: string
-): string =>
-  [
-    '{',
-    `  configPath: ${renderOptionalStringLiteral(configPath)},`,
-    `  rootDir: ${renderOptionalStringLiteral(rootDir)}`,
-    '}'
-  ].join('\n');
 
 /**
  * Render the plugin-owned root `proxy.ts` source.

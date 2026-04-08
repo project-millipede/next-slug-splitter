@@ -4,6 +4,7 @@ import type {
   RouteHandlerProxyWorkerResponse,
   RouteHandlerProxyWorkerShutdownResponse
 } from '../types';
+import { getRouteHandlerProxyWorkerHostGlobalState } from './global-state';
 import type { RouteHandlerProxyWorkerSession } from './session-lifecycle';
 
 /**
@@ -29,7 +30,11 @@ export type RouteHandlerProxyWorkerPendingRequest = {
   reject: (error: Error) => void;
 };
 
-let routeHandlerProxyWorkerRequestSequence = 0;
+/**
+ * Shared host-side IPC protocol state for the current parent process.
+ */
+const routeHandlerProxyWorkerProtocolState =
+  getRouteHandlerProxyWorkerHostGlobalState().protocol;
 
 /**
  * Create one unique host-side request id for worker IPC correlation.
@@ -38,7 +43,7 @@ let routeHandlerProxyWorkerRequestSequence = 0;
  */
 export const createRouteHandlerProxyWorkerRequestId = (): string =>
   `route-handler-proxy-worker-request-${String(
-    ++routeHandlerProxyWorkerRequestSequence
+    ++routeHandlerProxyWorkerProtocolState.requestSequence
   )}`;
 
 /**
@@ -48,7 +53,7 @@ export const createRouteHandlerProxyWorkerRequestId = (): string =>
  * @returns `void` after the request id sequence has been reset.
  */
 export const resetRouteHandlerProxyWorkerProtocolState = (): void => {
-  routeHandlerProxyWorkerRequestSequence = 0;
+  routeHandlerProxyWorkerProtocolState.requestSequence = 0;
 };
 
 /**

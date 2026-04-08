@@ -26,7 +26,8 @@ const TEST_ROUTE_HANDLERS_CONFIG = {
 const TEST_APP_CONFIG = {
   rootDir: TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
   routing: {
-    development: 'proxy' as const
+    development: 'proxy' as const,
+    workerPrewarm: 'off' as const
   }
 };
 

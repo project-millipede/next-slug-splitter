@@ -1,4 +1,5 @@
 import { debugRouteHandlerProxy } from '../../observability/debug-log';
+import { getRouteHandlerProxyWorkerHostGlobalState } from './global-state';
 import {
   createRouteHandlerProxyWorkerRequestId,
   resetRouteHandlerProxyWorkerProtocolState,
@@ -29,11 +30,13 @@ import type {
  * - own the persistent host maps for live worker sessions and in-flight
  *   lazy-miss dedupe
  * - install process-shutdown hooks on first worker use
- * - expose the public lazy-miss and explicit-clear APIs
+ * - expose the public lazy-miss, startup-prewarm, and explicit-clear APIs
  *
  * Lower-level IPC transport and worker process lifecycle are intentionally
  * delegated to `protocol.ts` and `session-lifecycle.ts`.
  */
+const routeHandlerProxyWorkerClientState =
+  getRouteHandlerProxyWorkerHostGlobalState().client;
 
 /**
  * Host-side in-flight dedupe for lazy worker requests.
@@ -48,10 +51,20 @@ import type {
  *
  * See `docs/architecture/cache-policy.md`.
  */
-const inFlightLazyMissResolutions = new Map<
-  string,
-  Promise<RouteHandlerProxyWorkerResponse>
->();
+const inFlightLazyMissResolutions =
+  routeHandlerProxyWorkerClientState.inFlightLazyMissResolutions;
+
+/**
+ * Host-side in-flight dedupe for worker-session readiness.
+ *
+ * @remarks
+ * Startup prewarm and the later request path should converge on the same
+ * session bootstrap work for one generation. This map collapses overlapping
+ * "ensure the worker is ready" calls so we do not race multiple spawns or
+ * repeated bootstrap requests for the same session identity.
+ */
+const inFlightWorkerSessionResolutions =
+  routeHandlerProxyWorkerClientState.inFlightWorkerSessionResolutions;
 
 /**
  * Host-side registry of long-lived worker sessions.
@@ -66,7 +79,7 @@ const inFlightLazyMissResolutions = new Map<
  *
  * See `docs/architecture/cache-policy.md`.
  */
-const workerSessions = new Map<string, RouteHandlerProxyWorkerSession>();
+const workerSessions = routeHandlerProxyWorkerClientState.workerSessions;
 
 /**
  * Clear all persistent worker client state.
@@ -93,7 +106,62 @@ export const clearRouteHandlerProxyWorkerClientSessions = async (): Promise<void
 
   workerSessions.clear();
   inFlightLazyMissResolutions.clear();
+  inFlightWorkerSessionResolutions.clear();
   resetRouteHandlerProxyWorkerProtocolState();
+};
+
+/**
+ * Ensure the current long-lived worker session is bootstrapped and ready.
+ *
+ * @param input - Worker-session input.
+ * @param input.localeConfig - Locale config captured by the generated root bridge.
+ * @param input.bootstrapGenerationToken - Current bootstrap generation token.
+ * @param input.configRegistration - Optional adapter-time config registration.
+ * @returns Ready worker session for the current generation.
+ */
+export const resolveRouteHandlerProxyWorkerClientSession = async ({
+  localeConfig,
+  bootstrapGenerationToken,
+  configRegistration = {}
+}: {
+  localeConfig: LocaleConfig;
+  bootstrapGenerationToken: BootstrapGenerationToken;
+  configRegistration?: RouteHandlerProxyConfigRegistration;
+}): Promise<RouteHandlerProxyWorkerSession> => {
+  installRouteHandlerProxyWorkerProcessShutdownHooks({
+    getActiveSessionCount: () => workerSessions.size,
+    clearWorkerSessions: clearRouteHandlerProxyWorkerClientSessions
+  });
+
+  const sessionResolutionKey = JSON.stringify([
+    localeConfig,
+    bootstrapGenerationToken,
+    configRegistration.configPath ?? null,
+    configRegistration.rootDir ?? null
+  ]);
+  const existingSessionResolution = inFlightWorkerSessionResolutions.get(
+    sessionResolutionKey
+  );
+
+  if (existingSessionResolution != null) {
+    return existingSessionResolution;
+  }
+
+  const sessionResolutionPromise = resolveRouteHandlerProxyWorkerSession({
+    workerSessions,
+    localeConfig,
+    bootstrapGenerationToken,
+    configRegistration
+  }).finally(() => {
+    inFlightWorkerSessionResolutions.delete(sessionResolutionKey);
+  });
+
+  inFlightWorkerSessionResolutions.set(
+    sessionResolutionKey,
+    sessionResolutionPromise
+  );
+
+  return sessionResolutionPromise;
 };
 
 /**
@@ -123,11 +191,6 @@ export const resolveRouteHandlerProxyLazyMissWithWorker = async ({
   bootstrapGenerationToken: BootstrapGenerationToken;
   configRegistration?: RouteHandlerProxyConfigRegistration;
 }): Promise<RouteHandlerProxyWorkerResponse> => {
-  installRouteHandlerProxyWorkerProcessShutdownHooks({
-    getActiveSessionCount: () => workerSessions.size,
-    clearWorkerSessions: clearRouteHandlerProxyWorkerClientSessions
-  });
-
   const dedupeKey = JSON.stringify([
     pathname,
     localeConfig,
@@ -141,8 +204,7 @@ export const resolveRouteHandlerProxyLazyMissWithWorker = async ({
     return existingResolution;
   }
 
-  const resolutionPromise = resolveRouteHandlerProxyWorkerSession({
-    workerSessions,
+  const routedResolutionPromise = resolveRouteHandlerProxyWorkerClientSession({
     localeConfig,
     bootstrapGenerationToken,
     configRegistration
@@ -168,6 +230,6 @@ export const resolveRouteHandlerProxyLazyMissWithWorker = async ({
       inFlightLazyMissResolutions.delete(dedupeKey);
     });
 
-  inFlightLazyMissResolutions.set(dedupeKey, resolutionPromise);
-  return resolutionPromise;
+  inFlightLazyMissResolutions.set(dedupeKey, routedResolutionPromise);
+  return routedResolutionPromise;
 };

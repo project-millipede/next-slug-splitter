@@ -7,6 +7,7 @@ const resolveRouteHandlersConfigsFromAppConfigMock = vi.hoisted(() => vi.fn());
 const resolveRouteHandlersAppContextMock = vi.hoisted(() => vi.fn());
 const resolveRouteHandlerRoutingStrategyMock = vi.hoisted(() => vi.fn());
 const synchronizeRouteHandlerProxyFileMock = vi.hoisted(() => vi.fn());
+const synchronizeRouteHandlerInstrumentationFileMock = vi.hoisted(() => vi.fn());
 const synchronizeRouteHandlerPhaseArtifactsMock = vi.hoisted(() => vi.fn());
 const executeResolvedRouteHandlerNextPipelineMock = vi.hoisted(() => vi.fn());
 const withRouteHandlerRewritesMock = vi.hoisted(() => vi.fn());
@@ -35,6 +36,11 @@ vi.mock(import('../../next/policy/routing-strategy'), () => ({
 
 vi.mock(import('../../next/proxy/file-lifecycle'), () => ({
   synchronizeRouteHandlerProxyFile: synchronizeRouteHandlerProxyFileMock
+}));
+
+vi.mock(import('../../next/instrumentation/file-lifecycle'), () => ({
+  synchronizeRouteHandlerInstrumentationFile:
+    synchronizeRouteHandlerInstrumentationFileMock
 }));
 
 vi.mock(import('../../next/phase-artifacts'), () => ({
@@ -95,7 +101,8 @@ const TEST_ROUTE_HANDLERS_CONFIG = {
 const TEST_APP_CONFIG = {
   rootDir: TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
   routing: {
-    development: 'proxy' as const
+    development: 'proxy' as const,
+    workerPrewarm: 'off' as const
   }
 };
 
@@ -130,6 +137,7 @@ describe('route handlers adapter', () => {
     });
     synchronizeRouteHandlerPhaseArtifactsMock.mockResolvedValue(undefined);
     synchronizeRouteHandlerProxyFileMock.mockResolvedValue(undefined);
+    synchronizeRouteHandlerInstrumentationFileMock.mockResolvedValue(undefined);
     executeResolvedRouteHandlerNextPipelineMock.mockResolvedValue([
       {
         targetId: 'docs',
@@ -199,6 +207,7 @@ describe('route handlers adapter', () => {
     );
     expect(synchronizeRouteHandlerPhaseArtifactsMock).toHaveBeenCalled();
     expect(synchronizeRouteHandlerProxyFileMock).toHaveBeenCalled();
+    expect(synchronizeRouteHandlerInstrumentationFileMock).toHaveBeenCalled();
     expect(writeRouteHandlerLookupSnapshotMock).toHaveBeenCalledWith(
       TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
       {

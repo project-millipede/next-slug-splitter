@@ -74,7 +74,8 @@ const createDevelopmentRoutingPolicy = ({
 }: {
   routeHandlersConfig: RouteHandlersConfig;
 }) => ({
-  development: routeHandlersConfig.app?.routing?.development ?? 'proxy'
+  development: routeHandlersConfig.app?.routing?.development ?? 'proxy',
+  workerPrewarm: routeHandlersConfig.app?.routing?.workerPrewarm ?? 'off'
 });
 
 describe('generated proxy file lifecycle', () => {

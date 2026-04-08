@@ -68,6 +68,26 @@ const TEST_TMP_REWRITE_ROUTE_HANDLERS_CONFIG = {
   }
 };
 
+const TEST_TMP_PREWARM_ROUTE_HANDLERS_CONFIG = {
+  app: {
+    ...TEST_TMP_APP,
+    routing: {
+      development: 'proxy' as const,
+      workerPrewarm: 'instrumentation' as const
+    }
+  }
+};
+
+const TEST_TMP_REWRITE_PREWARM_ROUTE_HANDLERS_CONFIG = {
+  app: {
+    ...TEST_TMP_APP,
+    routing: {
+      development: 'rewrites' as const,
+      workerPrewarm: 'instrumentation' as const
+    }
+  }
+};
+
 const createAppConfig = (rootDir: string) => ({
   rootDir
 });
@@ -160,7 +180,7 @@ describe('next config helpers', () => {
   });
 
   describe('resolveRouteHandlersAppConfig', () => {
-    test('defaults development routing policy to proxy and allows an explicit rewrite override', () => {
+    test('defaults routing policy to proxy + prewarm off and allows explicit overrides', () => {
       const defaultResolvedAppConfig = resolveRouteHandlersAppConfig({
         rootDir: TEST_TMP_APP.rootDir,
         routeHandlersConfig: TEST_TMP_ROUTE_HANDLERS_CONFIG
@@ -169,13 +189,49 @@ describe('next config helpers', () => {
         rootDir: TEST_TMP_APP.rootDir,
         routeHandlersConfig: TEST_TMP_REWRITE_ROUTE_HANDLERS_CONFIG
       });
+      const prewarmResolvedAppConfig = resolveRouteHandlersAppConfig({
+        rootDir: TEST_TMP_APP.rootDir,
+        routeHandlersConfig: TEST_TMP_PREWARM_ROUTE_HANDLERS_CONFIG
+      });
+      const rewritePrewarmResolvedAppConfig = resolveRouteHandlersAppConfig({
+        rootDir: TEST_TMP_APP.rootDir,
+        routeHandlersConfig: TEST_TMP_REWRITE_PREWARM_ROUTE_HANDLERS_CONFIG
+      });
 
       expect(defaultResolvedAppConfig.routing).toEqual({
-        development: 'proxy'
+        development: 'proxy',
+        workerPrewarm: 'off'
       });
       expect(overrideResolvedAppConfig.routing).toEqual({
-        development: 'rewrites'
+        development: 'rewrites',
+        workerPrewarm: 'off'
       });
+      expect(prewarmResolvedAppConfig.routing).toEqual({
+        development: 'proxy',
+        workerPrewarm: 'instrumentation'
+      });
+      expect(rewritePrewarmResolvedAppConfig.routing).toEqual({
+        development: 'rewrites',
+        workerPrewarm: 'instrumentation'
+      });
+    });
+
+    test('rejects unsupported proxy prewarm values', () => {
+      expect(() =>
+        resolveRouteHandlersAppConfig({
+          rootDir: TEST_TMP_APP.rootDir,
+          routeHandlersConfig: {
+            app: {
+              ...TEST_TMP_APP,
+              routing: {
+                workerPrewarm: 'startup-hit'
+              }
+            }
+          } as never
+        })
+      ).toThrow(
+        'routeHandlersConfig.app.routing.workerPrewarm must be "off" or "instrumentation" when provided.'
+      );
     });
   });
 

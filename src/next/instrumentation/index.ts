@@ -1,0 +1,1 @@
+export { prewarmRouteHandlerProxyWorker } from './runtime';

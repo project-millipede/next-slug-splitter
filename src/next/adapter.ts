@@ -47,6 +47,7 @@ import { resolveRouteHandlerRoutingStrategy } from './policy/routing-strategy';
 import { deriveRouteHandlerRuntimeSemantics } from './runtime-semantics/derive';
 import { writeRouteHandlerRuntimeSemantics } from './runtime-semantics/write';
 import { executeResolvedRouteHandlerNextPipeline } from './runtime';
+import { synchronizeRouteHandlerInstrumentationFile } from './instrumentation/file-lifecycle';
 
 /**
  * Determine whether the current Next phase should run route-handler
@@ -123,6 +124,13 @@ const routeHandlersAdapter: NextAdapter = {
       rootDir: appContext.appConfig.rootDir,
       strategy: routingStrategy,
       resolvedConfigs,
+      configRegistration
+    });
+    await synchronizeRouteHandlerInstrumentationFile({
+      rootDir: appContext.appConfig.rootDir,
+      strategy: routingStrategy,
+      routingPolicy: appContext.appConfig.routing,
+      localeConfig: runtimeSemantics.localeConfig,
       configRegistration
     });
 
