@@ -75,7 +75,18 @@ const resolveActiveVariant = (
   return 'javascript';
 };
 
-export const routeHandlersConfig: RouteHandlersConfig =
+const selectedRouteHandlersConfig =
   supportedVariants[resolveActiveVariant(process.env.npm_lifecycle_event)];
+
+export const routeHandlersConfig: RouteHandlersConfig = {
+  ...selectedRouteHandlersConfig,
+  app: {
+    ...selectedRouteHandlersConfig.app,
+    routing: {
+      ...selectedRouteHandlersConfig.app?.routing,
+      workerPrewarm: 'instrumentation'
+    }
+  }
+};
 
 export default routeHandlersConfig;

@@ -82,6 +82,7 @@ const discoverGeneratedHandlerDirs = async appRootDir => {
  * This script intentionally targets only plugin/dev-generated state:
  * - `.next`
  * - root `proxy.ts`
+ * - root `instrumentation.ts`
  * - every generated route-handler page folder below `pages`
  *
  * Keeping this list explicit avoids accidentally turning the command into a
@@ -90,6 +91,7 @@ const discoverGeneratedHandlerDirs = async appRootDir => {
 const readGeneratedDevStatePaths = async appRootDir => [
   path.join(appRootDir, '.next'),
   path.join(appRootDir, 'proxy.ts'),
+  path.join(appRootDir, 'instrumentation.ts'),
   ...(await discoverGeneratedHandlerDirs(appRootDir))
 ];
 
