@@ -10,7 +10,7 @@ import type {
   ResolvedModuleReference
 } from '../module-reference';
 import type { PluggableList } from 'unified';
-import { JsonObject, JsonPrimitive } from '../utils/type-guards-json';
+import type { JsonObject } from '../utils/type-guards-json';
 
 export type PipelineMode = 'analyze' | 'generate';
 
@@ -438,7 +438,9 @@ export type RouteHandlerProcessor<TMeta = JsonObject> = {
    * final plan, but the final returned component entries must already contain
    * any metadata that should appear on the emitted runtime entry objects.
    */
-  resolve: (input: ProcessorResolveInput) =>
+  resolve: (
+    input: ProcessorResolveInput
+  ) =>
     | RouteHandlerGeneratorPlan<TMeta>
     | Promise<RouteHandlerGeneratorPlan<TMeta>>;
 };

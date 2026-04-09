@@ -4,7 +4,6 @@ import process from 'node:process';
 
 import { createConfigError } from '../../utils/errors';
 import { isNonEmptyString } from '../../utils/type-guards-extended';
-import type { RouteHandlersConfig } from '../types';
 
 const SLUG_SPLITTER_CONFIG_PATH_ENV = 'SLUG_SPLITTER_CONFIG_PATH';
 const SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV = 'SLUG_SPLITTER_CONFIG_ROOT_DIR';

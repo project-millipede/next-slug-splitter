@@ -121,7 +121,7 @@ const runResolvedPreparationTask = async (
   );
 };
 
-export const runResolvedRouteHandlerPreparations = async (
+const runResolvedRouteHandlerPreparations = async (
   rootDir: string,
   preparations: Array<ResolvedRouteHandlerPreparation>
 ): Promise<void> => {

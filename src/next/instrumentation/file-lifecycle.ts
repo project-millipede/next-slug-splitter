@@ -23,7 +23,7 @@ const SRC_INSTRUMENTATION_JS_FILE_PATH = path.join('src', 'instrumentation.js');
 /**
  * Ownership marker embedded into plugin-generated root instrumentation files.
  */
-export const ROUTE_HANDLER_PROXY_INSTRUMENTATION_OWNERSHIP_MARKER =
+const ROUTE_HANDLER_PROXY_INSTRUMENTATION_OWNERSHIP_MARKER =
   'next-slug-splitter:experimental-proxy-instrumentation';
 
 /**

@@ -18,7 +18,6 @@ import type {
 } from '../../runtime/types';
 import type {
   RouteHandlerProxyWorkerBootstrapResponse,
-  RouteHandlerProxyWorkerResponse,
   RouteHandlerProxyWorkerResponseEnvelope,
   RouteHandlerProxyWorkerSessionInput,
   RouteHandlerProxyWorkerShutdownResponse

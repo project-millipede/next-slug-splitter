@@ -45,7 +45,7 @@ import { normalizeImportSpec, parseImportSpec } from './import-spec';
  * @param label - Error label describing the current parse path.
  * @returns The parsed binding value with the same cardinality.
  */
-export const parseFactoryBindingValue = (
+const parseFactoryBindingValue = (
   value: unknown,
   label: string
 ): FactoryBindingValue => {
@@ -132,7 +132,7 @@ export const parseFactoryBindings = (
  * @param value - Parsed factory binding value.
  * @returns Resolved binding value with the same single-vs-array shape.
  */
-export const normalizeFactoryBindingValue = (
+const normalizeFactoryBindingValue = (
   rootDir: string,
   value: FactoryBindingValue
 ): ResolvedFactoryBindingValue => {

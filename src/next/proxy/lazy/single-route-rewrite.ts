@@ -21,7 +21,7 @@ import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
  * - the immediate lazy request path after one-file analysis
  * - any route-local caller that already has a planned heavy route
  */
-export const resolveRouteHandlerHeavyRewriteDestination = (
+const resolveRouteHandlerHeavyRewriteDestination = (
   pathname: string,
   config: RouteHandlerPlannerConfig,
   plannedHeavyRoute: PlannedHeavyRoute
