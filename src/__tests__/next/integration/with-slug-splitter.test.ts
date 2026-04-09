@@ -1,4 +1,4 @@
-import { readFile, unlink, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import type { NextConfig } from 'next';
@@ -12,10 +12,6 @@ import {
   resolveRegisteredSlugSplitterConfigRegistration,
   resolveSlugSplitterAdapterEntry
 } from '../../../next/integration';
-import {
-  parseRouteHandlerRuntimeSemantics,
-  resolveRouteHandlerRuntimeSemanticsPath
-} from '../../../next/runtime-semantics/persisted';
 import { withTempDir } from '../../helpers/temp-dir';
 
 /**
@@ -76,26 +72,6 @@ const clearRegisteredRouteHandlersState = (): void => {
 afterEach(() => {
   clearRegisteredRouteHandlersState();
 });
-
-afterEach(async () => {
-  await unlink(resolveRouteHandlerRuntimeSemanticsPath(process.cwd())).catch(
-    () => undefined
-  );
-});
-
-const readPersistedRuntimeSemantics = async () => {
-  const raw = await readFile(
-    resolveRouteHandlerRuntimeSemanticsPath(process.cwd()),
-    'utf8'
-  );
-  const parsed = parseRouteHandlerRuntimeSemantics(raw);
-
-  if (parsed == null) {
-    throw new Error('Expected persisted runtime semantics snapshot.');
-  }
-
-  return parsed;
-};
 
 describe('withSlugSplitter', () => {
   it('registers the config file path and installs the resolved adapter path', async () => {
@@ -235,15 +211,9 @@ describe('withSlugSplitter', () => {
 
     const loadedConfig = await loadRegisteredSlugSplitterConfig();
     expect(loadedConfig).toEqual(TEST_DIRECT_ROUTE_HANDLERS_CONFIG);
-    expect(await readPersistedRuntimeSemantics()).toEqual({
-      localeConfig: {
-        locales: ['en', 'de'],
-        defaultLocale: 'de'
-      }
-    });
   });
 
-  it('writes the runtime semantics snapshot for async Next config factories', async () => {
+  it('supports async Next config factories with direct routeHandlersConfig objects', async () => {
     const wrappedConfig = withSlugSplitter(
       async () => TEST_ASYNC_FACTORY_NEXT_CONFIG,
       {
@@ -262,12 +232,6 @@ describe('withSlugSplitter', () => {
     expect(resolvedConfig).toEqual({
       ...TEST_ASYNC_FACTORY_NEXT_CONFIG,
       adapterPath: resolveSlugSplitterAdapterEntry(process.cwd())
-    });
-    expect(await readPersistedRuntimeSemantics()).toEqual({
-      localeConfig: {
-        locales: ['en', 'fr'],
-        defaultLocale: 'fr'
-      }
     });
   });
 

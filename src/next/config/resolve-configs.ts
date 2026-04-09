@@ -22,9 +22,7 @@ import {
 } from './resolve-target';
 import { isObjectRecord, readObjectProperty } from './shared';
 
-type RouteHandlersConfigLike =
-  | RouteHandlersConfig
-  | RouteHandlersTargetConfig;
+type RouteHandlersConfigLike = RouteHandlersConfig | RouteHandlersTargetConfig;
 
 const MISSING_ROUTE_HANDLERS_CONFIG_ERROR_MESSAGE =
   'Missing registered routeHandlersConfig. Call withSlugSplitter(...) or createRouteHandlersAdapterPath(...) before exporting the Next config.';
@@ -40,9 +38,7 @@ const requireResolvedRouteHandlersConfig = <
   routeHandlersConfig: TRouteHandlersConfig | undefined
 ): TRouteHandlersConfig => {
   if (routeHandlersConfig == null) {
-    throw createConfigMissingError(
-      MISSING_ROUTE_HANDLERS_CONFIG_ERROR_MESSAGE
-    );
+    throw createConfigMissingError(MISSING_ROUTE_HANDLERS_CONFIG_ERROR_MESSAGE);
   }
 
   return routeHandlersConfig;
@@ -104,9 +100,9 @@ export type NormalizedRouteHandlersTargetRecord = {
  * @returns Resolved base configs for every configured target.
  *
  * @remarks
- * This helper intentionally stops at the config-base layer. Locale semantics
- * are attached later by the caller that owns the approved runtime-semantics
- * source for the current execution path.
+ * This helper intentionally stops at the config-base layer.
+ * `localeConfig` is attached later by the caller that already owns the locale
+ * data for the current execution path.
  */
 export const resolveRouteHandlersConfigBasesFromAppConfig = (
   appConfig: ResolvedRouteHandlersAppConfig,
@@ -116,10 +112,7 @@ export const resolveRouteHandlersConfigBasesFromAppConfig = (
     appConfig,
     routeHandlersConfig
   ).map(({ routeHandlersConfig: normalizedTargetConfig }) =>
-    resolveRouteHandlersConfigBase(
-      appConfig,
-      normalizedTargetConfig
-    )
+    resolveRouteHandlersConfigBase(appConfig, normalizedTargetConfig)
   );
 };
 
@@ -137,7 +130,10 @@ export const resolveNormalizedRouteHandlersTargetsFromAppConfig = (
 ): Array<NormalizedRouteHandlersTargetRecord> => {
   const configuredRouteHandlers =
     requireResolvedRouteHandlersConfig(routeHandlersConfig);
-  const configuredTargets = readObjectProperty(configuredRouteHandlers, 'targets');
+  const configuredTargets = readObjectProperty(
+    configuredRouteHandlers,
+    'targets'
+  );
 
   if (isUndefined(configuredTargets)) {
     return [

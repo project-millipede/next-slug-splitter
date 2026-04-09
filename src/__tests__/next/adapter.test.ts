@@ -7,11 +7,12 @@ const resolveRouteHandlersConfigsFromAppConfigMock = vi.hoisted(() => vi.fn());
 const resolveRouteHandlersAppContextMock = vi.hoisted(() => vi.fn());
 const resolveRouteHandlerRoutingStrategyMock = vi.hoisted(() => vi.fn());
 const synchronizeRouteHandlerProxyFileMock = vi.hoisted(() => vi.fn());
-const synchronizeRouteHandlerInstrumentationFileMock = vi.hoisted(() => vi.fn());
+const synchronizeRouteHandlerInstrumentationFileMock = vi.hoisted(() =>
+  vi.fn()
+);
 const synchronizeRouteHandlerPhaseArtifactsMock = vi.hoisted(() => vi.fn());
 const executeResolvedRouteHandlerNextPipelineMock = vi.hoisted(() => vi.fn());
 const withRouteHandlerRewritesMock = vi.hoisted(() => vi.fn());
-const writeRouteHandlerRuntimeSemanticsMock = vi.hoisted(() => vi.fn());
 const writeRouteHandlerLookupSnapshotMock = vi.hoisted(() => vi.fn());
 const createRouteHandlerProxyBootstrapManifestMock = vi.hoisted(() => vi.fn());
 const writeRouteHandlerProxyBootstrapMock = vi.hoisted(() => vi.fn());
@@ -55,10 +56,6 @@ vi.mock(import('../../next/runtime'), () => ({
 
 vi.mock(import('../../next/rewrites/plugin'), () => ({
   withRouteHandlerRewrites: withRouteHandlerRewritesMock
-}));
-
-vi.mock(import('../../next/runtime-semantics/write'), () => ({
-  writeRouteHandlerRuntimeSemantics: writeRouteHandlerRuntimeSemanticsMock
 }));
 
 vi.mock(import('../../next/lookup-persisted'), () => ({
@@ -149,7 +146,6 @@ describe('route handlers adapter', () => {
       }
     ]);
     withRouteHandlerRewritesMock.mockImplementation(config => config);
-    writeRouteHandlerRuntimeSemanticsMock.mockResolvedValue(undefined);
     writeRouteHandlerLookupSnapshotMock.mockResolvedValue(undefined);
     createRouteHandlerProxyBootstrapManifestMock.mockReturnValue({
       version: 1,
@@ -163,7 +159,7 @@ describe('route handlers adapter', () => {
     writeRouteHandlerProxyBootstrapMock.mockResolvedValue(undefined);
   });
 
-  it('refreshes runtime semantics from the resolved Next config during adapter execution', async () => {
+  it('derives locale semantics from the resolved Next config during adapter execution', async () => {
     const routeHandlersConfig = TEST_ROUTE_HANDLERS_CONFIG;
     type ModifyConfig = NonNullable<typeof routeHandlersAdapter.modifyConfig>;
     type AdapterConfigInput = Parameters<ModifyConfig>[0];
@@ -182,15 +178,6 @@ describe('route handlers adapter', () => {
       nextVersion: '16.2.0'
     });
 
-    expect(writeRouteHandlerRuntimeSemanticsMock).toHaveBeenCalledWith(
-      TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
-      {
-        localeConfig: {
-          locales: ['en', 'fr'],
-          defaultLocale: 'fr'
-        }
-      }
-    );
     expect(prepareRouteHandlersFromConfigMock).toHaveBeenCalledWith(
       TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
       routeHandlersConfig
@@ -274,13 +261,10 @@ describe('route handlers adapter', () => {
     });
     resolveRouteHandlersConfigsFromAppConfigMock.mockReturnValue([]);
 
-    await routeHandlersAdapter.modifyConfig!(
-      TEST_NEXT_CONFIG as never,
-      {
-        phase: PHASE_PRODUCTION_BUILD,
-        nextVersion: '16.2.0'
-      }
-    );
+    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
+      phase: PHASE_PRODUCTION_BUILD,
+      nextVersion: '16.2.0'
+    });
 
     expect(createRouteHandlerProxyBootstrapManifestMock).toHaveBeenCalledWith(
       'route-handler-proxy-bootstrap-test',
@@ -306,16 +290,15 @@ describe('route handlers adapter', () => {
       kind: 'rewrites'
     });
 
-    await routeHandlersAdapter.modifyConfig!(
-      TEST_NEXT_CONFIG as never,
-      {
-        phase: PHASE_PRODUCTION_BUILD,
-        nextVersion: '16.2.0'
-      }
-    );
+    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
+      phase: PHASE_PRODUCTION_BUILD,
+      nextVersion: '16.2.0'
+    });
 
     expect(createRouteHandlerProxyBootstrapManifestMock).not.toHaveBeenCalled();
     expect(writeRouteHandlerProxyBootstrapMock).not.toHaveBeenCalled();
-    expect(executeResolvedRouteHandlerNextPipelineMock).toHaveBeenCalledTimes(1);
+    expect(executeResolvedRouteHandlerNextPipelineMock).toHaveBeenCalledTimes(
+      1
+    );
   });
 });

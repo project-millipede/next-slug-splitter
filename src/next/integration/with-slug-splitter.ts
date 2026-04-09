@@ -18,8 +18,6 @@ import {
   registerSlugSplitterConfigPath,
   resolveSlugSplitterConfigPath
 } from './slug-splitter-config';
-import { deriveRouteHandlerRuntimeSemantics } from '../runtime-semantics/derive';
-import { writeRouteHandlerRuntimeSemanticsSync } from '../runtime-semantics/write-sync';
 
 /**
  * Supported Next config factory signature.
@@ -156,10 +154,6 @@ export function withSlugSplitter(
         'withSlugSplitter(...) now installs the stable adapterPath option. Move any existing experimental.adapterPath to adapterPath before applying withSlugSplitter(...).'
       );
     }
-    writeRouteHandlerRuntimeSemanticsSync(
-      entrypointRootDir,
-      deriveRouteHandlerRuntimeSemantics(nextConfig)
-    );
 
     return {
       ...nextConfig,

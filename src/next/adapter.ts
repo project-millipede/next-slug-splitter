@@ -45,7 +45,6 @@ import { synchronizeRouteHandlerPhaseArtifacts } from './phase-artifacts';
 import { synchronizeRouteHandlerProxyFile } from './proxy/file-lifecycle';
 import { resolveRouteHandlerRoutingStrategy } from './policy/routing-strategy';
 import { deriveRouteHandlerRuntimeSemantics } from './runtime-semantics/derive';
-import { writeRouteHandlerRuntimeSemantics } from './runtime-semantics/write';
 import { executeResolvedRouteHandlerNextPipeline } from './runtime';
 import { synchronizeRouteHandlerInstrumentationFile } from './instrumentation/file-lifecycle';
 
@@ -81,10 +80,6 @@ const routeHandlersAdapter: NextAdapter = {
 
     const appContext = resolveRouteHandlersAppContext(routeHandlersConfig);
     const runtimeSemantics = deriveRouteHandlerRuntimeSemantics(config);
-    await writeRouteHandlerRuntimeSemantics(
-      appContext.appConfig.rootDir,
-      runtimeSemantics
-    );
 
     // Preparation must run before config resolution. The `prepare` contract
     // exists so that app-owned build steps — such as compiling a TypeScript
