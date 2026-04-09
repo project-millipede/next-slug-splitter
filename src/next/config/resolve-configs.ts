@@ -22,8 +22,6 @@ import {
 } from './resolve-target';
 import { isObjectRecord, readObjectProperty } from './shared';
 
-type RouteHandlersConfigLike = RouteHandlersConfig | RouteHandlersTargetConfig;
-
 const MISSING_ROUTE_HANDLERS_CONFIG_ERROR_MESSAGE =
   'Missing registered routeHandlersConfig. Call withSlugSplitter(...) or createRouteHandlersAdapterPath(...) before exporting the Next config.';
 
@@ -32,54 +30,15 @@ const copyLocaleConfig = (localeConfig: LocaleConfig): LocaleConfig => ({
   defaultLocale: localeConfig.defaultLocale
 });
 
-const requireResolvedRouteHandlersConfig = <
-  TRouteHandlersConfig extends RouteHandlersConfigLike
->(
-  routeHandlersConfig: TRouteHandlersConfig | undefined
-): TRouteHandlersConfig => {
+const requireResolvedRouteHandlersConfig = (
+  routeHandlersConfig: RouteHandlersConfig | undefined
+): RouteHandlersConfig => {
   if (routeHandlersConfig == null) {
     throw createConfigMissingError(MISSING_ROUTE_HANDLERS_CONFIG_ERROR_MESSAGE);
   }
 
   return routeHandlersConfig;
 };
-
-/**
- * Resolve one configured target from an already-resolved app config.
- *
- * @param appConfig - Resolved app-level config shared by all targets.
- * @param localeConfig - Already-extracted Next runtime semantics.
- * @param routeHandlersConfig - App-owned `RouteHandlersConfig`.
- * @returns Fully resolved target config with locale data attached.
- */
-export const resolveRouteHandlersConfigFromAppConfig = (
-  appConfig: ResolvedRouteHandlersAppConfig,
-  localeConfig: LocaleConfig,
-  routeHandlersConfig?: RouteHandlersConfigLike
-): ResolvedRouteHandlersConfig => ({
-  ...resolveRouteHandlersConfigBaseFromAppConfig(
-    appConfig,
-    routeHandlersConfig
-  ),
-  localeConfig: copyLocaleConfig(localeConfig)
-});
-
-/**
- * Resolve one configured target from an already-resolved app config without
- * re-resolving the app-level inputs.
- *
- * @param appConfig - Resolved app-level config shared by all targets.
- * @param routeHandlersConfig - App-owned `RouteHandlersConfig`.
- * @returns Resolved target config without locale data attached.
- */
-export const resolveRouteHandlersConfigBaseFromAppConfig = (
-  appConfig: ResolvedRouteHandlersAppConfig,
-  routeHandlersConfig?: RouteHandlersConfigLike
-): ResolvedRouteHandlersConfigBase =>
-  resolveRouteHandlersConfigBase(
-    appConfig,
-    requireResolvedRouteHandlersConfig(routeHandlersConfig)
-  );
 
 /**
  * Pure normalized target record used to separate target-array interpretation
