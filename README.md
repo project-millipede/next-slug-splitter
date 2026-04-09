@@ -29,9 +29,13 @@ through build-time rewrites (production) or a request-time proxy (development).
 - **Build-Time Generation:** Discover content pages, resolve component metadata,
   classify heavy routes, and emit dedicated handler pages before the app build.
 - **Dev-Time Proxy Routing:** A generated `proxy.ts` intercepts requests and
-  makes heavy/light routing decisions on demand — no upfront generation needed.
-- **Lazy Discovery:** In proxy mode, heavy routes are classified on first
-  request via a worker process and cached for subsequent requests.
+  delegates heavy/light routing decisions into a long-lived worker session.
+- **Lazy Discovery and Reuse:** In proxy mode, heavy routes are classified on
+  first request and cached under `.next/cache` for fast subsequent requests and
+  dev restarts.
+- **Optional Startup Prewarm:** Opt into
+  `app.routing.workerPrewarm: 'instrumentation'` to bootstrap the dev worker
+  during Next startup instead of waiting for the first proxied request.
 - **Locale-Aware Routing:** Support for locale detection based on filenames or
   a default-locale routing model.
 - **Multi-Target:** Support multi-target setups such as `docs` plus `blog` in
@@ -46,7 +50,8 @@ with only standard markdown elements). `next-slug-splitter` manages that split:
 - **In production:** `next build` generates dedicated handler pages for heavy
   routes and installs rewrites that route matching traffic into those handlers.
 - **In development:** A proxy discovers heavy routes lazily on first request,
-  avoiding regeneration on every content change and enabling instant dev startup.
+  reuses cached route-capture facts across dev restarts, and can optionally
+  prewarm its worker session during startup.
 
 The configuration lives in one app-owned file, the integration is a single
 `withSlugSplitter(...)` wrapper, and the routing strategy adapts automatically
@@ -224,7 +229,7 @@ instead of maintaining manual filesystem paths to those component modules.
 ```ts
 import { packageModule, relativeModule } from 'next-slug-splitter/next';
 
-const componentsModule = packageModule('@demo/components');
+const componentsModule = packageModule('@site/components');
 
 export const routeHandlersConfig = {
   app: {
@@ -247,7 +252,7 @@ export const routeHandlerProcessor = {
       resolveComponentsByCapturedKey(capturedComponentKeys);
 
     return {
-      factoryImport: relativeModule('lib/handler-factory/none'),
+      factoryImport: relativeModule('lib/handler-factory/runtime'),
       components: capturedComponentKeys.map(key => {
         const entry = componentEntriesByKey[key];
         return {
@@ -279,37 +284,38 @@ export const routeHandlerProcessor = defineRouteHandlerProcessor({
 
 ### 4. Generate or Analyze (Optional CLI)
 
-The standalone CLI generates handler artifacts or runs analysis only. Pass the
-route-handlers config module path plus explicit locale semantics.
+The standalone CLI generates handler artifacts or runs analysis only.
+Unlike the Next adapter, it does not derive inputs from a discovered Next
+config. Pass the route-handlers config module path plus explicit locale
+semantics.
 
-Repository example:
-run these from `demo/page-router` after building the library so
-`../../dist/cli.js` exists.
+Required flags:
+
+- `--route-handlers-config-path` — path to the route-handlers config module
+- `--locales` — comma-separated locale list
+- `--default-locale` — default locale and member of `--locales`
+
+Optional flags:
+
+- `--analyze-only` — skip handler emission and report what would be generated
+- `--json` — emit a machine-readable array of per-target results
 
 ```bash
-pnpm generate:ballast
-pnpm clean:handlers
-
-pnpm exec tsx ../../dist/cli.js \
-  --route-handlers-config-path ./config-variants/typescript-package/route-handlers-config.ts \
-  --locales en \
+pnpm exec tsx ./node_modules/next-slug-splitter/dist/cli.js \
+  --route-handlers-config-path ./route-handlers-config.ts \
+  --locales en,de \
   --default-locale en \
   --analyze-only
 
-pnpm exec tsx ../../dist/cli.js \
-  --route-handlers-config-path ./config-variants/typescript-package/route-handlers-config.ts \
-  --locales en \
-  --default-locale en
-
-node ../../dist/cli.js \
-  --route-handlers-config-path ./config-variants/javascript-package/route-handlers-config.mjs \
-  --locales en \
+node ./node_modules/next-slug-splitter/dist/cli.js \
+  --route-handlers-config-path ./route-handlers-config.mjs \
+  --locales en,de \
   --default-locale en \
-  --analyze-only
+  --json
 ```
 
-The Next adapter derives locale semantics from live Next config. The standalone
-CLI requires locale semantics explicitly.
+The human-readable output prints one summary line per configured target.
+`--json` emits the same per-target results as an array.
 
 1. Use `tsx` when the route-handlers config module is TypeScript, for example `.ts`.
 2. Use plain `node` when the route-handlers config module is JavaScript, for example `.mjs`.
@@ -335,18 +341,50 @@ rewrites are static artifacts.
 Used during `PHASE_DEVELOPMENT_SERVER`.
 
 1. The adapter generates a thin `proxy.ts` file at the app root
-2. This proxy intercepts page requests matching configured route base paths
-3. On first request for an unknown route, a worker process classifies it as
-   heavy or light
-4. Heavy routes are rewritten to their generated handler pages; light routes
+2. It also writes a structural worker bootstrap manifest to
+   `.next/cache/route-handlers-worker-bootstrap.json`
+3. `proxy.ts` intercepts page requests matching configured route base paths
+4. A long-lived worker session classifies unknown routes on demand
+5. Heavy routes are rewritten to their generated handler pages; light routes
    pass through to the catch-all page
-5. Discoveries are cached in `lazy-discovery.json` for subsequent requests
+6. Stage 1 route-capture facts are cached per target under
+   `.next/cache/route-handlers-lazy-single-routes/`
 
 Benefits over rewrite mode in development:
 
 - **Instant startup** — no upfront generation pass
 - **On-demand discovery** — only routes actually visited are classified
-- **Automatic caching** — subsequent requests resolve instantly from cache
+- **Cross-restart reuse** — emitted handlers and lazy route-capture facts can
+  be reused across dev restarts while development remains the owning phase
+
+#### Optional Worker Prewarm
+
+When development routing uses `'proxy'`, you can ask the library to bootstrap
+the long-lived worker session during Next startup:
+
+```js
+// In route-handlers-config.mjs
+export const routeHandlersConfig = {
+  app: {
+    routing: {
+      development: 'proxy',
+      workerPrewarm: 'instrumentation'
+    }
+  },
+  targets: [...]
+};
+```
+
+When enabled, `next-slug-splitter` generates a tiny root `instrumentation.ts`
+file that imports
+`prewarmRouteHandlerProxyWorker` from
+`next-slug-splitter/next/instrumentation`. This is a best-effort startup
+prewarm of the current worker session only. It does not classify routes, emit
+handlers, or warm specific pages ahead of traffic.
+
+If your app already owns `instrumentation.ts` or `instrumentation.js` at the
+root or under `src/`, the library refuses to overwrite it. Leave
+`workerPrewarm` set to `'off'` in that case.
 
 #### Dev-Mode Cold-Start Behavior
 
@@ -420,14 +458,16 @@ development; production builds pre-compile all handler pages.
 
 ### Configuring the Routing Policy
 
-The development routing mode defaults to `'proxy'`. To override:
+The development routing mode defaults to `'proxy'`, and worker prewarm defaults
+to `'off'`. To override:
 
 ```js
 // In route-handlers-config.mjs
 export const routeHandlersConfig = {
   app: {
     routing: {
-      development: 'rewrites' // Use rewrite mode even in development
+      development: 'rewrites',
+      workerPrewarm: 'off'
     }
   },
   targets: [...]
@@ -440,6 +480,10 @@ Environment variable override (takes precedence over config):
 NEXT_SLUG_SPLITTER_DEV_ROUTING=proxy     # Force proxy mode
 NEXT_SLUG_SPLITTER_DEV_ROUTING=rewrites  # Force rewrite mode
 ```
+
+`NEXT_SLUG_SPLITTER_DEV_ROUTING` controls only the development routing mode.
+`workerPrewarm` accepts `'off'` or `'instrumentation'` and only applies when
+development routing resolves to `'proxy'`.
 
 ## Configuration Reference
 
@@ -460,6 +504,7 @@ Top-level configuration shape.
 |----------|-------------|
 | `app.rootDir` | Application root directory |
 | `app.routing.development` | Development routing mode: `'proxy'` (default) or `'rewrites'` |
+| `app.routing.workerPrewarm` | Dev-only worker startup strategy: `'off'` (default) or `'instrumentation'` |
 | `app.prepare` | Optional TypeScript prepare step or steps run before route planning |
 | `targets` | Array of target configurations |
 
@@ -479,6 +524,12 @@ app: {
 
 If you only need one prepare step, a single object is also accepted. If no
 pre-build is needed, omit `app.prepare`.
+
+`app.routing.workerPrewarm` only affects development proxy mode. When set to
+`'instrumentation'`, the library generates a root `instrumentation.ts` bridge
+that prewarms the current proxy worker session. Existing app-owned
+`instrumentation.ts` / `instrumentation.js` files at the root or under `src/`
+are treated as conflicts and are never overwritten.
 
 ### `createCatchAllRouteHandlersPreset(options)`
 
@@ -559,15 +610,24 @@ The adapter (`adapterPath`) is the entry point for Next.js integration. It
 runs during the relevant Next.js phases and coordinates:
 
 - Routing strategy selection (rewrite vs. proxy)
-- Cache management across generation runs
-- Rewrite injection or proxy file generation
+- App-owned preparation and config resolution
+- Phase-local artifact ownership for dev versus build
+- Rewrite injection or generated `proxy.ts` / `instrumentation.ts` bridges
 
 ### Runtime Reuse
 
 The runtime keeps reuse narrowly scoped to the artifacts it actually owns:
 
-- **Incremental planning** — per-target selective emission when configs match
-- **Lazy discovery snapshots** — proxy-mode request-time discoveries persisted to disk
+- **Phase ownership record** — `.next/cache/route-handlers-phase-owner.json`
+  separates dev-owned and build-owned generated state so the two phases do not
+  trust each other's handlers or caches
+- **Proxy bootstrap manifest** —
+  `.next/cache/route-handlers-worker-bootstrap.json` persists only the
+  structural target data the parent proxy runtime and worker need to share
+- **Lazy single-route cache** —
+  `.next/cache/route-handlers-lazy-single-routes/` stores per-target Stage 1
+  MDX capture facts via `file-entry-cache`, enabling safe cross-restart reuse
+  in development
 
 ### Proxy File Lifecycle
 
@@ -581,24 +641,41 @@ root. This file:
 The generated file is marked with an ownership marker so it can be distinguished
 from user-authored proxy files.
 
+Existing app-owned `proxy.ts`, `proxy.js`, `middleware.ts`, or `middleware.js`
+files at the root or under `src/` are treated as hard conflicts. The library
+does not overwrite framework-owned routing entrypoints.
+
+### Instrumentation File Lifecycle
+
+When `app.routing.workerPrewarm === 'instrumentation'` and development uses
+proxy mode, the adapter also generates a tiny root `instrumentation.ts` bridge.
+That file is removed again when prewarm is turned off or proxy mode is no
+longer active. Existing app-owned instrumentation files are treated as hard
+conflicts and are never overwritten or deleted.
+
 ### Worker Process
 
 In proxy mode, route classification happens in a child worker process. This is
 necessary because the proxy runtime environment cannot dynamically import
-app-owned configuration modules. The worker loads the config, classifies the
-route, and returns the result to the proxy runtime.
+app-owned configuration modules. The parent process keeps only lightweight
+bootstrap state and route-base matchers; the worker reconstructs planner state
+from the persisted bootstrap manifest, reuses one long-lived session per
+bootstrap generation, and returns lazy route classifications on demand.
 
 ## Capabilities
 
 - Two operation modes optimized for their respective environments
+- Standalone CLI with explicit route-handlers config and locale semantics
 - Lazy on-demand route discovery in development
-- Multi-level caching for fast rebuilds and instant dev restarts
+- Cross-restart dev reuse through persisted bootstrap and lazy single-route
+  caches under `.next/cache`
+- Optional dev-only `instrumentation.ts` worker prewarm
+- Phase-local artifact ownership that avoids dev/build cache contamination
 - Install rewrite integration without mutating the incoming Next config object
 - Resolve app-level and target-level route handler config in one shared shape
 - Discover content pages and generate handler artifacts per target
 - Reuse handler bindings for processor-driven route planning
 - Support multi-target setups such as `docs` plus `blog`
-- Offer both generation and analyze-only CLI modes
 - Locale-aware routing with configurable detection modes
 - Phase-aware behavior — only active during development, build, and production server phases
 
@@ -608,5 +685,6 @@ route, and returns the result to the proxy runtime.
 |---|---|
 | `adapterPath` | Adapter entry point — hooks into Next.js config resolution |
 | `rewrites()` → `beforeFiles` | Routes heavy-page traffic to generated handlers in production |
-| `proxy.ts` (root file) | Intercepts and classifies requests on demand in development |
+| `proxy.ts` (root file) | Intercepts and classifies requests on demand in development; existing `proxy.*` or `middleware.*` files at the root or under `src/` are treated as conflicts |
+| `instrumentation.ts` (root file) | Optional dev-only worker-session prewarm when `workerPrewarm: 'instrumentation'` is enabled |
 | Phase constants | Selects rewrite mode (build/serve) or proxy mode (dev) |
