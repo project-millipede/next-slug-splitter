@@ -116,6 +116,15 @@ These files are auto-generated and gitignored. Each one imports exactly the comp
 
 `pages/docs/[...slug].tsx` uses `withHeavyRouteFilter` to exclude slugs that are already served by generated handlers, preventing duplicate routes. Its `loadableRegistrySubset` is empty, so no component code is bundled.
 
+## Advanced Scope
+
+Nested MDX imports are supported by default, including cases where a parent
+MDX file imports child MDX content that uses heavy components.
+
+This demo intentionally keeps the content examples flat and does not
+demonstrate nested MDX resolution so the main light-versus-heavy routing story
+stays small.
+
 ## Handler Processor
 
 The default demo path uses `config-variants/javascript/`.
