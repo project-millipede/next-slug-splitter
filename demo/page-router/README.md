@@ -67,19 +67,21 @@ The ballast files in this demo simulate realistic dependency sizes (visualizatio
 # From the repository root
 pnpm install
 
-# Start the demo with JavaScript config (default)
+# Start the demo with the default JavaScript package-exports config
 cd demo/page-router
 pnpm dev
 
-# Or with TypeScript config
+# Optional: exercise the TypeScript package-exports config instead
 pnpm dev:ts
 ```
 
-The `dev` script automatically:
-1. Selects the active config variant through a tiny manifest file
+The default `dev` script automatically:
+1. Selects the JavaScript package-based handler processor
 2. Generates ballast files (simulated heavy dependencies)
-3. Cleans any previously generated handlers
-4. Starts the Next.js dev server
+3. Starts the Next.js dev server
+
+Use `pnpm dev:ts` if you want to run the same demo through the optional
+TypeScript package-based processor path.
 
 ## What to Look At
 
@@ -89,6 +91,9 @@ Run a production build and inspect the output:
 
 ```bash
 pnpm build
+
+# Optional: build the TypeScript package-exports variant instead
+pnpm build:ts
 ```
 
 Compare the bundle sizes in the build output:
@@ -111,66 +116,44 @@ These files are auto-generated and gitignored. Each one imports exactly the comp
 
 `pages/docs/[...slug].tsx` uses `withHeavyRouteFilter` to exclude slugs that are already served by generated handlers, preventing duplicate routes. Its `loadableRegistrySubset` is empty, so no component code is bundled.
 
-## Config Variants
+## Handler Processor
 
-The demo supports four variants across two configuration styles:
-- `javascript`
-- `typescript`
-- `javascript-package`
-- `typescript-package`
+The default demo path uses `config-variants/javascript-package/`.
+An optional TypeScript authoring variant lives in
+`config-variants/typescript-package/`.
 
-Source files live in `config-variants/`:
+Both center on the same package boundary:
 
+```js
+const componentsModule = packageModule('@demo/components');
 ```
-config-variants/
-├── javascript/          ← .mjs files with JSDoc types
-│   ├── next.config.mjs
-│   ├── route-handlers-config.mjs
-│   ├── component-registry.mjs
-│   └── handler-processor.mjs
-├── javascript-package/  ← .mjs package-exports variant
-├── typescript/          ← .ts files with native types
-│   ├── next.config.ts
-│   ├── route-handlers-config.ts
-│   ├── component-registry.ts
-│   └── handler-processor.ts
-└── typescript-package/  ← .ts package-exports variant
-```
+
+Every captured component key already maps to a named export from that workspace
+package, so the processor can emit direct package imports without maintaining a
+local module registry.
+
+The JavaScript and TypeScript package variants now stay behaviorally aligned:
+both attach the same runtime-trait metadata and use the same runtime-aware
+handler factory. The difference is only the authoring style and the TypeScript
+prepare step.
 
 Use the ready-made scripts:
 
 ```bash
-pnpm dev         # JavaScript module-map variant
-pnpm dev:ts      # TypeScript module-map variant
-pnpm dev:js-pkg  # JavaScript package-exports variant
-pnpm dev:ts-pkg  # TypeScript package-exports variant
+pnpm dev       # Start the default JavaScript package-exports variant
+pnpm build     # Build the default JavaScript package-exports variant
+pnpm start     # Start the default JavaScript package-exports variant
 
-pnpm build       # Build the JavaScript module-map variant
-pnpm build:ts    # Build the TypeScript module-map variant
-pnpm build:js-pkg  # Build the JavaScript package-exports variant
-pnpm build:ts-pkg  # Build the TypeScript package-exports variant
-
-pnpm start       # Start the JavaScript module-map variant
-pnpm start:ts    # Start the TypeScript module-map variant
-pnpm start:js-pkg  # Start the JavaScript package-exports variant
-pnpm start:ts-pkg  # Start the TypeScript package-exports variant
+pnpm dev:ts    # Optional: start the TypeScript package-exports variant
+pnpm build:ts  # Optional: build the TypeScript package-exports variant
+pnpm start:ts  # Start the TypeScript package-exports variant
 ```
 
-The root `next.config.ts` and `route-handlers-config.ts` stay stable. The active variant is derived from the current package script name through `npm_lifecycle_event`, so matching `dev:*`, `build:*`, and `start:*` scripts share the same variant suffix.
-
-Important: `npm_lifecycle_event` is the script key that was invoked from
-`package.json`, not the command body. So `build` and `build:ts` can both run
-`next build`, while the stable root config still resolves different active
-variants from the script name.
-
-Example mapping:
-
-```txt
-pnpm build         -> npm_lifecycle_event = "build"         -> javascript
-pnpm build:ts      -> npm_lifecycle_event = "build:ts"      -> typescript
-pnpm start:js-pkg  -> npm_lifecycle_event = "start:js-pkg"  -> javascript-package
-pnpm start:ts-pkg  -> npm_lifecycle_event = "start:ts-pkg"  -> typescript-package
-```
+The root `next.config.ts` and `route-handlers-config.ts` stay stable. The
+active variant is derived from the current package script name through
+`npm_lifecycle_event`, so `dev`, `build`, and `start` select the JavaScript
+package variant by default, while `dev:ts`, `build:ts`, and `start:ts` select
+the optional TypeScript package variant.
 
 ## Dev 404 Retry Workaround
 
@@ -183,8 +166,8 @@ This is not part of the core route-classification logic, and production builds d
 ## Project Structure
 
 ```
-demo/
-├── config-variants/         ← source-of-truth config files (JS + TS)
+.
+├── config-variants/         ← source-of-truth package-based demo configs
 ├── content/pages/           ← MDX content files
 │   ├── getting-started.mdx  ← light (pure Markdown)
 │   ├── tutorial.mdx         ← light (pure Markdown)
@@ -193,7 +176,7 @@ demo/
 ├── lib/
 │   ├── components/          ← React components with simulated ballast
 │   ├── content.ts           ← MDX file discovery and compilation
-│   ├── handler-factory/     ← page component factory (variant: none)
+│   ├── handler-factory/     ← shared page component factory
 │   └── mdx-runtime.tsx      ← client-side MDX evaluation
 ├── pages/
 │   ├── _app.tsx             ← shared layout shell

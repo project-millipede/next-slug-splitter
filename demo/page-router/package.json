@@ -10,16 +10,10 @@
     "clean:all": "node scripts/erase-generated-dev-state.mjs",
     "dev": "pnpm generate:ballast && next dev",
     "dev:ts": "pnpm generate:ballast && next dev",
-    "dev:js-pkg": "pnpm generate:ballast && next dev",
-    "dev:ts-pkg": "pnpm generate:ballast && next dev",
     "build": "pnpm generate:ballast && pnpm clean:handlers && next build",
     "build:ts": "pnpm generate:ballast && pnpm clean:handlers && next build",
-    "build:js-pkg": "pnpm generate:ballast && pnpm clean:handlers && next build",
-    "build:ts-pkg": "pnpm generate:ballast && pnpm clean:handlers && next build",
     "start": "next start",
     "start:ts": "next start",
-    "start:js-pkg": "next start",
-    "start:ts-pkg": "next start",
     "analyze:turbo": "pnpm next experimental-analyze"
   },
   "dependencies": {

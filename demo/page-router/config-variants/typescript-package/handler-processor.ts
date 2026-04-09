@@ -14,8 +14,8 @@
  * object to each returned component entry.
  *
  * The demo uses one small runtime-aware factory that reads the emitted
- * metadata at render time. This keeps the example visible without needing the
- * full millipede runtime split.
+ * metadata at render time. This keeps the runtime-trait example visible
+ * without introducing a separate app-specific runtime split into the demo.
  *
  * This file is compiled to JavaScript via a `prepare` step
  * (`tsconfig.processor.json`) before the pipeline loads it at runtime.

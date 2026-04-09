@@ -10,7 +10,7 @@
 import type { GetStaticProps } from 'next';
 import { withHeavyRouteFilter } from 'next-slug-splitter/next/lookup';
 
-import { createHandlerPage } from '../../lib/handler-factory/none';
+import { createHandlerPage } from '../../lib/handler-factory/runtime';
 import { getAllContentSlugs, compileContentForSlug } from '../../lib/content';
 
 /**

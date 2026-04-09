@@ -8,3 +8,7 @@ pages/docs/_handlers/
 
 # Auto-generated ballast files (created by scripts/generate-ballast.mjs)
 lib/components/*-ballast.ts
+
+# Auto-generated proxy and instrumentation files
+proxy.ts
+instrumentation.ts
