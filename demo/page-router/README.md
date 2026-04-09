@@ -67,21 +67,21 @@ The ballast files in this demo simulate realistic dependency sizes (visualizatio
 # From the repository root
 pnpm install
 
-# Start the demo with the default JavaScript package-exports config
+# Start the demo with the default JavaScript config
 cd demo/page-router
 pnpm dev
 
-# Optional: exercise the TypeScript package-exports config instead
+# Optional: exercise the TypeScript config instead
 pnpm dev:ts
 ```
 
 The default `dev` script automatically:
-1. Selects the JavaScript package-based handler processor
+1. Selects the JavaScript variant
 2. Generates ballast files (simulated heavy dependencies)
 3. Starts the Next.js dev server
 
 Use `pnpm dev:ts` if you want to run the same demo through the optional
-TypeScript package-based processor path.
+TypeScript variant instead.
 
 ## What to Look At
 
@@ -92,7 +92,7 @@ Run a production build and inspect the output:
 ```bash
 pnpm build
 
-# Optional: build the TypeScript package-exports variant instead
+# Optional: build the TypeScript variant instead
 pnpm build:ts
 ```
 
@@ -118,9 +118,9 @@ These files are auto-generated and gitignored. Each one imports exactly the comp
 
 ## Handler Processor
 
-The default demo path uses `config-variants/javascript-package/`.
+The default demo path uses `config-variants/javascript/`.
 An optional TypeScript authoring variant lives in
-`config-variants/typescript-package/`.
+`config-variants/typescript/`.
 
 Both center on the same package boundary:
 
@@ -132,7 +132,7 @@ Every captured component key already maps to a named export from that workspace
 package, so the processor can emit direct package imports without maintaining a
 local module registry.
 
-The JavaScript and TypeScript package variants now stay behaviorally aligned:
+The JavaScript and TypeScript variants stay behaviorally aligned:
 both attach the same runtime-trait metadata and use the same runtime-aware
 handler factory. The difference is only the authoring style and the TypeScript
 prepare step.
@@ -140,20 +140,20 @@ prepare step.
 Use the ready-made scripts:
 
 ```bash
-pnpm dev       # Start the default JavaScript package-exports variant
-pnpm build     # Build the default JavaScript package-exports variant
-pnpm start     # Start the default JavaScript package-exports variant
+pnpm dev       # Start the default JavaScript variant
+pnpm build     # Build the default JavaScript variant
+pnpm start     # Start the default JavaScript variant
 
-pnpm dev:ts    # Optional: start the TypeScript package-exports variant
-pnpm build:ts  # Optional: build the TypeScript package-exports variant
-pnpm start:ts  # Start the TypeScript package-exports variant
+pnpm dev:ts    # Optional: start the TypeScript variant
+pnpm build:ts  # Optional: build the TypeScript variant
+pnpm start:ts  # Optional: start the TypeScript variant
 ```
 
 The root `next.config.ts` and `route-handlers-config.ts` stay stable. The
 active variant is derived from the current package script name through
 `npm_lifecycle_event`, so `dev`, `build`, and `start` select the JavaScript
-package variant by default, while `dev:ts`, `build:ts`, and `start:ts` select
-the optional TypeScript package variant.
+variant by default, while `dev:ts`, `build:ts`, and `start:ts` select the
+optional TypeScript variant.
 
 ## Dev 404 Retry Workaround
 
@@ -167,7 +167,7 @@ This is not part of the core route-classification logic, and production builds d
 
 ```
 .
-├── config-variants/         ← source-of-truth package-based demo configs
+├── config-variants/         ← source-of-truth demo variant configs
 ├── content/pages/           ← MDX content files
 │   ├── getting-started.mdx  ← light (pure Markdown)
 │   ├── tutorial.mdx         ← light (pure Markdown)

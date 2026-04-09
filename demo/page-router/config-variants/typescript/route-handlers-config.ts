@@ -1,17 +1,9 @@
 /**
- * Route handler configuration for the demo.
+ * Route handler configuration for the demo (TypeScript variant).
  *
  * Defines a single catch-all target under the `/docs/` route segment.
- * The configuration tells next-slug-splitter:
- *
- * - Where content pages live on disk (`contentPagesDir`).
- * - How the catch-all route parameter is shaped (`handlerRouteParam`).
- * - Where to find the handler processor that maps captured keys to
- *   component imports and a factory import (`handlerBinding`).
- *
- * Module references use `relativeModule` so the code generator emits
- * import paths relative to the application root, independent of the
- * working directory at build time.
+ * The processor is a local TypeScript file compiled to JavaScript via
+ * the `prepare` step before the pipeline loads it at runtime.
  */
 
 import path from 'node:path';
@@ -19,7 +11,9 @@ import process from 'node:process';
 
 import {
   relativeModule,
-  createCatchAllRouteHandlersPreset
+  createCatchAllRouteHandlersPreset,
+  type DynamicRouteParam,
+  type RouteHandlersConfig
 } from 'next-slug-splitter/next';
 
 // ---------------------------------------------------------------------------
@@ -37,8 +31,7 @@ const rootDir = process.cwd();
  * The `name` must match the parameter name used in the file-system route
  * (`pages/docs/[...slug].tsx`).
  */
-/** @type {import('next-slug-splitter/next').DynamicRouteParam} */
-const docsHandlerRouteParam = {
+const docsHandlerRouteParam: DynamicRouteParam = {
   name: 'slug',
   kind: 'catch-all'
 };
@@ -47,10 +40,14 @@ const docsHandlerRouteParam = {
 // Config
 // ---------------------------------------------------------------------------
 
-/** @type {import('next-slug-splitter/next').RouteHandlersConfig} */
-export const routeHandlersConfig = {
+export const routeHandlersConfig: RouteHandlersConfig = {
   app: {
-    rootDir
+    rootDir,
+    prepare: {
+      tsconfigPath: relativeModule(
+        'config-variants/typescript/tsconfig.processor.json'
+      )
+    }
   },
   targets: [
     createCatchAllRouteHandlersPreset({
@@ -59,17 +56,11 @@ export const routeHandlersConfig = {
       contentPagesDir: path.join(rootDir, 'content', 'pages'),
       contentLocaleMode: 'default-locale',
 
-      /**
-       * Handler binding — connects generated handler pages to the app's
-       * component resolution and rendering pipeline.
-       *
-       * `processorImport` — module exporting the route handler processor
-       * that maps captured keys to component imports and a factory import.
-       */
       handlerBinding: {
-        processorImport: relativeModule(
-          'config-variants/javascript-package/handler-processor'
-        )
+        // `prepare` compiles the processor into the app-root `dist/` folder.
+        // Runtime always loads that compiled artifact, so `processorImport`
+        // must stay aligned with the processor tsconfig `outDir`.
+        processorImport: relativeModule('dist/handler-processor')
       }
     })
   ]

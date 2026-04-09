@@ -1,5 +1,5 @@
 /**
- * Route handler processor — package-exports variant (TypeScript).
+ * Route handler processor — JavaScript variant.
  *
  * The processor tells next-slug-splitter how to resolve captured components
  * and which factory import to use for each heavy route.
@@ -17,8 +17,8 @@
  * metadata at render time. This keeps the runtime-trait example visible
  * without introducing a separate app-specific runtime split into the demo.
  *
- * This file is compiled to JavaScript via a `prepare` step
- * (`tsconfig.processor.json`) before the pipeline loads it at runtime.
+ * This file already runs as JavaScript, so the pipeline can load it at
+ * runtime without a prepare step.
  */
 
 import {
@@ -33,9 +33,7 @@ import {
 
 // Shared package boundary reused for every generated component import.
 const componentsModule = packageModule('@demo/components');
-const metadataByKey: Readonly<
-  Partial<Record<string, { runtimeTraits: string[] }>>
-> = {
+const metadataByKey = {
   Chart: {
     runtimeTraits: ['wrapper']
   },
@@ -47,6 +45,15 @@ const metadataByKey: Readonly<
   }
 };
 
+/**
+ * The exported processor implements the `RouteHandlerProcessor` contract.
+ *
+ * Each captured key already matches a named export from
+ * `@demo/components`, so `resolve` can return the final generation plan
+ * directly without a module-map lookup step.
+ *
+ * @type {import('next-slug-splitter/next').RouteHandlerProcessor}
+ */
 export const routeHandlerProcessor = defineRouteHandlerProcessor({
   resolve({ capturedComponentKeys }) {
     return {
