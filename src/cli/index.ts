@@ -3,7 +3,7 @@
 import process from 'process';
 
 import { loadSlugSplitterConfigFromPath } from '../next/integration/slug-splitter-config-loader';
-import { executeRouteHandlerNextPipeline } from '../next/shared/runtime';
+import { executeRouteHandlerNextPipeline } from '../next/pages/runtime';
 import {
   formatNextSlugSplitterMessage,
   formatNextSlugSplitterMessageLines

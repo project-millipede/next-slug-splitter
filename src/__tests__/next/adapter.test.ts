@@ -26,7 +26,7 @@ vi.mock(import('../../next/shared/prepare/index'), () => ({
   prepareRouteHandlersFromConfig: prepareRouteHandlersFromConfigMock
 }));
 
-vi.mock(import('../../next/shared/config/resolve-configs'), () => ({
+vi.mock(import('../../next/pages/config/resolve-configs'), () => ({
   resolveRouteHandlersConfigsFromAppConfig:
     resolveRouteHandlersConfigsFromAppConfigMock
 }));
@@ -49,7 +49,7 @@ vi.mock(import('../../next/shared/phase-artifacts'), () => ({
     synchronizeRouteHandlerPhaseArtifactsMock
 }));
 
-vi.mock(import('../../next/shared/runtime'), () => ({
+vi.mock(import('../../next/pages/runtime'), () => ({
   executeResolvedRouteHandlerNextPipeline:
     executeResolvedRouteHandlerNextPipelineMock
 }));

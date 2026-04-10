@@ -21,11 +21,11 @@ import {
 } from '../../../module-reference';
 import { createCatchAllRouteHandlersPreset } from '../../../next/config/index';
 import { resolveRouteHandlersAppConfig } from '../../../next/shared/config/app';
-import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../../next/shared/config/resolve-configs';
+import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../../next/pages/config/resolve-configs';
 import {
   normalizeRouteHandlersTargetOptions,
   normalizeRouteHandlersTargetRuntimeAttachments
-} from '../../../next/shared/config/resolve-target';
+} from '../../../next/pages/config/resolve-target';
 import { resolveRouteHandlerPreparations } from '../../../next/shared/config/app';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,

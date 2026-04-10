@@ -17,14 +17,14 @@ import { resolveRouteHandlersConfigsFromAppConfig } from '../config/resolve-conf
 import {
   loadRouteHandlersConfigOrRegistered,
   resolveRouteHandlersAppContext
-} from '../bootstrap/route-handlers-bootstrap';
-import { prepareRouteHandlersFromConfig } from '../prepare/index';
+} from '../../shared/bootstrap/route-handlers-bootstrap';
+import { prepareRouteHandlersFromConfig } from '../../shared/prepare/index';
 
 import type { LocaleConfig } from '../../../core/types';
 import type {
   ResolvedRouteHandlersConfig,
   RouteHandlersEntrypointInput
-} from '../../pages/types';
+} from '../types';
 
 /**
  * Input for loading resolved route handlers configurations.

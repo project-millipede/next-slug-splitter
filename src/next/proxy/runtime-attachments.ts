@@ -1,5 +1,5 @@
 import { createRuntimeError } from '../../utils/errors';
-import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../shared/config/resolve-configs';
+import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../pages/config/resolve-configs';
 import {
   loadSlugSplitterConfigFromPath
 } from '../integration/slug-splitter-config-loader';

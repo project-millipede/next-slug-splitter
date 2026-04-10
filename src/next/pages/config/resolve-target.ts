@@ -13,16 +13,16 @@ import type {
   ResolvedRouteHandlersAppConfig,
   ResolvedRouteHandlersRuntimeAttachments,
   RouteHandlerNextPaths
-} from '../types';
+} from '../../shared/types';
 import type {
   ResolvedRouteHandlersConfigBase,
   RouteHandlersConfig,
   RouteHandlersTargetConfig
-} from '../../pages/types';
-export type { ResolvedRouteHandlersConfigBase } from '../../pages/types';
+} from '../types';
+export type { ResolvedRouteHandlersConfigBase } from '../types';
 
 import { readProvidedOrRegisteredRouteHandlersConfig } from '../../integration/config-registry';
-import { resolveRouteHandlerBinding } from './handler-binding';
+import { resolveRouteHandlerBinding } from '../../shared/config/handler-binding';
 import {
   deriveTargetIdFromRouteBasePath,
   normalizeHandlerRouteParam,
@@ -31,9 +31,9 @@ import {
   readContentLocaleModeOption,
   readEmitFormatOption,
   readRequiredStringOption
-} from './options';
-import { resolveConfiguredPathOption } from '../../pages/config/paths';
-import { isObjectRecord, readObjectProperty } from './shared';
+} from '../../shared/config/options';
+import { resolveConfiguredPathOption } from './paths';
+import { isObjectRecord, readObjectProperty } from '../../shared/config/shared';
 import { ObjectRecord } from '../../../utils/type-guards-custom';
 
 /**

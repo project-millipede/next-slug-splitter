@@ -1,10 +1,8 @@
-import { buildRouteRewriteBuckets } from '../rewrites/index';
+import { buildRouteRewriteBuckets } from '../../shared/rewrites/index';
 
 import type { RouteHandlerPipelineResult } from '../../../core/types';
-import type {
-  ResolvedRouteHandlersConfig,
-  RouteHandlerNextResult
-} from '../types';
+import type { RouteHandlerNextResult } from '../../shared/types';
+import type { ResolvedRouteHandlersConfig } from '../types';
 
 /**
  * Convert one core pipeline result into the Next integration result shape.

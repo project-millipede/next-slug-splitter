@@ -13,7 +13,7 @@
  *
  * There is no longer any persisted build-side runtime cache in this layer.
  */
-import { synchronizeRouteHandlerPhaseArtifacts } from '../phase-artifacts';
+import { synchronizeRouteHandlerPhaseArtifacts } from '../../shared/phase-artifacts';
 import {
   loadResolvedRouteHandlersConfigs,
   type LoadResolvedRouteHandlersConfigsInput
@@ -21,8 +21,8 @@ import {
 import { executeRouteHandlerTarget } from './target/index';
 
 import type { PipelineMode } from '../../../core/types';
-import type { RouteHandlerNextResult } from '../types';
-import type { ResolvedRouteHandlersConfig } from '../../pages/types';
+import type { RouteHandlerNextResult } from '../../shared/types';
+import type { ResolvedRouteHandlersConfig } from '../types';
 
 /**
  * Input for executing the Next-integrated route-handler pipeline.

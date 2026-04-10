@@ -1,5 +1,5 @@
 import { resolveLocalizedContentRoute } from '../../../core/discovery';
-import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../shared/config/resolve-configs';
+import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../pages/config/resolve-configs';
 
 import type { LocaleConfig } from '../../../core/types';
 import type { ResolvedRouteHandlersAppConfig } from '../../shared/types';

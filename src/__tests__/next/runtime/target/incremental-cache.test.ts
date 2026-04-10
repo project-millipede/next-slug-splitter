@@ -15,7 +15,7 @@ vi.mock(import('../../../../core/capture'), () => ({
 }));
 
 import { createCatchAllRouteHandlersPreset } from '../../../../next/config';
-import { executeRouteHandlerNextPipeline } from '../../../../next/shared/runtime';
+import { executeRouteHandlerNextPipeline } from '../../../../next/pages/runtime';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   TEST_PRIMARY_CONTENT_PAGES_DIR,

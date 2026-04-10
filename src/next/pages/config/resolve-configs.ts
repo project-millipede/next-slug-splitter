@@ -5,15 +5,13 @@ import {
 import type { LocaleConfig } from '../../../core/types';
 import { isUndefined } from '../../../utils/type-guards';
 import { isNonEmptyArray } from '../../../utils/type-guards-extended';
-import type {
-  ResolvedRouteHandlersAppConfig
-} from '../types';
+import type { ResolvedRouteHandlersAppConfig } from '../../shared/types';
 import type {
   ResolvedRouteHandlersConfig,
   ResolvedRouteHandlersConfigBase,
   RouteHandlersConfig,
   RouteHandlersTargetConfig
-} from '../../pages/types';
+} from '../types';
 
 import {
   type NormalizedRouteHandlersTargetOptions,
@@ -22,7 +20,7 @@ import {
   normalizeRouteHandlersTargetOptions,
   resolveRouteHandlersConfigBase
 } from './resolve-target';
-import { isObjectRecord, readObjectProperty } from './shared';
+import { isObjectRecord, readObjectProperty } from '../../shared/config/shared';
 
 const MISSING_ROUTE_HANDLERS_CONFIG_ERROR_MESSAGE =
   'Missing registered routeHandlersConfig. Call withSlugSplitter(...) or createRouteHandlersAdapterPath(...) before exporting the Next config.';

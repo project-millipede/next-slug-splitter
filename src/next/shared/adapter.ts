@@ -23,7 +23,7 @@ import {
 } from 'next/constants.js';
 
 import { createConfigMissingError } from '../../utils/errors';
-import { resolveRouteHandlersConfigsFromAppConfig } from './config/resolve-configs';
+import { resolveRouteHandlersConfigsFromAppConfig } from '../pages/config/resolve-configs';
 import {
   loadRouteHandlersConfigOrRegistered,
   resolveRouteHandlersAppContext
@@ -45,7 +45,7 @@ import { synchronizeRouteHandlerPhaseArtifacts } from './phase-artifacts';
 import { synchronizeRouteHandlerProxyFile } from '../proxy/file-lifecycle';
 import { resolveRouteHandlerRoutingStrategy } from './policy/routing-strategy';
 import { deriveRouteHandlerRuntimeSemantics } from './runtime-semantics/derive';
-import { executeResolvedRouteHandlerNextPipeline } from './runtime';
+import { executeResolvedRouteHandlerNextPipeline } from '../pages/runtime';
 import { synchronizeRouteHandlerInstrumentationFile } from '../proxy/instrumentation/file-lifecycle';
 
 /**
