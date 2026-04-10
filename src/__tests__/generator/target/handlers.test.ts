@@ -2,8 +2,8 @@ import { access, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { emitRouteHandlerPages } from '../../../generator/target/handlers';
-import { renderRouteHandlerModules } from '../../../generator/protocol/render-modules';
+import { emitRouteHandlerPages } from '../../../generator/pages/target/handlers';
+import { renderRouteHandlerModules } from '../../../generator/pages/protocol/render-modules';
 import { absoluteModule, packageModule } from '../../../module-reference';
 import {
   createContentHandlerModuleInput,

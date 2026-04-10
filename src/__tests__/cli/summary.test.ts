@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import { formatRouteHandlerCliSummary } from '../../cli/summary';
 
-import type { RouteHandlerNextResult } from '../../next/types';
+import type { RouteHandlerNextResult } from '../../next/shared/types';
 
 describe('cli summary formatting', () => {
   const result: RouteHandlerNextResult = {

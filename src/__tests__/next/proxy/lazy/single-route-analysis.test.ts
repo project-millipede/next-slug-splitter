@@ -10,8 +10,8 @@ vi.mock(import('../../../../core/capture'), () => ({
 }));
 
 import { createCatchAllRouteHandlersPreset } from '../../../../next/config';
-import { resolveRouteHandlersConfigsFromAppConfig } from '../../../../next/config/resolve-configs';
-import { resolveRouteHandlersAppContext } from '../../../../next/internal/route-handlers-bootstrap';
+import { resolveRouteHandlersConfigsFromAppConfig } from '../../../../next/shared/config/resolve-configs';
+import { resolveRouteHandlersAppContext } from '../../../../next/shared/bootstrap/route-handlers-bootstrap';
 import {
   resolveRouteHandlerLazyRequest,
   resolveRouteHandlerLazyResolvedTargetsFromAppConfig
@@ -33,7 +33,7 @@ import type {
   ResolvedRouteHandlersConfig,
   RouteHandlersConfig,
   RouteHandlersTargetConfig
-} from '../../../../next/types';
+} from '../../../../next/shared/types';
 import type { RouteHandlerLazyResolvedTarget } from '../../../../next/proxy/lazy/types';
 
 const TEST_LOCALE_CONFIG = {

@@ -12,7 +12,7 @@ import type {
   ResolvedModuleReference,
   RouteHandlerNextPaths,
   RouteHandlerNextResult
-} from '../../next/types';
+} from '../../next/shared/types';
 
 import {
   TEST_COMPONENT_IMPORT_NAME,

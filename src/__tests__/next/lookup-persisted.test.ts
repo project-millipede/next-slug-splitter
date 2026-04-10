@@ -8,7 +8,7 @@ import {
   resolveRouteHandlerLookupSnapshotPath,
   serializeRouteHandlerLookupSnapshot,
   writeRouteHandlerLookupSnapshot
-} from '../../next/lookup-persisted';
+} from '../../next/shared/lookup-persisted';
 import { createHeavyRoute } from '../helpers/builders';
 import { withTempDir } from '../helpers/temp-dir';
 

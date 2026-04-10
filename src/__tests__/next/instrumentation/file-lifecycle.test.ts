@@ -5,15 +5,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 
 import { createCatchAllRouteHandlersPreset } from '../../../next/config';
-import { synchronizeRouteHandlerInstrumentationFile } from '../../../next/instrumentation/file-lifecycle';
-import { resolveRouteHandlerRoutingStrategy } from '../../../next/policy/routing-strategy';
+import { synchronizeRouteHandlerInstrumentationFile } from '../../../next/proxy/instrumentation/file-lifecycle';
+import { resolveRouteHandlerRoutingStrategy } from '../../../next/shared/policy/routing-strategy';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   createTestHandlerBinding
 } from '../../helpers/fixtures';
 import { withTempDir } from '../../helpers/temp-dir';
 
-import type { RouteHandlersConfig } from '../../../next/types';
+import type { RouteHandlersConfig } from '../../../next/shared/types';
 
 const SYNTHETIC_INSTRUMENTATION_MARKER =
   'next-slug-splitter:experimental-proxy-instrumentation';

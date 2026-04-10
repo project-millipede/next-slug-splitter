@@ -2,11 +2,11 @@ import {
   doesRouteHandlerOutputFileExist,
   synchronizeRenderedRouteHandlerPage,
   type RouteHandlerOutputSynchronizationStatus
-} from '../../../generator/protocol/output-lifecycle';
+} from '../../../generator/shared/protocol/output-lifecycle';
 import {
   renderRouteHandlerPage,
   resolveRenderedHandlerPageLocation
-} from '../../../generator/protocol/rendered-page';
+} from '../../../generator/pages/protocol/rendered-page';
 
 import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
 

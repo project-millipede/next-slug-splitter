@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { packageModule } from '../../module-reference';
 import type { ModuleReference } from '../../module-reference';
-import type { RouteHandlerBinding } from '../../next/types';
+import type { RouteHandlerBinding } from '../../next/shared/types';
 import type { LocaleConfig } from '../../core/types';
 
 export const TEST_PRIMARY_ROUTE_SEGMENT = 'content';

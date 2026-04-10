@@ -2,8 +2,8 @@ import { toHandlerRelativePath } from '../../../core/discovery';
 import {
   removeRenderedRouteHandlerPageIfPresent,
   type EmittedHandlerPageRemovalStatus
-} from '../../../generator/protocol/output-lifecycle';
-import { resolveRenderedHandlerPageLocation } from '../../../generator/protocol/rendered-page';
+} from '../../../generator/shared/protocol/output-lifecycle';
+import { resolveRenderedHandlerPageLocation } from '../../../generator/pages/protocol/rendered-page';
 
 import type {
   RouteHandlerLazyOutputConfig,

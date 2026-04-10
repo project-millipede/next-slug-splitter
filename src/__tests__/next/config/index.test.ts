@@ -20,13 +20,13 @@ import {
   relativeModule
 } from '../../../module-reference';
 import { createCatchAllRouteHandlersPreset } from '../../../next/config/index';
-import { resolveRouteHandlersAppConfig } from '../../../next/config/app';
-import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../../next/config/resolve-configs';
+import { resolveRouteHandlersAppConfig } from '../../../next/shared/config/app';
+import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../../next/shared/config/resolve-configs';
 import {
   normalizeRouteHandlersTargetOptions,
   normalizeRouteHandlersTargetRuntimeAttachments
-} from '../../../next/config/resolve-target';
-import { resolveRouteHandlerPreparations } from '../../../next/config/app';
+} from '../../../next/shared/config/resolve-target';
+import { resolveRouteHandlerPreparations } from '../../../next/shared/config/app';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   TEST_PRIMARY_CONTENT_PAGES_DIR,
@@ -38,7 +38,7 @@ import {
   createTestHandlerBinding
 } from '../../helpers/fixtures';
 
-import type { RouteHandlersConfig } from '../../../next/types';
+import type { RouteHandlersConfig } from '../../../next/shared/types';
 
 function testRemarkPlugin() {}
 function testRecmaPlugin() {}

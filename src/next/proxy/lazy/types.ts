@@ -5,7 +5,7 @@ import type {
 } from '../../../core/types';
 import type { PlannedHeavyRoute } from '../../../core/types';
 import type { LocaleConfig } from '../../../core/types';
-import type { RouteHandlerOutputSynchronizationStatus } from '../../../generator/protocol/output-lifecycle';
+import type { RouteHandlerOutputSynchronizationStatus } from '../../../generator/shared/protocol/output-lifecycle';
 import type { RouteHandlerPlannerConfig } from '../../shared/types';
 import type { RouteHandlerLazySingleRouteCacheManager } from './single-route-cache-manager';
 

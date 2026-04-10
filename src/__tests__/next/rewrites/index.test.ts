@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'vitest';
 
-import { buildRouteRewriteEntries } from '../../../next/rewrites/index';
+import { buildRouteRewriteEntries } from '../../../next/shared/rewrites/index';
 import { createHeavyRoute } from '../../helpers/builders';
 
 import type { LocaleConfig } from '../../../core/types';
-import type { RouteHandlerRewrite } from '../../../next/types';
+import type { RouteHandlerRewrite } from '../../../next/shared/types';
 
 describe('rewrite generation', () => {
   const multiLocaleHeavyRoutes = [

@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { loadRouteHandlerProxyRuntimeAttachments } from '../../../next/internal/runtime-attachments';
+import { loadRouteHandlerProxyRuntimeAttachments } from '../../../next/proxy/runtime-attachments';
 import { withTempDir } from '../../helpers/temp-dir';
 
 const writeRuntimeAttachmentsConfig = async (
