@@ -6,7 +6,7 @@ import {
 } from './route-plan-record';
 
 import type { PlannedHeavyRoute } from '../../../core/types';
-import type { RouteHandlerPlannerConfig } from '../../shared/types';
+import type { RouteHandlerPlannerConfig } from '../../pages/types';
 import type {
   RouteHandlerLazyMatchedRouteInput,
   RouteHandlerLazySingleRouteAnalysisResult

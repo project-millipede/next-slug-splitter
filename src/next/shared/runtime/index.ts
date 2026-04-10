@@ -21,10 +21,8 @@ import {
 import { executeRouteHandlerTarget } from './target/index';
 
 import type { PipelineMode } from '../../../core/types';
-import type {
-  ResolvedRouteHandlersConfig,
-  RouteHandlerNextResult
-} from '../types';
+import type { RouteHandlerNextResult } from '../types';
+import type { ResolvedRouteHandlersConfig } from '../../pages/types';
 
 /**
  * Input for executing the Next-integrated route-handler pipeline.

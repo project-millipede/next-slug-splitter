@@ -11,13 +11,15 @@ import type { RouteHandlerMdxCompileOptions } from '../../../core/types';
 import type {
   ModuleReference,
   ResolvedRouteHandlersAppConfig,
-  ResolvedRouteHandlersConfigBase,
   ResolvedRouteHandlersRuntimeAttachments,
-  RouteHandlerNextPaths,
+  RouteHandlerNextPaths
+} from '../types';
+import type {
+  ResolvedRouteHandlersConfigBase,
   RouteHandlersConfig,
   RouteHandlersTargetConfig
-} from '../types';
-export type { ResolvedRouteHandlersConfigBase } from '../types';
+} from '../../pages/types';
+export type { ResolvedRouteHandlersConfigBase } from '../../pages/types';
 
 import { readProvidedOrRegisteredRouteHandlersConfig } from '../../integration/config-registry';
 import { resolveRouteHandlerBinding } from './handler-binding';

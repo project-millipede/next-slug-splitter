@@ -16,7 +16,7 @@ import { withTempDir } from '../../helpers/temp-dir';
 import type {
   ResolvedRouteHandlersConfig,
   RouteHandlersConfig
-} from '../../../next/shared/types';
+} from '../../../next/pages/types';
 
 const SYNTHETIC_PROXY_MARKER =
   'next-slug-splitter:experimental-synthetic-proxy';

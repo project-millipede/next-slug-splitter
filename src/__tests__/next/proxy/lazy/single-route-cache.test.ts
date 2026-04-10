@@ -11,7 +11,7 @@ vi.mock('file-entry-cache', () => ({
 
 import { createRouteHandlerLazySingleRouteCacheManager } from '../../../../next/proxy/lazy/single-route-cache-manager';
 
-import type { RouteHandlerPlannerConfig } from '../../../../next/shared/types';
+import type { RouteHandlerPlannerConfig } from '../../../../next/pages/types';
 
 type MockFileDescriptor = {
   changed: boolean;

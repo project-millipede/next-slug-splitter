@@ -18,10 +18,8 @@ import type {
   PipelineMode,
   RouteHandlerPipelineResult
 } from '../../../../core/types';
-import type {
-  ResolvedRouteHandlersConfig,
-  RouteHandlerNextResult
-} from '../../types';
+import type { RouteHandlerNextResult } from '../../types';
+import type { ResolvedRouteHandlersConfig } from '../../../pages/types';
 
 /**
  * Execute one resolved route-handler target directly against the core pipeline.

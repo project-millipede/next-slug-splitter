@@ -33,7 +33,7 @@ import type {
   ResolvedRouteHandlersConfig,
   RouteHandlersConfig,
   RouteHandlersTargetConfig
-} from '../../../../next/shared/types';
+} from '../../../../next/pages/types';
 import type { RouteHandlerLazyResolvedTarget } from '../../../../next/proxy/lazy/types';
 
 const TEST_LOCALE_CONFIG = {

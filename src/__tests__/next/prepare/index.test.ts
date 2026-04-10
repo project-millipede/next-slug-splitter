@@ -24,7 +24,7 @@ import { prepareRouteHandlersFromConfig } from '../../../next/shared/prepare/ind
 import * as prepareTypeScript from '../../../next/shared/prepare/typescript';
 import { resetMockFs, seedMockFsFiles } from '../../__utils__/mock-fs';
 
-import type { RouteHandlersConfig } from '../../../next/shared/types';
+import type { RouteHandlersConfig } from '../../../next/pages/types';
 
 type MockChildProcess = EventEmitter & {
   stdout: PassThrough;

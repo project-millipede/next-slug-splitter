@@ -38,7 +38,7 @@ import {
   createTestHandlerBinding
 } from '../../helpers/fixtures';
 
-import type { RouteHandlersConfig } from '../../../next/shared/types';
+import type { RouteHandlersConfig } from '../../../next/pages/types';
 
 function testRemarkPlugin() {}
 function testRecmaPlugin() {}

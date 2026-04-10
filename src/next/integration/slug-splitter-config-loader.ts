@@ -1,7 +1,7 @@
 import { pathToFileURL } from 'node:url';
 
 import { createConfigError } from '../../utils/errors';
-import type { RouteHandlersConfig } from '../shared/types';
+import type { RouteHandlersConfig } from '../pages/types';
 
 import { isObjectRecord, readObjectProperty } from '../shared/config/shared';
 import {

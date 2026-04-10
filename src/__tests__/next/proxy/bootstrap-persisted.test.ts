@@ -15,7 +15,7 @@ import {
 import { withTempDir } from '../../helpers/temp-dir';
 
 import type { LocaleConfig } from '../../../core/types';
-import type { ResolvedRouteHandlersConfig } from '../../../next/shared/types';
+import type { ResolvedRouteHandlersConfig } from '../../../next/pages/types';
 
 const TEST_LOCALE_CONFIG: LocaleConfig = {
   locales: ['en', 'de'],

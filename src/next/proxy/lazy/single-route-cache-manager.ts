@@ -2,7 +2,7 @@ import { type FileEntryCache } from 'file-entry-cache';
 
 import type { LocalizedRoutePath } from '../../../core/types';
 import type { PersistedRouteCaptureRecord } from './route-plan-record';
-import type { RouteHandlerPlannerConfig } from '../../shared/types';
+import type { RouteHandlerPlannerConfig } from '../../pages/types';
 
 import {
   createRouteHandlerLazySingleRouteFileCache,

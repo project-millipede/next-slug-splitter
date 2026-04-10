@@ -1,7 +1,7 @@
 import type {
   RouteHandlersConfig,
   RouteHandlersTargetConfig
-} from '../shared/types';
+} from '../pages/types';
 
 const ROUTE_HANDLERS_CONFIG_SYMBOL = Symbol.for(
   'next-slug-splitter/next/config'

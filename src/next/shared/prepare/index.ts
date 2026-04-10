@@ -26,7 +26,7 @@ import { resolveAppLocalTypeScriptCompilerPath } from './typescript';
 
 import type {
   ResolvedRouteHandlerPreparation,
-  RouteHandlersConfig
+  RouteHandlersConfigBase
 } from '../types';
 
 // Cache-policy note: prepare keeps only in-flight dedupe. It does not remember
@@ -156,7 +156,7 @@ const runResolvedRouteHandlerPreparations = async (
 
 export const prepareRouteHandlersFromConfig = async (
   rootDir: string,
-  routeHandlersConfig: RouteHandlersConfig | undefined
+  routeHandlersConfig: RouteHandlersConfigBase | undefined
 ): Promise<void> => {
   // Consumer-facing entry into app-owned preparation. Callers pass the app
   // config boundary here; from this point onward the system resolves the

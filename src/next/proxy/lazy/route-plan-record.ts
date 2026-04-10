@@ -15,7 +15,7 @@ import {
   readObjectProperty
 } from '../../../utils/type-guards-custom';
 
-import type { RouteHandlerPlannerConfig } from '../../shared/types';
+import type { RouteHandlerPlannerConfig } from '../../pages/types';
 
 /**
  * Stage 1 persisted record helpers for lazy single-route reuse.

@@ -31,7 +31,7 @@ import type { LocaleConfig } from '../../../../core/types';
 import type {
   RouteHandlersConfig,
   RouteHandlersTargetConfig
-} from '../../../../next/shared/types';
+} from '../../../../next/pages/types';
 
 const TEST_LOCALE_CONFIG: LocaleConfig = {
   locales: ['en'],

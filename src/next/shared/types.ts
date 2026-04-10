@@ -14,7 +14,6 @@ import type {
   RouteHandlerMdxCompileOptions,
   RouteHandlerProcessor,
   RouteHandlerRouteContext,
-  ResolvedRouteHandlerModuleReference,
   RouteHandlerModuleReference,
   RouteHandlerPaths,
   RouteHandlerPipelineResult
@@ -344,9 +343,8 @@ const routeParamResolvers: Record<
  * Resolve a fixed slug array into the `params` value shape for the
  * given {@link DynamicRouteParam}.
  *
- * Single source of truth for the slug → param-value transformation,
- * used by {@link createHandlerGetStaticProps} to inject the correct
- * `params` into the catch-all page's `getStaticProps`.
+ * Single source of truth for the slug -> param-value transformation used by
+ * router-specific emitted handler contracts.
  */
 export const resolveRouteParamValue = (
   param: DynamicRouteParam,
@@ -395,11 +393,11 @@ export type RouteHandlerBinding = ProcessorRouteHandlerBinding;
 export type RouteHandlerBindingMap = Record<string, RouteHandlerBinding>;
 
 /**
- * Base configuration for one route handler target.
+ * Router-agnostic configuration for one route handler target.
  *
  * A target is an independently analyzed route space (e.g., 'docs' or 'blog').
  */
-export type TargetConfigBase = {
+export type RouteHandlersTargetConfigBase = {
   /**
    * Stable identifier for cache separation and lookup scoping.
    */
@@ -425,10 +423,6 @@ export type TargetConfigBase = {
    */
   mdxCompileOptions?: RouteHandlerMdxCompileOptions;
   /**
-   * Import path for the base static props module.
-   */
-  baseStaticPropsImport?: RouteHandlerModuleReference;
-  /**
    * Base path prefix for public routes in this target.
    */
   routeBasePath?: string;
@@ -439,16 +433,13 @@ export type TargetConfigBase = {
 };
 
 /**
- * User-facing target configuration.
- */
-export type RouteHandlersTargetConfig = TargetConfigBase;
-
-/**
- * Complete route handlers configuration.
+ * Router-agnostic route handlers configuration container.
  *
  * Supports single target (direct properties) or multi-target (via `targets`).
  */
-export type RouteHandlersConfig = Partial<TargetConfigBase> & {
+export type RouteHandlersConfigBase<
+  TTarget extends object = RouteHandlersTargetConfigBase
+> = Partial<TTarget> & {
   /**
    * App-level configuration shared by all targets.
    */
@@ -456,13 +447,13 @@ export type RouteHandlersConfig = Partial<TargetConfigBase> & {
   /**
    * Multiple target configurations.
    */
-  targets?: Array<RouteHandlersTargetConfig>;
+  targets?: Array<TTarget>;
 };
 
 /**
  * Input for the route handlers entrypoint.
  */
-export type RouteHandlersEntrypointInput = {
+export type RouteHandlersEntrypointInput<TConfig = unknown> = {
   /**
    * Application root directory.
    */
@@ -470,7 +461,7 @@ export type RouteHandlersEntrypointInput = {
   /**
    * Route handlers configuration.
    */
-  routeHandlersConfig?: RouteHandlersConfig;
+  routeHandlersConfig?: TConfig;
 };
 
 /**
@@ -481,31 +472,6 @@ export type RouteHandlerRuntimeSemantics = {
    * Shared locale configuration extracted from Next.js once at the entrypoint.
    */
   localeConfig: LocaleConfig;
-};
-
-/**
- * Options for creating a catch-all route handler preset.
- */
-export type CreateCatchAllRouteHandlersPresetOptions = Pick<
-  TargetConfigBase,
-  | 'targetId'
-  | 'contentLocaleMode'
-  | 'emitFormat'
-  | 'handlerBinding'
-  | 'mdxCompileOptions'
-> & {
-  /**
-   * Route segment for the catch-all target (e.g., 'docs').
-   */
-  routeSegment: string;
-  /**
-   * Dynamic route parameter for the handler page.
-   */
-  handlerRouteParam: DynamicRouteParam;
-  /**
-   * Directory containing content page files.
-   */
-  contentPagesDir: string;
 };
 
 /**
@@ -524,16 +490,12 @@ export type ResolvedRouteHandlersRuntimeAttachments = {
 };
 
 /**
- * Resolved target configuration base (internal structural type).
+ * Resolved structural target configuration shared across router contracts.
  */
 type ResolvedTargetStructuralConfigBase = Omit<
-  Required<TargetConfigBase>,
-  'handlerBinding' | 'baseStaticPropsImport' | 'paths' | 'mdxCompileOptions'
+  Required<RouteHandlersTargetConfigBase>,
+  'handlerBinding' | 'paths' | 'mdxCompileOptions'
 > & {
-  /**
-   * Resolved import path for the base static props module.
-   */
-  baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
   /**
    * Resolved processor configuration used during planning.
    */
@@ -545,9 +507,10 @@ type ResolvedTargetStructuralConfigBase = Omit<
 };
 
 /**
- * Resolved target configuration base (internal type).
+ * Resolved target configuration shared across router contracts.
  */
-type ResolvedTargetConfigBase = ResolvedTargetStructuralConfigBase & {
+export type ResolvedRouteHandlersTargetConfigBase =
+  ResolvedTargetStructuralConfigBase & {
   /**
    * Runtime/executable attachments that are not part of the structural target
    * contract.
@@ -558,7 +521,8 @@ type ResolvedTargetConfigBase = ResolvedTargetStructuralConfigBase & {
 /**
  * Resolved base configuration with app settings.
  */
-export type ResolvedRouteHandlersConfigBase = ResolvedTargetConfigBase & {
+export type ResolvedRouteHandlersConfigBase =
+  ResolvedRouteHandlersTargetConfigBase & {
   /**
    * Resolved app-level configuration.
    */
@@ -592,33 +556,6 @@ export type RouteHandlerRewriteBuckets = {
    * locale.
    */
   rewritesOfDefaultLocale: Array<RewriteRecord>;
-};
-
-/**
- * Narrow planning config shared by target-wide and lazy one-file analysis.
- *
- * @remarks
- * This shape intentionally excludes app-level config that planners do not
- * need, while preserving the runtime attachment bucket required by MDX-aware
- * capture.
- */
-export type RouteHandlerPlannerConfig = Pick<
-  ResolvedRouteHandlersConfig,
-  | 'targetId'
-  | 'emitFormat'
-  | 'contentLocaleMode'
-  | 'handlerRouteParam'
-  | 'baseStaticPropsImport'
-  | 'routeBasePath'
-  | 'localeConfig'
-  | 'processorConfig'
-  | 'runtime'
-> & {
-  /**
-   * Filesystem paths required during route analysis, planning, emission, and
-   * stale-output cleanup.
-   */
-  paths: RouteHandlerNextPaths;
 };
 
 /**

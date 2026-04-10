@@ -2,10 +2,12 @@ import { resolveRouteHandlersAppConfig } from '../config/app';
 import { loadRegisteredSlugSplitterConfig } from '../../integration/slug-splitter-config-loader';
 
 import type {
-  ResolvedRouteHandlersAppConfig,
+  ResolvedRouteHandlersAppConfig
+} from '../types';
+import type {
   RouteHandlersConfig,
   RouteHandlersEntrypointInput
-} from '../types';
+} from '../../pages/types';
 
 /**
  * Resolved route-handlers app context used after the app-owned config object

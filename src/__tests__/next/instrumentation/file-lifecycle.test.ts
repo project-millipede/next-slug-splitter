@@ -13,7 +13,7 @@ import {
 } from '../../helpers/fixtures';
 import { withTempDir } from '../../helpers/temp-dir';
 
-import type { RouteHandlersConfig } from '../../../next/shared/types';
+import type { RouteHandlersConfig } from '../../../next/pages/types';
 
 const SYNTHETIC_INSTRUMENTATION_MARKER =
   'next-slug-splitter:experimental-proxy-instrumentation';

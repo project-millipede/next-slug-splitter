@@ -14,7 +14,7 @@ import {
 } from '../../bootstrap-persisted';
 
 import type { LocaleConfig } from '../../../../core/types';
-import type { RouteHandlerPlannerConfig } from '../../../shared/types';
+import type { RouteHandlerPlannerConfig } from '../../../pages/types';
 import type { RouteHandlerLazyResolvedTarget } from '../../lazy/types';
 import type {
   BootstrapGenerationToken,

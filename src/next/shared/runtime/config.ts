@@ -24,7 +24,7 @@ import type { LocaleConfig } from '../../../core/types';
 import type {
   ResolvedRouteHandlersConfig,
   RouteHandlersEntrypointInput
-} from '../types';
+} from '../../pages/types';
 
 /**
  * Input for loading resolved route handlers configurations.

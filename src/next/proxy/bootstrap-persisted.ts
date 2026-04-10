@@ -20,10 +20,12 @@ import type {
 } from '../../core/types';
 import type { BootstrapGenerationToken } from './runtime/types';
 import type {
-  ResolvedRouteHandlersConfig,
-  RouteHandlerNextPaths,
-  RouteHandlerPlannerConfig
+  RouteHandlerNextPaths
 } from '../shared/types';
+import type {
+  ResolvedRouteHandlersConfig,
+  RouteHandlerPlannerConfig
+} from '../pages/types';
 import type { RouteHandlerLazyResolvedTarget } from './lazy/types';
 
 const ROUTE_HANDLER_PROXY_BOOTSTRAP_VERSION = 1;

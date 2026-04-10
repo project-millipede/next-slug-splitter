@@ -7,10 +7,12 @@ export type {
   ModuleReference,
   RouteHandlerGeneratorComponent,
   RouteHandlerGeneratorPlan,
-  RouteHandlerProcessor,
+  RouteHandlerProcessor
+} from './shared/types';
+export type {
   RouteHandlersConfig,
   RouteHandlersTargetConfig
-} from './shared/types';
+} from './pages/types';
 
 export {
   absoluteModule,

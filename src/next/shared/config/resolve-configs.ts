@@ -6,18 +6,20 @@ import type { LocaleConfig } from '../../../core/types';
 import { isUndefined } from '../../../utils/type-guards';
 import { isNonEmptyArray } from '../../../utils/type-guards-extended';
 import type {
-  ResolvedRouteHandlersAppConfig,
+  ResolvedRouteHandlersAppConfig
+} from '../types';
+import type {
   ResolvedRouteHandlersConfig,
+  ResolvedRouteHandlersConfigBase,
   RouteHandlersConfig,
   RouteHandlersTargetConfig
-} from '../types';
+} from '../../pages/types';
 
 import {
   type NormalizedRouteHandlersTargetOptions,
   type NormalizedRouteHandlersTargetRuntimeAttachments,
   normalizeRouteHandlersTargetRuntimeAttachments,
   normalizeRouteHandlersTargetOptions,
-  type ResolvedRouteHandlersConfigBase,
   resolveRouteHandlersConfigBase
 } from './resolve-target';
 import { isObjectRecord, readObjectProperty } from './shared';

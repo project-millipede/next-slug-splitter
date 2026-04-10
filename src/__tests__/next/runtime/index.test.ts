@@ -14,7 +14,7 @@ import * as phaseArtifacts from '../../../next/shared/phase-artifacts';
 import * as runtimeTarget from '../../../next/shared/runtime/target/index';
 import { executeResolvedRouteHandlerNextPipeline } from '../../../next/shared/runtime';
 
-import type { ResolvedRouteHandlersConfig } from '../../../next/shared/types';
+import type { ResolvedRouteHandlersConfig } from '../../../next/pages/types';
 
 const TEST_ROOT_DIR = '/tmp/app';
 

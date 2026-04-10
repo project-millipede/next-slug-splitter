@@ -1,7 +1,7 @@
 import type {
   CreateCatchAllRouteHandlersPresetOptions,
   RouteHandlersTargetConfig
-} from '../../shared/types';
+} from '../types';
 
 import { normalizeHandlerRouteParam, normalizeRouteSegment } from '../../shared/config/options';
 import {

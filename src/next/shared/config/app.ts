@@ -13,7 +13,7 @@ import { isNonEmptyString as isNonEmptyResolvedString } from '../../../utils/typ
 import type {
   ResolvedRouteHandlersAppConfig,
   ResolvedRouteHandlerPreparation,
-  RouteHandlersConfig,
+  RouteHandlersConfigBase,
   RouteHandlersEntrypointInput
 } from '../types';
 
@@ -35,7 +35,7 @@ import {
  * @throws If `app` is present but not an object.
  */
 const readConfiguredRouteHandlersApp = (
-  routeHandlersConfig: RouteHandlersConfig | undefined
+  routeHandlersConfig: RouteHandlersConfigBase | undefined
 ): Record<string, unknown> => {
   const configuredApp = isUndefined(routeHandlersConfig)
     ? undefined
@@ -100,7 +100,8 @@ const resolveConfiguredAppRootDir = ({
  * app context through `routeHandlersConfig.app` or explicit entrypoint
  * arguments; `process.cwd()` is not probed implicitly.
  */
-export type ResolveRouteHandlersAppConfigInput = RouteHandlersEntrypointInput;
+export type ResolveRouteHandlersAppConfigInput =
+  RouteHandlersEntrypointInput<RouteHandlersConfigBase>;
 
 /**
  * Resolve the optional app-owned preparation step or steps.
@@ -113,7 +114,7 @@ export const resolveRouteHandlerPreparations = ({
   routeHandlersConfig
 }: {
   rootDir: string;
-  routeHandlersConfig: RouteHandlersConfig | undefined;
+  routeHandlersConfig: RouteHandlersConfigBase | undefined;
 }): Array<ResolvedRouteHandlerPreparation> => {
   const configuredApp = readConfiguredRouteHandlersApp(routeHandlersConfig);
   const configuredPrepare = readObjectProperty(configuredApp, 'prepare');
