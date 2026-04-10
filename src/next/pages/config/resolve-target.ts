@@ -32,7 +32,7 @@ import {
   readEmitFormatOption,
   readRequiredStringOption
 } from '../../shared/config/options';
-import { resolveConfiguredPathOption } from './paths';
+import { resolveConfiguredPathOption } from '../../shared/config/paths';
 import { isObjectRecord, readObjectProperty } from '../../shared/config/shared';
 import { ObjectRecord } from '../../../utils/type-guards-custom';
 

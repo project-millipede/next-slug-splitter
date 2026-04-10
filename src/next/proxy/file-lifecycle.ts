@@ -16,9 +16,9 @@ import {
   ROUTE_HANDLER_PROXY_OWNERSHIP_MARKER
 } from './runtime/shared';
 
-import type { ResolvedRouteHandlersConfig } from '../shared/types';
 import type { LocaleConfig } from '../../core/types';
 import type { RouteHandlerProxyConfigRegistration } from './runtime/types';
+import type { RouteHandlerProxyMatcherConfig } from './runtime/shared';
 
 const ROOT_PROXY_FILE_PATH = 'proxy.ts';
 const ROOT_PROXY_JS_FILE_PATH = 'proxy.js';
@@ -255,7 +255,7 @@ const removeGeneratedProxyFileIfPresent = async (
  * @param input - Synchronization input.
  * @param input.rootDir - Application root directory.
  * @param input.strategy - Active routing strategy.
- * @param input.resolvedConfigs - Fully resolved target configs for matcher generation.
+ * @param input.resolvedConfigs - Route-aware matcher configs for proxy generation.
  *
  * @remarks
  * This module owns only filesystem presence:
@@ -274,7 +274,7 @@ export const synchronizeRouteHandlerProxyFile = async ({
 }: {
   rootDir: string;
   strategy: RouteHandlerRoutingStrategy;
-  resolvedConfigs: Array<ResolvedRouteHandlersConfig>;
+  resolvedConfigs: ReadonlyArray<RouteHandlerProxyMatcherConfig>;
   configRegistration?: RouteHandlerProxyConfigRegistration;
 }): Promise<void> => {
   if (strategy.kind !== 'proxy') {

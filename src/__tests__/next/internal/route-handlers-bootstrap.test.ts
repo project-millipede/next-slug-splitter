@@ -14,7 +14,7 @@ vi.mock(import('../../../next/shared/config/app'), () => ({
 import {
   loadRouteHandlersConfigOrRegistered,
   resolveRouteHandlersAppContext
-} from '../../../next/shared/bootstrap/route-handlers-bootstrap';
+} from '../../../next/pages/bootstrap/route-handlers-bootstrap';
 
 const TEST_ROOT_DIR = '/tmp/app';
 const TEST_ROUTE_HANDLERS_CONFIG = {

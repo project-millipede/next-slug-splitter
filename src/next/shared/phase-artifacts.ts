@@ -7,7 +7,12 @@ import {
   readObjectProperty
 } from '../../utils/type-guards-custom';
 
-import type { ResolvedRouteHandlersConfig } from './types';
+import type { ResolvedRouteHandlersConfigBase } from './types';
+
+type RouteHandlerPhaseArtifactConfig = Pick<
+  ResolvedRouteHandlersConfigBase,
+  'app' | 'paths'
+>;
 
 const ROUTE_HANDLER_PHASE_RECORD_VERSION = 1;
 
@@ -142,12 +147,12 @@ const clearDevLazySingleRouteCacheArtifacts = async (
  *    the route-plan cache so revisiting the same heavy route can skip both
  *    analysis and regeneration across dev restarts.
  *
- * @param resolvedConfigs - Fully resolved target configs for the current run.
+ * @param resolvedConfigs - Structural target configs for the current run.
  * @param phase - Owning phase that should claim the shared artifacts.
  * @returns A promise that settles after all phase-local cleanup is complete.
  */
 export const synchronizeRouteHandlerPhaseArtifacts = async (
-  resolvedConfigs: Array<ResolvedRouteHandlersConfig>,
+  resolvedConfigs: Array<RouteHandlerPhaseArtifactConfig>,
   phase: RouteHandlerPhaseOwner
 ): Promise<void> => {
   const [referenceConfig] = resolvedConfigs;

@@ -17,7 +17,7 @@ import { resolveRouteHandlersConfigsFromAppConfig } from '../config/resolve-conf
 import {
   loadRouteHandlersConfigOrRegistered,
   resolveRouteHandlersAppContext
-} from '../../shared/bootstrap/route-handlers-bootstrap';
+} from '../bootstrap/route-handlers-bootstrap';
 import { prepareRouteHandlersFromConfig } from '../../shared/prepare/index';
 
 import type { LocaleConfig } from '../../../core/types';

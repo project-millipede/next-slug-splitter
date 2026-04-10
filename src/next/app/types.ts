@@ -1,9 +1,9 @@
 import type {
-  ResolvedRouteHandlersConfig as SharedResolvedRouteHandlersConfig,
   ResolvedRouteHandlersConfigBase as SharedResolvedRouteHandlersConfigBase,
   RouteHandlersConfigBase,
   RouteHandlersTargetConfigBase
 } from '../shared/types';
+import type { LocaleConfig } from '../../core/types';
 
 /**
  * Placeholder App Router target config.
@@ -29,4 +29,7 @@ export type ResolvedRouteHandlersConfigBase =
 /**
  * Placeholder resolved App Router config.
  */
-export type ResolvedRouteHandlersConfig = SharedResolvedRouteHandlersConfig;
+export type ResolvedRouteHandlersConfig =
+  SharedResolvedRouteHandlersConfigBase & {
+    localeConfig: LocaleConfig;
+  };

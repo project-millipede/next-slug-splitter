@@ -17,7 +17,7 @@ const writeRouteHandlerLookupSnapshotMock = vi.hoisted(() => vi.fn());
 const createRouteHandlerProxyBootstrapManifestMock = vi.hoisted(() => vi.fn());
 const writeRouteHandlerProxyBootstrapMock = vi.hoisted(() => vi.fn());
 
-vi.mock(import('../../next/shared/bootstrap/route-handlers-bootstrap'), () => ({
+vi.mock(import('../../next/pages/bootstrap/route-handlers-bootstrap'), () => ({
   loadRouteHandlersConfigOrRegistered: loadRouteHandlersConfigOrRegisteredMock,
   resolveRouteHandlersAppContext: resolveRouteHandlersAppContextMock
 }));

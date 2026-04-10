@@ -6,7 +6,7 @@ import {
 import {
   resolveRegisteredSlugSplitterConfigRegistration
 } from '../integration/slug-splitter-config';
-import { resolveRouteHandlersAppContext } from '../shared/bootstrap/route-handlers-bootstrap';
+import { resolveRouteHandlersAppContext } from '../pages/bootstrap/route-handlers-bootstrap';
 
 import type {
   ResolvedRouteHandlersRuntimeAttachments

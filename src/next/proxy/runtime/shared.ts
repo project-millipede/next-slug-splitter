@@ -1,5 +1,9 @@
 import type { LocaleConfig } from '../../../core/types';
-import type { ResolvedRouteHandlersConfig } from '../../shared/types';
+
+export type RouteHandlerProxyMatcherConfig = {
+  routeBasePath: string;
+  localeConfig: LocaleConfig;
+};
 
 /**
  * Ownership marker embedded into plugin-generated root proxy files.
@@ -73,7 +77,7 @@ const toLocalizedRouteMatcher = (
  * Builds the static proxy matcher list embedded into the generated root
  * `proxy.ts`.
  *
- * @param resolvedConfigs - Fully resolved target configurations.
+ * @param resolvedConfigs - Route-aware matcher configs.
  * @returns A sorted, deduplicated array of proxy matcher strings.
  *
  * @remarks
@@ -87,7 +91,7 @@ const toLocalizedRouteMatcher = (
  *   limiting the proxy's responsibility to public page routes.
  */
 export const buildRouteHandlerProxyMatchers = (
-  resolvedConfigs: Array<ResolvedRouteHandlersConfig>
+  resolvedConfigs: ReadonlyArray<RouteHandlerProxyMatcherConfig>
 ): Array<string> => {
   // Use a Set to automatically deduplicate overlapping matchers across configs.
   const matchers = new Set<string>();

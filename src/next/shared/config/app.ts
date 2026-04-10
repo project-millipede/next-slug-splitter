@@ -17,7 +17,7 @@ import type {
   RouteHandlersEntrypointInput
 } from '../types';
 
-import { resolveConfiguredPathOption } from '../../pages/config/paths';
+import { resolveConfiguredPathOption } from './paths';
 import { resolveRouteHandlersRoutingPolicy } from './routing-policy';
 import {
   isNonEmptyString,

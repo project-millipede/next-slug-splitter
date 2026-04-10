@@ -11,7 +11,7 @@ vi.mock(import('../../../../core/capture'), () => ({
 
 import { createCatchAllRouteHandlersPreset } from '../../../../next/config';
 import { resolveRouteHandlersConfigsFromAppConfig } from '../../../../next/pages/config/resolve-configs';
-import { resolveRouteHandlersAppContext } from '../../../../next/shared/bootstrap/route-handlers-bootstrap';
+import { resolveRouteHandlersAppContext } from '../../../../next/pages/bootstrap/route-handlers-bootstrap';
 import {
   resolveRouteHandlerLazyRequest,
   resolveRouteHandlerLazyResolvedTargetsFromAppConfig

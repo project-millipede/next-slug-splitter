@@ -529,16 +529,6 @@ export type ResolvedRouteHandlersConfigBase =
   app: ResolvedRouteHandlersAppConfig;
 };
 
-/**
- * Fully resolved target configuration used by the Next integration layer.
- */
-export type ResolvedRouteHandlersConfig = ResolvedRouteHandlersConfigBase & {
-  /**
-   * Locale configuration from the Next.js config.
-   */
-  localeConfig: LocaleConfig;
-};
-
 export type RouteHandlerRewriteBuckets = {
   /**
    * Baseline rewrite rules for Next.js routing.

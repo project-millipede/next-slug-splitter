@@ -27,7 +27,7 @@ import { resolveRouteHandlersConfigsFromAppConfig } from '../pages/config/resolv
 import {
   loadRouteHandlersConfigOrRegistered,
   resolveRouteHandlersAppContext
-} from './bootstrap/route-handlers-bootstrap';
+} from '../pages/bootstrap/route-handlers-bootstrap';
 import { resolveRegisteredSlugSplitterConfigRegistration } from '../integration/slug-splitter-config';
 import {
   createRouteHandlerLookupSnapshot,
