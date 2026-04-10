@@ -1,1 +1,1 @@
-export { resolveRouteHandlerProxyRewriteResponseDecision } from './redirect-policy';
+export * from '../proxy/rewrite-readiness/index';

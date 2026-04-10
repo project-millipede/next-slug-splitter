@@ -1,5 +1,5 @@
 import type { LocaleConfig } from '../../../core/types';
-import type { RouteHandlerOutputSynchronizationStatus } from '../../../generator/protocol/output-lifecycle';
+import type { RouteHandlerOutputSynchronizationStatus } from '../../../generator/shared/protocol/output-lifecycle';
 import type {
   BootstrapGenerationToken,
   RouteHandlerProxyConfigRegistration

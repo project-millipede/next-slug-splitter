@@ -17,21 +17,21 @@ const writeRouteHandlerLookupSnapshotMock = vi.hoisted(() => vi.fn());
 const createRouteHandlerProxyBootstrapManifestMock = vi.hoisted(() => vi.fn());
 const writeRouteHandlerProxyBootstrapMock = vi.hoisted(() => vi.fn());
 
-vi.mock(import('../../next/internal/route-handlers-bootstrap'), () => ({
+vi.mock(import('../../next/shared/bootstrap/route-handlers-bootstrap'), () => ({
   loadRouteHandlersConfigOrRegistered: loadRouteHandlersConfigOrRegisteredMock,
   resolveRouteHandlersAppContext: resolveRouteHandlersAppContextMock
 }));
 
-vi.mock(import('../../next/prepare/index'), () => ({
+vi.mock(import('../../next/shared/prepare/index'), () => ({
   prepareRouteHandlersFromConfig: prepareRouteHandlersFromConfigMock
 }));
 
-vi.mock(import('../../next/config/resolve-configs'), () => ({
+vi.mock(import('../../next/shared/config/resolve-configs'), () => ({
   resolveRouteHandlersConfigsFromAppConfig:
     resolveRouteHandlersConfigsFromAppConfigMock
 }));
 
-vi.mock(import('../../next/policy/routing-strategy'), () => ({
+vi.mock(import('../../next/shared/policy/routing-strategy'), () => ({
   resolveRouteHandlerRoutingStrategy: resolveRouteHandlerRoutingStrategyMock
 }));
 
@@ -39,26 +39,26 @@ vi.mock(import('../../next/proxy/file-lifecycle'), () => ({
   synchronizeRouteHandlerProxyFile: synchronizeRouteHandlerProxyFileMock
 }));
 
-vi.mock(import('../../next/instrumentation/file-lifecycle'), () => ({
+vi.mock(import('../../next/proxy/instrumentation/file-lifecycle'), () => ({
   synchronizeRouteHandlerInstrumentationFile:
     synchronizeRouteHandlerInstrumentationFileMock
 }));
 
-vi.mock(import('../../next/phase-artifacts'), () => ({
+vi.mock(import('../../next/shared/phase-artifacts'), () => ({
   synchronizeRouteHandlerPhaseArtifacts:
     synchronizeRouteHandlerPhaseArtifactsMock
 }));
 
-vi.mock(import('../../next/runtime'), () => ({
+vi.mock(import('../../next/shared/runtime'), () => ({
   executeResolvedRouteHandlerNextPipeline:
     executeResolvedRouteHandlerNextPipelineMock
 }));
 
-vi.mock(import('../../next/rewrites/plugin'), () => ({
+vi.mock(import('../../next/shared/rewrites/plugin'), () => ({
   withRouteHandlerRewrites: withRouteHandlerRewritesMock
 }));
 
-vi.mock(import('../../next/lookup-persisted'), () => ({
+vi.mock(import('../../next/shared/lookup-persisted'), () => ({
   createRouteHandlerLookupSnapshot: vi.fn(
     (
       filterHeavyRoutesInStaticPaths: boolean,

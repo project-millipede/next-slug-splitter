@@ -9,14 +9,14 @@ import {
   renderConfigRegistrationLiteral,
   renderLocaleConfigLiteral,
   renderStaticStringArray
-} from '../file-conventions/shared';
-import { type RouteHandlerRoutingStrategy } from '../policy/routing-strategy';
+} from './file-conventions/shared';
+import { type RouteHandlerRoutingStrategy } from '../shared/policy/routing-strategy';
 import {
   buildRouteHandlerProxyMatchers,
   ROUTE_HANDLER_PROXY_OWNERSHIP_MARKER
 } from './runtime/shared';
 
-import type { ResolvedRouteHandlersConfig } from '../types';
+import type { ResolvedRouteHandlersConfig } from '../shared/types';
 import type { LocaleConfig } from '../../core/types';
 import type { RouteHandlerProxyConfigRegistration } from './runtime/types';
 

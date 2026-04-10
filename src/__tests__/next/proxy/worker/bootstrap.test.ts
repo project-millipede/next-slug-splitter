@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const loadRouteHandlerProxyRuntimeAttachmentsMock = vi.hoisted(() => vi.fn());
 const readRouteHandlerProxyBootstrapMock = vi.hoisted(() => vi.fn());
 
-vi.mock(import('../../../../next/internal/runtime-attachments'), () => ({
+vi.mock(import('../../../../next/proxy/runtime-attachments'), () => ({
   loadRouteHandlerProxyRuntimeAttachments:
     loadRouteHandlerProxyRuntimeAttachmentsMock
 }));

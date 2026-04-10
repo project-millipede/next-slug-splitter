@@ -3,10 +3,10 @@ import {
   createPersistedRouteCaptureRecord,
   createPlannedHeavyRouteFromUsedLoadableComponentKeys,
   type PersistedRouteCaptureRecord
-} from '../../runtime/target/route-plan-record';
+} from './route-plan-record';
 
 import type { PlannedHeavyRoute } from '../../../core/types';
-import type { RouteHandlerPlannerConfig } from '../../types';
+import type { RouteHandlerPlannerConfig } from '../../shared/types';
 import type {
   RouteHandlerLazyMatchedRouteInput,
   RouteHandlerLazySingleRouteAnalysisResult

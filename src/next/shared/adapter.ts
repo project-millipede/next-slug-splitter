@@ -1,0 +1,195 @@
+/**
+ * Next adapter entrypoint for generated rewrite installation.
+ *
+ * @remarks
+ * This file is one of the main consumer-facing call sites in the whole cache
+ * architecture. When a Next app uses `withSlugSplitter(...)`, Next eventually
+ * reaches this adapter and asks it to modify the effective config.
+ *
+ * The adapter touches several phase-local groups in sequence:
+ * - first, app preparation so app-owned prerequisites are ready
+ * - then phase-artifact ownership so dev and build do not trust each other's
+ *   generated handler state
+ * - then the deeper fresh runtime pipeline
+ *
+ * Documenting the grouping here is useful because this is where many readers
+ * start when asking "what execution path do consumers actually hit when Next boots?"
+ */
+import type { NextAdapter } from 'next';
+import {
+  PHASE_DEVELOPMENT_SERVER,
+  PHASE_PRODUCTION_BUILD,
+  PHASE_PRODUCTION_SERVER
+} from 'next/constants.js';
+
+import { createConfigMissingError } from '../../utils/errors';
+import { resolveRouteHandlersConfigsFromAppConfig } from './config/resolve-configs';
+import {
+  loadRouteHandlersConfigOrRegistered,
+  resolveRouteHandlersAppContext
+} from './bootstrap/route-handlers-bootstrap';
+import { resolveRegisteredSlugSplitterConfigRegistration } from '../integration/slug-splitter-config';
+import {
+  createRouteHandlerLookupSnapshot,
+  writeRouteHandlerLookupSnapshot
+} from './lookup-persisted';
+import {
+  createRouteHandlerProxyBootstrapGenerationToken,
+  createRouteHandlerProxyBootstrapManifest,
+  writeRouteHandlerProxyBootstrap
+} from '../proxy/bootstrap-persisted';
+import { withRouteHandlerRewrites } from './rewrites/plugin';
+import { prepareRouteHandlersFromConfig } from './prepare/index';
+import { applyRouteHandlerProxyNextConfigPolicy } from '../proxy/policy/proxy-next-config';
+import { synchronizeRouteHandlerPhaseArtifacts } from './phase-artifacts';
+import { synchronizeRouteHandlerProxyFile } from '../proxy/file-lifecycle';
+import { resolveRouteHandlerRoutingStrategy } from './policy/routing-strategy';
+import { deriveRouteHandlerRuntimeSemantics } from './runtime-semantics/derive';
+import { executeResolvedRouteHandlerNextPipeline } from './runtime';
+import { synchronizeRouteHandlerInstrumentationFile } from '../proxy/instrumentation/file-lifecycle';
+
+/**
+ * Determine whether the current Next phase should run route-handler
+ * optimization work.
+ *
+ * @param phase Current Next phase string.
+ * @returns `true` when the phase should participate in route-handler rewrite
+ * generation.
+ */
+const isRouteOptimizedPhase = (phase: string): boolean =>
+  // Route-handler optimization is only meaningful in phases where Next can
+  // either generate assets or serve requests using generated assets. Phases
+  // outside this set should not pay any routing or cache coordination cost.
+  phase === PHASE_DEVELOPMENT_SERVER ||
+  phase === PHASE_PRODUCTION_BUILD ||
+  phase === PHASE_PRODUCTION_SERVER;
+
+const routeHandlersAdapter: NextAdapter = {
+  name: 'route-handlers-adapter',
+  async modifyConfig(config, { phase }) {
+    if (!isRouteOptimizedPhase(phase)) {
+      return config;
+    }
+
+    const routeHandlersConfig = await loadRouteHandlersConfigOrRegistered();
+    if (routeHandlersConfig == null) {
+      throw createConfigMissingError(
+        'Missing registered routeHandlersConfig. Call withSlugSplitter(...) or createRouteHandlersAdapterPath(...) before exporting the Next config.'
+      );
+    }
+
+    const appContext = resolveRouteHandlersAppContext(routeHandlersConfig);
+    const runtimeSemantics = deriveRouteHandlerRuntimeSemantics(config);
+
+    // Preparation must run before config resolution. The `prepare` contract
+    // exists so that app-owned build steps — such as compiling a TypeScript
+    // processor to JavaScript — can materialize artifacts that the rest of the
+    // pipeline depends on. Config resolution validates that referenced modules
+    // (e.g. `processorImport`) exist on disk, so any preparation that produces
+    // those modules must complete first. Without this ordering, a cold build
+    // (no prior `dist/`) would fail validation before `prepare` ever ran.
+    await prepareRouteHandlersFromConfig(
+      appContext.appConfig.rootDir,
+      appContext.routeHandlersConfig
+    );
+
+    const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig(
+      appContext.appConfig,
+      runtimeSemantics.localeConfig,
+      appContext.routeHandlersConfig
+    );
+    const routingStrategy = resolveRouteHandlerRoutingStrategy(
+      phase,
+      appContext.appConfig.routing
+    );
+    const configRegistration = resolveRegisteredSlugSplitterConfigRegistration(
+      appContext.appConfig.rootDir
+    );
+
+    await synchronizeRouteHandlerPhaseArtifacts(
+      resolvedConfigs,
+      routingStrategy.kind === 'proxy' ? 'dev' : 'build'
+    );
+
+    // This is the first routing-strategy split in the adapter. Before the
+    // plugin decides whether it will install rewrites or rely on a generated
+    // root Proxy file, it synchronizes the filesystem artifact that must match
+    // the selected strategy.
+    await synchronizeRouteHandlerProxyFile({
+      rootDir: appContext.appConfig.rootDir,
+      strategy: routingStrategy,
+      resolvedConfigs,
+      configRegistration
+    });
+    await synchronizeRouteHandlerInstrumentationFile({
+      rootDir: appContext.appConfig.rootDir,
+      strategy: routingStrategy,
+      routingPolicy: appContext.appConfig.routing,
+      localeConfig: runtimeSemantics.localeConfig,
+      configRegistration
+    });
+
+    if (routingStrategy.kind === 'proxy') {
+      const bootstrapGenerationToken =
+        createRouteHandlerProxyBootstrapGenerationToken();
+
+      await writeRouteHandlerProxyBootstrap(
+        appContext.appConfig.rootDir,
+        createRouteHandlerProxyBootstrapManifest(
+          bootstrapGenerationToken,
+          runtimeSemantics.localeConfig,
+          resolvedConfigs
+        )
+      );
+      await writeRouteHandlerLookupSnapshot(
+        appContext.appConfig.rootDir,
+        createRouteHandlerLookupSnapshot(
+          // Proxy development mode keeps page-time lookup read-only and leaves
+          // cold heavy-route ownership discovery to request-time proxy routing.
+          false,
+          []
+        )
+      );
+
+      // Proxy mode is intentionally a distinct routing path. The adapter does
+      // not generate or install route-handler rewrites up front in this branch.
+      //
+      // Instead, the generated root `proxy.ts` delegates requests back into the
+      // library-owned proxy runtime, which consults cached heavy-route
+      // knowledge on demand without any whole-target generate fallback.
+      return applyRouteHandlerProxyNextConfigPolicy({
+        config,
+        routingStrategy
+      });
+    }
+
+    const results = await executeResolvedRouteHandlerNextPipeline(
+      resolvedConfigs,
+      'generate'
+    );
+
+    await writeRouteHandlerLookupSnapshot(
+      appContext.appConfig.rootDir,
+      createRouteHandlerLookupSnapshot(
+        // Rewrite/build mode needs an exact heavy/light split up front so
+        // `getStaticPaths` can filter heavy routes out of the light page.
+        true,
+        results
+      )
+    );
+
+    // The returned value is the effective config for the current phase.
+    // A wrapped copy is returned so the incoming config object stays unchanged.
+    // This is the one intentional flattening boundary: runtime results remain
+    // target-local and bucketed, but Next config installation needs one final
+    // rewrite list.
+    return withRouteHandlerRewrites(config, [
+      ...results.flatMap(result => [
+        ...result.rewrites,
+        ...result.rewritesOfDefaultLocale
+      ])
+    ]);
+  }
+};
+
+export default routeHandlersAdapter;

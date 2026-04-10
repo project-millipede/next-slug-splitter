@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server.js';
 import { NextResponse } from 'next/server.js';
 
-import { resolveRouteHandlerProxyRewriteResponseDecision } from '../../rewrite-readiness';
+import { resolveRouteHandlerProxyRewriteResponseDecision } from '../rewrite-readiness';
 import { debugRouteHandlerProxy } from '../observability/debug-log';
 import { analyzeRouteHandlerProxyRequestShape } from './request-shape';
 import { getRouteHandlerProxyRoutingState } from './routing-state';

@@ -1,11 +1,11 @@
 import { resolveLocalizedContentRoute } from '../../../core/discovery';
-import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../config/resolve-configs';
+import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../shared/config/resolve-configs';
 
 import type { LocaleConfig } from '../../../core/types';
 import type {
   ResolvedRouteHandlersAppConfig,
   RouteHandlersConfig
-} from '../../types';
+} from '../../shared/types';
 import type {
   RouteHandlerLazyRequestIdentity,
   RouteHandlerLazyResolvedTarget,

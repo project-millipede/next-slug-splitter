@@ -9,7 +9,7 @@ import {
   isStringArray,
   readObjectProperty
 } from '../../utils/type-guards-custom';
-import { isDynamicRouteParamKind } from '../config/shared';
+import { isDynamicRouteParamKind } from '../shared/config/shared';
 
 import type {
   ContentLocaleMode,
@@ -23,7 +23,7 @@ import type {
   ResolvedRouteHandlersConfig,
   RouteHandlerNextPaths,
   RouteHandlerPlannerConfig
-} from '../types';
+} from '../shared/types';
 import type { RouteHandlerLazyResolvedTarget } from './lazy/types';
 
 const ROUTE_HANDLER_PROXY_BOOTSTRAP_VERSION = 1;

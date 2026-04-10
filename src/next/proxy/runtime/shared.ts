@@ -1,5 +1,5 @@
 import type { LocaleConfig } from '../../../core/types';
-import type { ResolvedRouteHandlersConfig } from '../../types';
+import type { ResolvedRouteHandlersConfig } from '../../shared/types';
 
 /**
  * Ownership marker embedded into plugin-generated root proxy files.

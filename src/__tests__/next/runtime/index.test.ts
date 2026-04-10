@@ -2,19 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createPipelineResult } from '../../helpers/builders';
 
-vi.mock(import('../../../next/phase-artifacts'), () => ({
+vi.mock(import('../../../next/shared/phase-artifacts'), () => ({
   synchronizeRouteHandlerPhaseArtifacts: vi.fn()
 }));
 
-vi.mock(import('../../../next/runtime/target/index'), () => ({
+vi.mock(import('../../../next/shared/runtime/target/index'), () => ({
   executeRouteHandlerTarget: vi.fn()
 }));
 
-import * as phaseArtifacts from '../../../next/phase-artifacts';
-import * as runtimeTarget from '../../../next/runtime/target/index';
-import { executeResolvedRouteHandlerNextPipeline } from '../../../next/runtime';
+import * as phaseArtifacts from '../../../next/shared/phase-artifacts';
+import * as runtimeTarget from '../../../next/shared/runtime/target/index';
+import { executeResolvedRouteHandlerNextPipeline } from '../../../next/shared/runtime';
 
-import type { ResolvedRouteHandlersConfig } from '../../../next/types';
+import type { ResolvedRouteHandlersConfig } from '../../../next/shared/types';
 
 const TEST_ROOT_DIR = '/tmp/app';
 

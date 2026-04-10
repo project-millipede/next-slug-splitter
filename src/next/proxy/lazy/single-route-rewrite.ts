@@ -1,7 +1,7 @@
-import { buildRouteRewriteEntries } from '../../rewrites/index';
+import { buildRouteRewriteEntries } from '../../shared/rewrites/index';
 
 import type { PlannedHeavyRoute } from '../../../core/types';
-import type { RouteHandlerPlannerConfig } from '../../types';
+import type { RouteHandlerPlannerConfig } from '../../shared/types';
 import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
 
 /**

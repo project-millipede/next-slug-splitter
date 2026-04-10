@@ -1,1 +1,1 @@
-export { createCatchAllRouteHandlersPreset } from './presets';
+export * from '../pages/config/index';

@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const readRouteHandlerLookupSnapshotMock = vi.hoisted(() => vi.fn());
 
-vi.mock(import('../../next/lookup-persisted'), () => ({
+vi.mock(import('../../next/shared/lookup-persisted'), () => ({
   readRouteHandlerLookupSnapshot: readRouteHandlerLookupSnapshotMock
 }));
 
-import { withHeavyRouteFilter } from '../../next/lookup';
+import { withHeavyRouteFilter } from '../../next/pages/lookup';
 import { TEST_PRIMARY_ROUTE_SEGMENT } from '../helpers/fixtures';
 
 const EMPTY_CONTEXT = {} as Parameters<

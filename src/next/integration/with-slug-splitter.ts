@@ -6,10 +6,10 @@ import type { NextConfig } from 'next';
 import { createConfigError } from '../../utils/errors';
 import { isFunction } from '../../utils/type-guards';
 import { isNonEmptyString } from '../../utils/type-guards-extended';
-import type { RouteHandlersConfig } from '../types';
+import type { RouteHandlersConfig } from '../shared/types';
 
-import type { NextConfigLike } from '../config/load-next-config';
-import { isObjectRecord, readObjectProperty } from '../config/shared';
+import type { NextConfigLike } from '../shared/config/load-next-config';
+import { isObjectRecord, readObjectProperty } from '../shared/config/shared';
 import {
   createRouteHandlersAdapterPath,
   resolveSlugSplitterAdapterEntry

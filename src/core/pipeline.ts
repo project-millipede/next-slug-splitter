@@ -1,4 +1,4 @@
-import { emitRouteHandlerPages } from '../generator/target/handlers';
+import { emitRouteHandlerPages } from '../generator/pages/target/handlers';
 import { createPipelineError } from '../utils/errors';
 import { isDefined, isNonEmptyArray } from '../utils/type-guards-extended';
 import { captureRouteHandlerComponentGraph } from './capture';

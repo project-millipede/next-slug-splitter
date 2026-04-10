@@ -1,7 +1,7 @@
 import process from 'node:process';
 
 import { createRuntimeError } from '../../../../utils/errors';
-import { loadRouteHandlerProxyRuntimeAttachments } from '../../../internal/runtime-attachments';
+import { loadRouteHandlerProxyRuntimeAttachments } from '../../runtime-attachments';
 import { doesRouteHandlerProxyLocaleConfigMatch } from '../../runtime/shared';
 import {
   createRouteHandlerLazySingleRouteCacheManager,
@@ -14,7 +14,7 @@ import {
 } from '../../bootstrap-persisted';
 
 import type { LocaleConfig } from '../../../../core/types';
-import type { RouteHandlerPlannerConfig } from '../../../types';
+import type { RouteHandlerPlannerConfig } from '../../../shared/types';
 import type { RouteHandlerLazyResolvedTarget } from '../../lazy/types';
 import type {
   BootstrapGenerationToken,

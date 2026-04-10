@@ -1,15 +1,15 @@
 import { type FileEntryCache } from 'file-entry-cache';
 
 import type { LocalizedRoutePath } from '../../../core/types';
-import type { PersistedRouteCaptureRecord } from '../../runtime/target/route-plan-record';
-import type { RouteHandlerPlannerConfig } from '../../types';
+import type { PersistedRouteCaptureRecord } from './route-plan-record';
+import type { RouteHandlerPlannerConfig } from '../../shared/types';
 
 import {
   createRouteHandlerLazySingleRouteFileCache,
   enableRouteHandlerLazySingleRouteFileCacheAutoPersist,
   writeRouteHandlerLazySingleRouteCacheRecordToDescriptor
 } from './single-route-cache';
-import { readPersistedRouteCaptureRecord } from '../../runtime/target/route-plan-record';
+import { readPersistedRouteCaptureRecord } from './route-plan-record';
 
 /**
  * File-entry descriptor used during Stage 1 lazy cache validation.

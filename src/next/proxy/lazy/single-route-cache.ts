@@ -2,7 +2,7 @@ import path from 'node:path';
 
 import fileEntryCache, { type FileEntryCache } from 'file-entry-cache';
 
-import type { PersistedRouteCaptureRecord } from '../../runtime/target/route-plan-record';
+import type { PersistedRouteCaptureRecord } from './route-plan-record';
 
 const LAZY_SINGLE_ROUTE_CACHE_DIRECTORY = path.join(
   '.next',

@@ -7,14 +7,14 @@ vi.mock(import('../../../next/integration/slug-splitter-config-loader'), () => (
   loadRegisteredSlugSplitterConfig: loadRegisteredSlugSplitterConfigMock
 }));
 
-vi.mock(import('../../../next/config/app'), () => ({
+vi.mock(import('../../../next/shared/config/app'), () => ({
   resolveRouteHandlersAppConfig: resolveRouteHandlersAppConfigMock
 }));
 
 import {
   loadRouteHandlersConfigOrRegistered,
   resolveRouteHandlersAppContext
-} from '../../../next/internal/route-handlers-bootstrap';
+} from '../../../next/shared/bootstrap/route-handlers-bootstrap';
 
 const TEST_ROOT_DIR = '/tmp/app';
 const TEST_ROUTE_HANDLERS_CONFIG = {

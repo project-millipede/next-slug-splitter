@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import process from 'node:process';
 
-import type { RouteHandlersConfig } from '../types';
+import type { RouteHandlersConfig } from '../shared/types';
 import { isNonEmptyString } from '../../utils/type-guards-extended';
 import { readDeepProperty } from '../../utils/type-guards-custom';
 import { registerRouteHandlersConfig } from './config-registry';

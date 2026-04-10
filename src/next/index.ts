@@ -10,7 +10,7 @@ export type {
   RouteHandlerProcessor,
   RouteHandlersConfig,
   RouteHandlersTargetConfig
-} from './types';
+} from './shared/types';
 
 export {
   absoluteModule,
@@ -18,7 +18,7 @@ export {
   packageModule
 } from '../module-reference';
 export { defineRouteHandlerProcessor } from '../core/processor';
-export { createCatchAllRouteHandlersPreset } from './config/presets';
+export { createCatchAllRouteHandlersPreset } from './pages/config/presets';
 export { createRouteHandlersAdapterPath } from './integration/adapter-entry';
 export { withSlugSplitter } from './integration/with-slug-splitter';
 export type {
