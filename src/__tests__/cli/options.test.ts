@@ -5,6 +5,7 @@ import {
   resolveLocaleConfigFromArgv,
   resolveRouteHandlersConfigPathFromArgv
 } from '../../cli/options';
+import type { LocaleConfig } from '../../core/types';
 
 describe('cli option resolution', () => {
   const rootDir = '/tmp/test-route-handlers-app';
@@ -80,7 +81,7 @@ describe('cli option resolution', () => {
       id: string;
       description: string;
       argv: Array<string>;
-      expected: ReturnType<typeof resolveLocaleConfigFromArgv>;
+      expected: LocaleConfig;
     };
 
     type FailureScenario = {

@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import process from 'node:process';
 
-import type { RouteHandlersConfig } from '../pages/types';
+import type { RouteHandlersConfig } from '../types';
 import { isNonEmptyString } from '../../utils/type-guards-extended';
 import { readDeepProperty } from '../../utils/type-guards-custom';
 import { registerRouteHandlersConfig } from './config-registry';
@@ -45,7 +45,7 @@ export const resolveSlugSplitterAdapterEntry = (rootDir: string): string => {
 };
 
 /**
- * Register `RouteHandlersConfig` and return the static adapter module path.
+ * Register one route-handlers config and return the static adapter module path.
  *
  * This registration process performs two critical operations:
  *
@@ -63,7 +63,7 @@ export const resolveSlugSplitterAdapterEntry = (rootDir: string): string => {
  *    Example:
  *     'app.rootDir' -> '/abs/path/to/project'
  *
- * @param config - App-owned 'RouteHandlersConfig' to register for the adapter.
+ * @param config - App-owned config to register for the adapter.
  * @returns Static adapter module specifier for Next's `adapterPath`.
  */
 export const createRouteHandlersAdapterPath = (

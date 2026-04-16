@@ -1,7 +1,7 @@
 import type {
   RouteHandlersConfig,
   RouteHandlersTargetConfig
-} from '../pages/types';
+} from '../types';
 
 const ROUTE_HANDLERS_CONFIG_SYMBOL = Symbol.for(
   'next-slug-splitter/next/config'
@@ -70,9 +70,7 @@ export const registerRouteHandlersConfig = (
  * @returns The provided config when present, otherwise the registered config.
  */
 export const readProvidedOrRegisteredRouteHandlersConfig = <
-  TRouteHandlersConfig extends
-    | RouteHandlersConfig
-    | RouteHandlersTargetConfig
+  TRouteHandlersConfig extends object
 >(
   routeHandlersConfig: TRouteHandlersConfig | undefined
 ): TRouteHandlersConfig | RouteHandlersConfig | undefined => {

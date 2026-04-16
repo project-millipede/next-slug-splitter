@@ -86,6 +86,11 @@
       "import": "./dist/next/handler.js",
       "default": "./dist/next/handler.js"
     },
+    "./next/page-data-compiler": {
+      "types": "./dist/next/page-data-compiler.d.ts",
+      "import": "./dist/next/page-data-compiler.js",
+      "default": "./dist/next/page-data-compiler.js"
+    },
     "./next/proxy": {
       "types": "./dist/next/proxy.d.ts",
       "import": "./dist/next/proxy.js",

@@ -1,2 +1,2 @@
-export * from './shared/adapter';
-export { default } from './shared/adapter';
+export * from './integration/adapter';
+export { default } from './integration/adapter';
