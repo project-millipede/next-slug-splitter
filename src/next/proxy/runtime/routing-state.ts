@@ -1,11 +1,12 @@
 import {
   clearRouteHandlerProxyBootstrapStateCache,
-  getRouteHandlerProxyBootstrapState
+  getRouteHandlerProxyBootstrapState,
+  type RouteHandlerProxyBootstrapState
 } from './bootstrap-state';
 
+import type { LocaleConfig } from '../../../core/types';
 import type {
   RouteHandlerProxyConfigRegistration,
-  RouteHandlerProxyOptions,
   RouteHandlerProxyRoutingState
 } from './types';
 
@@ -30,7 +31,7 @@ import type {
  * @returns Lightweight request-time routing state.
  */
 const buildRouteHandlerProxyRoutingState = (
-  bootstrapState: Awaited<ReturnType<typeof getRouteHandlerProxyBootstrapState>>
+  bootstrapState: RouteHandlerProxyBootstrapState
 ): RouteHandlerProxyRoutingState => {
   // The thin proxy runtime intentionally keeps no long-lived exact heavy-route
   // rewrite map. Cold heavy discovery lives in the worker session; the parent
@@ -52,7 +53,7 @@ const buildRouteHandlerProxyRoutingState = (
  * @returns Fresh request-time routing state.
  */
 const loadFreshRouteHandlerProxyRoutingState = async (
-  localeConfig: RouteHandlerProxyOptions['localeConfig'],
+  localeConfig: LocaleConfig,
   configRegistration: RouteHandlerProxyConfigRegistration = {}
 ): Promise<RouteHandlerProxyRoutingState> => {
   const bootstrapState = await getRouteHandlerProxyBootstrapState(
@@ -75,7 +76,7 @@ const loadFreshRouteHandlerProxyRoutingState = async (
  * This wrapper simply exposes that state in the narrow request-facing shape.
  */
 export const getRouteHandlerProxyRoutingState = async (
-  localeConfig: RouteHandlerProxyOptions['localeConfig'],
+  localeConfig: LocaleConfig,
   configRegistration: RouteHandlerProxyConfigRegistration = {}
 ): Promise<RouteHandlerProxyRoutingState> => {
   return loadFreshRouteHandlerProxyRoutingState(localeConfig, configRegistration);

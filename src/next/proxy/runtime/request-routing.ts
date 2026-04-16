@@ -12,6 +12,7 @@ import {
 } from './shared';
 import { resolveRouteHandlerProxyLazyMissWithWorker } from '../worker/host/client';
 
+import type { LocaleConfig } from '../../../core/types';
 import type {
   RouteHandlerProxyDecision,
   RouteHandlerProxyConfigRegistration,
@@ -85,7 +86,7 @@ const createEmptyRouteHandlerProxyRoutingState =
  * Proxy process is not allowed to load app-owned config dynamically.
  */
 const getRouteHandlerProxyRoutingStateWithFallback = async (
-  localeConfig: RouteHandlerProxyOptions['localeConfig'],
+  localeConfig: LocaleConfig,
   configRegistration: RouteHandlerProxyConfigRegistration
 ): Promise<RouteHandlerProxyRoutingState> => {
   try {
@@ -215,23 +216,23 @@ const resolveRouteHandlerProxyResponseInput = async (
       configRegistration
     });
 
-    if (lazyWorkerResult.kind === 'heavy') {
+    if (lazyWorkerResult.subject === 'heavy') {
       debugRouteHandlerProxy('lazy-worker:heavy', {
         pathname,
         requestKind: requestShape.kind,
         handlerSynchronizationStatus:
-          lazyWorkerResult.handlerSynchronizationStatus,
-        rewriteDestination: lazyWorkerResult.rewriteDestination
+          lazyWorkerResult.payload.handlerSynchronizationStatus,
+        rewriteDestination: lazyWorkerResult.payload.rewriteDestination
       });
 
       const updatedHandlerWasRewritten =
-        lazyWorkerResult.handlerSynchronizationStatus === 'updated';
+        lazyWorkerResult.payload.handlerSynchronizationStatus === 'updated';
 
       const rewriteDecision = createRouteHandlerProxyDecisionForLazyHeavyRoute(
         pathname,
         routingState.targetRouteBasePaths,
-        lazyWorkerResult.routeBasePath,
-        lazyWorkerResult.rewriteDestination
+        lazyWorkerResult.payload.routeBasePath,
+        lazyWorkerResult.payload.rewriteDestination
       );
 
       return {
@@ -243,7 +244,7 @@ const resolveRouteHandlerProxyResponseInput = async (
     debugRouteHandlerProxy('lazy-worker:pass-through', {
       pathname,
       requestKind: requestShape.kind,
-      reason: lazyWorkerResult.reason
+      reason: lazyWorkerResult.payload.reason
     });
 
     // Conservative fall-through: unless the existing cached/generated routing

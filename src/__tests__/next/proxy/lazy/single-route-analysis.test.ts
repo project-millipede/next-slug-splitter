@@ -11,7 +11,7 @@ vi.mock(import('../../../../core/capture'), () => ({
 
 import { createCatchAllRouteHandlersPreset } from '../../../../next/config';
 import { resolveRouteHandlersConfigsFromAppConfig } from '../../../../next/pages/config/resolve-configs';
-import { resolveRouteHandlersAppContext } from '../../../../next/pages/bootstrap/route-handlers-bootstrap';
+import { resolveRouteHandlersAppContext } from '../../../../next/shared/bootstrap/route-handlers-bootstrap';
 import {
   resolveRouteHandlerLazyRequest,
   resolveRouteHandlerLazyResolvedTargetsFromAppConfig
@@ -88,6 +88,7 @@ const createSingleTargetConfig = ({
   rootDir: string;
   targetOverrides?: Partial<RouteHandlersTargetConfig>;
 }): RouteHandlersConfig => ({
+  routerKind: 'pages',
   app: {
     rootDir
   },
@@ -120,8 +121,7 @@ const createBootstrappedLazyAnalysisState = ({
     routeHandlersConfig,
     rootDir
   );
-  const bootstrappedRouteHandlersConfig =
-    appContext.routeHandlersConfig ?? routeHandlersConfig;
+  const bootstrappedRouteHandlersConfig = routeHandlersConfig;
   const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig(
     appContext.appConfig,
     TEST_LOCALE_CONFIG,

@@ -45,6 +45,7 @@ describe('proxy lazy stale-output cleanup', () => {
     await expect(
       removeRouteHandlerLazyOutputForIdentity({
         config: {
+          routerKind: 'pages',
           emitFormat: 'ts',
           contentLocaleMode: 'filename',
           paths: {

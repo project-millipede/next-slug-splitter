@@ -1,13 +1,18 @@
 import { resolveLocalizedContentRoute } from '../../../core/discovery';
+import { normalizeModuleReference } from '../../../module-reference';
+import { resolveNormalizedRouteHandlersTargetsFromAppConfig as resolveNormalizedAppRouteHandlersTargetsFromAppConfig } from '../../app/config/resolve-configs';
 import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../pages/config/resolve-configs';
+import { requireAppRouteHandlersConfig } from '../../app/config/router-kind';
+import { requirePagesRouteHandlersConfig } from '../../pages/config/router-kind';
+import { resolveRouteHandlerRouterKind } from '../../shared/config/router-kind';
 
 import type { LocaleConfig } from '../../../core/types';
 import type { ResolvedRouteHandlersAppConfig } from '../../shared/types';
-import type { RouteHandlersConfig } from '../../pages/types';
+import type { RouteHandlersConfig } from '../../types';
 import type {
   RouteHandlerLazyRequestIdentity,
-  RouteHandlerLazyResolvedTarget,
-  RouteHandlerLazyRequestResolution
+  RouteHandlerLazyRequestResolution,
+  RouteHandlerLazyResolvedTarget
 } from './types';
 import { isNonEmptyString } from '../../../utils/type-guards-extended';
 
@@ -174,25 +179,44 @@ export const resolveRouteHandlerLazyResolvedTargetsFromAppConfig = (
   appConfig: ResolvedRouteHandlersAppConfig,
   localeConfig: LocaleConfig,
   routeHandlersConfig: RouteHandlersConfig
-): Array<RouteHandlerLazyResolvedTarget> =>
-  resolveNormalizedRouteHandlersTargetsFromAppConfig(
-    appConfig,
-    routeHandlersConfig
-  ).map(({ options }) => ({
+): Array<RouteHandlerLazyResolvedTarget> => {
+  const routerKind = resolveRouteHandlerRouterKind(routeHandlersConfig);
+  const normalizedTargets =
+    routerKind === 'app'
+      ? resolveNormalizedAppRouteHandlersTargetsFromAppConfig(
+          appConfig,
+          requireAppRouteHandlersConfig(
+            routeHandlersConfig,
+            'The proxy lazy request-resolution path'
+          )
+        )
+      : resolveNormalizedRouteHandlersTargetsFromAppConfig(
+          appConfig,
+          requirePagesRouteHandlersConfig(
+            routeHandlersConfig,
+            'The proxy lazy request-resolution path'
+          )
+        );
+
+  return normalizedTargets.map(({ options, routeHandlersConfig: targetConfig }) => ({
     // This is intentionally the smallest resolved shape that can support
     // request-to-file matching plus deterministic stale-output cleanup. No
     // processor imports, runtime factory imports, or other planner-only data
     // are pulled into this seam.
+    routerKind,
     targetId: options.targetId,
     routeBasePath: options.routeBasePath,
     contentLocaleMode: options.contentLocaleMode,
     localeConfig,
     emitFormat: options.emitFormat,
+    handlerRouteParam: options.handlerRouteParam,
     paths: {
+      rootDir: appConfig.rootDir,
       contentPagesDir: options.paths.contentPagesDir,
       handlersDir: options.paths.handlersDir
     }
   }));
+};
 
 /**
  * Resolve one proxy pathname into one concrete target-local content file when

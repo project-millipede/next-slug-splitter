@@ -25,6 +25,7 @@ const singleLocaleConfig = {
   defaultLocale: 'en'
 };
 const docsConfig = {
+  routerKind: 'pages' as const,
   targetId: 'docs',
   routeBasePath: '/docs',
   contentLocaleMode: 'filename' as const,
@@ -36,6 +37,7 @@ const docsConfig = {
   }
 };
 const blogConfig = {
+  routerKind: 'pages' as const,
   targetId: 'blog',
   routeBasePath: '/blog',
   contentLocaleMode: 'default-locale' as const,

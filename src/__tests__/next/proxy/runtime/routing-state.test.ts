@@ -8,6 +8,8 @@ vi.mock(import('../../../../next/proxy/runtime/bootstrap-state'), () => ({
 import * as bootstrapState from '../../../../next/proxy/runtime/bootstrap-state';
 import { getRouteHandlerProxyRoutingState } from '../../../../next/proxy/runtime/routing-state';
 
+import type { RouteHandlerProxyBootstrapState } from '../../../../next/proxy/runtime/bootstrap-state';
+
 describe('proxy routing state', () => {
   const getRouteHandlerProxyBootstrapStateMock = vi.mocked(
     bootstrapState.getRouteHandlerProxyBootstrapState
@@ -20,9 +22,7 @@ describe('proxy routing state', () => {
   type Scenario = {
     id: string;
     description: string;
-    bootstrapState: Awaited<
-      ReturnType<typeof bootstrapState.getRouteHandlerProxyBootstrapState>
-    >;
+    bootstrapState: RouteHandlerProxyBootstrapState;
     expected: {
       targetRouteBasePaths: Array<string>;
       hasConfiguredTargets: boolean;

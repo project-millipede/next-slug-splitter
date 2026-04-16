@@ -15,7 +15,7 @@ import {
   readObjectProperty
 } from '../../../utils/type-guards-custom';
 
-import type { RouteHandlerPlannerConfig } from '../../pages/types';
+import type { RouteHandlerLazyPlannerConfig } from './types';
 
 /**
  * Stage 1 persisted record helpers for lazy single-route reuse.
@@ -164,7 +164,7 @@ export const readPersistedRouteCaptureRecord = (
  */
 export const createPersistedRouteCaptureRecord = async (
   routePath: LocalizedRoutePath,
-  config: RouteHandlerPlannerConfig
+  config: RouteHandlerLazyPlannerConfig
 ): Promise<PersistedRouteCaptureRecord> => {
   const { usedComponentNames, transitiveModulePaths } =
     await captureRouteHandlerComponentGraph(
@@ -192,7 +192,7 @@ export const createPersistedRouteCaptureRecord = async (
  */
 const createPlannedHeavyRouteBase = (
   routePath: LocalizedRoutePath,
-  config: RouteHandlerPlannerConfig,
+  config: RouteHandlerLazyPlannerConfig,
   usedLoadableComponentKeys: Array<string>
 ): Omit<
   PlannedHeavyRoute,
@@ -228,7 +228,7 @@ const createPlannedHeavyRouteBase = (
  */
 export const createPlannedHeavyRouteFromUsedLoadableComponentKeys = async (
   routePath: LocalizedRoutePath,
-  config: RouteHandlerPlannerConfig,
+  config: RouteHandlerLazyPlannerConfig,
   usedLoadableComponentKeys: Array<string>,
   planRoute: Awaited<ReturnType<typeof createRouteHandlerRoutePlanner>>
 ): Promise<PlannedHeavyRoute> => {

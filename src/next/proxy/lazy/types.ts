@@ -1,12 +1,19 @@
 import type {
   ContentLocaleMode,
+  DynamicRouteParam,
   EmitFormat,
-  LocalizedRoutePath
+  LocalizedRoutePath,
+  ResolvedRouteHandlerModuleReference
 } from '../../../core/types';
 import type { PlannedHeavyRoute } from '../../../core/types';
 import type { LocaleConfig } from '../../../core/types';
 import type { RouteHandlerOutputSynchronizationStatus } from '../../../generator/shared/protocol/output-lifecycle';
-import type { RouteHandlerPlannerConfig } from '../../pages/types';
+import type {
+  ResolvedAppRouteModuleContract
+} from '../../app/types';
+import type {
+  ResolvedRouteHandlersTargetConfigBase
+} from '../../shared/types';
 import type { RouteHandlerLazySingleRouteCacheManager } from './single-route-cache-manager';
 
 /**
@@ -47,6 +54,10 @@ export type RouteHandlerLazyRequestIdentity = {
  */
 export type RouteHandlerLazyResolvedTarget = {
   /**
+   * Router family that owns the target.
+   */
+  routerKind: 'pages' | 'app';
+  /**
    * Stable target identifier.
    */
   targetId: string;
@@ -73,9 +84,17 @@ export type RouteHandlerLazyResolvedTarget = {
    */
   emitFormat: EmitFormat;
   /**
+   * Dynamic route parameter used by emitted handlers for this target.
+   */
+  handlerRouteParam?: DynamicRouteParam;
+  /**
    * Filesystem path inputs required by lazy request resolution.
    */
   paths: {
+    /**
+     * Application root directory.
+     */
+    rootDir?: string;
     /**
      * Directory containing localized content files.
      */
@@ -94,6 +113,83 @@ export type RouteHandlerLazyResolvedTarget = {
 };
 
 /**
+ * Common bootstrapped planner config shared by the lazy worker's router
+ * adapters.
+ *
+ * @remarks
+ * The Pages dev proxy architecture remains the source of truth here: the lazy
+ * worker still wants one target-local planning object that can:
+ * - analyze a concrete route
+ * - emit or remove the corresponding generated handler
+ * - resolve the final rewrite destination
+ *
+ * App Router support should therefore adapt to this same planner shape rather
+ * than introducing a parallel worker architecture.
+ */
+type RouteHandlerLazyPlannerConfigBase = Pick<
+  ResolvedRouteHandlersTargetConfigBase,
+  | 'targetId'
+  | 'emitFormat'
+  | 'contentLocaleMode'
+  | 'handlerRouteParam'
+  | 'routeBasePath'
+  | 'processorConfig'
+  | 'runtime'
+  | 'paths'
+> & {
+  /**
+   * Router family that owns the target.
+   */
+  routerKind: 'pages' | 'app';
+  /**
+   * Locale semantics captured from the Next config.
+   */
+  localeConfig: LocaleConfig;
+  /**
+   * Internal generated-handler segment used by rewrite resolution.
+   */
+  handlerRouteSegment?: string;
+};
+
+/**
+ * Bootstrapped lazy planner config for the Pages Router worker path.
+ */
+export type RouteHandlerLazyPagesPlannerConfig =
+  RouteHandlerLazyPlannerConfigBase & {
+    routerKind: 'pages';
+    /**
+     * Catch-all page module whose `getStaticProps` contract the generated
+     * handler page should reuse.
+     */
+    baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
+  };
+
+/**
+ * Bootstrapped lazy planner config for the App Router worker path.
+ */
+export type RouteHandlerLazyAppPlannerConfig =
+  RouteHandlerLazyPlannerConfigBase & {
+    routerKind: 'app';
+    /**
+     * Route-owned App contract shared by the public light page and generated
+     * heavy handler pages.
+     */
+    routeModuleImport: ResolvedRouteHandlerModuleReference;
+    /**
+     * Build-time inspection result for the page-safe route module.
+     */
+    routeModule: ResolvedAppRouteModuleContract;
+  };
+
+/**
+ * Router-aware bootstrapped planner config reused across lazy analysis,
+ * emission, and rewrite resolution.
+ */
+export type RouteHandlerLazyPlannerConfig =
+  | RouteHandlerLazyPagesPlannerConfig
+  | RouteHandlerLazyAppPlannerConfig;
+
+/**
  * Minimal output configuration shared by lazy stale-output cleanup helpers.
  *
  * @remarks
@@ -106,6 +202,7 @@ export type RouteHandlerLazyResolvedTarget = {
  * config types.
  */
 export type RouteHandlerLazyOutputConfig = {
+  routerKind: 'pages' | 'app';
   emitFormat: EmitFormat;
   contentLocaleMode: ContentLocaleMode;
   paths: {
@@ -125,7 +222,7 @@ export type RouteHandlerLazyMatchedRouteInput = {
   /**
    * Bootstrapped heavy target configs keyed by target id.
    */
-  resolvedConfigsByTargetId: ReadonlyMap<string, RouteHandlerPlannerConfig>;
+  resolvedConfigsByTargetId: ReadonlyMap<string, RouteHandlerLazyPlannerConfig>;
   /**
    * Generation-scoped cache manager retained by the worker session.
    */
@@ -220,7 +317,7 @@ export type RouteHandlerLazySingleRouteAnalysisResult =
       /**
        * Narrow planner config used by analysis.
        */
-      config: RouteHandlerPlannerConfig;
+      config: RouteHandlerLazyPlannerConfig;
       /**
        * Concrete localized content file that was analyzed.
        */
@@ -245,7 +342,7 @@ export type RouteHandlerLazySingleRouteAnalysisResult =
       /**
        * Narrow planner config used by analysis.
        */
-      config: RouteHandlerPlannerConfig;
+      config: RouteHandlerLazyPlannerConfig;
       /**
        * Concrete localized content file that was analyzed.
        */

@@ -1,16 +1,21 @@
 import { createRuntimeError } from '../../utils/errors';
+import { resolveNormalizedRouteHandlersTargetsFromAppConfig as resolveNormalizedAppRouteHandlersTargetsFromAppConfig } from '../app/config/resolve-configs';
+import { requireAppRouteHandlersConfig } from '../app/config/router-kind';
 import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../pages/config/resolve-configs';
+import { requirePagesRouteHandlersConfig } from '../pages/config/router-kind';
 import {
   loadSlugSplitterConfigFromPath
 } from '../integration/slug-splitter-config-loader';
 import {
   resolveRegisteredSlugSplitterConfigRegistration
 } from '../integration/slug-splitter-config';
-import { resolveRouteHandlersAppContext } from '../pages/bootstrap/route-handlers-bootstrap';
+import { resolveRouteHandlersAppContext } from '../shared/bootstrap/route-handlers-bootstrap';
+import { resolveRouteHandlerRouterKind } from '../shared/config/router-kind';
 
 import type {
   ResolvedRouteHandlersRuntimeAttachments
 } from '../shared/types';
+import type { RouteHandlersConfig } from '../types';
 import type { RouteHandlerProxyConfigRegistration } from './runtime/types';
 
 /**
@@ -64,17 +69,29 @@ export const loadRouteHandlerProxyRuntimeAttachments = async (
     );
   }
 
-  const routeHandlersConfig = await loadSlugSplitterConfigFromPath(
+  const routeHandlersConfig = (await loadSlugSplitterConfigFromPath(
     resolvedRegistration.configPath
-  );
+  )) as RouteHandlersConfig;
   const appContext = resolveRouteHandlersAppContext(
     routeHandlersConfig,
     resolvedRegistration.rootDir
   );
-  const normalizedTargets = resolveNormalizedRouteHandlersTargetsFromAppConfig(
-    appContext.appConfig,
-    appContext.routeHandlersConfig
-  );
+  const normalizedTargets =
+    resolveRouteHandlerRouterKind(routeHandlersConfig) === 'app'
+      ? resolveNormalizedAppRouteHandlersTargetsFromAppConfig(
+          appContext.appConfig,
+          requireAppRouteHandlersConfig(
+            routeHandlersConfig,
+            'The proxy runtime attachments loader'
+          )
+        )
+      : resolveNormalizedRouteHandlersTargetsFromAppConfig(
+          appContext.appConfig,
+          requirePagesRouteHandlersConfig(
+            routeHandlersConfig,
+            'The proxy runtime attachments loader'
+          )
+        );
 
   return Object.fromEntries(
     normalizedTargets.map(({ options, runtime }) => [options.targetId, runtime])

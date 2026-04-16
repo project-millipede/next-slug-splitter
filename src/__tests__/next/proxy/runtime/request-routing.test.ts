@@ -79,8 +79,10 @@ describe('proxy request routing', () => {
     getRouteHandlerProxyRoutingStateMock.mockReset();
     resolveRouteHandlerProxyLazyMissWithWorkerMock.mockReset();
     resolveRouteHandlerProxyLazyMissWithWorkerMock.mockResolvedValue({
-      kind: 'pass-through',
-      reason: 'no-target'
+      subject: 'pass-through',
+      payload: {
+        reason: 'no-target'
+      }
     });
   });
 
@@ -124,10 +126,12 @@ describe('proxy request routing', () => {
       new Error('Cannot find module as expression is too dynamic')
     );
     resolveRouteHandlerProxyLazyMissWithWorkerMock.mockResolvedValue({
-      kind: 'heavy',
-      handlerSynchronizationStatus: 'created',
-      rewriteDestination: '/en/docs/_handlers/getting-started/en',
-      routeBasePath: '/docs'
+      subject: 'heavy',
+      payload: {
+        handlerSynchronizationStatus: 'created',
+        rewriteDestination: '/en/docs/_handlers/getting-started/en',
+        routeBasePath: '/docs'
+      }
     });
 
     const response = await handleRouteHandlerProxyRequest({
@@ -292,10 +296,12 @@ describe('proxy request routing', () => {
         },
         targetRouteBasePaths: ['/blog'],
         workerResult: {
-          kind: 'heavy',
-          handlerSynchronizationStatus: 'created',
-          rewriteDestination: '/en/blog/_handlers/application-extensibility',
-          routeBasePath: '/blog'
+          subject: 'heavy',
+          payload: {
+            handlerSynchronizationStatus: 'created',
+            rewriteDestination: '/en/blog/_handlers/application-extensibility',
+            routeBasePath: '/blog'
+          }
         },
         expectedMode: 'rewrite',
         expectedTarget: '/blog',
@@ -322,10 +328,12 @@ describe('proxy request routing', () => {
         },
         targetRouteBasePaths: ['/blog'],
         workerResult: {
-          kind: 'heavy',
-          handlerSynchronizationStatus: 'unchanged',
-          rewriteDestination: '/en/blog/_handlers/application-extensibility',
-          routeBasePath: '/blog'
+          subject: 'heavy',
+          payload: {
+            handlerSynchronizationStatus: 'unchanged',
+            rewriteDestination: '/en/blog/_handlers/application-extensibility',
+            routeBasePath: '/blog'
+          }
         },
         expectedMode: 'rewrite',
         expectedTarget: '/blog',
@@ -352,10 +360,12 @@ describe('proxy request routing', () => {
         },
         targetRouteBasePaths: ['/blog'],
         workerResult: {
-          kind: 'heavy',
-          handlerSynchronizationStatus: 'updated',
-          rewriteDestination: '/en/blog/_handlers/application-extensibility',
-          routeBasePath: '/blog'
+          subject: 'heavy',
+          payload: {
+            handlerSynchronizationStatus: 'updated',
+            rewriteDestination: '/en/blog/_handlers/application-extensibility',
+            routeBasePath: '/blog'
+          }
         },
         expectedMode: 'redirect',
         expectedTarget: '/blog',
@@ -386,10 +396,12 @@ describe('proxy request routing', () => {
         },
         targetRouteBasePaths: ['/blog'],
         workerResult: {
-          kind: 'heavy',
-          handlerSynchronizationStatus: 'updated',
-          rewriteDestination: '/en/blog/_handlers/application-extensibility',
-          routeBasePath: '/blog'
+          subject: 'heavy',
+          payload: {
+            handlerSynchronizationStatus: 'updated',
+            rewriteDestination: '/en/blog/_handlers/application-extensibility',
+            routeBasePath: '/blog'
+          }
         },
         expectedMode: 'rewrite',
         expectedTarget: '/blog',
@@ -416,8 +428,10 @@ describe('proxy request routing', () => {
         },
         targetRouteBasePaths: ['/blog'],
         workerResult: {
-          kind: 'pass-through',
-          reason: 'light'
+          subject: 'pass-through',
+          payload: {
+            reason: 'light'
+          }
         },
         expectedMode: 'pass-through',
         expectedTarget: '/blog',
@@ -443,8 +457,10 @@ describe('proxy request routing', () => {
         },
         targetRouteBasePaths: ['/docs'],
         workerResult: {
-          kind: 'pass-through',
-          reason: 'missing-route-file'
+          subject: 'pass-through',
+          payload: {
+            reason: 'missing-route-file'
+          }
         },
         expectedMode: 'pass-through',
         expectedTarget: '/docs',
@@ -470,8 +486,10 @@ describe('proxy request routing', () => {
         },
         targetRouteBasePaths: ['/blog'],
         workerResult: {
-          kind: 'pass-through',
-          reason: 'missing-rewrite-destination'
+          subject: 'pass-through',
+          payload: {
+            reason: 'missing-rewrite-destination'
+          }
         },
         expectedMode: 'pass-through',
         expectedTarget: '/blog',
@@ -498,10 +516,12 @@ describe('proxy request routing', () => {
         },
         targetRouteBasePaths: ['/docs'],
         workerResult: {
-          kind: 'heavy',
-          handlerSynchronizationStatus: 'created',
-          rewriteDestination: '/en/docs/_handlers/ai/reverse/hooks/en',
-          routeBasePath: '/docs'
+          subject: 'heavy',
+          payload: {
+            handlerSynchronizationStatus: 'created',
+            rewriteDestination: '/en/docs/_handlers/ai/reverse/hooks/en',
+            routeBasePath: '/docs'
+          }
         },
         expectedMode: 'rewrite',
         expectedTarget: '/docs',
@@ -636,10 +656,12 @@ describe('proxy request routing', () => {
       })
     );
     resolveRouteHandlerProxyLazyMissWithWorkerMock.mockResolvedValue({
-      kind: 'heavy',
-      handlerSynchronizationStatus: 'updated',
-      rewriteDestination: '/en/blog/_handlers/application-extensibility',
-      routeBasePath: '/blog'
+      subject: 'heavy',
+      payload: {
+        handlerSynchronizationStatus: 'updated',
+        rewriteDestination: '/en/blog/_handlers/application-extensibility',
+        routeBasePath: '/blog'
+      }
     });
 
     await handleRouteHandlerProxyRequest({

@@ -13,6 +13,7 @@ import {
 } from '../../helpers/fixtures';
 import { withTempDir } from '../../helpers/temp-dir';
 
+import type { LocaleConfig } from '../../../core/types';
 import type {
   ResolvedRouteHandlersConfig,
   RouteHandlersConfig
@@ -22,6 +23,7 @@ const SYNTHETIC_PROXY_MARKER =
   'next-slug-splitter:experimental-synthetic-proxy';
 
 const createMultiTargetConfig = (rootDir: string): RouteHandlersConfig => ({
+  routerKind: 'pages',
   app: {
     rootDir
   },
@@ -57,7 +59,7 @@ const createResolvedConfigs = ({
 }: {
   rootDir: string;
   routeHandlersConfig: RouteHandlersConfig;
-  localeConfig?: ResolvedRouteHandlersConfig['localeConfig'];
+  localeConfig?: LocaleConfig;
 }): Array<ResolvedRouteHandlersConfig> => {
   const targets = Array.isArray(routeHandlersConfig.targets)
     ? routeHandlersConfig.targets

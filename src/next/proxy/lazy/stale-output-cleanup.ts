@@ -3,6 +3,7 @@ import {
   removeRenderedRouteHandlerPageIfPresent,
   type EmittedHandlerPageRemovalStatus
 } from '../../../generator/shared/protocol/output-lifecycle';
+import { resolveRenderedAppHandlerPageLocation } from '../../../generator/app/protocol/rendered-page';
 import { resolveRenderedHandlerPageLocation } from '../../../generator/pages/protocol/rendered-page';
 
 import type {
@@ -74,11 +75,18 @@ export const removeRouteHandlerLazyOutputForIdentity = ({
       includeLocaleLeaf: config.contentLocaleMode !== 'default-locale'
     }
   );
-  const { pageFilePath } = resolveRenderedHandlerPageLocation(
-    config.paths,
-    config.emitFormat,
-    handlerRelativePath
-  );
+  const { pageFilePath } =
+    config.routerKind === 'app'
+      ? resolveRenderedAppHandlerPageLocation(
+          config.paths,
+          config.emitFormat,
+          handlerRelativePath
+        )
+      : resolveRenderedHandlerPageLocation(
+          config.paths,
+          config.emitFormat,
+          handlerRelativePath
+        );
 
   return removeRenderedRouteHandlerPageIfPresent(
     pageFilePath,

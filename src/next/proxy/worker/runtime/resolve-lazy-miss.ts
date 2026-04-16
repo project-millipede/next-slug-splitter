@@ -79,18 +79,22 @@ export const resolveRouteHandlerProxyLazyMiss = async (
 
       if (rewriteDestination != null) {
         return {
-          kind: 'heavy',
-          handlerSynchronizationStatus:
-            lazyMatchedRoutePreparation.handlerSynchronizationStatus,
-          rewriteDestination,
-          routeBasePath:
-            lazyMatchedRoutePreparation.analysisResult.config.routeBasePath
+          subject: 'heavy',
+          payload: {
+            handlerSynchronizationStatus:
+              lazyMatchedRoutePreparation.handlerSynchronizationStatus,
+            rewriteDestination,
+            routeBasePath:
+              lazyMatchedRoutePreparation.analysisResult.config.routeBasePath
+          }
         };
       }
 
       return {
-        kind: 'pass-through',
-        reason: 'missing-rewrite-destination'
+        subject: 'pass-through',
+        payload: {
+          reason: 'missing-rewrite-destination'
+        }
       };
     }
 
@@ -105,8 +109,10 @@ export const resolveRouteHandlerProxyLazyMiss = async (
       });
 
       return {
-        kind: 'pass-through',
-        reason: 'light'
+        subject: 'pass-through',
+        payload: {
+          reason: 'light'
+        }
       };
     }
   } else if (lazyRequestResolution.kind === 'missing-route-file') {
@@ -116,13 +122,17 @@ export const resolveRouteHandlerProxyLazyMiss = async (
     });
 
     return {
-      kind: 'pass-through',
-      reason: 'missing-route-file'
+      subject: 'pass-through',
+      payload: {
+        reason: 'missing-route-file'
+      }
     };
   }
 
   return {
-    kind: 'pass-through',
-    reason: 'no-target'
+    subject: 'pass-through',
+    payload: {
+      reason: 'no-target'
+    }
   };
 };

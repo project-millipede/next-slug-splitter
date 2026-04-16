@@ -23,6 +23,7 @@ const TEST_LOCALE_CONFIG = {
 };
 
 const createMultiTargetConfig = (rootDir: string): RouteHandlersConfig => ({
+  routerKind: 'pages',
   app: {
     rootDir
   },

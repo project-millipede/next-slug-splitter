@@ -15,7 +15,9 @@ import {
 import { withTempDir } from '../../helpers/temp-dir';
 
 import type { LocaleConfig } from '../../../core/types';
-import type { ResolvedRouteHandlersConfig } from '../../../next/pages/types';
+import type { ResolvedRouteHandlersConfig as AppResolvedRouteHandlersConfig } from '../../../next/app/types';
+import type { ResolvedRouteHandlersConfig as PagesResolvedRouteHandlersConfig } from '../../../next/pages/types';
+import type { ResolvedRouteHandlersConfig } from '../../../next/types';
 
 const TEST_LOCALE_CONFIG: LocaleConfig = {
   locales: ['en', 'de'],
@@ -31,8 +33,9 @@ const createResolvedConfigFixture = (
     targetId?: string;
     routeBasePath?: string;
   } = {}
-): ResolvedRouteHandlersConfig =>
+): PagesResolvedRouteHandlersConfig =>
   ({
+    routerKind: 'pages',
     app: {
       rootDir,
       routing: {
@@ -50,7 +53,6 @@ const createResolvedConfigFixture = (
     },
     baseStaticPropsImport: packageModule('@test/base-static-props'),
     processorConfig: {
-      kind: 'module',
       processorImport: packageModule('@test/processor')
     },
     paths: {
@@ -62,7 +64,47 @@ const createResolvedConfigFixture = (
     runtime: {
       mdxCompileOptions: {}
     }
-  }) as unknown as ResolvedRouteHandlersConfig;
+  }) as unknown as PagesResolvedRouteHandlersConfig;
+
+const createResolvedAppConfigFixture = (
+  rootDir: string
+): AppResolvedRouteHandlersConfig =>
+  ({
+    routerKind: 'app',
+    app: {
+      rootDir,
+      routing: {
+        development: 'proxy',
+        workerPrewarm: 'off'
+      }
+    },
+    targetId: 'docs',
+    routeBasePath: '/docs',
+    contentLocaleMode: 'filename',
+    emitFormat: 'ts',
+    handlerRouteParam: {
+      name: 'slug',
+      kind: 'catch-all'
+    },
+    processorConfig: {
+      processorImport: packageModule('@test/processor')
+    },
+    paths: {
+      rootDir,
+      contentPagesDir: `${rootDir}/content/pages`,
+      handlersDir: `${rootDir}/app/docs/generated-handlers`
+    },
+    localeConfig: TEST_LOCALE_CONFIG,
+    runtime: {
+      mdxCompileOptions: {}
+    },
+    routeModuleImport: packageModule('@test/docs-route-module'),
+    handlerRouteSegment: 'generated-handlers',
+    routeModule: {
+      hasGeneratePageMetadata: true,
+      revalidate: false
+    }
+  }) as unknown as AppResolvedRouteHandlersConfig;
 
 const createBootstrapManifest = (
   rootDir: string,
@@ -125,12 +167,18 @@ describe('proxy bootstrap persistence', () => {
     expect(createRouteHandlerLazyResolvedTargetsFromProxyBootstrap(manifest)).toEqual(
       [
         {
+          routerKind: 'pages',
           targetId: 'docs',
           routeBasePath: '/docs',
           contentLocaleMode: 'filename',
           localeConfig: TEST_LOCALE_CONFIG,
           emitFormat: 'ts',
+          handlerRouteParam: {
+            name: 'slug',
+            kind: 'catch-all'
+          },
           paths: {
+            rootDir: '/repo/app',
             contentPagesDir: '/repo/app/content/pages',
             handlersDir: '/repo/app/pages/_handlers'
           }
@@ -147,6 +195,7 @@ describe('proxy bootstrap persistence', () => {
     ).get('docs');
 
     expect(config).toMatchObject({
+      routerKind: 'pages',
       targetId: 'docs',
       routeBasePath: '/docs',
       contentLocaleMode: 'filename',
@@ -157,7 +206,6 @@ describe('proxy bootstrap persistence', () => {
       },
       baseStaticPropsImport: packageModule('@test/base-static-props'),
       processorConfig: {
-        kind: 'module',
         processorImport: packageModule('@test/processor')
       },
       localeConfig: TEST_LOCALE_CONFIG,
@@ -168,6 +216,53 @@ describe('proxy bootstrap persistence', () => {
       }
     });
     expect(config).not.toHaveProperty('runtime');
+  });
+
+  it('preserves App Router structural fields in the proxy bootstrap manifest', () => {
+    const rootDir = '/repo/app';
+    const manifest = createBootstrapManifest(rootDir, [
+      createResolvedAppConfigFixture(rootDir)
+    ]);
+    const config = createRouteHandlerPlannerConfigsByIdFromProxyBootstrap(
+      manifest
+    ).get('docs');
+
+    expect(manifest.targets).toEqual([
+      {
+        routerKind: 'app',
+        targetId: 'docs',
+        routeBasePath: '/docs',
+        contentLocaleMode: 'filename',
+        emitFormat: 'ts',
+        handlerRouteParam: {
+          name: 'slug',
+          kind: 'catch-all'
+        },
+        handlerRouteSegment: 'generated-handlers',
+        routeModuleImport: packageModule('@test/docs-route-module'),
+        routeModule: {
+          hasGeneratePageMetadata: true,
+          revalidate: false
+        },
+        processorConfig: {
+          processorImport: packageModule('@test/processor')
+        },
+        paths: {
+          rootDir: '/repo/app',
+          contentPagesDir: '/repo/app/content/pages',
+          handlersDir: '/repo/app/app/docs/generated-handlers'
+        }
+      }
+    ]);
+    expect(config).toMatchObject({
+      routerKind: 'app',
+      handlerRouteSegment: 'generated-handlers',
+      routeModuleImport: packageModule('@test/docs-route-module'),
+      routeModule: {
+        hasGeneratePageMetadata: true,
+        revalidate: false
+      }
+    });
   });
 
   it('preserves explicit zero-target bootstrap state', async () => {
@@ -186,7 +281,7 @@ describe('proxy bootstrap persistence', () => {
       const persistedManifest = await readRouteHandlerProxyBootstrap(rootDir);
 
       expect(persistedManifest).toEqual({
-        version: 1,
+        version: 4,
         bootstrapGenerationToken: 'bootstrap-token',
         localeConfig: {
           locales: ['en'],

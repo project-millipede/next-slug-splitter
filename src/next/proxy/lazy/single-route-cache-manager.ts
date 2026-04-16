@@ -1,8 +1,8 @@
-import { type FileEntryCache } from 'file-entry-cache';
+import { type FileDescriptor, type FileEntryCache } from 'file-entry-cache';
 
 import type { LocalizedRoutePath } from '../../../core/types';
 import type { PersistedRouteCaptureRecord } from './route-plan-record';
-import type { RouteHandlerPlannerConfig } from '../../pages/types';
+import type { RouteHandlerLazyPlannerConfig } from './types';
 
 import {
   createRouteHandlerLazySingleRouteFileCache,
@@ -15,7 +15,7 @@ import { readPersistedRouteCaptureRecord } from './route-plan-record';
  * File-entry descriptor used during Stage 1 lazy cache validation.
  */
 type RouteHandlerLazyDependencyFileDescriptor =
-  ReturnType<FileEntryCache['getFileDescriptor']>;
+  FileDescriptor;
 
 /**
  * Read one dependency descriptor and return it only when the cached file state
@@ -95,7 +95,7 @@ export type RouteHandlerLazySingleRouteCacheManager = {
    * retained target cache.
    */
   readCachedRouteCaptureRecord: (
-    config: RouteHandlerPlannerConfig,
+    config: RouteHandlerLazyPlannerConfig,
     routePath: LocalizedRoutePath
   ) => PersistedRouteCaptureRecord | null;
   /**
@@ -103,7 +103,7 @@ export type RouteHandlerLazySingleRouteCacheManager = {
    * retained target cache without forcing an immediate reconcile.
    */
   writeCachedRouteCaptureRecord: (
-    config: RouteHandlerPlannerConfig,
+    config: RouteHandlerLazyPlannerConfig,
     routePath: LocalizedRoutePath,
     routeCaptureRecord: PersistedRouteCaptureRecord
   ) => void;
@@ -151,7 +151,7 @@ export const createRouteHandlerLazySingleRouteCacheManager =
      * @returns Retained target-scoped `FileEntryCache`.
      */
     const resolveTargetFileCache = (
-      config: RouteHandlerPlannerConfig
+      config: RouteHandlerLazyPlannerConfig
     ): FileEntryCache => {
       assertRouteHandlerLazySingleRouteCacheManagerIsOpen();
 
@@ -184,7 +184,7 @@ export const createRouteHandlerLazySingleRouteCacheManager =
      * `null`.
      */
     const readCachedRouteCaptureRecord = (
-      config: RouteHandlerPlannerConfig,
+      config: RouteHandlerLazyPlannerConfig,
       routePath: LocalizedRoutePath
     ): PersistedRouteCaptureRecord | null => {
       const targetFileCache = resolveTargetFileCache(config);
@@ -235,7 +235,7 @@ export const createRouteHandlerLazySingleRouteCacheManager =
      * @returns `void` after the in-memory descriptor metadata has been updated.
      */
     const writeCachedRouteCaptureRecord = (
-      config: RouteHandlerPlannerConfig,
+      config: RouteHandlerLazyPlannerConfig,
       routePath: LocalizedRoutePath,
       routeCaptureRecord: PersistedRouteCaptureRecord
     ): void => {

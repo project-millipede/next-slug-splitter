@@ -5,9 +5,12 @@ import {
   type PersistedRouteCaptureRecord
 } from './route-plan-record';
 
-import type { PlannedHeavyRoute } from '../../../core/types';
-import type { RouteHandlerPlannerConfig } from '../../pages/types';
 import type {
+  LocalizedRoutePath,
+  PlannedHeavyRoute
+} from '../../../core/types';
+import type {
+  RouteHandlerLazyPlannerConfig,
   RouteHandlerLazyMatchedRouteInput,
   RouteHandlerLazySingleRouteAnalysisResult
 } from './types';
@@ -44,8 +47,8 @@ const createLazyLightAnalysisResult = ({
   routePath
 }: {
   source: 'cache' | 'fresh';
-  config: RouteHandlerPlannerConfig;
-  routePath: RouteHandlerLazySingleRouteAnalysisResult['routePath'];
+  config: RouteHandlerLazyPlannerConfig;
+  routePath: LocalizedRoutePath;
 }): RouteHandlerLazySingleRouteAnalysisResult => ({
   kind: 'light',
   source,
@@ -66,8 +69,8 @@ const createLazyHeavyAnalysisResult = ({
   plannedHeavyRoute
 }: {
   source: 'cache' | 'fresh';
-  config: RouteHandlerPlannerConfig;
-  routePath: RouteHandlerLazySingleRouteAnalysisResult['routePath'];
+  config: RouteHandlerLazyPlannerConfig;
+  routePath: LocalizedRoutePath;
   plannedHeavyRoute: PlannedHeavyRoute;
 }): RouteHandlerLazySingleRouteAnalysisResult => ({
   kind: 'heavy',
@@ -92,8 +95,8 @@ const createLazyHeavyAnalysisResultFromCaptureRecord = async ({
   planRoute
 }: {
   source: 'cache' | 'fresh';
-  config: RouteHandlerPlannerConfig;
-  routePath: RouteHandlerLazySingleRouteAnalysisResult['routePath'];
+  config: RouteHandlerLazyPlannerConfig;
+  routePath: LocalizedRoutePath;
   routeCaptureRecord: PersistedRouteCaptureRecord;
   planRoute: Awaited<ReturnType<typeof createRouteHandlerRoutePlanner>>;
 }): Promise<RouteHandlerLazySingleRouteAnalysisResult> => {

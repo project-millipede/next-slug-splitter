@@ -1,8 +1,9 @@
 import { buildRouteRewriteEntries } from '../../shared/rewrites/index';
+import path from 'node:path';
 
 import type { PlannedHeavyRoute } from '../../../core/types';
-import type { RouteHandlerPlannerConfig } from '../../pages/types';
 import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
+import type { RouteHandlerLazyPlannerConfig } from './types';
 
 /**
  * Resolve the concrete rewrite destination for the current pathname from one
@@ -23,13 +24,15 @@ import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
  */
 const resolveRouteHandlerHeavyRewriteDestination = (
   pathname: string,
-  config: RouteHandlerPlannerConfig,
+  config: RouteHandlerLazyPlannerConfig,
   plannedHeavyRoute: PlannedHeavyRoute
 ): string | null => {
   const rewrites = buildRouteRewriteEntries({
     heavyRoutes: [plannedHeavyRoute],
     localeConfig: config.localeConfig,
-    routeBasePath: config.routeBasePath
+    routeBasePath: config.routeBasePath,
+    handlerRouteSegment:
+      config.handlerRouteSegment ?? path.basename(config.paths.handlersDir)
   });
 
   const matchedRewrite = rewrites.find(rewrite => rewrite.source === pathname);
