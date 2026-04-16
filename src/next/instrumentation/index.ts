@@ -1,1 +1,1 @@
-export { prewarmRouteHandlerProxyWorker } from './runtime';
+export * from '../proxy/instrumentation/index';

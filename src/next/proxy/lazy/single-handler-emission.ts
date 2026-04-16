@@ -2,11 +2,15 @@ import {
   doesRouteHandlerOutputFileExist,
   synchronizeRenderedRouteHandlerPage,
   type RouteHandlerOutputSynchronizationStatus
-} from '../../../generator/protocol/output-lifecycle';
+} from '../../../generator/shared/protocol/output-lifecycle';
+import {
+  renderAppRouteHandlerPage,
+  resolveRenderedAppHandlerPageLocation
+} from '../../../generator/app/protocol/rendered-page';
 import {
   renderRouteHandlerPage,
   resolveRenderedHandlerPageLocation
-} from '../../../generator/protocol/rendered-page';
+} from '../../../generator/pages/protocol/rendered-page';
 
 import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
 
@@ -30,14 +34,26 @@ import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
 export const emitRouteHandlerLazySingleHandler = async (
   analysisResult: RouteHandlerLazyHeavyAnalysisResult
 ): Promise<RouteHandlerOutputSynchronizationStatus> => {
-  const renderedPage = renderRouteHandlerPage({
-    paths: analysisResult.config.paths,
-    heavyRoute: analysisResult.plannedHeavyRoute,
-    emitFormat: analysisResult.config.emitFormat,
-    baseStaticPropsImport: analysisResult.config.baseStaticPropsImport,
-    handlerRouteParam: analysisResult.config.handlerRouteParam,
-    routeBasePath: analysisResult.config.routeBasePath
-  });
+  const renderedPage =
+    analysisResult.config.routerKind === 'app'
+      ? renderAppRouteHandlerPage({
+          paths: analysisResult.config.paths,
+          heavyRoute: analysisResult.plannedHeavyRoute,
+          emitFormat: analysisResult.config.emitFormat,
+          routeModuleImport: analysisResult.config.routeModuleImport,
+          handlerRouteParam: analysisResult.config.handlerRouteParam,
+          routeBasePath: analysisResult.config.routeBasePath,
+          routeModuleContract: analysisResult.config.routeModule
+        })
+      : renderRouteHandlerPage({
+          paths: analysisResult.config.paths,
+          heavyRoute: analysisResult.plannedHeavyRoute,
+          emitFormat: analysisResult.config.emitFormat,
+          baseStaticPropsImport: analysisResult.config.baseStaticPropsImport,
+          handlerRouteParam: analysisResult.config.handlerRouteParam,
+          routeBasePath: analysisResult.config.routeBasePath
+        });
+
   return synchronizeRenderedRouteHandlerPage(renderedPage);
 };
 
@@ -65,11 +81,18 @@ export const emitRouteHandlerLazySingleHandler = async (
 export const doesRouteHandlerLazySingleHandlerExist = async (
   analysisResult: RouteHandlerLazyHeavyAnalysisResult
 ): Promise<boolean> => {
-  const { pageFilePath } = resolveRenderedHandlerPageLocation(
-    analysisResult.config.paths,
-    analysisResult.config.emitFormat,
-    analysisResult.plannedHeavyRoute.handlerRelativePath
-  );
+  const { pageFilePath } =
+    analysisResult.config.routerKind === 'app'
+      ? resolveRenderedAppHandlerPageLocation(
+          analysisResult.config.paths,
+          analysisResult.config.emitFormat,
+          analysisResult.plannedHeavyRoute.handlerRelativePath
+        )
+      : resolveRenderedHandlerPageLocation(
+          analysisResult.config.paths,
+          analysisResult.config.emitFormat,
+          analysisResult.plannedHeavyRoute.handlerRelativePath
+        );
 
   return doesRouteHandlerOutputFileExist(pageFilePath);
 };

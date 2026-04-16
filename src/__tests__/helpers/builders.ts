@@ -12,7 +12,7 @@ import type {
   ResolvedModuleReference,
   RouteHandlerNextPaths,
   RouteHandlerNextResult
-} from '../../next/types';
+} from '../../next/shared/types';
 
 import {
   TEST_COMPONENT_IMPORT_NAME,
@@ -62,13 +62,15 @@ export const createTestPaths = (rootDir: string): RouteHandlerNextPaths => ({
  * @returns Heavy-route fixture for tests.
  */
 export const createHeavyRoute = (
-  overrides: Partial<HeavyRouteCandidate> = {}
-): HeavyRouteCandidate => ({
+  overrides: Partial<PlannedHeavyRoute> = {}
+): PlannedHeavyRoute => ({
   locale: 'en',
   slugArray: ['example'],
   handlerId: 'en-example',
   handlerRelativePath: 'example/en',
   usedLoadableComponentKeys: ['CustomComponent'],
+  factoryImport: absoluteModule('/tmp/test-handler-factory.js'),
+  componentEntries: [],
   ...overrides
 });
 

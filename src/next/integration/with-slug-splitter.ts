@@ -8,8 +8,8 @@ import { isFunction } from '../../utils/type-guards';
 import { isNonEmptyString } from '../../utils/type-guards-extended';
 import type { RouteHandlersConfig } from '../types';
 
-import type { NextConfigLike } from '../config/load-next-config';
-import { isObjectRecord, readObjectProperty } from '../config/shared';
+import type { NextConfigLike } from '../shared/config/load-next-config';
+import { isObjectRecord, readObjectProperty } from '../shared/config/shared';
 import {
   createRouteHandlersAdapterPath,
   resolveSlugSplitterAdapterEntry
@@ -53,6 +53,37 @@ const resolveRouteHandlerEntrypointRootDir = (
 };
 
 /**
+ * Resolve the adapter path to inject and perform any required config-path
+ * registration for the selected integration mode.
+ *
+ * @param input - Adapter-path resolution input.
+ * @param input.entrypointRootDir - Absolute Next entrypoint root directory.
+ * @param input.options - `withSlugSplitter(...)` options.
+ * @returns Absolute adapter entry path.
+ */
+const resolveSlugSplitterAdapterPath = ({
+  entrypointRootDir,
+  options
+}: {
+  entrypointRootDir: string;
+  options: WithSlugSplitterOptions;
+}): string =>
+  options.routeHandlersConfig != null
+    ? createRouteHandlersAdapterPath(options.routeHandlersConfig)
+    : (() => {
+        const resolvedConfigPath = resolveSlugSplitterConfigPath({
+          rootDir: entrypointRootDir,
+          configPath: options.configPath
+        });
+
+        registerSlugSplitterConfigPath(resolvedConfigPath, {
+          rootDir: entrypointRootDir
+        });
+
+        return resolveSlugSplitterAdapterEntry(entrypointRootDir);
+      })();
+
+/**
  * Input for `withSlugSplitter(...)`.
  */
 export type WithSlugSplitterOptions =
@@ -74,6 +105,56 @@ export type WithSlugSplitterOptions =
       routeHandlersConfig: RouteHandlersConfig;
       configPath?: never;
     };
+
+/**
+ * Inject next-slug-splitter's adapter into one evaluated Next config object.
+ *
+ * @param nextConfig - Evaluated Next config object.
+ * @param resolvedAdapterPath - Absolute adapter entry path to install.
+ * @returns Next config object with the adapter installed.
+ */
+const injectSlugSplitterAdapter = (
+  nextConfig: NextConfigLike,
+  resolvedAdapterPath: string
+): NextConfigLike => {
+  if (!isObjectRecord(nextConfig)) {
+    throw createConfigError(
+      'withSlugSplitter(...) requires the resolved Next config to be an object.'
+    );
+  }
+
+  const configuredExperimental = readObjectProperty(nextConfig, 'experimental');
+  if (
+    configuredExperimental != null &&
+    !isObjectRecord(configuredExperimental)
+  ) {
+    throw createConfigError(
+      'withSlugSplitter(...) requires nextConfig.experimental to be an object when provided.'
+    );
+  }
+
+  const existingAdapterPath = readObjectProperty(nextConfig, 'adapterPath');
+  if (existingAdapterPath != null) {
+    throw createConfigError(
+      'withSlugSplitter(...) cannot be combined with an existing adapterPath.'
+    );
+  }
+
+  const existingExperimentalAdapterPath =
+    configuredExperimental == null
+      ? undefined
+      : readObjectProperty(configuredExperimental, 'adapterPath');
+  if (existingExperimentalAdapterPath != null) {
+    throw createConfigError(
+      'withSlugSplitter(...) now installs the stable adapterPath option. Move any existing experimental.adapterPath to adapterPath before applying withSlugSplitter(...).'
+    );
+  }
+
+  return {
+    ...nextConfig,
+    adapterPath: resolvedAdapterPath
+  };
+};
 
 /**
  * Attach next-slug-splitter integration to a Next config export.
@@ -102,69 +183,18 @@ export function withSlugSplitter(
   const entrypointRootDir = resolveRouteHandlerEntrypointRootDir(
     options.routeHandlersConfig
   );
-  const resolvedAdapterPath =
-    options.routeHandlersConfig != null
-      ? createRouteHandlersAdapterPath(options.routeHandlersConfig)
-      : (() => {
-          const resolvedConfigPath = resolveSlugSplitterConfigPath({
-            rootDir: entrypointRootDir,
-            configPath: options.configPath
-          });
-
-          registerSlugSplitterConfigPath(resolvedConfigPath, {
-            rootDir: entrypointRootDir
-          });
-
-          return resolveSlugSplitterAdapterEntry(entrypointRootDir);
-        })();
-
-  const applyRouteHandlers = (nextConfig: NextConfigLike): NextConfigLike => {
-    if (!isObjectRecord(nextConfig)) {
-      throw createConfigError(
-        'withSlugSplitter(...) requires the resolved Next config to be an object.'
-      );
-    }
-
-    const configuredExperimental = readObjectProperty(
-      nextConfig,
-      'experimental'
-    );
-    if (
-      configuredExperimental != null &&
-      !isObjectRecord(configuredExperimental)
-    ) {
-      throw createConfigError(
-        'withSlugSplitter(...) requires nextConfig.experimental to be an object when provided.'
-      );
-    }
-
-    const existingAdapterPath = readObjectProperty(nextConfig, 'adapterPath');
-    if (existingAdapterPath != null) {
-      throw createConfigError(
-        'withSlugSplitter(...) cannot be combined with an existing adapterPath.'
-      );
-    }
-
-    const existingExperimentalAdapterPath =
-      configuredExperimental == null
-        ? undefined
-        : readObjectProperty(configuredExperimental, 'adapterPath');
-    if (existingExperimentalAdapterPath != null) {
-      throw createConfigError(
-        'withSlugSplitter(...) now installs the stable adapterPath option. Move any existing experimental.adapterPath to adapterPath before applying withSlugSplitter(...).'
-      );
-    }
-
-    return {
-      ...nextConfig,
-      adapterPath: resolvedAdapterPath
-    };
-  };
+  const resolvedAdapterPath = resolveSlugSplitterAdapterPath({
+    entrypointRootDir,
+    options
+  });
 
   if (isNextConfigFactory(nextConfigExport)) {
     return async (phase, context) =>
-      applyRouteHandlers(await nextConfigExport(phase, context));
+      injectSlugSplitterAdapter(
+        await nextConfigExport(phase, context),
+        resolvedAdapterPath
+      );
   }
 
-  return applyRouteHandlers(nextConfigExport);
+  return injectSlugSplitterAdapter(nextConfigExport, resolvedAdapterPath);
 }

@@ -1,10 +1,10 @@
 import { debugRouteHandlerProxy } from '../../observability/debug-log';
-import { getRouteHandlerProxyWorkerHostGlobalState } from './global-state';
 import {
-  createRouteHandlerProxyWorkerRequestId,
-  resetRouteHandlerProxyWorkerProtocolState,
-  sendRouteHandlerProxyWorkerRequest
-} from './protocol';
+  createSharedWorkerRequestId,
+  resetSharedWorkerProtocolState
+} from '../../../shared/worker/host/protocol';
+import { getRouteHandlerProxyWorkerHostGlobalState } from './global-state';
+import { sendRouteHandlerProxyWorkerRequest } from './protocol';
 import { installRouteHandlerProxyWorkerProcessShutdownHooks } from './process-shutdown';
 import {
   resolveRouteHandlerProxyWorkerSession,
@@ -18,6 +18,7 @@ import type {
   RouteHandlerProxyConfigRegistration
 } from '../../runtime/types';
 import type {
+  RouteHandlerProxyWorkerResolveLazyMissRequest,
   RouteHandlerProxyWorkerResponse,
 } from '../types';
 
@@ -37,6 +38,8 @@ import type {
  */
 const routeHandlerProxyWorkerClientState =
   getRouteHandlerProxyWorkerHostGlobalState().client;
+const routeHandlerProxyWorkerProtocolState =
+  getRouteHandlerProxyWorkerHostGlobalState().protocol;
 
 /**
  * Host-side in-flight dedupe for lazy worker requests.
@@ -53,18 +56,6 @@ const routeHandlerProxyWorkerClientState =
  */
 const inFlightLazyMissResolutions =
   routeHandlerProxyWorkerClientState.inFlightLazyMissResolutions;
-
-/**
- * Host-side in-flight dedupe for worker-session readiness.
- *
- * @remarks
- * Startup prewarm and the later request path should converge on the same
- * session bootstrap work for one generation. This map collapses overlapping
- * "ensure the worker is ready" calls so we do not race multiple spawns or
- * repeated bootstrap requests for the same session identity.
- */
-const inFlightWorkerSessionResolutions =
-  routeHandlerProxyWorkerClientState.inFlightWorkerSessionResolutions;
 
 /**
  * Host-side registry of long-lived worker sessions.
@@ -106,8 +97,7 @@ export const clearRouteHandlerProxyWorkerClientSessions = async (): Promise<void
 
   workerSessions.clear();
   inFlightLazyMissResolutions.clear();
-  inFlightWorkerSessionResolutions.clear();
-  resetRouteHandlerProxyWorkerProtocolState();
+  resetSharedWorkerProtocolState(routeHandlerProxyWorkerProtocolState);
 };
 
 /**
@@ -133,35 +123,12 @@ export const resolveRouteHandlerProxyWorkerClientSession = async ({
     clearWorkerSessions: clearRouteHandlerProxyWorkerClientSessions
   });
 
-  const sessionResolutionKey = JSON.stringify([
-    localeConfig,
-    bootstrapGenerationToken,
-    configRegistration.configPath ?? null,
-    configRegistration.rootDir ?? null
-  ]);
-  const existingSessionResolution = inFlightWorkerSessionResolutions.get(
-    sessionResolutionKey
-  );
-
-  if (existingSessionResolution != null) {
-    return existingSessionResolution;
-  }
-
-  const sessionResolutionPromise = resolveRouteHandlerProxyWorkerSession({
+  return await resolveRouteHandlerProxyWorkerSession({
     workerSessions,
     localeConfig,
     bootstrapGenerationToken,
     configRegistration
-  }).finally(() => {
-    inFlightWorkerSessionResolutions.delete(sessionResolutionKey);
   });
-
-  inFlightWorkerSessionResolutions.set(
-    sessionResolutionKey,
-    sessionResolutionPromise
-  );
-
-  return sessionResolutionPromise;
 };
 
 /**
@@ -209,16 +176,20 @@ export const resolveRouteHandlerProxyLazyMissWithWorker = async ({
     bootstrapGenerationToken,
     configRegistration
   })
-    .then(session =>
-      sendRouteHandlerProxyWorkerRequest<RouteHandlerProxyWorkerResponse>(
-        session,
-        {
-          requestId: createRouteHandlerProxyWorkerRequestId(),
-          kind: 'resolve-lazy-miss',
-          pathname
-        }
-      )
-    )
+    .then(session => {
+      const request: RouteHandlerProxyWorkerResolveLazyMissRequest = {
+          requestId: createSharedWorkerRequestId(
+            routeHandlerProxyWorkerProtocolState,
+            'route-handler-proxy-worker-request'
+          ),
+          subject: 'resolve-lazy-miss',
+          payload: {
+            pathname
+          }
+        };
+
+      return sendRouteHandlerProxyWorkerRequest(session, request);
+    })
     .catch(error => {
       debugRouteHandlerProxy('lazy-worker:error', {
         pathname,

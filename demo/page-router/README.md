@@ -83,6 +83,10 @@ The default `dev` script automatically:
 Use `pnpm dev:ts` if you want to run the same demo through the optional
 TypeScript variant instead.
 
+This demo stays single-locale by omitting Next `i18n` entirely. In the current
+library model, single-locale Pages Router setups should not configure `i18n`;
+multi-locale Pages Router setups still use Next's normal `i18n` block.
+
 ## What to Look At
 
 ### Bundle size difference
@@ -171,6 +175,10 @@ The demo also includes `pages/404.tsx`, which uses `useSlugSplitterNotFoundRetry
 When a heavy route is emitted lazily on first request, the proxy can already know the correct rewrite target while Next is still warming that page up. In that narrow window the same request may still land on a transient 404. The demo's 404 page probes the route for readiness and retries once instead of immediately showing a not-found page.
 
 This is not part of the core route-classification logic, and production builds do not need it. It exists only to make the demo smoother while the underlying Next/Turbopack readiness behavior remains.
+
+For the broader Pages-vs-App comparison, including which dev-only behaviors are
+Pages-specific and which belong to the shared proxy/readiness layer, see
+[`docs/architecture/router-behavior-matrix.md`](../../docs/architecture/router-behavior-matrix.md).
 
 ## Project Structure
 

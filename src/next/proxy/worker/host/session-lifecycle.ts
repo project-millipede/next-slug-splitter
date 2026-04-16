@@ -1,62 +1,76 @@
-import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { debugRouteHandlerProxy } from '../../observability/debug-log';
 import {
-  createRouteHandlerProxyWorkerExitError,
-  createRouteHandlerProxyWorkerRequestId,
-  rejectRouteHandlerProxyWorkerSessionPendingRequests,
-  sendRouteHandlerProxyWorkerRequest,
-  type RouteHandlerProxyWorkerPendingRequest
-} from './protocol';
+  createSharedWorkerExitError,
+  createSharedWorkerRequestId,
+  resolveSharedWorkerResponseEnvelope
+} from '../../../shared/worker/host/protocol';
+import { getRouteHandlerProxyWorkerHostGlobalState } from './global-state';
+import { sendRouteHandlerProxyWorkerRequest } from './protocol';
+import {
+  createSharedWorkerSession,
+  spawnSharedWorkerChild,
+  type SharedWorkerSessionRegistry
+} from '../../../shared/worker/host/session-lifecycle';
+import { createSharedWorkerHostLifecycleMachine } from '../../../shared/worker/host-lifecycle/machine';
+import {
+  createSharedWorkerHostLifecycleSession,
+  forceCloseSharedWorkerHostLifecycleSession
+} from '../../../shared/worker/host-lifecycle/session';
+import type { SharedWorkerHostLifecycleSession } from '../../../shared/worker/host-lifecycle/types';
+import type { SharedWorkerShutdownRequest } from '../../../shared/worker/types';
 
 import type {
   BootstrapGenerationToken,
   RouteHandlerProxyConfigRegistration
 } from '../../runtime/types';
 import type {
+  RouteHandlerProxyWorkerBootstrapRequest,
   RouteHandlerProxyWorkerBootstrapResponse,
+  RouteHandlerProxyWorkerResponse,
   RouteHandlerProxyWorkerResponseEnvelope,
-  RouteHandlerProxyWorkerSessionInput,
-  RouteHandlerProxyWorkerShutdownResponse
+  RouteHandlerProxyWorkerShutdownResponse,
+  RouteHandlerProxyWorkerSessionInput
 } from '../types';
 
 /**
  * Host-side worker session lifecycle for the dedicated proxy worker.
  *
  * @remarks
- * This module owns the long-lived worker process/session mechanics:
+ * This module owns the proxy-worker-specific session mechanics that remain
+ * above the shared host/session base:
  * - resolve spawn arguments and environment from one config registration
- * - create and bootstrap a worker session
+ * - bootstrap a worker session for one generation
  * - reuse that session while the bootstrap generation remains unchanged
- * - replace or terminate the session through graceful shutdown with fallback
+ * - replace the session when the bootstrap generation changes
  *
- * IPC request/response transport stays in `protocol.ts`, while the public host
- * API stays in `client.ts`.
+ * Lower-level child-process/session mechanics now live in
+ * `src/next/shared/worker/host/session-lifecycle.ts`, while the shared host
+ * reuse/readiness/shutdown policy now lives in
+ * `src/next/shared/worker/host-lifecycle/*`.
  */
 const SLUG_SPLITTER_CONFIG_PATH_ENV = 'SLUG_SPLITTER_CONFIG_PATH';
 const SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV = 'SLUG_SPLITTER_CONFIG_ROOT_DIR';
 const EXPERIMENTAL_STRIP_TYPES_FLAG = '--experimental-strip-types';
 const ROUTE_HANDLER_PROXY_WORKER_SHUTDOWN_TIMEOUT_MS = 2000;
 
-export type RouteHandlerProxyWorkerSession = {
-  sessionKey: string;
+export type RouteHandlerProxyWorkerSession = SharedWorkerHostLifecycleSession<
+  | RouteHandlerProxyWorkerBootstrapResponse
+  | RouteHandlerProxyWorkerShutdownResponse
+  | RouteHandlerProxyWorkerResponse
+> & {
   bootstrapGenerationToken: BootstrapGenerationToken;
-  child: ReturnType<typeof spawn>;
-  pendingRequests: Map<string, RouteHandlerProxyWorkerPendingRequest>;
   bootstrapPromise: Promise<void>;
-  shutdownPromise: Promise<void> | null;
-  terminationPromise: Promise<void>;
-  resolveTermination: () => void;
-  closed: boolean;
 };
 
-type RouteHandlerProxyWorkerSessionRegistry = Map<
-  string,
-  RouteHandlerProxyWorkerSession
->;
+type RouteHandlerProxyWorkerSessionRegistry =
+  SharedWorkerSessionRegistry<RouteHandlerProxyWorkerSession>;
+
+const routeHandlerProxyWorkerProtocolState =
+  getRouteHandlerProxyWorkerHostGlobalState().protocol;
 
 /**
  * Resolve the explicit config registration this proxy request wants the worker
@@ -175,7 +189,7 @@ const resolveRouteHandlerProxyWorkerArgv = (
 /**
  * Resolve the working directory for the dev-only worker process.
  *
- * @param configRegistration - Adapter-time registration forwarded by the
+ * @param configRegistration - Adapter-time config registration forwarded by the
  * generated root Proxy file.
  * @returns Worker cwd.
  */
@@ -199,7 +213,7 @@ const resolveRouteHandlerProxyWorkerCwd = (
 /**
  * Materialize the environment passed into the child worker process.
  *
- * @param configRegistration - Adapter-time registration forwarded by the
+ * @param configRegistration - Adapter-time config registration forwarded by the
  * generated root Proxy file.
  * @returns Plain environment object for `spawn(...)`.
  */
@@ -226,7 +240,7 @@ const createRouteHandlerProxyWorkerEnvironment = (
 /**
  * Resolve the stable host-side session key.
  *
- * @param configRegistration - Adapter-time registration forwarded by the
+ * @param configRegistration - Adapter-time config registration forwarded by the
  * generated root Proxy file.
  * @returns Stable session key scoped to one app registration.
  */
@@ -243,93 +257,118 @@ const createRouteHandlerProxyWorkerSessionKey = (
 };
 
 /**
- * Remove one worker session from the registry when it is still the registered
- * owner for its session key.
- *
- * @param workerSessions - Active host-side worker sessions.
- * @param session - Worker session that may still own its registry slot.
- * @returns `void` after the registry entry has been removed when applicable.
- */
-const unregisterRouteHandlerProxyWorkerSession = (
-  workerSessions: RouteHandlerProxyWorkerSessionRegistry,
-  session: RouteHandlerProxyWorkerSession
-): void => {
-  if (workerSessions.get(session.sessionKey) === session) {
-    workerSessions.delete(session.sessionKey);
-  }
-};
-
-/**
  * Force-close one worker session immediately.
  *
- * @remarks
- * This is the hard-stop fallback path used for bootstrap failures, protocol
- * corruption, and graceful-shutdown fallback. Normal replacement and explicit
- * cleanup should use the graceful shutdown helper instead.
- *
- * @param workerSessions - Active host-side worker sessions.
- * @param session - Worker session being closed.
- * @param reason - Diagnostic reason recorded for the close event.
+ * @param input - Force-close input.
  * @returns `void` after the session has been marked closed and the child has
  * been killed.
  */
-const forceCloseRouteHandlerProxyWorkerSession = (
-  workerSessions: RouteHandlerProxyWorkerSessionRegistry,
-  session: RouteHandlerProxyWorkerSession,
-  reason: string
-): void => {
-  unregisterRouteHandlerProxyWorkerSession(workerSessions, session);
-
-  if (session.closed) {
-    return;
+const forceCloseRouteHandlerProxyWorkerSession = ({
+  workerSessions,
+  session,
+  reason
+}: {
+  workerSessions: RouteHandlerProxyWorkerSessionRegistry;
+  session: RouteHandlerProxyWorkerSession;
+  reason: string;
+}): void => {
+  if (session.phase === 'shutting-down') {
+    debugRouteHandlerProxy('lazy-worker:shutdown-timeout', {
+      reason,
+      bootstrapGenerationToken: session.bootstrapGenerationToken
+    });
   }
 
-  session.closed = true;
-
-  debugRouteHandlerProxy('lazy-worker:session-close', {
+  forceCloseSharedWorkerHostLifecycleSession({
+    workerSessions,
+    session,
     reason,
-    bootstrapGenerationToken: session.bootstrapGenerationToken
+    onSessionClose: nextReason => {
+      debugRouteHandlerProxy('lazy-worker:session-close', {
+        reason: nextReason,
+        bootstrapGenerationToken: session.bootstrapGenerationToken
+      });
+    }
   });
-
-  session.child.kill();
 };
 
 /**
- * Wait for a `shutdown-complete` acknowledgement from one worker session, with
- * a timeout fallback.
+ * Shared host lifecycle machine for the dedicated proxy worker family.
  *
- * @param session - Worker session expected to acknowledge graceful shutdown.
- * @returns The worker shutdown acknowledgement, or the string `'timeout'`
- * when the wait exceeded the configured shutdown timeout.
+ * @remarks
+ * The proxy host keeps its own business semantics local:
+ * - generation-token compatibility
+ * - bootstrap-based readiness
+ * - adapter-owned config registration
+ * - proxy diagnostics
+ *
+ * Shared host lifecycle policy such as:
+ * - reuse vs replace orchestration
+ * - shared `readyPromise` handling
+ * - graceful shutdown idempotence
+ * - failed/shutting-down/closed transitions
+ *
+ * is delegated into the shared machine.
  */
-const waitForRouteHandlerProxyWorkerShutdownAcknowledgement = async (
-  session: RouteHandlerProxyWorkerSession
-): Promise<RouteHandlerProxyWorkerShutdownResponse | 'timeout'> => {
-  let shutdownTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
+const routeHandlerProxyWorkerHostLifecycleMachine =
+  createSharedWorkerHostLifecycleMachine<
+    | RouteHandlerProxyWorkerBootstrapResponse
+    | RouteHandlerProxyWorkerShutdownResponse
+    | RouteHandlerProxyWorkerResponse,
+    RouteHandlerProxyWorkerSession,
+    RouteHandlerProxyWorkerSessionInput
+  >({
+    workerLabel: 'proxy worker',
+    session: {
+      createSessionKey: ({ configRegistration }) =>
+        createRouteHandlerProxyWorkerSessionKey(configRegistration),
+      createSession: ({ workerSessions, request }) =>
+        createRouteHandlerProxyWorkerSession({
+          workerSessions,
+          localeConfig: request.localeConfig,
+          bootstrapGenerationToken: request.bootstrapGenerationToken,
+          configRegistration: request.configRegistration
+        }),
+      isSessionReusable: ({ session, request }) =>
+        session.bootstrapGenerationToken === request.bootstrapGenerationToken
+          ? 'reuse'
+          : 'replace',
+      startSession: async ({ session }) => {
+        await session.bootstrapPromise;
+      },
+      replaceReason: 'bootstrap-generation-changed'
+    },
+    shutdown: {
+      requestShutdown: async ({ session, reason }) => {
+        const request: SharedWorkerShutdownRequest = {
+          requestId: createSharedWorkerRequestId(
+            routeHandlerProxyWorkerProtocolState,
+            'route-handler-proxy-worker-request'
+          ),
+          subject: 'shutdown'
+        };
 
-  const shutdownTimeoutPromise = new Promise<'timeout'>(resolve => {
-    shutdownTimeoutHandle = setTimeout(() => {
-      resolve('timeout');
-    }, ROUTE_HANDLER_PROXY_WORKER_SHUTDOWN_TIMEOUT_MS);
-  });
-
-  try {
-    return await Promise.race([
-      sendRouteHandlerProxyWorkerRequest<RouteHandlerProxyWorkerShutdownResponse>(
-        session,
-        {
-          requestId: createRouteHandlerProxyWorkerRequestId(),
-          kind: 'shutdown'
+        try {
+          await sendRouteHandlerProxyWorkerRequest(session, request);
+        } catch (error) {
+          debugRouteHandlerProxy('lazy-worker:shutdown-error', {
+            reason,
+            bootstrapGenerationToken: session.bootstrapGenerationToken,
+            message: error instanceof Error ? error.message : String(error)
+          });
+          throw error;
         }
-      ),
-      shutdownTimeoutPromise
-    ]);
-  } finally {
-    if (shutdownTimeoutHandle != null) {
-      clearTimeout(shutdownTimeoutHandle);
+      },
+      acknowledgementTimeoutMs: ROUTE_HANDLER_PROXY_WORKER_SHUTDOWN_TIMEOUT_MS,
+      forceCloseSession: ({ workerSessions, session, reason }) => {
+        forceCloseRouteHandlerProxyWorkerSession({
+          workerSessions,
+          session,
+          reason
+        });
+      }
     }
-  }
-};
+  });
 
 /**
  * Gracefully shut down one worker session and wait for full process
@@ -351,18 +390,6 @@ export const shutdownRouteHandlerProxyWorkerSessionGracefully = async ({
   session: RouteHandlerProxyWorkerSession;
   reason: string;
 }): Promise<void> => {
-  unregisterRouteHandlerProxyWorkerSession(workerSessions, session);
-
-  if (session.shutdownPromise != null) {
-    await session.shutdownPromise;
-    return;
-  }
-
-  if (session.closed) {
-    await session.terminationPromise;
-    return;
-  }
-
   debugRouteHandlerProxy('lazy-worker:shutdown-start', {
     reason,
     bootstrapGenerationToken: session.bootstrapGenerationToken
@@ -372,44 +399,11 @@ export const shutdownRouteHandlerProxyWorkerSessionGracefully = async ({
     bootstrapGenerationToken: session.bootstrapGenerationToken
   });
 
-  session.shutdownPromise = (async () => {
-    try {
-      const shutdownAcknowledgement =
-        await waitForRouteHandlerProxyWorkerShutdownAcknowledgement(session);
-
-      if (shutdownAcknowledgement === 'timeout') {
-        debugRouteHandlerProxy('lazy-worker:shutdown-timeout', {
-          reason,
-          bootstrapGenerationToken: session.bootstrapGenerationToken
-        });
-        forceCloseRouteHandlerProxyWorkerSession(
-          workerSessions,
-          session,
-          'shutdown-timeout'
-        );
-      }
-    } catch (error) {
-      debugRouteHandlerProxy('lazy-worker:shutdown-error', {
-        reason,
-        bootstrapGenerationToken: session.bootstrapGenerationToken,
-        message: error instanceof Error ? error.message : String(error)
-      });
-      forceCloseRouteHandlerProxyWorkerSession(
-        workerSessions,
-        session,
-        'shutdown-failed'
-      );
-    }
-
-    await session.terminationPromise;
-
-    debugRouteHandlerProxy('lazy-worker:shutdown-complete', {
-      reason,
-      bootstrapGenerationToken: session.bootstrapGenerationToken
-    });
-  })();
-
-  await session.shutdownPromise;
+  await routeHandlerProxyWorkerHostLifecycleMachine.shutdownSession({
+    workerSessions,
+    session,
+    reason
+  });
 };
 
 /**
@@ -456,57 +450,31 @@ const createRouteHandlerProxyWorkerSession = ({
     bootstrapGenerationToken
   });
 
-  const child = spawn(process.execPath, workerArgv, {
-    cwd: workerCwd,
-    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
-    env: workerEnvironment
+  const child = spawnSharedWorkerChild({
+    workerArgv,
+    workerCwd,
+    workerEnvironment,
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc']
   });
-  let resolveWorkerSessionTermination = (): void => {};
-  const session: RouteHandlerProxyWorkerSession = {
+  const baseSession = createSharedWorkerSession<
+    | RouteHandlerProxyWorkerBootstrapResponse
+    | RouteHandlerProxyWorkerShutdownResponse
+    | RouteHandlerProxyWorkerResponse
+  >({
     sessionKey,
-    bootstrapGenerationToken,
-    child,
-    pendingRequests: new Map(),
-    bootstrapPromise: Promise.resolve(),
-    shutdownPromise: null,
-    terminationPromise: new Promise(resolve => {
-      resolveWorkerSessionTermination = resolve;
-    }),
-    resolveTermination: () => {
-      resolveWorkerSessionTermination();
-    },
-    closed: false
-  };
+    child
+  });
+  const session = Object.assign(
+    createSharedWorkerHostLifecycleSession(baseSession),
+    {
+      bootstrapGenerationToken,
+      bootstrapPromise: Promise.resolve()
+    }
+  ) as RouteHandlerProxyWorkerSession;
   const stderrChunks: Array<Buffer> = [];
 
-  child.on('message', rawEnvelope => {
-    try {
-      const envelope = rawEnvelope as RouteHandlerProxyWorkerResponseEnvelope;
-      const pendingRequest = session.pendingRequests.get(envelope.requestId);
-
-      if (pendingRequest == null) {
-        return;
-      }
-
-      session.pendingRequests.delete(envelope.requestId);
-
-      if (envelope.ok) {
-        pendingRequest.resolve(envelope.response);
-        return;
-      }
-
-      pendingRequest.reject(new Error(envelope.error.message));
-    } catch (error) {
-      rejectRouteHandlerProxyWorkerSessionPendingRequests(
-        session,
-        error instanceof Error ? error : new Error(String(error))
-      );
-      forceCloseRouteHandlerProxyWorkerSession(
-        workerSessions,
-        session,
-        'invalid-worker-response-envelope'
-      );
-    }
+  child.on('message', (envelope: RouteHandlerProxyWorkerResponseEnvelope) => {
+    resolveSharedWorkerResponseEnvelope(session, envelope);
   });
 
   child.stderr?.on('data', chunk => {
@@ -519,17 +487,17 @@ const createRouteHandlerProxyWorkerSession = ({
   });
 
   child.on('error', error => {
-    rejectRouteHandlerProxyWorkerSessionPendingRequests(session, error);
-    unregisterRouteHandlerProxyWorkerSession(workerSessions, session);
-    session.closed = true;
-    session.resolveTermination();
+    const rejectionError =
+      error instanceof Error ? error : new Error(String(error));
+
+    routeHandlerProxyWorkerHostLifecycleMachine.observeSessionTermination({
+      workerSessions,
+      session,
+      rejectionError
+    });
   });
 
   child.on('close', (exitCode, signal) => {
-    unregisterRouteHandlerProxyWorkerSession(workerSessions, session);
-    session.closed = true;
-    session.resolveTermination();
-
     debugRouteHandlerProxy('lazy-worker:child-close', {
       exitCode,
       signal,
@@ -537,32 +505,48 @@ const createRouteHandlerProxyWorkerSession = ({
       pendingRequestCount: session.pendingRequests.size
     });
 
-    if (session.pendingRequests.size === 0 && exitCode === 0) {
-      return;
+    if (session.phase === 'shutting-down') {
+      debugRouteHandlerProxy('lazy-worker:shutdown-complete', {
+        bootstrapGenerationToken: session.bootstrapGenerationToken
+      });
     }
 
-    rejectRouteHandlerProxyWorkerSessionPendingRequests(
+    const shouldRejectPendingRequests =
+      session.pendingRequests.size > 0 || exitCode !== 0;
+
+    routeHandlerProxyWorkerHostLifecycleMachine.observeSessionTermination({
+      workerSessions,
       session,
-      createRouteHandlerProxyWorkerExitError(exitCode, stderrChunks)
-    );
+      rejectionError: shouldRejectPendingRequests
+        ? createSharedWorkerExitError({
+            workerLabel: 'proxy worker',
+            exitCode,
+            stderrChunks
+          })
+        : undefined
+    });
   });
 
+  const bootstrapRequest: RouteHandlerProxyWorkerBootstrapRequest = {
+    // Bootstrap carries the clear adapter-owned registration values the
+    // worker needs to reload runtime attachments for this generation.
+    requestId: createSharedWorkerRequestId(
+      routeHandlerProxyWorkerProtocolState,
+      'route-handler-proxy-worker-request'
+    ),
+    subject: 'bootstrap',
+    payload: {
+      bootstrapGenerationToken,
+      localeConfig,
+      configRegistration
+    }
+  };
+
   session.bootstrapPromise =
-    sendRouteHandlerProxyWorkerRequest<RouteHandlerProxyWorkerBootstrapResponse>(
-      session,
-      {
-        // Bootstrap carries the clear adapter-owned registration values the
-        // worker needs to reload runtime attachments for this generation.
-        requestId: createRouteHandlerProxyWorkerRequestId(),
-        kind: 'bootstrap',
-        bootstrapGenerationToken,
-        localeConfig,
-        configRegistration
-      }
-    ).then(response => {
+    sendRouteHandlerProxyWorkerRequest(session, bootstrapRequest).then(response => {
       if (
-        response.kind !== 'bootstrapped' ||
-        response.bootstrapGenerationToken !== bootstrapGenerationToken
+        response.subject !== 'bootstrapped' ||
+        response.payload.bootstrapGenerationToken !== bootstrapGenerationToken
       ) {
         throw new Error(
           'next-slug-splitter proxy worker bootstrap returned an unexpected generation token.'
@@ -598,44 +582,12 @@ export const resolveRouteHandlerProxyWorkerSession = async ({
 }: RouteHandlerProxyWorkerSessionInput & {
   workerSessions: RouteHandlerProxyWorkerSessionRegistry;
 }): Promise<RouteHandlerProxyWorkerSession> => {
-  const sessionKey =
-    createRouteHandlerProxyWorkerSessionKey(configRegistration);
-  const existingSession = workerSessions.get(sessionKey);
-
-  if (
-    existingSession != null &&
-    existingSession.bootstrapGenerationToken === bootstrapGenerationToken
-  ) {
-    await existingSession.bootstrapPromise;
-    return existingSession;
-  }
-
-  if (existingSession != null) {
-    await shutdownRouteHandlerProxyWorkerSessionGracefully({
-      workerSessions,
-      session: existingSession,
-      reason: 'bootstrap-generation-changed'
-    });
-  }
-
-  const session = createRouteHandlerProxyWorkerSession({
+  return await routeHandlerProxyWorkerHostLifecycleMachine.resolveSession({
     workerSessions,
-    localeConfig,
-    bootstrapGenerationToken,
-    configRegistration
+    request: {
+      localeConfig,
+      bootstrapGenerationToken,
+      configRegistration
+    }
   });
-  workerSessions.set(sessionKey, session);
-
-  try {
-    await session.bootstrapPromise;
-  } catch (error) {
-    forceCloseRouteHandlerProxyWorkerSession(
-      workerSessions,
-      session,
-      'bootstrap-failed'
-    );
-    throw error;
-  }
-
-  return session;
 };

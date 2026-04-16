@@ -67,19 +67,22 @@ const createWorkerSessionChild = (
   child.send = (message, callback) => {
     child.requests.push(message);
     queueMicrotask(() => {
-      if (message.kind === 'bootstrap') {
+      if (message.subject === 'bootstrap') {
         child.emit('message', {
           requestId: message.requestId,
           ok: true,
           response: {
-            kind: 'bootstrapped',
-            bootstrapGenerationToken: message.bootstrapGenerationToken
+            subject: 'bootstrapped',
+            payload: {
+              bootstrapGenerationToken:
+                message.payload.bootstrapGenerationToken
+            }
           }
         });
         return;
       }
 
-      if (message.kind === 'shutdown') {
+      if (message.subject === 'shutdown') {
         if (!acknowledgeShutdown) {
           return;
         }
@@ -88,7 +91,7 @@ const createWorkerSessionChild = (
           requestId: message.requestId,
           ok: true,
           response: {
-            kind: 'shutdown-complete'
+            subject: 'shutdown-complete'
           }
         });
         queueMicrotask(() => {
@@ -130,8 +133,10 @@ describe('proxy worker client', () => {
   it('launches the long-lived worker with Node strip-types support for TS config files', async () => {
     const child = createWorkerSessionChild([
       {
-        kind: 'pass-through',
-        reason: 'no-target'
+        subject: 'pass-through',
+        payload: {
+          reason: 'no-target'
+        }
       }
     ]);
     spawnMock.mockReturnValue(child);
@@ -169,7 +174,7 @@ describe('proxy worker client', () => {
         stdio: ['ignore', 'pipe', 'pipe', 'ipc']
       })
     );
-    expect(child.requests.map(request => request.kind)).toEqual([
+    expect(child.requests.map(request => request.subject)).toEqual([
       'bootstrap',
       'resolve-lazy-miss'
     ]);
@@ -179,8 +184,10 @@ describe('proxy worker client', () => {
     spawnMock.mockReturnValue(
       createWorkerSessionChild([
         {
-          kind: 'pass-through',
-          reason: 'no-target'
+          subject: 'pass-through',
+          payload: {
+            reason: 'no-target'
+          }
         }
       ])
     );
@@ -215,16 +222,20 @@ describe('proxy worker client', () => {
     spawnMock.mockReturnValue(
       createWorkerSessionChild([
         {
-          kind: 'heavy',
-          handlerSynchronizationStatus: 'created',
-          rewriteDestination: '/en/docs/_handlers/getting-started/en',
-          routeBasePath: '/docs'
+          subject: 'heavy',
+          payload: {
+            handlerSynchronizationStatus: 'created',
+            rewriteDestination: '/en/docs/_handlers/getting-started/en',
+            routeBasePath: '/docs'
+          }
         },
         {
-          kind: 'heavy',
-          handlerSynchronizationStatus: 'unchanged',
-          rewriteDestination: '/en/docs/_handlers/getting-started/en',
-          routeBasePath: '/docs'
+          subject: 'heavy',
+          payload: {
+            handlerSynchronizationStatus: 'unchanged',
+            rewriteDestination: '/en/docs/_handlers/getting-started/en',
+            routeBasePath: '/docs'
+          }
         }
       ])
     );
@@ -249,10 +260,12 @@ describe('proxy worker client', () => {
 
     expect(spawnMock).toHaveBeenCalledTimes(1);
     expect(secondResult).toEqual({
-      kind: 'heavy',
-      handlerSynchronizationStatus: 'unchanged',
-      rewriteDestination: '/en/docs/_handlers/getting-started/en',
-      routeBasePath: '/docs'
+      subject: 'heavy',
+      payload: {
+        handlerSynchronizationStatus: 'unchanged',
+        rewriteDestination: '/en/docs/_handlers/getting-started/en',
+        routeBasePath: '/docs'
+      }
     });
   });
 
@@ -277,16 +290,20 @@ describe('proxy worker client', () => {
     });
 
     expect(spawnMock).toHaveBeenCalledTimes(1);
-    expect(child.requests.map(request => request.kind)).toEqual(['bootstrap']);
+    expect(child.requests.map(request => request.subject)).toEqual([
+      'bootstrap'
+    ]);
   });
 
   it('reuses a prewarmed worker session for the first later lazy miss', async () => {
     const child = createWorkerSessionChild([
       {
-        kind: 'heavy',
-        handlerSynchronizationStatus: 'created',
-        rewriteDestination: '/en/docs/_handlers/getting-started/en',
-        routeBasePath: '/docs'
+        subject: 'heavy',
+        payload: {
+          handlerSynchronizationStatus: 'created',
+          rewriteDestination: '/en/docs/_handlers/getting-started/en',
+          routeBasePath: '/docs'
+        }
       }
     ]);
     spawnMock.mockReturnValue(child);
@@ -309,7 +326,7 @@ describe('proxy worker client', () => {
     });
 
     expect(spawnMock).toHaveBeenCalledTimes(1);
-    expect(child.requests.map(request => request.kind)).toEqual([
+    expect(child.requests.map(request => request.subject)).toEqual([
       'bootstrap',
       'resolve-lazy-miss'
     ]);
@@ -318,10 +335,12 @@ describe('proxy worker client', () => {
   it('does not let worker stdout noise interfere with IPC responses', async () => {
     const child = createWorkerSessionChild([
       {
-        kind: 'heavy',
-        handlerSynchronizationStatus: 'created',
-        rewriteDestination: '/en/docs/_handlers/getting-started/en',
-        routeBasePath: '/docs'
+        subject: 'heavy',
+        payload: {
+          handlerSynchronizationStatus: 'created',
+          rewriteDestination: '/en/docs/_handlers/getting-started/en',
+          routeBasePath: '/docs'
+        }
       }
     ]);
     const originalSend = child.send;
@@ -348,28 +367,34 @@ describe('proxy worker client', () => {
         bootstrapGenerationToken: 'bootstrap-1'
       })
     ).resolves.toEqual({
-      kind: 'heavy',
-      handlerSynchronizationStatus: 'created',
-      rewriteDestination: '/en/docs/_handlers/getting-started/en',
-      routeBasePath: '/docs'
+      subject: 'heavy',
+      payload: {
+        handlerSynchronizationStatus: 'created',
+        rewriteDestination: '/en/docs/_handlers/getting-started/en',
+        routeBasePath: '/docs'
+      }
     });
   });
 
   it('restarts the worker session when the bootstrap generation changes via graceful shutdown', async () => {
     const firstChild = createWorkerSessionChild([
       {
-        kind: 'heavy',
-        handlerSynchronizationStatus: 'created',
-        rewriteDestination: '/en/docs/_handlers/getting-started/en',
-        routeBasePath: '/docs'
+        subject: 'heavy',
+        payload: {
+          handlerSynchronizationStatus: 'created',
+          rewriteDestination: '/en/docs/_handlers/getting-started/en',
+          routeBasePath: '/docs'
+        }
       }
     ]);
     const secondChild = createWorkerSessionChild([
       {
-        kind: 'heavy',
-        handlerSynchronizationStatus: 'created',
-        rewriteDestination: '/en/docs/_handlers/getting-started/en',
-        routeBasePath: '/docs'
+        subject: 'heavy',
+        payload: {
+          handlerSynchronizationStatus: 'created',
+          rewriteDestination: '/en/docs/_handlers/getting-started/en',
+          routeBasePath: '/docs'
+        }
       }
     ]);
     spawnMock.mockReturnValueOnce(firstChild).mockReturnValueOnce(secondChild);
@@ -393,7 +418,7 @@ describe('proxy worker client', () => {
     });
 
     expect(spawnMock).toHaveBeenCalledTimes(2);
-    expect(firstChild.requests.map(request => request.kind)).toEqual([
+    expect(firstChild.requests.map(request => request.subject)).toEqual([
       'bootstrap',
       'resolve-lazy-miss',
       'shutdown'
@@ -404,8 +429,10 @@ describe('proxy worker client', () => {
   it('waits for graceful shutdown when clearing worker client sessions explicitly', async () => {
     const child = createWorkerSessionChild([
       {
-        kind: 'pass-through',
-        reason: 'no-target'
+        subject: 'pass-through',
+        payload: {
+          reason: 'no-target'
+        }
       }
     ]);
     spawnMock.mockReturnValue(child);
@@ -421,7 +448,7 @@ describe('proxy worker client', () => {
 
     await clearRouteHandlerProxyWorkerClientSessions();
 
-    expect(child.requests.map(request => request.kind)).toEqual([
+    expect(child.requests.map(request => request.subject)).toEqual([
       'bootstrap',
       'resolve-lazy-miss',
       'shutdown'
@@ -435,8 +462,10 @@ describe('proxy worker client', () => {
     const child = createWorkerSessionChild(
       [
         {
-          kind: 'pass-through',
-          reason: 'no-target'
+          subject: 'pass-through',
+          payload: {
+            reason: 'no-target'
+          }
         }
       ],
       {
@@ -459,7 +488,7 @@ describe('proxy worker client', () => {
     await vi.advanceTimersByTimeAsync(2000);
     await clearPromise;
 
-    expect(child.requests.map(request => request.kind)).toEqual([
+    expect(child.requests.map(request => request.subject)).toEqual([
       'bootstrap',
       'resolve-lazy-miss',
       'shutdown'

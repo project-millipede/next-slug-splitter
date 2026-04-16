@@ -11,7 +11,7 @@ vi.mock('file-entry-cache', () => ({
 
 import { createRouteHandlerLazySingleRouteCacheManager } from '../../../../next/proxy/lazy/single-route-cache-manager';
 
-import type { RouteHandlerPlannerConfig } from '../../../../next/types';
+import type { RouteHandlerLazyPagesPlannerConfig } from '../../../../next/proxy/lazy/types';
 
 type MockFileDescriptor = {
   changed: boolean;
@@ -64,13 +64,42 @@ const createMockFileEntryCache = (): MockFileEntryCache => {
  * @param targetId - Stable target identifier.
  * @returns Minimal planner config shape for cache-manager tests.
  */
-const createPlannerConfig = (targetId: string): RouteHandlerPlannerConfig =>
+const createPlannerConfig = (
+  targetId: string
+): RouteHandlerLazyPagesPlannerConfig =>
   ({
+    routerKind: 'pages',
     targetId,
+    emitFormat: 'ts',
+    contentLocaleMode: 'filename',
+    handlerRouteParam: {
+      name: 'slug',
+      kind: 'catch-all'
+    },
+    routeBasePath: '/docs',
+    processorConfig: {
+      processorImport: {
+        kind: 'package',
+        specifier: '@test/processor'
+      }
+    },
+    baseStaticPropsImport: {
+      kind: 'package',
+      specifier: '@test/base-static-props'
+    },
+    runtime: {
+      mdxCompileOptions: {}
+    },
+    localeConfig: {
+      locales: ['en'],
+      defaultLocale: 'en'
+    },
     paths: {
-      rootDir: '/app'
+      rootDir: '/app',
+      contentPagesDir: '/app/content',
+      handlersDir: '/app/pages/docs/_handlers'
     }
-  }) as RouteHandlerPlannerConfig;
+  }) satisfies RouteHandlerLazyPagesPlannerConfig;
 
 const routePath = {
   filePath: '/app/content/post.mdx',

@@ -1,0 +1,37 @@
+{
+  "name": "next-slug-splitter-demo-app-router",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "rimraf dist && rimraf .next",
+    "generate:ballast": "node scripts/generate-ballast.mjs",
+    "clean:handlers": "node scripts/clean-handlers.mjs",
+    "clean:all": "node scripts/erase-generated-dev-state.mjs",
+    "dev": "pnpm generate:ballast && next dev",
+    "dev:ts": "pnpm generate:ballast && next dev",
+    "build": "pnpm generate:ballast && pnpm clean:handlers && next build",
+    "build:ts": "pnpm generate:ballast && pnpm clean:handlers && next build",
+    "start": "next start",
+    "start:ts": "next start",
+    "analyze:turbo": "pnpm next experimental-analyze"
+  },
+  "dependencies": {
+    "@demo/components": "workspace:*",
+    "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
+    "@mdx-js/esbuild": "^3.1.1",
+    "esbuild": "^0.28.0",
+    "next": "file:/Users/markusgritsch/Development/Topics/Millipede/Project/OSS-Projects/contributions/next.js/packages/next",
+    "next-slug-splitter": "file:../..",
+    "react": "0.0.0-experimental-705268dc-20260409",
+    "react-dom": "0.0.0-experimental-705268dc-20260409"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "rimraf": "^6.1.3",
+    "tsx": "^4.21.0",
+    "typescript": "6.0.2"
+  }
+}

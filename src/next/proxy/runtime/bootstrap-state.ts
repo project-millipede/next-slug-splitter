@@ -2,10 +2,10 @@ import { createRuntimeError } from '../../../utils/errors';
 import { readRouteHandlerProxyBootstrap } from '../bootstrap-persisted';
 import { doesRouteHandlerProxyLocaleConfigMatch } from './shared';
 
+import type { LocaleConfig } from '../../../core/types';
 import type {
   BootstrapGenerationToken,
-  RouteHandlerProxyConfigRegistration,
-  RouteHandlerProxyOptions
+  RouteHandlerProxyConfigRegistration
 } from './types';
 
 /**
@@ -34,7 +34,7 @@ const inFlightBootstrapStates = new Map<
 >();
 
 const createRouteHandlerProxyBootstrapStateKey = (
-  localeConfig: RouteHandlerProxyOptions['localeConfig'],
+  localeConfig: LocaleConfig,
   configRegistration: RouteHandlerProxyConfigRegistration = {}
 ): string =>
   JSON.stringify([
@@ -43,7 +43,7 @@ const createRouteHandlerProxyBootstrapStateKey = (
   ]);
 
 const loadFreshRouteHandlerProxyBootstrapState = async (
-  localeConfig: RouteHandlerProxyOptions['localeConfig'],
+  localeConfig: LocaleConfig,
   configRegistration: RouteHandlerProxyConfigRegistration = {}
 ): Promise<RouteHandlerProxyBootstrapState> => {
   const rootDir = configRegistration.rootDir ?? process.cwd();
@@ -81,7 +81,7 @@ const loadFreshRouteHandlerProxyBootstrapState = async (
  * @returns Cached bootstrap state for the current registration/locale pair.
  */
 export const getRouteHandlerProxyBootstrapState = async (
-  localeConfig: RouteHandlerProxyOptions['localeConfig'],
+  localeConfig: LocaleConfig,
   configRegistration: RouteHandlerProxyConfigRegistration = {}
 ): Promise<RouteHandlerProxyBootstrapState> => {
   const stateKey = createRouteHandlerProxyBootstrapStateKey(

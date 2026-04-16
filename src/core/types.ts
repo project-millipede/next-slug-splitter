@@ -177,7 +177,7 @@ export type RouteHandlerPipelineResult = {
   /**
    * Heavy route candidates selected for handler generation.
    */
-  heavyPaths: Array<HeavyRouteCandidate>;
+  heavyPaths: Array<PlannedHeavyRoute>;
 };
 
 /**
@@ -201,16 +201,30 @@ export type RouteHandlerPaths = {
 };
 
 /**
- * Locale configuration for the application.
+ * Structural locale identity used by route planning, lookup, and rewrite
+ * generation.
+ *
+ * @remarks
+ * These values do not have to map directly to public URL prefixes in every
+ * setup. Single-locale applications are normalized internally to a private
+ * reserved locale identity; app code should not invent synthetic locale values
+ * just to represent "single locale" mode.
  */
 export type LocaleConfig = {
   /**
-   * Available locale codes.
+   * Complete set of locale identifiers the system should recognize.
+   *
+   * Examples:
+   * - `['en', 'de']` for a multi-locale app
+   * - a private internal single-locale identity created by the library
    */
   locales: Array<string>;
 
   /**
-   * Default locale used when no specific locale is detected.
+   * Locale identifier used when a request or route does not specify one
+   * explicitly.
+   *
+   * This value must be included in `locales`.
    */
   defaultLocale: string;
 };
@@ -531,11 +545,6 @@ export type PlannedHeavyRoute = HeavyRouteCandidate & {
  * Resolved processor module reference owned by the app.
  */
 export type ModuleRouteHandlerProcessorConfig = {
-  /**
-   * Discriminator for module-backed processors.
-   */
-  kind: 'module';
-
   /**
    * Resolved module reference pointing at the processor module.
    */

@@ -1,7 +1,7 @@
 import process from 'node:process';
 
 import { createRuntimeError } from '../../../../utils/errors';
-import { loadRouteHandlerProxyRuntimeAttachments } from '../../../internal/runtime-attachments';
+import { loadRouteHandlerProxyRuntimeAttachments } from '../../runtime-attachments';
 import { doesRouteHandlerProxyLocaleConfigMatch } from '../../runtime/shared';
 import {
   createRouteHandlerLazySingleRouteCacheManager,
@@ -14,8 +14,10 @@ import {
 } from '../../bootstrap-persisted';
 
 import type { LocaleConfig } from '../../../../core/types';
-import type { RouteHandlerPlannerConfig } from '../../../types';
-import type { RouteHandlerLazyResolvedTarget } from '../../lazy/types';
+import type {
+  RouteHandlerLazyPlannerConfig,
+  RouteHandlerLazyResolvedTarget
+} from '../../lazy/types';
 import type {
   BootstrapGenerationToken,
   RouteHandlerProxyConfigRegistration
@@ -60,7 +62,7 @@ export type RouteHandlerProxyWorkerBootstrapState = {
   /**
    * Fully prepared planner configs keyed by stable target id.
    */
-  resolvedConfigsByTargetId: ReadonlyMap<string, RouteHandlerPlannerConfig>;
+  resolvedConfigsByTargetId: ReadonlyMap<string, RouteHandlerLazyPlannerConfig>;
   /**
    * Generation-scoped lazy single-route cache manager retained by the worker.
    */
@@ -122,7 +124,7 @@ export const bootstrapRouteHandlerProxyWorker = async (
     createRouteHandlerPlannerConfigsByIdFromProxyBootstrap(manifest);
   const resolvedConfigsByTargetId = new Map<
     string,
-    RouteHandlerPlannerConfig
+    RouteHandlerLazyPlannerConfig
   >();
 
   for (const [targetId, structuralConfig] of structuralConfigsByTargetId) {

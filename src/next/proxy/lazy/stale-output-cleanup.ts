@@ -2,8 +2,9 @@ import { toHandlerRelativePath } from '../../../core/discovery';
 import {
   removeRenderedRouteHandlerPageIfPresent,
   type EmittedHandlerPageRemovalStatus
-} from '../../../generator/protocol/output-lifecycle';
-import { resolveRenderedHandlerPageLocation } from '../../../generator/protocol/rendered-page';
+} from '../../../generator/shared/protocol/output-lifecycle';
+import { resolveRenderedAppHandlerPageLocation } from '../../../generator/app/protocol/rendered-page';
+import { resolveRenderedHandlerPageLocation } from '../../../generator/pages/protocol/rendered-page';
 
 import type {
   RouteHandlerLazyOutputConfig,
@@ -74,11 +75,18 @@ export const removeRouteHandlerLazyOutputForIdentity = ({
       includeLocaleLeaf: config.contentLocaleMode !== 'default-locale'
     }
   );
-  const { pageFilePath } = resolveRenderedHandlerPageLocation(
-    config.paths,
-    config.emitFormat,
-    handlerRelativePath
-  );
+  const { pageFilePath } =
+    config.routerKind === 'app'
+      ? resolveRenderedAppHandlerPageLocation(
+          config.paths,
+          config.emitFormat,
+          handlerRelativePath
+        )
+      : resolveRenderedHandlerPageLocation(
+          config.paths,
+          config.emitFormat,
+          handlerRelativePath
+        );
 
   return removeRenderedRouteHandlerPageIfPresent(
     pageFilePath,

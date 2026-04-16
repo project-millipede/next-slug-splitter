@@ -37,6 +37,7 @@ type StaticWrappedConfig = Exclude<
 >;
 
 const TEST_DIRECT_ROUTE_HANDLERS_CONFIG = {
+  routerKind: 'pages',
   app: {
     rootDir: process.cwd()
   }
@@ -83,6 +84,7 @@ describe('withSlugSplitter', () => {
           configPath,
           [
             'export const routeHandlersConfig = {',
+            "  routerKind: 'pages',",
             '  app: {',
             `    rootDir: ${JSON.stringify(rootDir)}`,
             '  }',
@@ -126,6 +128,7 @@ describe('withSlugSplitter', () => {
         // 4. Data Integrity: Verify that the loaded config matches the file content.
         const loadedConfig = await loadRegisteredSlugSplitterConfig();
         expect(loadedConfig).toEqual({
+          routerKind: 'pages',
           app: {
             rootDir
           }
@@ -141,7 +144,7 @@ describe('withSlugSplitter', () => {
         const configPath = path.join(rootDir, 'route-handlers.config.mjs');
         await writeFile(
           configPath,
-          'export default { app: { rootDir: "/tmp/app" } };\n',
+          'export default { routerKind: "pages", app: { rootDir: "/tmp/app" } };\n',
           'utf8'
         );
 

@@ -1,4 +1,4 @@
-import type { RouteHandlerNextResult } from '../next/types';
+import type { RouteHandlerNextResult } from '../next/shared/types';
 
 /**
  * Formats the handler-count clause for the standalone CLI summary.

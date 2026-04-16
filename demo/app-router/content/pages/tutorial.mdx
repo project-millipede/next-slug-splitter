@@ -1,0 +1,42 @@
+# Tutorial
+
+This is another _light_ page. It uses only standard Markdown features.
+
+## Setting up your project
+
+To integrate **next-slug-splitter** into your Next.js project:
+
+### 1. Install the package
+
+```bash
+pnpm add next-slug-splitter
+```
+
+### 2. Wrap your Next.js config
+
+```typescript
+import { withSlugSplitter } from 'next-slug-splitter/next';
+
+export default withSlugSplitter(nextConfig, {
+  routeHandlersConfig
+});
+```
+
+### 3. Define your targets
+
+Each target represents a content section (e.g. docs, blog) with its own
+catch-all route and content directory.
+
+### 4. Run your normal build
+
+```bash
+next build
+```
+
+> The Next adapter analyzes your MDX content and generates optimized route
+> handlers automatically during the build. The standalone CLI is optional.
+
+## What happens at build time?
+
+The library generates `generated-handlers/` files next to your catch-all route.
+These files are gitignored and recreated on every build.

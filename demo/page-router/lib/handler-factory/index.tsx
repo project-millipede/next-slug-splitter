@@ -1,5 +1,10 @@
 import type { ComponentType } from 'react';
 import { MdxContent } from '../mdx-runtime';
+import {
+  runtimeTrait,
+  type RuntimeConfig,
+  type RuntimeTrait
+} from './runtime-traits';
 
 /**
  * Map of component names to their React implementations.
@@ -15,17 +20,11 @@ type MDXComponentMap = Record<string, ComponentType<Record<string, unknown>>>;
  * Each entry wraps a concrete React component that will be injected into
  * the MDX rendering scope for a generated handler page.
  */
-type LoadableEntry = {
+type LoadableEntry = RuntimeConfig & {
   /**
    * The React component to render when the corresponding tag appears in MDX.
    */
   component: ComponentType<Record<string, unknown>>;
-
-  /**
-   * Optional runtime traits used by the demo to showcase metadata-driven
-   * behavior in generated handlers.
-   */
-  runtimeTraits?: ReadonlyArray<string>;
 };
 
 /**
@@ -59,15 +58,15 @@ export type HandlerPageFactoryInput<T> = {
 
 const hasRuntimeTrait = (
   entry: LoadableEntry,
-  runtimeTrait: string
-): boolean => entry.runtimeTraits?.includes(runtimeTrait) ?? false;
+  runtimeTraitKey: RuntimeTrait
+): boolean => entry.runtimeTraits?.includes(runtimeTraitKey) ?? false;
 
 const enhanceComponent = (
   entry: LoadableEntry
 ): ComponentType<Record<string, unknown>> => {
   const BaseComponent = entry.component;
-  const requireWrapper = hasRuntimeTrait(entry, 'wrapper');
-  const injectSelection = hasRuntimeTrait(entry, 'selection');
+  const requireWrapper = hasRuntimeTrait(entry, runtimeTrait.wrapper);
+  const injectSelection = hasRuntimeTrait(entry, runtimeTrait.selection);
 
   if (!requireWrapper && !injectSelection) {
     return BaseComponent;

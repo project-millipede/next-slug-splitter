@@ -2,8 +2,12 @@
 
 import process from 'process';
 
+import { requireAppRouteHandlersConfig } from '../next/app/config/router-kind';
 import { loadSlugSplitterConfigFromPath } from '../next/integration/slug-splitter-config-loader';
-import { executeRouteHandlerNextPipeline } from '../next/runtime';
+import { executeRouteHandlerNextPipeline as executeAppRouteHandlerNextPipeline } from '../next/app/runtime/pipeline';
+import { requirePagesRouteHandlersConfig } from '../next/pages/config/router-kind';
+import { executeRouteHandlerNextPipeline } from '../next/pages/runtime';
+import { resolveRouteHandlerRouterKind } from '../next/shared/config/router-kind';
 import {
   formatNextSlugSplitterMessage,
   formatNextSlugSplitterMessageLines
@@ -38,13 +42,26 @@ const main = async (): Promise<void> => {
   const routeHandlersConfig = await loadSlugSplitterConfigFromPath(
     routeHandlersConfigPath
   );
-
-  const results = await executeRouteHandlerNextPipeline({
-    rootDir,
-    localeConfig,
-    routeHandlersConfig,
-    mode: analyzeOnly ? 'analyze' : 'generate'
-  });
+  const results =
+    resolveRouteHandlerRouterKind(routeHandlersConfig) === 'app'
+      ? await executeAppRouteHandlerNextPipeline({
+          rootDir,
+          localeConfig,
+          routeHandlersConfig: requireAppRouteHandlersConfig(
+            routeHandlersConfig,
+            'The App Router CLI path'
+          ),
+          mode: analyzeOnly ? 'analyze' : 'generate'
+        })
+      : await executeRouteHandlerNextPipeline({
+          rootDir,
+          localeConfig,
+          routeHandlersConfig: requirePagesRouteHandlersConfig(
+            routeHandlersConfig,
+            'The Pages Router CLI path'
+          ),
+          mode: analyzeOnly ? 'analyze' : 'generate'
+        });
 
   if (jsonOutput) {
     process.stdout.write(`${JSON.stringify(results)}\n`);

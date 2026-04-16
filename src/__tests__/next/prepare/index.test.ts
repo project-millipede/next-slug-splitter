@@ -14,17 +14,17 @@ vi.mock(import('node:child_process'), () => ({
   spawn: vi.fn()
 }));
 
-vi.mock(import('../../../next/prepare/typescript'), () => ({
+vi.mock(import('../../../next/shared/prepare/typescript'), () => ({
   resolveAppLocalTypeScriptCompilerPath: vi.fn()
 }));
 
 import * as childProcess from 'node:child_process';
 import { relativeModule } from '../../../next';
-import { prepareRouteHandlersFromConfig } from '../../../next/prepare/index';
-import * as prepareTypeScript from '../../../next/prepare/typescript';
+import { prepareRouteHandlersFromConfig } from '../../../next/shared/prepare/index';
+import * as prepareTypeScript from '../../../next/shared/prepare/typescript';
 import { resetMockFs, seedMockFsFiles } from '../../__utils__/mock-fs';
 
-import type { RouteHandlersConfig } from '../../../next/types';
+import type { RouteHandlersConfig } from '../../../next/pages/types';
 
 type MockChildProcess = EventEmitter & {
   stdout: PassThrough;
@@ -74,6 +74,7 @@ describe('route handler preparation', () => {
             }));
 
     return {
+      routerKind: 'pages',
       app: {
         rootDir,
         prepare

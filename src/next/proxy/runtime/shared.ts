@@ -1,5 +1,13 @@
+import {
+  doLocaleConfigsMatch,
+  isSingleLocaleConfig
+} from '../../../core/locale-config';
 import type { LocaleConfig } from '../../../core/types';
-import type { ResolvedRouteHandlersConfig } from '../../types';
+
+export type RouteHandlerProxyMatcherConfig = {
+  routeBasePath: string;
+  localeConfig: LocaleConfig;
+};
 
 /**
  * Ownership marker embedded into plugin-generated root proxy files.
@@ -34,10 +42,7 @@ export const ROUTE_HANDLER_PROXY_TARGET_HEADER =
 export const doesRouteHandlerProxyLocaleConfigMatch = (
   left: LocaleConfig,
   right: LocaleConfig
-): boolean =>
-  left.defaultLocale === right.defaultLocale &&
-  left.locales.length === right.locales.length &&
-  left.locales.every((locale, index) => locale === right.locales[index]);
+): boolean => doLocaleConfigsMatch(left, right);
 
 /**
  * Convert one route base path into the non-locale matcher used by Proxy.
@@ -73,7 +78,7 @@ const toLocalizedRouteMatcher = (
  * Builds the static proxy matcher list embedded into the generated root
  * `proxy.ts`.
  *
- * @param resolvedConfigs - Fully resolved target configurations.
+ * @param resolvedConfigs - Route-aware matcher configs.
  * @returns A sorted, deduplicated array of proxy matcher strings.
  *
  * @remarks
@@ -87,7 +92,7 @@ const toLocalizedRouteMatcher = (
  *   limiting the proxy's responsibility to public page routes.
  */
 export const buildRouteHandlerProxyMatchers = (
-  resolvedConfigs: Array<ResolvedRouteHandlersConfig>
+  resolvedConfigs: ReadonlyArray<RouteHandlerProxyMatcherConfig>
 ): Array<string> => {
   // Use a Set to automatically deduplicate overlapping matchers across configs.
   const matchers = new Set<string>();
@@ -97,7 +102,7 @@ export const buildRouteHandlerProxyMatchers = (
     matchers.add(toRouteMatcher(config.routeBasePath));
 
     // 2. Single-locale apps do not expose /<locale>/... public aliases.
-    if (config.localeConfig.locales.length === 1) {
+    if (isSingleLocaleConfig(config.localeConfig)) {
       continue;
     }
 

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const loadRouteHandlerProxyRuntimeAttachmentsMock = vi.hoisted(() => vi.fn());
 const readRouteHandlerProxyBootstrapMock = vi.hoisted(() => vi.fn());
 
-vi.mock(import('../../../../next/internal/runtime-attachments'), () => ({
+vi.mock(import('../../../../next/proxy/runtime-attachments'), () => ({
   loadRouteHandlerProxyRuntimeAttachments:
     loadRouteHandlerProxyRuntimeAttachmentsMock
 }));
@@ -46,6 +46,7 @@ const createBootstrapManifest = ({
 
 function createBootstrapTarget() {
   return {
+    routerKind: 'pages',
     targetId: 'docs',
     routeBasePath: '/docs',
     contentLocaleMode: 'filename',
@@ -59,7 +60,6 @@ function createBootstrapTarget() {
       specifier: '@test/base-static-props'
     },
     processorConfig: {
-      kind: 'module',
       processorImport: {
         kind: 'package',
         specifier: '@test/processor'
@@ -69,6 +69,40 @@ function createBootstrapTarget() {
       rootDir: '/repo/app',
       contentPagesDir: '/repo/app/content/pages',
       handlersDir: '/repo/app/pages/_handlers'
+    }
+  };
+}
+
+function createAppBootstrapTarget() {
+  return {
+    routerKind: 'app',
+    targetId: 'docs',
+    routeBasePath: '/docs',
+    contentLocaleMode: 'filename',
+    emitFormat: 'ts',
+    handlerRouteParam: {
+      name: 'slug',
+      kind: 'catch-all'
+    },
+    handlerRouteSegment: 'generated-handlers',
+    routeModuleImport: {
+      kind: 'package',
+      specifier: '@test/docs-route-module'
+    },
+    routeModule: {
+      hasGeneratePageMetadata: true,
+      revalidate: false
+    },
+    processorConfig: {
+      processorImport: {
+        kind: 'package',
+        specifier: '@test/processor'
+      }
+    },
+    paths: {
+      rootDir: '/repo/app',
+      contentPagesDir: '/repo/app/content/pages',
+      handlersDir: '/repo/app/app/docs/generated-handlers'
     }
   };
 }
@@ -118,12 +152,18 @@ describe('proxy worker bootstrap', () => {
     expect(state.bootstrapGenerationToken).toBe('bootstrap-token');
     expect(state.lazyResolvedTargets).toEqual([
       {
+        routerKind: 'pages',
         targetId: 'docs',
         routeBasePath: '/docs',
         contentLocaleMode: 'filename',
         localeConfig: TEST_LOCALE_CONFIG,
         emitFormat: 'ts',
+        handlerRouteParam: {
+          name: 'slug',
+          kind: 'catch-all'
+        },
         paths: {
+          rootDir: '/repo/app',
           contentPagesDir: '/repo/app/content/pages',
           handlersDir: '/repo/app/pages/_handlers'
         }
@@ -131,6 +171,7 @@ describe('proxy worker bootstrap', () => {
     ]);
     expect(state.resolvedConfigsByTargetId.size).toBe(1);
     expect(resolvedConfig).toMatchObject({
+      routerKind: 'pages',
       targetId: 'docs',
       routeBasePath: '/docs',
       contentLocaleMode: 'filename',
@@ -144,7 +185,6 @@ describe('proxy worker bootstrap', () => {
         specifier: '@test/base-static-props'
       },
       processorConfig: {
-        kind: 'module',
         processorImport: {
           kind: 'package',
           specifier: '@test/processor'
@@ -235,5 +275,52 @@ describe('proxy worker bootstrap', () => {
     ).rejects.toThrow(
       'Route-handler proxy runtime attachments returned unexpected target "extra".'
     );
+  });
+
+  it('bootstraps App Router structural planner state from the shared manifest format', async () => {
+    readRouteHandlerProxyBootstrapMock.mockResolvedValue(
+      createBootstrapManifest({
+        targets: [createAppBootstrapTarget()]
+      })
+    );
+
+    const state = await bootstrapRouteHandlerProxyWorker(
+      'bootstrap-token',
+      TEST_LOCALE_CONFIG,
+      TEST_CONFIG_REGISTRATION
+    );
+    const resolvedConfig = state.resolvedConfigsByTargetId.get('docs');
+
+    expect(state.lazyResolvedTargets).toEqual([
+      {
+        routerKind: 'app',
+        targetId: 'docs',
+        routeBasePath: '/docs',
+        contentLocaleMode: 'filename',
+        localeConfig: TEST_LOCALE_CONFIG,
+        emitFormat: 'ts',
+        handlerRouteParam: {
+          name: 'slug',
+          kind: 'catch-all'
+        },
+        paths: {
+          rootDir: '/repo/app',
+          contentPagesDir: '/repo/app/content/pages',
+          handlersDir: '/repo/app/app/docs/generated-handlers'
+        }
+      }
+    ]);
+    expect(resolvedConfig).toMatchObject({
+      routerKind: 'app',
+      handlerRouteSegment: 'generated-handlers',
+      routeModuleImport: {
+        kind: 'package',
+        specifier: '@test/docs-route-module'
+      },
+      routeModule: {
+        hasGeneratePageMetadata: true,
+        revalidate: false
+      }
+    });
   });
 });

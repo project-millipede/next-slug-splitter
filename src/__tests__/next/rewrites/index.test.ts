@@ -1,12 +1,14 @@
 import { describe, expect, test } from 'vitest';
 
-import { buildRouteRewriteEntries } from '../../../next/rewrites/index';
+import { createSingleLocaleConfig } from '../../../core/locale-config';
+import { buildRouteRewriteEntries } from '../../../next/shared/rewrites/index';
 import { createHeavyRoute } from '../../helpers/builders';
 
 import type { LocaleConfig } from '../../../core/types';
-import type { RouteHandlerRewrite } from '../../../next/types';
+import type { RouteHandlerRewrite } from '../../../next/shared/types';
 
 describe('rewrite generation', () => {
+  const singleLocaleConfig = createSingleLocaleConfig();
   const multiLocaleHeavyRoutes = [
     createHeavyRoute({
       locale: 'en',
@@ -25,14 +27,14 @@ describe('rewrite generation', () => {
   ];
   const singleLocaleHeavyRoutes = [
     createHeavyRoute({
-      locale: 'en',
+      locale: singleLocaleConfig.defaultLocale,
       slugArray: ['interactive'],
       handlerId: 'en-interactive',
       handlerRelativePath: 'interactive',
       usedLoadableComponentKeys: ['InteractiveComponent']
     }),
     createHeavyRoute({
-      locale: 'en',
+      locale: singleLocaleConfig.defaultLocale,
       slugArray: ['dashboard'],
       handlerId: 'en-dashboard',
       handlerRelativePath: 'dashboard',
@@ -79,12 +81,9 @@ describe('rewrite generation', () => {
     },
     {
       id: 'Single-Locale',
-      description: 'keeps the default-locale-prefixed alias in single-locale apps',
+      description: 'keeps only canonical rewrites in single-locale apps',
       heavyRoutes: singleLocaleHeavyRoutes,
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: singleLocaleConfig,
       expectedRewrites: [
         {
           source: '/content/dashboard',
@@ -95,19 +94,9 @@ describe('rewrite generation', () => {
           source: '/content/interactive',
           destination: '/content/_handlers/interactive',
           locale: false
-        },
-        {
-          source: '/en/content/dashboard',
-          destination: '/en/content/_handlers/dashboard',
-          locale: false
-        },
-        {
-          source: '/en/content/interactive',
-          destination: '/en/content/_handlers/interactive',
-          locale: false
         }
       ],
-      expectedLength: 4
+      expectedLength: 2
     }
   ];
 
@@ -130,5 +119,23 @@ describe('rewrite generation', () => {
       rewrites.some(rewrite => rewrite.source.includes('/_next/data/'))
     ).toBe(false);
     expect(rewrites).toHaveLength(expectedLength);
+  });
+
+  test('supports an alternate internal handler route segment', () => {
+    const rewrites: Array<RouteHandlerRewrite> = buildRouteRewriteEntries({
+      heavyRoutes: singleLocaleHeavyRoutes,
+      localeConfig: singleLocaleConfig,
+      routeBasePath: '/content',
+      handlerRouteSegment: 'generated-handlers'
+    });
+
+    expect(rewrites).toContainEqual({
+      source: '/content/dashboard',
+      destination: '/content/generated-handlers/dashboard',
+      locale: false
+    });
+    expect(
+      rewrites.some(rewrite => rewrite.source.startsWith('/en/content/'))
+    ).toBe(false);
   });
 });

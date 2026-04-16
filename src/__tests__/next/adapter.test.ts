@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const loadRouteHandlersConfigOrRegisteredMock = vi.hoisted(() => vi.fn());
 const prepareRouteHandlersFromConfigMock = vi.hoisted(() => vi.fn());
 const resolveRouteHandlersConfigsFromAppConfigMock = vi.hoisted(() => vi.fn());
+const resolveAppRouteHandlersConfigsFromAppConfigMock = vi.hoisted(() =>
+  vi.fn()
+);
 const resolveRouteHandlersAppContextMock = vi.hoisted(() => vi.fn());
 const resolveRouteHandlerRoutingStrategyMock = vi.hoisted(() => vi.fn());
 const synchronizeRouteHandlerProxyFileMock = vi.hoisted(() => vi.fn());
@@ -12,26 +15,39 @@ const synchronizeRouteHandlerInstrumentationFileMock = vi.hoisted(() =>
 );
 const synchronizeRouteHandlerPhaseArtifactsMock = vi.hoisted(() => vi.fn());
 const executeResolvedRouteHandlerNextPipelineMock = vi.hoisted(() => vi.fn());
+const executeResolvedAppRouteHandlerNextPipelineMock = vi.hoisted(() =>
+  vi.fn()
+);
 const withRouteHandlerRewritesMock = vi.hoisted(() => vi.fn());
 const writeRouteHandlerLookupSnapshotMock = vi.hoisted(() => vi.fn());
+const createAppRouteLookupSnapshotMock = vi.hoisted(() => vi.fn());
+const writeAppRouteLookupSnapshotMock = vi.hoisted(() => vi.fn());
 const createRouteHandlerProxyBootstrapManifestMock = vi.hoisted(() => vi.fn());
 const writeRouteHandlerProxyBootstrapMock = vi.hoisted(() => vi.fn());
 
-vi.mock(import('../../next/internal/route-handlers-bootstrap'), () => ({
-  loadRouteHandlersConfigOrRegistered: loadRouteHandlersConfigOrRegisteredMock,
+vi.mock(import('../../next/shared/bootstrap/route-handlers-bootstrap'), () => ({
   resolveRouteHandlersAppContext: resolveRouteHandlersAppContextMock
 }));
 
-vi.mock(import('../../next/prepare/index'), () => ({
+vi.mock(import('../../next/integration/route-handlers-config'), () => ({
+  loadRouteHandlersConfigOrRegistered: loadRouteHandlersConfigOrRegisteredMock
+}));
+
+vi.mock(import('../../next/shared/prepare/index'), () => ({
   prepareRouteHandlersFromConfig: prepareRouteHandlersFromConfigMock
 }));
 
-vi.mock(import('../../next/config/resolve-configs'), () => ({
+vi.mock(import('../../next/pages/config/resolve-configs'), () => ({
   resolveRouteHandlersConfigsFromAppConfig:
     resolveRouteHandlersConfigsFromAppConfigMock
 }));
 
-vi.mock(import('../../next/policy/routing-strategy'), () => ({
+vi.mock(import('../../next/app/config/resolve-configs'), () => ({
+  resolveRouteHandlersConfigsFromAppConfig:
+    resolveAppRouteHandlersConfigsFromAppConfigMock
+}));
+
+vi.mock(import('../../next/shared/policy/routing-strategy'), () => ({
   resolveRouteHandlerRoutingStrategy: resolveRouteHandlerRoutingStrategyMock
 }));
 
@@ -39,36 +55,50 @@ vi.mock(import('../../next/proxy/file-lifecycle'), () => ({
   synchronizeRouteHandlerProxyFile: synchronizeRouteHandlerProxyFileMock
 }));
 
-vi.mock(import('../../next/instrumentation/file-lifecycle'), () => ({
+vi.mock(import('../../next/proxy/instrumentation/file-lifecycle'), () => ({
   synchronizeRouteHandlerInstrumentationFile:
     synchronizeRouteHandlerInstrumentationFileMock
 }));
 
-vi.mock(import('../../next/phase-artifacts'), () => ({
+vi.mock(import('../../next/shared/phase-artifacts'), () => ({
   synchronizeRouteHandlerPhaseArtifacts:
     synchronizeRouteHandlerPhaseArtifactsMock
 }));
 
-vi.mock(import('../../next/runtime'), () => ({
+vi.mock(import('../../next/pages/runtime'), () => ({
   executeResolvedRouteHandlerNextPipeline:
     executeResolvedRouteHandlerNextPipelineMock
 }));
 
-vi.mock(import('../../next/rewrites/plugin'), () => ({
+vi.mock(import('../../next/app/runtime'), () => ({
+  executeResolvedRouteHandlerNextPipeline:
+    executeResolvedAppRouteHandlerNextPipelineMock
+}));
+
+vi.mock(import('../../next/shared/rewrites/plugin'), () => ({
   withRouteHandlerRewrites: withRouteHandlerRewritesMock
 }));
 
-vi.mock(import('../../next/lookup-persisted'), () => ({
+vi.mock(import('../../next/shared/lookup-persisted'), () => ({
   createRouteHandlerLookupSnapshot: vi.fn(
     (
-      filterHeavyRoutesInStaticPaths: boolean,
+      filterHeavyRoutesFromStaticRouteResult: boolean,
       results: Array<{
         targetId: string;
         heavyPaths?: Array<unknown>;
-      }>
+      }>,
+      {
+        localeConfig
+      }: {
+        localeConfig: {
+          locales: Array<string>;
+          defaultLocale: string;
+        };
+      }
     ) => ({
-      version: 1,
-      filterHeavyRoutesInStaticPaths,
+      version: 6,
+      filterHeavyRoutesFromStaticRouteResult,
+      localeConfig,
       targets: results.map(result => ({
         targetId: result.targetId,
         heavyRoutePathKeys: result.heavyPaths == null ? [] : ['serialized']
@@ -76,6 +106,11 @@ vi.mock(import('../../next/lookup-persisted'), () => ({
     })
   ),
   writeRouteHandlerLookupSnapshot: writeRouteHandlerLookupSnapshotMock
+}));
+
+vi.mock(import('../../next/app/lookup-persisted'), () => ({
+  createAppRouteLookupSnapshot: createAppRouteLookupSnapshotMock,
+  writeAppRouteLookupSnapshot: writeAppRouteLookupSnapshotMock
 }));
 
 vi.mock(import('../../next/proxy/bootstrap-persisted'), () => ({
@@ -88,8 +123,11 @@ vi.mock(import('../../next/proxy/bootstrap-persisted'), () => ({
 }));
 
 import routeHandlersAdapter from '../../next/adapter';
+import { createSingleLocaleConfig } from '../../core/locale-config';
+import { absoluteModule } from '../../module-reference';
 
 const TEST_ROUTE_HANDLERS_CONFIG = {
+  routerKind: 'pages' as const,
   app: {
     rootDir: '/repo/app'
   }
@@ -129,6 +167,7 @@ describe('route handlers adapter', () => {
         targetId: 'docs'
       }
     ]);
+    resolveAppRouteHandlersConfigsFromAppConfigMock.mockResolvedValue([]);
     resolveRouteHandlerRoutingStrategyMock.mockReturnValue({
       kind: 'rewrites'
     });
@@ -145,10 +184,16 @@ describe('route handlers adapter', () => {
         rewritesOfDefaultLocale: []
       }
     ]);
+    executeResolvedAppRouteHandlerNextPipelineMock.mockResolvedValue([]);
     withRouteHandlerRewritesMock.mockImplementation(config => config);
     writeRouteHandlerLookupSnapshotMock.mockResolvedValue(undefined);
-    createRouteHandlerProxyBootstrapManifestMock.mockReturnValue({
+    createAppRouteLookupSnapshotMock.mockImplementation(targets => ({
       version: 1,
+      targets
+    }));
+    writeAppRouteLookupSnapshotMock.mockResolvedValue(undefined);
+    createRouteHandlerProxyBootstrapManifestMock.mockReturnValue({
+      version: 3,
       bootstrapGenerationToken: 'route-handler-proxy-bootstrap-test',
       localeConfig: {
         locales: ['en', 'fr'],
@@ -198,8 +243,12 @@ describe('route handlers adapter', () => {
     expect(writeRouteHandlerLookupSnapshotMock).toHaveBeenCalledWith(
       TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
       {
-        version: 1,
-        filterHeavyRoutesInStaticPaths: true,
+        version: 6,
+        filterHeavyRoutesFromStaticRouteResult: true,
+        localeConfig: {
+          locales: ['en', 'fr'],
+          defaultLocale: 'fr'
+        },
         targets: [
           {
             targetId: 'docs',
@@ -236,7 +285,7 @@ describe('route handlers adapter', () => {
     expect(writeRouteHandlerProxyBootstrapMock).toHaveBeenCalledWith(
       TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
       {
-        version: 1,
+        version: 3,
         bootstrapGenerationToken: 'route-handler-proxy-bootstrap-test',
         localeConfig: {
           locales: ['en', 'fr'],
@@ -248,8 +297,12 @@ describe('route handlers adapter', () => {
     expect(writeRouteHandlerLookupSnapshotMock).toHaveBeenCalledWith(
       TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
       {
-        version: 1,
-        filterHeavyRoutesInStaticPaths: false,
+        version: 6,
+        filterHeavyRoutesFromStaticRouteResult: false,
+        localeConfig: {
+          locales: ['en', 'fr'],
+          defaultLocale: 'fr'
+        },
         targets: []
       }
     );
@@ -278,11 +331,119 @@ describe('route handlers adapter', () => {
     expect(writeRouteHandlerLookupSnapshotMock).toHaveBeenCalledWith(
       TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
       {
-        version: 1,
-        filterHeavyRoutesInStaticPaths: false,
+        version: 6,
+        filterHeavyRoutesFromStaticRouteResult: false,
+        localeConfig: {
+          locales: ['en', 'fr'],
+          defaultLocale: 'fr'
+        },
         targets: []
       }
     );
+  });
+
+  it('uses the shared proxy bootstrap path for App Router configs in proxy mode', async () => {
+    const runtimeRouteModulePath = `${process.cwd()}/src/next/index.ts`;
+    const pageDataCompilerModulePath = runtimeRouteModulePath;
+    const appRouteHandlersConfig = {
+      routerKind: 'app' as const,
+      app: {
+        rootDir: '/repo/app',
+        localeConfig: {
+          locales: ['fr', 'de'],
+          defaultLocale: 'fr'
+        }
+      }
+    };
+
+    resolveRouteHandlerRoutingStrategyMock.mockReturnValue({
+      kind: 'proxy'
+    });
+    loadRouteHandlersConfigOrRegisteredMock.mockResolvedValue(
+      appRouteHandlersConfig
+    );
+    resolveRouteHandlersAppContextMock.mockReturnValue({
+      routeHandlersConfig: appRouteHandlersConfig,
+      appConfig: {
+        ...TEST_APP_CONFIG,
+        rootDir: '/repo/app'
+      }
+    });
+    resolveAppRouteHandlersConfigsFromAppConfigMock.mockResolvedValue([
+      {
+        targetId: 'docs',
+        routerKind: 'app',
+        app: {
+          rootDir: '/repo/app'
+        },
+        handlerRouteParam: {
+          name: 'slug',
+          kind: 'catch-all'
+        },
+        routeModuleImport: absoluteModule(runtimeRouteModulePath),
+        pageDataCompilerConfig: {
+          pageDataCompilerImport: absoluteModule(pageDataCompilerModulePath)
+        },
+        routeModule: {
+          hasGeneratePageMetadata: false,
+          revalidate: false
+        },
+        paths: {
+          rootDir: '/repo/app',
+          contentPagesDir: '/repo/app/content/pages',
+          handlersDir: '/repo/app/app/docs/generated-handlers'
+        }
+      }
+    ]);
+
+    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
+      phase: PHASE_PRODUCTION_BUILD,
+      nextVersion: '16.2.0'
+    });
+
+    expect(createRouteHandlerProxyBootstrapManifestMock).toHaveBeenCalledWith(
+      'route-handler-proxy-bootstrap-test',
+      {
+        locales: ['fr', 'de'],
+        defaultLocale: 'fr'
+      },
+      [
+        expect.objectContaining({
+          targetId: 'docs',
+          routerKind: 'app',
+          handlerRouteParam: {
+            name: 'slug',
+            kind: 'catch-all'
+          },
+          routeModuleImport: absoluteModule(runtimeRouteModulePath)
+        })
+      ]
+    );
+    expect(writeRouteHandlerLookupSnapshotMock).toHaveBeenCalledWith(
+      '/repo/app',
+      {
+        version: 6,
+        filterHeavyRoutesFromStaticRouteResult: false,
+        localeConfig: {
+          locales: ['fr', 'de'],
+          defaultLocale: 'fr'
+        },
+        targets: []
+      }
+    );
+    expect(writeAppRouteLookupSnapshotMock).toHaveBeenCalledWith('/repo/app', {
+      version: 1,
+      targets: [
+        {
+          targetId: 'docs',
+          handlerRouteParamName: 'slug',
+          pageDataCompilerModulePath
+        }
+      ]
+    });
+    expect(
+      executeResolvedAppRouteHandlerNextPipelineMock
+    ).not.toHaveBeenCalled();
   });
 
   it('does not write proxy bootstrap artifacts in rewrite mode', async () => {
@@ -300,5 +461,90 @@ describe('route handlers adapter', () => {
     expect(executeResolvedRouteHandlerNextPipelineMock).toHaveBeenCalledTimes(
       1
     );
+  });
+
+  it('writes structural App lookup metadata without invoking page-data execution', async () => {
+    const runtimeRouteModulePath = `${process.cwd()}/src/next/index.ts`;
+    const pageDataCompilerModulePath = runtimeRouteModulePath;
+    const appRouteHandlersConfig = {
+      routerKind: 'app' as const,
+      app: {
+        rootDir: '/repo/app'
+      }
+    };
+
+    loadRouteHandlersConfigOrRegisteredMock.mockResolvedValue(
+      appRouteHandlersConfig
+    );
+    resolveRouteHandlersAppContextMock.mockReturnValue({
+      routeHandlersConfig: appRouteHandlersConfig,
+      appConfig: {
+        ...TEST_APP_CONFIG,
+        rootDir: '/repo/app'
+      }
+    });
+    resolveAppRouteHandlersConfigsFromAppConfigMock.mockResolvedValue([
+      {
+        targetId: 'docs',
+        app: {
+          rootDir: '/repo/app'
+        },
+        handlerRouteParam: {
+          name: 'slug',
+          kind: 'catch-all'
+        },
+        pageDataCompilerConfig: {
+          pageDataCompilerImport: absoluteModule(pageDataCompilerModulePath)
+        },
+        routeModuleImport: absoluteModule(runtimeRouteModulePath),
+        routeModule: {
+          hasGeneratePageMetadata: false
+        }
+      }
+    ]);
+    executeResolvedAppRouteHandlerNextPipelineMock.mockResolvedValue([
+      {
+        targetId: 'docs',
+        analyzedCount: 0,
+        heavyCount: 0,
+        heavyPaths: [],
+        rewrites: [],
+        rewritesOfDefaultLocale: []
+      }
+    ]);
+
+    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
+      phase: PHASE_PRODUCTION_BUILD,
+      nextVersion: '16.2.0'
+    });
+
+    expect(writeRouteHandlerLookupSnapshotMock).toHaveBeenCalledWith(
+      '/repo/app',
+      {
+        version: 6,
+        filterHeavyRoutesFromStaticRouteResult: true,
+        localeConfig: createSingleLocaleConfig(),
+        targets: [
+          {
+            targetId: 'docs',
+            heavyRoutePathKeys: ['serialized']
+          }
+        ]
+      }
+    );
+    expect(writeAppRouteLookupSnapshotMock).toHaveBeenCalledWith('/repo/app', {
+      version: 1,
+      targets: [
+        {
+          targetId: 'docs',
+          handlerRouteParamName: 'slug',
+          pageDataCompilerModulePath
+        }
+      ]
+    });
+    expect(
+      executeResolvedAppRouteHandlerNextPipelineMock
+    ).toHaveBeenCalledTimes(1);
+    expect(executeResolvedRouteHandlerNextPipelineMock).not.toHaveBeenCalled();
   });
 });

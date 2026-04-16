@@ -8,13 +8,19 @@ import {
   resolveRouteHandlerLookupSnapshotPath,
   serializeRouteHandlerLookupSnapshot,
   writeRouteHandlerLookupSnapshot
-} from '../../next/lookup-persisted';
+} from '../../next/shared/lookup-persisted';
 import { createHeavyRoute } from '../helpers/builders';
 import { withTempDir } from '../helpers/temp-dir';
+import type { LocaleConfig } from '../../core/types';
 
 const ORIGINAL_CWD = process.cwd();
 
 describe('route-handler lookup snapshot persistence', () => {
+  const TEST_LOCALE_CONFIG: LocaleConfig = {
+    locales: ['en'],
+    defaultLocale: 'en'
+  };
+
   afterEach(() => {
     process.chdir(ORIGINAL_CWD);
   });
@@ -44,15 +50,18 @@ describe('route-handler lookup snapshot persistence', () => {
         rewrites: [],
         rewritesOfDefaultLocale: []
       }
-    ]);
+    ], {
+      localeConfig: TEST_LOCALE_CONFIG
+    });
 
     const serialized = serializeRouteHandlerLookupSnapshot(snapshot);
     const parsed = parseRouteHandlerLookupSnapshot(serialized);
 
-    expect(serialized).not.toContain('localeConfig');
+    expect(serialized).toContain('localeConfig');
     expect(parsed).toEqual({
-      version: 1,
-      filterHeavyRoutesInStaticPaths: true,
+      version: 6,
+      filterHeavyRoutesFromStaticRouteResult: true,
+      localeConfig: TEST_LOCALE_CONFIG,
       targets: [
         {
           targetId: 'blog',
@@ -70,8 +79,25 @@ describe('route-handler lookup snapshot persistence', () => {
     expect(
       parseRouteHandlerLookupSnapshot(
         JSON.stringify({
-          version: 1,
-          filterHeavyRoutesInStaticPaths: true,
+          version: 6,
+          filterHeavyRoutesFromStaticRouteResult: true,
+          localeConfig: TEST_LOCALE_CONFIG,
+          targets: [
+            {
+              targetId: '',
+              heavyRoutePathKeys: []
+            }
+          ]
+        })
+      )
+    ).toBeNull();
+
+    expect(
+      parseRouteHandlerLookupSnapshot(
+        JSON.stringify({
+          version: 6,
+          filterHeavyRoutesFromStaticRouteResult: true,
+          localeConfig: TEST_LOCALE_CONFIG,
           targets: [
             {
               targetId: 'docs',
@@ -105,13 +131,16 @@ describe('route-handler lookup snapshot persistence', () => {
             rewrites: [],
             rewritesOfDefaultLocale: []
           }
-        ])
+        ], {
+          localeConfig: TEST_LOCALE_CONFIG
+        })
       );
 
       const snapshot = await readRouteHandlerLookupSnapshot(rootDir);
 
       expect(snapshot).not.toBeNull();
-      expect(snapshot!.filterHeavyRoutesInStaticPaths).toBe(true);
+      expect(snapshot!.filterHeavyRoutesFromStaticRouteResult).toBe(true);
+      expect(snapshot!.localeConfig).toEqual(TEST_LOCALE_CONFIG);
       expect(snapshot!.targets).toEqual([
         { targetId: 'docs', heavyRoutePathKeys: ['en:recognition'] }
       ]);
@@ -126,7 +155,9 @@ describe('route-handler lookup snapshot persistence', () => {
 
       await writeRouteHandlerLookupSnapshot(
         rootDir,
-        createRouteHandlerLookupSnapshot(false, [])
+        createRouteHandlerLookupSnapshot(false, [], {
+          localeConfig: TEST_LOCALE_CONFIG
+        })
       );
 
       const snapshotPath = resolveRouteHandlerLookupSnapshotPath(rootDir);

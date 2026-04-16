@@ -19,14 +19,17 @@ import {
   packageModule,
   relativeModule
 } from '../../../module-reference';
-import { createCatchAllRouteHandlersPreset } from '../../../next/config/index';
-import { resolveRouteHandlersAppConfig } from '../../../next/config/app';
-import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../../next/config/resolve-configs';
+import {
+  createCatchAllRouteHandlersPreset,
+  createAppCatchAllRouteHandlersPreset
+} from '../../../next/config/index';
+import { resolveRouteHandlersAppConfig } from '../../../next/shared/config/app';
 import {
   normalizeRouteHandlersTargetOptions,
   normalizeRouteHandlersTargetRuntimeAttachments
-} from '../../../next/config/resolve-target';
-import { resolveRouteHandlerPreparations } from '../../../next/config/app';
+} from '../../../next/shared/config/resolve-target';
+import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../../next/pages/config/resolve-configs';
+import { resolveRouteHandlerPreparations } from '../../../next/shared/config/app';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   TEST_PRIMARY_CONTENT_PAGES_DIR,
@@ -38,7 +41,8 @@ import {
   createTestHandlerBinding
 } from '../../helpers/fixtures';
 
-import type { RouteHandlersConfig } from '../../../next/types';
+import type { RouteHandlersConfig } from '../../../next/pages/types';
+import type { RouteHandlerPreparationsInput } from '../../../next/shared/types';
 
 function testRemarkPlugin() {}
 function testRecmaPlugin() {}
@@ -52,14 +56,17 @@ const TEST_TMP_APP = {
 } as const;
 
 const TEST_ROUTE_HANDLERS_CONFIG = {
+  routerKind: 'pages' as const,
   app: TEST_APP
 } as const;
 
 const TEST_TMP_ROUTE_HANDLERS_CONFIG = {
+  routerKind: 'pages' as const,
   app: TEST_TMP_APP
 } as const;
 
 const TEST_TMP_REWRITE_ROUTE_HANDLERS_CONFIG = {
+  routerKind: 'pages' as const,
   app: {
     ...TEST_TMP_APP,
     routing: {
@@ -69,6 +76,7 @@ const TEST_TMP_REWRITE_ROUTE_HANDLERS_CONFIG = {
 };
 
 const TEST_TMP_PREWARM_ROUTE_HANDLERS_CONFIG = {
+  routerKind: 'pages' as const,
   app: {
     ...TEST_TMP_APP,
     routing: {
@@ -79,6 +87,7 @@ const TEST_TMP_PREWARM_ROUTE_HANDLERS_CONFIG = {
 };
 
 const TEST_TMP_REWRITE_PREWARM_ROUTE_HANDLERS_CONFIG = {
+  routerKind: 'pages' as const,
   app: {
     ...TEST_TMP_APP,
     routing: {
@@ -100,6 +109,7 @@ const createResolvedAppConfig = ({
   resolveRouteHandlersAppConfig({
     rootDir,
     routeHandlersConfig: {
+      routerKind: 'pages',
       app: {
         rootDir
       }
@@ -179,6 +189,53 @@ describe('next config helpers', () => {
     });
   });
 
+  describe('createAppCatchAllRouteHandlersPreset', () => {
+    test('creates App catch-all preset from route segment and root-relative paths', () => {
+      const routeHandlersConfig = createAppCatchAllRouteHandlersPreset({
+        routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
+        handlerRouteParam: {
+          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+          kind: 'catch-all'
+        },
+        contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+        routeModuleImport: relativeModule('lib/docs-route-module'),
+        handlerBinding: createTestHandlerBinding()
+      });
+
+      expect(routeHandlersConfig.routeModuleImport).toEqual(
+        relativeModule('lib/docs-route-module')
+      );
+      expect(routeHandlersConfig.targetId).toBe(TEST_PRIMARY_ROUTE_SEGMENT);
+      expect(routeHandlersConfig.routeBasePath).toBe('/content');
+      expect(routeHandlersConfig.paths?.contentPagesDir).toBe(
+        TEST_PRIMARY_CONTENT_PAGES_DIR
+      );
+      expect(routeHandlersConfig.paths?.handlersDir).toBe(
+        path.join('app', 'content', '_handlers')
+      );
+    });
+
+    test('supports routeTreeSegment for App route groups while preserving the public route path', () => {
+      const routeHandlersConfig = createAppCatchAllRouteHandlersPreset({
+        routeSegment: 'docs',
+        routeTreeSegment: 'docs/(docs-shared)',
+        handlerRouteParam: {
+          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+          kind: 'catch-all'
+        },
+        contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+        routeModuleImport: relativeModule('lib/docs-route-module'),
+        handlerBinding: createTestHandlerBinding()
+      });
+
+      expect(routeHandlersConfig.targetId).toBe('docs');
+      expect(routeHandlersConfig.routeBasePath).toBe('/docs');
+      expect(routeHandlersConfig.paths?.handlersDir).toBe(
+        path.join('app', 'docs', '(docs-shared)', '_handlers')
+      );
+    });
+  });
+
   describe('resolveRouteHandlersAppConfig', () => {
     test('defaults routing policy to proxy + prewarm off and allows explicit overrides', () => {
       const defaultResolvedAppConfig = resolveRouteHandlersAppConfig({
@@ -236,7 +293,7 @@ describe('next config helpers', () => {
   });
 
   describe('resolveRouteHandlerPreparations', () => {
-    type PrepareShape = NonNullable<RouteHandlersConfig['app']>['prepare'];
+    type PrepareShape = RouteHandlerPreparationsInput;
 
     type Scenario = {
       id: string;
@@ -352,7 +409,8 @@ describe('next config helpers', () => {
 
       const normalizedOptions = normalizeRouteHandlersTargetOptions(
         TEST_RESOLVED_APP_CONFIG,
-        routeHandlersConfig
+        routeHandlersConfig,
+        'pages'
       );
 
       expect(normalizedOptions.contentLocaleMode).toBe('default-locale');
@@ -411,12 +469,17 @@ describe('next config helpers', () => {
       ).toThrow(
         '[next-slug-splitter] mdxCompileOptions.remarkPlugins must be an array.'
       );
+
+      expect(() =>
+        normalizeRouteHandlersTargetRuntimeAttachments(undefined)
+      ).toThrow('[next-slug-splitter] Missing routeHandlersConfig.');
     });
   });
 
   describe('resolveNormalizedRouteHandlersTargetsFromAppConfig', () => {
     test('resolves multi-target configs via targets array', () => {
       const routeHandlersConfig: RouteHandlersConfig = {
+        routerKind: 'pages',
         app: createAppConfig(TEST_APP.rootDir),
         targets: [
           createCatchAllRouteHandlersPreset({
@@ -464,6 +527,7 @@ describe('next config helpers', () => {
         resolveNormalizedRouteHandlersTargetsFromAppConfig(
           TEST_RESOLVED_APP_CONFIG,
           {
+            routerKind: 'pages',
             app: createAppConfig(TEST_APP.rootDir),
             targets: [
               createCatchAllRouteHandlersPreset({

@@ -15,7 +15,7 @@ vi.mock(import('../../../../core/capture'), () => ({
 }));
 
 import { createCatchAllRouteHandlersPreset } from '../../../../next/config';
-import { executeRouteHandlerNextPipeline } from '../../../../next/runtime';
+import { executeRouteHandlerNextPipeline } from '../../../../next/pages/runtime';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   TEST_PRIMARY_CONTENT_PAGES_DIR,
@@ -31,7 +31,7 @@ import type { LocaleConfig } from '../../../../core/types';
 import type {
   RouteHandlersConfig,
   RouteHandlersTargetConfig
-} from '../../../../next/types';
+} from '../../../../next/pages/types';
 
 const TEST_LOCALE_CONFIG: LocaleConfig = {
   locales: ['en'],
@@ -83,6 +83,7 @@ const createSingleTargetConfig = ({
   rootDir: string;
   targetOverrides?: Partial<RouteHandlersTargetConfig>;
 }): RouteHandlersConfig => ({
+  routerKind: 'pages',
   app: {
     rootDir
   },

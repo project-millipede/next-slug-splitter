@@ -1,8 +1,11 @@
 import path from 'node:path';
 
-import fileEntryCache, { type FileEntryCache } from 'file-entry-cache';
+import fileEntryCache, {
+  type FileDescriptor,
+  type FileEntryCache
+} from 'file-entry-cache';
 
-import type { PersistedRouteCaptureRecord } from '../../runtime/target/route-plan-record';
+import type { PersistedRouteCaptureRecord } from './route-plan-record';
 
 const LAZY_SINGLE_ROUTE_CACHE_DIRECTORY = path.join(
   '.next',
@@ -80,7 +83,7 @@ export const enableRouteHandlerLazySingleRouteFileCacheAutoPersist = (
  * @returns `void` after descriptor metadata has been updated in memory.
  */
 export const writeRouteHandlerLazySingleRouteCacheRecordToDescriptor = (
-  targetFileDescriptor: ReturnType<FileEntryCache['getFileDescriptor']>,
+  targetFileDescriptor: FileDescriptor,
   routeCaptureRecord: PersistedRouteCaptureRecord
 ): void => {
   // The descriptor metadata is the persistence slot owned by this cache layer.

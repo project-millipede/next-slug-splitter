@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveRouteHandlerProxyRewriteResponseDecision } from '../../../next/rewrite-readiness';
+import { resolveRouteHandlerProxyRewriteResponseDecision } from '../../../next/proxy/rewrite-readiness';
 
 import type { NextRequest } from 'next/server.js';
 import type { RouteHandlerProxyDecision } from '../../../next/proxy/runtime/types';

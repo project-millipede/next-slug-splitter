@@ -27,14 +27,14 @@ export default withSlugSplitter(nextConfig, {
 Each target represents a content section (e.g. docs, blog) with its own
 catch-all route and content directory.
 
-### 4. Run the CLI before build
+### 4. Run your normal build
 
 ```bash
-next-slug-splitter && next build
+next build
 ```
 
-> The CLI analyzes your MDX content, detects heavy pages, and generates
-> optimized route handlers automatically.
+> The Next adapter analyzes your MDX content and generates optimized route
+> handlers automatically during the build. The standalone CLI is optional.
 
 ## What happens at build time?
 

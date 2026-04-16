@@ -11,11 +11,6 @@ import { withSlugSplitter } from 'next-slug-splitter/next';
 import { routeHandlersConfig } from './route-handlers-config';
 
 const nextConfig: NextConfig = {
-  i18n: {
-    locales: ['en'],
-    defaultLocale: 'en'
-  },
-
   pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'md', 'mdx'],
   reactStrictMode: false
 };

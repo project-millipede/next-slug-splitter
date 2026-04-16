@@ -1,3 +1,9 @@
+/**
+ * Public runtime/value entrypoint for `next-slug-splitter/next`.
+ *
+ * Keep this surface focused on consumer-facing values that are safe to import
+ * from route config, route contracts, and generated code.
+ */
 export type {
   ComponentImportSpec,
   DynamicRouteParam,
@@ -7,9 +13,24 @@ export type {
   ModuleReference,
   RouteHandlerGeneratorComponent,
   RouteHandlerGeneratorPlan,
-  RouteHandlerProcessor,
+  RouteHandlerProcessor
+} from './shared/types';
+export type {
   RouteHandlersConfig,
   RouteHandlersTargetConfig
+} from './types';
+export type {
+  AppPageDataCompiler,
+  AppPageDataCompilerCompileInput,
+  AppRouteParams,
+  AppRoutePageContract,
+  AppRouteStaticParamValue,
+  AppRouteHandlersConfig,
+  AppRouteHandlersTargetConfig,
+  GetAppRouteStaticParams,
+  PagesRouteHandlersConfig,
+  PagesRouteHandlersTargetConfig,
+  RouteHandlerRouterKind
 } from './types';
 
 export {
@@ -18,7 +39,11 @@ export {
   packageModule
 } from '../module-reference';
 export { defineRouteHandlerProcessor } from '../core/processor';
-export { createCatchAllRouteHandlersPreset } from './config/presets';
+export {
+  runAppPageDataCompiler
+} from './app/page-data-compiler-run';
+export { createAppCatchAllRouteHandlersPreset } from './app/config/presets';
+export { createCatchAllRouteHandlersPreset } from './pages/config/presets';
 export { createRouteHandlersAdapterPath } from './integration/adapter-entry';
 export { withSlugSplitter } from './integration/with-slug-splitter';
 export type {

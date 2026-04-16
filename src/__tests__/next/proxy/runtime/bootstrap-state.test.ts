@@ -46,7 +46,6 @@ const createBootstrapTarget = () => ({
     specifier: '@test/base-static-props'
   },
   processorConfig: {
-    kind: 'module',
     processorImport: {
       kind: 'package',
       specifier: '@test/processor'

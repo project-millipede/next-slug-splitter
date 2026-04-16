@@ -33,15 +33,45 @@ import {
 
 // Shared package boundary reused for every generated component import.
 const componentsModule = packageModule('@demo/components');
+
+/**
+ * @typedef {'selection' | 'wrapper'} RuntimeTrait
+ * One supported runtime trait key in the JavaScript demo variant.
+ */
+
+/**
+ * @typedef {ReadonlyArray<RuntimeTrait>} RuntimeTraits
+ * Ordered list of runtime traits attached to one component entry.
+ */
+
+/**
+ * @typedef {{ runtimeTraits?: RuntimeTraits }} RuntimeConfig
+ * Optional runtime metadata emitted into generated handler entries.
+ */
+
+/** @type {{ selection: RuntimeTrait, wrapper: RuntimeTrait }} */
+const runtimeTrait = {
+  selection: 'selection',
+  wrapper: 'wrapper'
+};
+
+/** @type {{ selection: RuntimeTraits, wrapper: RuntimeTraits, wrapperAndSelection: RuntimeTraits }} */
+const runtimeTraits = {
+  selection: [runtimeTrait.selection],
+  wrapper: [runtimeTrait.wrapper],
+  wrapperAndSelection: [runtimeTrait.wrapper, runtimeTrait.selection]
+};
+
+/** @type {Readonly<Partial<Record<string, RuntimeConfig>>>} */
 const metadataByKey = {
   Chart: {
-    runtimeTraits: ['wrapper']
+    runtimeTraits: runtimeTraits.wrapper
   },
   Counter: {
-    runtimeTraits: ['wrapper', 'selection']
+    runtimeTraits: runtimeTraits.wrapperAndSelection
   },
   DataTable: {
-    runtimeTraits: ['selection']
+    runtimeTraits: runtimeTraits.selection
   }
 };
 
@@ -52,7 +82,7 @@ const metadataByKey = {
  * `@demo/components`, so `resolve` can return the final generation plan
  * directly without a module-map lookup step.
  *
- * @type {import('next-slug-splitter/next').RouteHandlerProcessor}
+ * @type {import('next-slug-splitter/next').RouteHandlerProcessor<RuntimeConfig>}
  */
 export const routeHandlerProcessor = defineRouteHandlerProcessor({
   resolve({ capturedComponentKeys }) {

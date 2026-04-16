@@ -45,7 +45,7 @@ export const resolveSlugSplitterAdapterEntry = (rootDir: string): string => {
 };
 
 /**
- * Register `RouteHandlersConfig` and return the static adapter module path.
+ * Register one route-handlers config and return the static adapter module path.
  *
  * This registration process performs two critical operations:
  *
@@ -63,7 +63,7 @@ export const resolveSlugSplitterAdapterEntry = (rootDir: string): string => {
  *    Example:
  *     'app.rootDir' -> '/abs/path/to/project'
  *
- * @param config - App-owned 'RouteHandlersConfig' to register for the adapter.
+ * @param config - App-owned config to register for the adapter.
  * @returns Static adapter module specifier for Next's `adapterPath`.
  */
 export const createRouteHandlersAdapterPath = (

@@ -2,19 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createPipelineResult } from '../../helpers/builders';
 
-vi.mock(import('../../../next/phase-artifacts'), () => ({
+vi.mock(import('../../../next/shared/phase-artifacts'), () => ({
   synchronizeRouteHandlerPhaseArtifacts: vi.fn()
 }));
 
-vi.mock(import('../../../next/runtime/target/index'), () => ({
+vi.mock(import('../../../next/pages/runtime/target/index'), () => ({
   executeRouteHandlerTarget: vi.fn()
 }));
 
-import * as phaseArtifacts from '../../../next/phase-artifacts';
-import * as runtimeTarget from '../../../next/runtime/target/index';
-import { executeResolvedRouteHandlerNextPipeline } from '../../../next/runtime';
+import * as phaseArtifacts from '../../../next/shared/phase-artifacts';
+import * as runtimeTarget from '../../../next/pages/runtime/target/index';
+import { executeResolvedRouteHandlerNextPipeline } from '../../../next/pages/runtime';
 
-import type { ResolvedRouteHandlersConfig } from '../../../next/types';
+import type { ResolvedRouteHandlersConfig } from '../../../next/pages/types';
 
 const TEST_ROOT_DIR = '/tmp/app';
 
@@ -25,6 +25,7 @@ const createResolvedConfig = ({
   rootDir: string;
   targetId: string;
 }): ResolvedRouteHandlersConfig => ({
+  routerKind: 'pages',
   targetId,
     app: {
       rootDir,
@@ -48,7 +49,6 @@ const createResolvedConfig = ({
     path: `${rootDir}/pages/content/[...slug].tsx`
   },
   processorConfig: {
-    kind: 'module',
     processorImport: {
       kind: 'package',
       specifier: 'test-route-handlers/processor'

@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
+import { cloneLocaleConfig } from '../../core/locale-config';
 import { isModuleReference } from '../../module-reference';
 import { isArrayOf, isString } from '../../utils/type-guards';
 import {
@@ -9,24 +10,31 @@ import {
   isStringArray,
   readObjectProperty
 } from '../../utils/type-guards-custom';
-import { isDynamicRouteParamKind } from '../config/shared';
+import { isDynamicRouteParamKind } from '../shared/config/shared';
 
 import type {
   ContentLocaleMode,
   DynamicRouteParam,
   EmitFormat,
   LocaleConfig,
+  ResolvedRouteHandlerModuleReference,
   ResolvedRouteHandlerProcessorConfig
 } from '../../core/types';
 import type { BootstrapGenerationToken } from './runtime/types';
 import type {
-  ResolvedRouteHandlersConfig,
-  RouteHandlerNextPaths,
-  RouteHandlerPlannerConfig
-} from '../types';
-import type { RouteHandlerLazyResolvedTarget } from './lazy/types';
+  RouteHandlerNextPaths
+} from '../shared/types';
+import type {
+  ResolvedAppRouteModuleContract
+} from '../app/types';
+import type { ResolvedRouteHandlersConfig } from '../types';
+import type {
+  RouteHandlerLazyAppPlannerConfig,
+  RouteHandlerLazyPagesPlannerConfig,
+  RouteHandlerLazyResolvedTarget
+} from './lazy/types';
 
-const ROUTE_HANDLER_PROXY_BOOTSTRAP_VERSION = 1;
+const ROUTE_HANDLER_PROXY_BOOTSTRAP_VERSION = 4;
 const ROUTE_HANDLER_PROXY_BOOTSTRAP_PATH = path.join(
   '.next',
   'cache',
@@ -41,23 +49,87 @@ type PersistedRouteHandlerProxyBootstrapPaths = Pick<
 /**
  * Persisted structural worker target entry.
  */
-export type PersistedRouteHandlerProxyBootstrapTarget = Pick<
-  RouteHandlerPlannerConfig,
-  | 'targetId'
-  | 'routeBasePath'
-  | 'contentLocaleMode'
-  | 'emitFormat'
-  | 'handlerRouteParam'
-  | 'baseStaticPropsImport'
-  | 'processorConfig'
-> & {
+type PersistedRouteHandlerProxyBootstrapTargetBase = {
+  /**
+   * Router family for the persisted target entry.
+   */
+  routerKind: 'pages' | 'app';
+  /**
+   * Stable target identifier used by the worker and lookup layers.
+   */
+  targetId: string;
+  /**
+   * Public route prefix owned by the target.
+   */
+  routeBasePath: string;
+  /**
+   * Content locale strategy used to derive localized paths.
+   */
+  contentLocaleMode: ContentLocaleMode;
+  /**
+   * Generated file format for emitted handlers.
+   */
+  emitFormat: EmitFormat;
+  /**
+   * Dynamic route parameter bound by the generated handler page.
+   */
+  handlerRouteParam: DynamicRouteParam;
+  /**
+   * Filesystem segment used for generated handlers under the target subtree.
+   */
+  handlerRouteSegment: string;
+  /**
+   * Resolved processor module config used for heavy-route planning.
+   */
+  processorConfig: ResolvedRouteHandlerProcessorConfig;
+  /**
+   * Absolute filesystem paths needed to rebuild structural planner state.
+   */
   paths: PersistedRouteHandlerProxyBootstrapPaths;
 };
 
-type StructuralRouteHandlerPlannerConfig = Omit<
-  RouteHandlerPlannerConfig,
-  'runtime'
->;
+/**
+ * Persisted structural target entry for the Pages Router path.
+ */
+export type PersistedRouteHandlerProxyBootstrapPagesTarget =
+  PersistedRouteHandlerProxyBootstrapTargetBase & {
+    /**
+     * Router family discriminator for Pages Router targets.
+     */
+    routerKind: 'pages';
+    /**
+     * Resolved base static-props module import used by Pages generation.
+     */
+    baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
+  };
+
+/**
+ * Persisted structural target entry for the App Router path.
+ */
+export type PersistedRouteHandlerProxyBootstrapAppTarget =
+  PersistedRouteHandlerProxyBootstrapTargetBase & {
+    /**
+     * Router family discriminator for App Router targets.
+     */
+    routerKind: 'app';
+    /**
+     * Resolved route-contract import shared by the public page and generated
+     * heavy pages.
+     */
+    routeModuleImport: ResolvedRouteHandlerModuleReference;
+    /**
+     * Build-time inspection result for the App route contract.
+     */
+    routeModule: ResolvedAppRouteModuleContract;
+  };
+
+export type PersistedRouteHandlerProxyBootstrapTarget =
+  | PersistedRouteHandlerProxyBootstrapPagesTarget
+  | PersistedRouteHandlerProxyBootstrapAppTarget;
+
+type StructuralRouteHandlerPlannerConfig =
+  | Omit<RouteHandlerLazyPagesPlannerConfig, 'runtime'>
+  | Omit<RouteHandlerLazyAppPlannerConfig, 'runtime'>;
 
 /**
  * Persisted structural worker bootstrap contract.
@@ -131,9 +203,27 @@ const isPersistedRouteHandlerProcessorConfig = (
     return false;
   }
 
+  return isModuleReference(readObjectProperty(value, 'processorImport'));
+};
+
+const isResolvedAppRouteModuleContract = (
+  value: unknown
+): value is ResolvedAppRouteModuleContract => {
+  if (!isObjectRecordOf<ResolvedAppRouteModuleContract>(value)) {
+    return false;
+  }
+
+  const hasGeneratePageMetadata = readObjectProperty(
+    value,
+    'hasGeneratePageMetadata'
+  );
+  const revalidate = readObjectProperty(value, 'revalidate');
+
   return (
-    readObjectProperty(value, 'kind') === 'module' &&
-    isModuleReference(readObjectProperty(value, 'processorImport'))
+    typeof hasGeneratePageMetadata === 'boolean' &&
+    (revalidate === undefined ||
+      revalidate === false ||
+      typeof revalidate === 'number')
   );
 };
 
@@ -154,24 +244,39 @@ const isPersistedRouteHandlerProxyBootstrapPaths = (
 const isPersistedRouteHandlerProxyBootstrapTarget = (
   value: unknown
 ): value is PersistedRouteHandlerProxyBootstrapTarget => {
-  if (!isObjectRecordOf<PersistedRouteHandlerProxyBootstrapTarget>(value)) {
+  if (!isObjectRecordOf<Record<string, unknown>>(value)) {
     return false;
   }
 
-  return (
+  const routerKind = readObjectProperty(value, 'routerKind');
+
+  const hasSharedShape =
+    (routerKind === 'pages' || routerKind === 'app') &&
     isString(readObjectProperty(value, 'targetId')) &&
     isString(readObjectProperty(value, 'routeBasePath')) &&
     isContentLocaleMode(readObjectProperty(value, 'contentLocaleMode')) &&
     isEmitFormat(readObjectProperty(value, 'emitFormat')) &&
     isDynamicRouteParam(readObjectProperty(value, 'handlerRouteParam')) &&
-    isModuleReference(readObjectProperty(value, 'baseStaticPropsImport')) &&
+    isString(readObjectProperty(value, 'handlerRouteSegment')) &&
     isPersistedRouteHandlerProcessorConfig(
       readObjectProperty(value, 'processorConfig')
     ) &&
     isPersistedRouteHandlerProxyBootstrapPaths(
       readObjectProperty(value, 'paths')
-    )
-  );
+    );
+
+  if (!hasSharedShape) {
+    return false;
+  }
+
+  if (routerKind === 'app') {
+    return (
+      isModuleReference(readObjectProperty(value, 'routeModuleImport')) &&
+      isResolvedAppRouteModuleContract(readObjectProperty(value, 'routeModule'))
+    );
+  }
+
+  return isModuleReference(readObjectProperty(value, 'baseStaticPropsImport'));
 };
 
 const isPersistedRouteHandlerProxyBootstrap = (
@@ -227,24 +332,39 @@ export const createRouteHandlerProxyBootstrapManifest = (
 ): PersistedRouteHandlerProxyBootstrap => ({
   version: ROUTE_HANDLER_PROXY_BOOTSTRAP_VERSION,
   bootstrapGenerationToken,
-  localeConfig: {
-    locales: [...localeConfig.locales],
-    defaultLocale: localeConfig.defaultLocale
-  },
-  targets: resolvedConfigs.map(config => ({
-    targetId: config.targetId,
-    routeBasePath: config.routeBasePath,
-    contentLocaleMode: config.contentLocaleMode,
-    emitFormat: config.emitFormat,
-    handlerRouteParam: config.handlerRouteParam,
-    baseStaticPropsImport: config.baseStaticPropsImport,
-    processorConfig: config.processorConfig,
-    paths: {
-      rootDir: config.paths.rootDir,
-      contentPagesDir: config.paths.contentPagesDir,
-      handlersDir: config.paths.handlersDir
+  localeConfig: cloneLocaleConfig(localeConfig),
+  targets: resolvedConfigs.map(config => {
+    const sharedTarget = {
+      routerKind: config.routerKind,
+      targetId: config.targetId,
+      routeBasePath: config.routeBasePath,
+      contentLocaleMode: config.contentLocaleMode,
+      emitFormat: config.emitFormat,
+      handlerRouteParam: config.handlerRouteParam,
+      handlerRouteSegment: path.basename(config.paths.handlersDir),
+      processorConfig: config.processorConfig,
+      paths: {
+        rootDir: config.paths.rootDir,
+        contentPagesDir: config.paths.contentPagesDir,
+        handlersDir: config.paths.handlersDir
+      }
+    };
+
+    if (config.routerKind === 'app') {
+      return {
+        ...sharedTarget,
+        routerKind: 'app' as const,
+        routeModuleImport: config.routeModuleImport,
+        routeModule: config.routeModule
+      };
     }
-  }))
+
+    return {
+      ...sharedTarget,
+      routerKind: 'pages' as const,
+      baseStaticPropsImport: config.baseStaticPropsImport
+    };
+  })
 });
 
 /**
@@ -303,15 +423,15 @@ export const createRouteHandlerLazyResolvedTargetsFromProxyBootstrap = (
   manifest: PersistedRouteHandlerProxyBootstrap
 ): Array<RouteHandlerLazyResolvedTarget> =>
   manifest.targets.map(target => ({
+    routerKind: target.routerKind,
     targetId: target.targetId,
     routeBasePath: target.routeBasePath,
     contentLocaleMode: target.contentLocaleMode,
-    localeConfig: {
-      locales: [...manifest.localeConfig.locales],
-      defaultLocale: manifest.localeConfig.defaultLocale
-    },
+    localeConfig: cloneLocaleConfig(manifest.localeConfig),
     emitFormat: target.emitFormat,
+    handlerRouteParam: target.handlerRouteParam,
     paths: {
+      rootDir: target.paths.rootDir,
       contentPagesDir: target.paths.contentPagesDir,
       handlersDir: target.paths.handlersDir
     }
@@ -329,23 +449,41 @@ export const createRouteHandlerPlannerConfigsByIdFromProxyBootstrap = (
   new Map(
     manifest.targets.map(target => [
       target.targetId,
-      {
-        targetId: target.targetId,
-        routeBasePath: target.routeBasePath,
-        contentLocaleMode: target.contentLocaleMode,
-        emitFormat: target.emitFormat,
-        handlerRouteParam: target.handlerRouteParam,
-        baseStaticPropsImport: target.baseStaticPropsImport,
-        processorConfig: target.processorConfig,
-        localeConfig: {
-          locales: [...manifest.localeConfig.locales],
-          defaultLocale: manifest.localeConfig.defaultLocale
-        },
-        paths: {
-          rootDir: target.paths.rootDir,
-          contentPagesDir: target.paths.contentPagesDir,
-          handlersDir: target.paths.handlersDir
-        }
-      }
+      target.routerKind === 'app'
+        ? {
+            routerKind: 'app',
+            targetId: target.targetId,
+            routeBasePath: target.routeBasePath,
+            contentLocaleMode: target.contentLocaleMode,
+            emitFormat: target.emitFormat,
+            handlerRouteParam: target.handlerRouteParam,
+            handlerRouteSegment: target.handlerRouteSegment,
+            routeModuleImport: target.routeModuleImport,
+            routeModule: target.routeModule,
+            processorConfig: target.processorConfig,
+            localeConfig: cloneLocaleConfig(manifest.localeConfig),
+            paths: {
+              rootDir: target.paths.rootDir,
+              contentPagesDir: target.paths.contentPagesDir,
+              handlersDir: target.paths.handlersDir
+            }
+          }
+        : {
+            routerKind: 'pages',
+            targetId: target.targetId,
+            routeBasePath: target.routeBasePath,
+            contentLocaleMode: target.contentLocaleMode,
+            emitFormat: target.emitFormat,
+            handlerRouteParam: target.handlerRouteParam,
+            handlerRouteSegment: target.handlerRouteSegment,
+            baseStaticPropsImport: target.baseStaticPropsImport,
+            processorConfig: target.processorConfig,
+            localeConfig: cloneLocaleConfig(manifest.localeConfig),
+            paths: {
+              rootDir: target.paths.rootDir,
+              contentPagesDir: target.paths.contentPagesDir,
+              handlersDir: target.paths.handlersDir
+            }
+          }
     ])
   );

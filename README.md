@@ -61,8 +61,17 @@ to the current Next.js phase.
 
 - **MDX only** — content pages must be `.mdx` files. Standard `.tsx` / `.jsx`
   pages are not analyzed. Support for non-MDX content sources may be added later.
-- **Pages Router only** — relies on `getStaticProps`, `getStaticPaths`, and
-  file-system routing under `pages/`. App Router support is planned.
+- **Pages Router** — currently has the fuller feature set, including the
+  existing dev proxy path and the `getStaticProps` / `getStaticPaths`-based
+  integration under `pages/`.
+- **App Router** — catch-all page routes under `app/` support build-time
+  generation plus rewrite-based routing in production, and proxy-based lazy
+  routing in development through the same worker architecture as the Pages
+  Router path. See
+  [`docs/architecture/app-router-boundary-files.md`](docs/architecture/app-router-boundary-files.md).
+  For a current Pages-vs-App behavior comparison around dev proxy quirks and
+  safeguards, see
+  [`docs/architecture/router-behavior-matrix.md`](docs/architecture/router-behavior-matrix.md).
 
 ## Getting Started
 
@@ -95,6 +104,10 @@ export default withSlugSplitter(nextConfig, {
   configPath: './route-handlers-config.mjs'
 });
 ```
+
+For single-locale Pages Router setups, omit Next `i18n` entirely. The library
+normalizes the missing `i18n` block into its internal single-locale
+`LocaleConfig` automatically.
 
 ### 2. Declare Route Targets
 
@@ -151,6 +164,99 @@ export const routeHandlersConfig = {
 No separate generation command is required for the standard integration path.
 `next build` runs route-handler generation automatically through the installed
 adapter.
+
+### App Router Catch-All Targets
+
+Use `createAppCatchAllRouteHandlersPreset(...)` when the public catch-all route
+lives under `app/` and you want the current App Router path.
+
+```js
+// route-handlers-config.mjs
+// @ts-check
+
+import process from 'node:process';
+import path from 'node:path';
+import {
+  createAppCatchAllRouteHandlersPreset,
+  relativeModule
+} from 'next-slug-splitter/next';
+import { routeHandlerBindings } from 'site-route-handlers/config';
+
+const rootDir = process.cwd();
+
+/** @type {import('next-slug-splitter/next').DynamicRouteParam} */
+const docsRouteParam = {
+  name: 'slug',
+  kind: 'catch-all'
+};
+
+/** @type {import('next-slug-splitter/next').RouteHandlersConfig} */
+export const routeHandlersConfig = {
+  routerKind: 'app',
+  app: {
+    rootDir
+  },
+  targets: [
+    createAppCatchAllRouteHandlersPreset({
+      routeSegment: 'docs',
+      handlerRouteParam: docsRouteParam,
+      contentPagesDir: path.resolve(rootDir, 'content/pages'),
+      contentLocaleMode: 'default-locale',
+      routeModuleImport: relativeModule('app/docs/[...slug]/route-contract'),
+      handlerBinding: {
+        ...routeHandlerBindings.docs,
+        pageDataCompilerImport: relativeModule(
+          'config-variants/javascript/content-compiler.mjs'
+        )
+      }
+    })
+  ]
+};
+```
+
+The App-specific fields are:
+
+- `routeModuleImport` — the route-owned contract imported by the light App page
+  and generated heavy pages
+- `handlerBinding.pageDataCompilerImport` — the app-owned compiler module that
+  the library executes in an isolated worker for page-data compilation
+- `app.localeConfig` — optional multi-locale semantics used for App-side
+  worker routing and static-param filtering
+- `routeTreeSegment` — optional filesystem subtree for the emitted App handler
+  branch; use this when the App route tree includes route groups
+
+`app.localeConfig` is a library routing contract, not a direct mirror of
+Next.js `i18n` settings:
+
+- omit `app.localeConfig` for single-locale App Router setups
+- provide `app.localeConfig` only for multi-locale App Router setups
+- `locales` lists every locale identity the library should reason about
+- `defaultLocale` must be included in `locales`
+
+If the App tree uses a route group, keep the public route path stable through
+`routeSegment` and place the generated handlers under the shared subtree through
+`routeTreeSegment`:
+
+```js
+createAppCatchAllRouteHandlersPreset({
+  routeSegment: 'docs',
+  routeTreeSegment: 'docs/(docs-shared)',
+  handlerRouteParam: docsRouteParam,
+  contentPagesDir: path.resolve(rootDir, 'content/pages'),
+  routeModuleImport: relativeModule('app/docs/[...slug]/route-contract'),
+  handlerBinding: {
+    ...routeHandlerBindings.docs,
+    pageDataCompilerImport: relativeModule(
+      'config-variants/javascript/content-compiler.mjs'
+    )
+  }
+});
+```
+
+That shape produces:
+
+- public route base path: `/docs`
+- generated handler subtree: `app/docs/(docs-shared)/generated-handlers/...`
 
 ## Usage
 
@@ -541,6 +647,22 @@ Create one catch-all target with normalized route and path values.
 | `handlerRouteParam` | Dynamic route parameter configuration |
 | `contentPagesDir` | Directory containing content pages |
 | `handlerBinding` | Binding with processor module for route planning |
+| `contentLocaleMode` | Locale detection mode (see below) |
+
+### `createAppCatchAllRouteHandlersPreset(options)`
+
+Create one App Router catch-all target with normalized public route values and
+App-specific route-module inputs.
+
+| Option | Description |
+|--------|-------------|
+| `routeSegment` | Public route segment (e.g. `'docs'`) |
+| `routeTreeSegment` | Optional App Router filesystem subtree for emitted handlers; defaults to `routeSegment` |
+| `handlerRouteParam` | Dynamic route parameter configuration |
+| `contentPagesDir` | Directory containing content pages |
+| `handlerBinding` | Binding with processor module for route planning |
+| `routeModuleImport` | Page-safe App route module imported by the light page and generated heavy pages |
+| `routeModuleRuntimeImport` | Optional worker-owned App route module loaded whenever the library executes the route contract outside Next's server graph; defaults to `routeModuleImport` |
 | `contentLocaleMode` | Locale detection mode (see below) |
 
 ### `DynamicRouteParam`

@@ -1,5 +1,9 @@
 import { defineConfig } from 'tsup';
 
+/**
+ * Build configuration for the published library surface plus internal worker
+ * runtime bundles.
+ */
 export default defineConfig([
   {
     tsconfig: 'tsconfig.json',
@@ -11,6 +15,7 @@ export default defineConfig([
       'next/instrumentation': 'src/next/instrumentation/index.ts',
       'next/lookup': 'src/next/lookup.ts',
       'next/handler': 'src/next/handler-static-props.ts',
+      'next/page-data-compiler': 'src/next/page-data-compiler.ts',
       'next/not-found-retry': 'src/next/not-found-retry.ts',
       'next/proxy': 'src/next/proxy/index.ts',
       cli: 'src/cli/index.ts'
@@ -38,7 +43,12 @@ export default defineConfig([
        * This file is intentionally built into `dist/`, but it is not part of
        * the published `package.json#exports` surface.
        */
-      'next/proxy-lazy-worker': 'src/next/proxy/worker/runtime/entry.ts'
+      'next/proxy-lazy-worker': 'src/next/proxy/worker/runtime/entry.ts',
+      /**
+       * Internal worker bundle used by App Router page-data compilation to
+       * keep compiler execution isolated from the Next server process.
+       */
+      'next/app-page-data-worker': 'src/next/app/page-data-worker/runtime/entry.ts'
     },
     format: ['esm'],
     clean: false,

@@ -6,22 +6,24 @@ import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 
 import { createCatchAllRouteHandlersPreset } from '../../../next/config';
 import { synchronizeRouteHandlerProxyFile } from '../../../next/proxy/file-lifecycle';
-import { resolveRouteHandlerRoutingStrategy } from '../../../next/policy/routing-strategy';
+import { resolveRouteHandlerRoutingStrategy } from '../../../next/shared/policy/routing-strategy';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
   createTestHandlerBinding
 } from '../../helpers/fixtures';
 import { withTempDir } from '../../helpers/temp-dir';
 
+import type { LocaleConfig } from '../../../core/types';
 import type {
   ResolvedRouteHandlersConfig,
   RouteHandlersConfig
-} from '../../../next/types';
+} from '../../../next/pages/types';
 
 const SYNTHETIC_PROXY_MARKER =
   'next-slug-splitter:experimental-synthetic-proxy';
 
 const createMultiTargetConfig = (rootDir: string): RouteHandlersConfig => ({
+  routerKind: 'pages',
   app: {
     rootDir
   },
@@ -57,7 +59,7 @@ const createResolvedConfigs = ({
 }: {
   rootDir: string;
   routeHandlersConfig: RouteHandlersConfig;
-  localeConfig?: ResolvedRouteHandlersConfig['localeConfig'];
+  localeConfig?: LocaleConfig;
 }): Array<ResolvedRouteHandlersConfig> => {
   const targets = Array.isArray(routeHandlersConfig.targets)
     ? routeHandlersConfig.targets
