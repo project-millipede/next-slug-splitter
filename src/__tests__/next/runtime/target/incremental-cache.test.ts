@@ -83,6 +83,7 @@ const createSingleTargetConfig = ({
   rootDir: string;
   targetOverrides?: Partial<RouteHandlersTargetConfig>;
 }): RouteHandlersConfig => ({
+  routerKind: 'pages',
   app: {
     rootDir
   },

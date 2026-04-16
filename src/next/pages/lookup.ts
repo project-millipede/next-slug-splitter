@@ -1,72 +1,11 @@
-import process from 'node:process';
-
 import type { GetStaticPaths } from 'next';
 
-import { createConfigMissingError, createLookupError } from '../../utils/errors';
-import { toHeavyRoutePathKey } from '../shared/heavy-route-path-key';
+import { isSingleLocaleConfig } from '../../core/locale-config';
+import type { LocaleConfig } from '../../core/types';
 import {
-  readRouteHandlerLookupSnapshot,
-  type PersistedRouteHandlerLookupSnapshot
-} from '../shared/lookup-persisted';
-
-import type { RouteHandlerHeavyRouteLookup } from '../shared/types';
-
-const createMissingRouteHandlerLookupSnapshotError = (targetId?: string) =>
-  createConfigMissingError(
-    'Missing route-handler lookup snapshot. Page-time lookup requires a bootstrap-generated `.next/cache/route-handlers-lookup.json` snapshot.',
-    targetId == null ? undefined : { targetId }
-  );
-
-const readRequiredRouteHandlerLookupSnapshot = async (
-  targetId?: string
-): Promise<PersistedRouteHandlerLookupSnapshot> => {
-  const snapshot = await readRouteHandlerLookupSnapshot(process.cwd());
-
-  if (snapshot == null) {
-    throw createMissingRouteHandlerLookupSnapshotError(targetId);
-  }
-
-  return snapshot;
-};
-
-/**
- * Build a page-facing heavy-route lookup for one target.
- *
- * @remarks
- * Pages should ask a semantic question such as `isHeavyRoute(...)` instead of
- * understanding cache shape, target filtering, or route-key encoding.
- *
- * @param targetId - Stable target identifier for lookup separation.
- * @param heavyRoutePathKeys - Already-normalized heavy-route lookup keys.
- * @returns Semantic heavy-route lookup scoped to one configured target.
- */
-const createHeavyRouteLookupFromPathKeys = (
-  targetId: string,
-  heavyRoutePathKeys: ReadonlySet<string>
-): RouteHandlerHeavyRouteLookup => ({
-  targetId,
-  heavyRoutePathKeys,
-  isHeavyRoute: (locale, slugArray) =>
-    heavyRoutePathKeys.has(toHeavyRoutePathKey(locale, slugArray))
-});
-
-const createHeavyRouteLookupFromSnapshot = (
-  targetId: string,
-  snapshot: PersistedRouteHandlerLookupSnapshot
-): RouteHandlerHeavyRouteLookup => {
-  const targetSnapshot = snapshot.targets.find(
-    target => target.targetId === targetId
-  );
-
-  if (targetSnapshot == null) {
-    throw createLookupError(`Unknown targetId "${targetId}".`, { targetId });
-  }
-
-  return createHeavyRouteLookupFromPathKeys(
-    targetId,
-    new Set(targetSnapshot.heavyRoutePathKeys)
-  );
-};
+  createHeavyRouteLookupFromSnapshot,
+  readRequiredRouteHandlerLookupSnapshot
+} from '../shared/heavy-route-lookup';
 
 /**
  * Resolve heavy-route membership for one configured target during
@@ -106,22 +45,28 @@ const normalizeSlugArray = (slug: string | Array<string>): Array<string> =>
  * @param allPaths - Full `getStaticPaths` path list before heavy-route filtering.
  * @param fallback - Original fallback mode returned by the wrapped page.
  * @param isHeavyRoute - Semantic heavy-route membership check for one target.
- * @param slugParam - Catch-all slug param name to read from object entries.
+ * @param pathParamName - Catch-all route param name to read from object entries.
+ * @param localeConfig - Normalized locale semantics for the current app.
  * @returns The original fallback plus the filtered path list.
  */
 export const filterStaticPathsAgainstHeavyRoutes = (
   allPaths: Awaited<ReturnType<GetStaticPaths>>['paths'],
   fallback: Awaited<ReturnType<GetStaticPaths>>['fallback'],
   isHeavyRoute: (locale: string, slugArray: Array<string>) => boolean,
-  slugParam = 'slug'
+  pathParamName = 'slug',
+  localeConfig?: LocaleConfig
 ): Awaited<ReturnType<GetStaticPaths>> => ({
   paths: allPaths.filter(entry => {
     if (typeof entry === 'string') {
       return true;
     }
 
-    const locale = entry.locale;
-    const slug = entry.params?.[slugParam];
+    const locale =
+      entry.locale ??
+      (localeConfig != null && isSingleLocaleConfig(localeConfig)
+        ? localeConfig.defaultLocale
+        : undefined);
+    const slug = entry.params?.[pathParamName];
 
     if (!locale || !slug) {
       return true;
@@ -163,11 +108,11 @@ export type WithHeavyRouteFilterOptions = {
    */
   targetId: string;
   /**
-   * Name of the slug parameter in the path entries.
+   * Name of the route parameter holding the dynamic path segments.
    *
    * Defaults to `'slug'`.
    */
-  slugParam?: string;
+  pathParamName?: string;
   /**
    * User-owned `getStaticPaths` implementation.
    */
@@ -176,7 +121,7 @@ export type WithHeavyRouteFilterOptions = {
 
 export const withHeavyRouteFilter = ({
   targetId,
-  slugParam = 'slug',
+  pathParamName = 'slug',
   getStaticPaths
 }: WithHeavyRouteFilterOptions): GetStaticPaths => {
   return async context => {
@@ -186,7 +131,7 @@ export const withHeavyRouteFilter = ({
     const snapshot = await readRequiredRouteHandlerLookupSnapshot(targetId);
 
     // 2. If page-time filtering is disabled, return the original paths unchanged.
-    if (!snapshot.filterHeavyRoutesInStaticPaths) {
+    if (!snapshot.filterHeavyRoutesFromStaticRouteResult) {
       return result;
     }
 
@@ -200,7 +145,8 @@ export const withHeavyRouteFilter = ({
       result.paths,
       result.fallback,
       heavyRouteLookup.isHeavyRoute,
-      slugParam
+      pathParamName,
+      snapshot.localeConfig
     );
   };
 };

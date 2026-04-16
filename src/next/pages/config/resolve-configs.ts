@@ -2,6 +2,7 @@ import {
   createConfigError,
   createConfigMissingError
 } from '../../../utils/errors';
+import { cloneLocaleConfig } from '../../../core/locale-config';
 import type { LocaleConfig } from '../../../core/types';
 import { isUndefined } from '../../../utils/type-guards';
 import { isNonEmptyArray } from '../../../utils/type-guards-extended';
@@ -18,17 +19,14 @@ import {
   type NormalizedRouteHandlersTargetRuntimeAttachments,
   normalizeRouteHandlersTargetRuntimeAttachments,
   normalizeRouteHandlersTargetOptions,
+} from '../../shared/config/resolve-target';
+import {
   resolveRouteHandlersConfigBase
 } from './resolve-target';
 import { isObjectRecord, readObjectProperty } from '../../shared/config/shared';
 
 const MISSING_ROUTE_HANDLERS_CONFIG_ERROR_MESSAGE =
   'Missing registered routeHandlersConfig. Call withSlugSplitter(...) or createRouteHandlersAdapterPath(...) before exporting the Next config.';
-
-const copyLocaleConfig = (localeConfig: LocaleConfig): LocaleConfig => ({
-  locales: [...localeConfig.locales],
-  defaultLocale: localeConfig.defaultLocale
-});
 
 const requireResolvedRouteHandlersConfig = (
   routeHandlersConfig: RouteHandlersConfig | undefined
@@ -100,7 +98,8 @@ export const resolveNormalizedRouteHandlersTargetsFromAppConfig = (
         routeHandlersConfig: configuredRouteHandlers,
         options: normalizeRouteHandlersTargetOptions(
           appConfig,
-          configuredRouteHandlers
+          configuredRouteHandlers,
+          'pages'
         ),
         runtime: normalizeRouteHandlersTargetRuntimeAttachments(
           configuredRouteHandlers
@@ -127,7 +126,8 @@ export const resolveNormalizedRouteHandlersTargetsFromAppConfig = (
     const normalizedTargetConfig = targetConfig as RouteHandlersTargetConfig;
     const options = normalizeRouteHandlersTargetOptions(
       appConfig,
-      normalizedTargetConfig
+      normalizedTargetConfig,
+      'pages'
     );
 
     if (seenTargetIds.has(options.targetId)) {
@@ -153,7 +153,8 @@ export const resolveNormalizedRouteHandlersTargetsFromAppConfig = (
  * Resolve every configured target from an already-resolved app config.
  *
  * @param appConfig - Resolved app-level config shared by all targets.
- * @param localeConfig - Already-extracted Next runtime semantics.
+ * @param localeConfig - Already-normalized locale semantics for the current
+ *   Pages Router config.
  * @param routeHandlersConfig - App-owned `RouteHandlersConfig`.
  * @returns Fully resolved target configs for all configured targets.
  */
@@ -167,5 +168,5 @@ export const resolveRouteHandlersConfigsFromAppConfig = (
     routeHandlersConfig
   ).map(resolvedConfig => ({
     ...resolvedConfig,
-    localeConfig: copyLocaleConfig(localeConfig)
+    localeConfig: cloneLocaleConfig(localeConfig)
   }));

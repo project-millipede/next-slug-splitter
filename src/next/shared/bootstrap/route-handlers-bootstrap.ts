@@ -1,13 +1,9 @@
-import { resolveRouteHandlersAppConfig } from '../../shared/config/app';
-import { loadRegisteredSlugSplitterConfig } from '../../integration/slug-splitter-config-loader';
+import { resolveRouteHandlersAppConfig } from '../config/app';
 
+import type { ResolvedRouteHandlersAppConfig } from '../types';
 import type {
-  ResolvedRouteHandlersAppConfig
-} from '../../shared/types';
-import type {
-  RouteHandlersConfig,
-  RouteHandlersEntrypointInput
-} from '../types';
+  RouteHandlersConfig
+} from '../../types';
 
 /**
  * Resolved route-handlers app context used after the app-owned config object
@@ -19,18 +15,6 @@ export type RouteHandlersAppContext = {
 };
 
 /**
- * Read the app-owned route-handlers config from the current caller or the
- * registered loader path.
- *
- * @param routeHandlersConfig - Optional explicit route-handlers config.
- * @returns The explicit config when present, otherwise the registered config.
- */
-export const loadRouteHandlersConfigOrRegistered = async (
-  routeHandlersConfig?: RouteHandlersConfig
-): Promise<RouteHandlersConfig | undefined> =>
-  routeHandlersConfig ?? (await loadRegisteredSlugSplitterConfig());
-
-/**
  * Resolve the app-level route-handlers context from explicit entrypoint values
  * plus an optional already-loaded route-handlers config.
  *
@@ -40,7 +24,7 @@ export const loadRouteHandlersConfigOrRegistered = async (
  */
 export const resolveRouteHandlersAppContext = (
   routeHandlersConfig: RouteHandlersConfig | undefined,
-  rootDir?: RouteHandlersEntrypointInput['rootDir']
+  rootDir?: string
 ): RouteHandlersAppContext => ({
   routeHandlersConfig,
   appConfig: resolveRouteHandlersAppConfig({

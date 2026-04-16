@@ -1,4 +1,3 @@
-import { emitRouteHandlerPages } from '../generator/pages/target/handlers';
 import { createPipelineError } from '../utils/errors';
 import { isDefined, isNonEmptyArray } from '../utils/type-guards-extended';
 import { captureRouteHandlerComponentGraph } from './capture';
@@ -32,7 +31,6 @@ type RouteHandlerPipelineOptions = {
   localeConfig: LocaleConfig;
   contentLocaleMode?: ContentLocaleMode;
   emitFormat?: EmitFormat;
-  baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
   processorConfig: ResolvedRouteHandlerProcessorConfig;
   runtime?: {
     mdxCompileOptions?: RouteHandlerMdxCompileOptions;
@@ -41,6 +39,13 @@ type RouteHandlerPipelineOptions = {
   routeBasePath: string;
   paths: RouteHandlerPaths;
   targetId?: string;
+  emitHandlerPages?: (input: {
+    paths: RouteHandlerPaths;
+    heavyRoutes: Array<PlannedHeavyRoute>;
+    emitFormat: EmitFormat;
+    handlerRouteParam: DynamicRouteParam;
+    routeBasePath: string;
+  }) => Promise<void>;
 };
 
 const assertLocaleConfig = (
@@ -152,11 +157,10 @@ export const executeRouteHandlerPipeline = async (
   plannedHeavyRoutes.sort(compareLocalizedRouteIdentity);
 
   if (mode === 'generate') {
-    await emitRouteHandlerPages({
+    await config.emitHandlerPages?.({
       paths: config.paths,
       heavyRoutes: plannedHeavyRoutes,
       emitFormat: config.emitFormat ?? 'ts',
-      baseStaticPropsImport: config.baseStaticPropsImport,
       handlerRouteParam: config.handlerRouteParam,
       routeBasePath: config.routeBasePath
     });

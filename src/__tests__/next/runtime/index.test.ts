@@ -25,6 +25,7 @@ const createResolvedConfig = ({
   rootDir: string;
   targetId: string;
 }): ResolvedRouteHandlersConfig => ({
+  routerKind: 'pages',
   targetId,
     app: {
       rootDir,
@@ -48,7 +49,6 @@ const createResolvedConfig = ({
     path: `${rootDir}/pages/content/[...slug].tsx`
   },
   processorConfig: {
-    kind: 'module',
     processorImport: {
       kind: 'package',
       specifier: 'test-route-handlers/processor'

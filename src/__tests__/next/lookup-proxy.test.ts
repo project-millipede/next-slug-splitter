@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
+import { createSingleLocaleConfig } from '../../core/locale-config';
+
 const readRouteHandlerLookupSnapshotMock = vi.hoisted(() => vi.fn());
 
 vi.mock(import('../../next/shared/lookup-persisted'), () => ({
@@ -21,7 +23,8 @@ describe('withHeavyRouteFilter snapshot integration', () => {
   test('returns original paths when filtering is disabled in the snapshot', async () => {
     readRouteHandlerLookupSnapshotMock.mockResolvedValue({
       version: 1,
-      filterHeavyRoutesInStaticPaths: false,
+      filterHeavyRoutesFromStaticRouteResult: false,
+      localeConfig: createSingleLocaleConfig(),
       targets: [
         { targetId: TEST_PRIMARY_ROUTE_SEGMENT, heavyRoutePathKeys: [] }
       ]
@@ -40,7 +43,11 @@ describe('withHeavyRouteFilter snapshot integration', () => {
   test('filters heavy routes when filtering is enabled in the snapshot', async () => {
     readRouteHandlerLookupSnapshotMock.mockResolvedValue({
       version: 1,
-      filterHeavyRoutesInStaticPaths: true,
+      filterHeavyRoutesFromStaticRouteResult: true,
+      localeConfig: {
+        locales: ['en', 'de'],
+        defaultLocale: 'en'
+      },
       targets: [
         {
           targetId: TEST_PRIMARY_ROUTE_SEGMENT,
@@ -66,6 +73,38 @@ describe('withHeavyRouteFilter snapshot integration', () => {
     ]);
   });
 
+  test('filters heavy routes without explicit locale in single-locale mode', async () => {
+    const singleLocaleConfig = createSingleLocaleConfig();
+
+    readRouteHandlerLookupSnapshotMock.mockResolvedValue({
+      version: 1,
+      filterHeavyRoutesFromStaticRouteResult: true,
+      localeConfig: singleLocaleConfig,
+      targets: [
+        {
+          targetId: TEST_PRIMARY_ROUTE_SEGMENT,
+          heavyRoutePathKeys: [
+            `${singleLocaleConfig.defaultLocale}:generated`
+          ]
+        }
+      ]
+    });
+
+    const getStaticPaths = withHeavyRouteFilter({
+      targetId: TEST_PRIMARY_ROUTE_SEGMENT,
+      getStaticPaths: async () => ({
+        paths: [
+          { params: { slug: ['generated'] } },
+          { params: { slug: ['other'] } }
+        ],
+        fallback: false
+      })
+    });
+
+    const result = await getStaticPaths(EMPTY_CONTEXT);
+    expect(result.paths).toEqual([{ params: { slug: ['other'] } }]);
+  });
+
   test('fails with a targeted bootstrap error when the snapshot is missing', async () => {
     readRouteHandlerLookupSnapshotMock.mockResolvedValue(null);
 
@@ -82,7 +121,8 @@ describe('withHeavyRouteFilter snapshot integration', () => {
   test('fails when the requested target does not exist in the snapshot', async () => {
     readRouteHandlerLookupSnapshotMock.mockResolvedValue({
       version: 1,
-      filterHeavyRoutesInStaticPaths: true,
+      filterHeavyRoutesFromStaticRouteResult: true,
+      localeConfig: createSingleLocaleConfig(),
       targets: [{ targetId: 'blog', heavyRoutePathKeys: [] }]
     });
 

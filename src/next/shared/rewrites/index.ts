@@ -1,17 +1,21 @@
 import { toRoutePath } from '../../../core/discovery';
+import { isSingleLocaleConfig } from '../../../core/locale-config';
 import type { HeavyRouteCandidate, LocaleConfig } from '../../../core/types';
 import { dedupeRewriteIdentities } from './identity';
-import type { RewriteRecord, RouteHandlerRewriteBuckets } from '../types';
+import type {
+  RouteHandlerRewrite,
+  RouteHandlerRewriteBuckets
+} from '../types';
 
 /**
- * Sort rewrite records by source path for deterministic output.
+ * Sort route-handler rewrites by source path for deterministic output.
  *
  * @param rewrites - Rewrite records to sort.
  * @returns The same array instance sorted in place.
  */
-const sortRewriteRecords = (
-  rewrites: Array<RewriteRecord>
-): Array<RewriteRecord> =>
+const sortRouteHandlerRewrites = (
+  rewrites: Array<RouteHandlerRewrite>
+): Array<RouteHandlerRewrite> =>
   rewrites.sort((left, right) => left.source.localeCompare(right.source));
 
 /**
@@ -24,15 +28,17 @@ const sortRewriteRecords = (
  * - `rewrites`: Canonical locale-less paths (default locale) and explicit
  *   `/<locale>/...` paths (non-default locales).
  * - `rewritesOfDefaultLocale`: Explicit `/<locale>/...` paths exclusively for
- *   the default locale.
+ *   the default locale in multi-locale apps.
  */
 export const buildRouteRewriteBuckets = (
   heavyRoutes: Array<HeavyRouteCandidate>,
   localeConfig: LocaleConfig,
-  routeBasePath: string
+  routeBasePath: string,
+  handlerRouteSegment = '_handlers'
 ): RouteHandlerRewriteBuckets => {
-  const rewrites: Array<RewriteRecord> = [];
-  const rewritesOfDefaultLocale: Array<RewriteRecord> = [];
+  const rewrites: Array<RouteHandlerRewrite> = [];
+  const rewritesOfDefaultLocale: Array<RouteHandlerRewrite> = [];
+  const isSingleLocale = isSingleLocaleConfig(localeConfig);
 
   /**
    * Constructs a rewrite record that explicitly bypasses Next.js auto-prefixing.
@@ -56,7 +62,7 @@ export const buildRouteRewriteBuckets = (
   const createRewrite = (
     source: string,
     destination: string
-  ): RewriteRecord => ({
+  ): RouteHandlerRewrite => ({
     source,
     destination,
     locale: false
@@ -64,20 +70,24 @@ export const buildRouteRewriteBuckets = (
 
   for (const entry of heavyRoutes) {
     const sourceRoutePath = toRoutePath(routeBasePath, entry.slugArray);
-    const destinationBase = `${routeBasePath}/_handlers/${entry.handlerRelativePath}`;
+    const destinationBase = `${routeBasePath}/${handlerRouteSegment}/${entry.handlerRelativePath}`;
 
     if (entry.locale === localeConfig.defaultLocale) {
       // 1. Add the canonical locale-less public rewrite.
       // Next.js inherently maps the default locale to the unprefixed route shape.
       rewrites.push(createRewrite(sourceRoutePath, destinationBase));
 
-      // 2. Add the explicit /<locale>/... rewrite for the default locale.
-      rewritesOfDefaultLocale.push(
-        createRewrite(
-          `/${entry.locale}${sourceRoutePath}`,
-          `/${entry.locale}${destinationBase}`
-        )
-      );
+      // 2. Multi-locale apps also expose an explicit /<locale>/... alias for
+      //    the default locale. Single-locale apps intentionally skip that
+      //    alias so internal locale sentinels never leak into public rewrites.
+      if (!isSingleLocale) {
+        rewritesOfDefaultLocale.push(
+          createRewrite(
+            `/${entry.locale}${sourceRoutePath}`,
+            `/${entry.locale}${destinationBase}`
+          )
+        );
+      }
       continue;
     }
 
@@ -92,8 +102,8 @@ export const buildRouteRewriteBuckets = (
 
   return {
     // Deduplicate and sort the buckets to ensure a deterministic build output.
-    rewrites: sortRewriteRecords(dedupeRewriteIdentities(rewrites)),
-    rewritesOfDefaultLocale: sortRewriteRecords(
+    rewrites: sortRouteHandlerRewrites(dedupeRewriteIdentities(rewrites)),
+    rewritesOfDefaultLocale: sortRouteHandlerRewrites(
       dedupeRewriteIdentities(rewritesOfDefaultLocale)
     )
   };
@@ -108,7 +118,8 @@ export const buildRouteRewriteBuckets = (
 export const buildRouteRewriteEntries = ({
   heavyRoutes,
   localeConfig,
-  routeBasePath
+  routeBasePath,
+  handlerRouteSegment
 }: {
   /**
    * Heavy routes that should be redirected to generated handler pages.
@@ -122,14 +133,19 @@ export const buildRouteRewriteEntries = ({
    * Route base path owned by the target.
    */
   routeBasePath: string;
-}): Array<RewriteRecord> => {
+  /**
+   * Internal route segment owning generated handler pages.
+   */
+  handlerRouteSegment?: string;
+}): Array<RouteHandlerRewrite> => {
   const rewriteBuckets = buildRouteRewriteBuckets(
     heavyRoutes,
     localeConfig,
-    routeBasePath
+    routeBasePath,
+    handlerRouteSegment
   );
 
-  return sortRewriteRecords(
+  return sortRouteHandlerRewrites(
     dedupeRewriteIdentities([
       ...rewriteBuckets.rewrites,
       ...rewriteBuckets.rewritesOfDefaultLocale

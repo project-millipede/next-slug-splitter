@@ -2,7 +2,10 @@ import process from 'node:process';
 
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 
-import type { ResolvedRouteHandlersRoutingPolicy } from '../types';
+import type {
+  ResolvedRouteHandlersRoutingPolicy,
+  RouteHandlerDevelopmentRoutingMode
+} from '../types';
 
 /**
  * Environment override for development routing mode.
@@ -72,7 +75,7 @@ export type RouteHandlerRoutingStrategy =
  * `null`.
  */
 const readEnvironmentRoutingOverride =
-  (): ResolvedRouteHandlersRoutingPolicy['development'] | null => {
+  (): RouteHandlerDevelopmentRoutingMode | null => {
   const configuredValue = process.env[ROUTE_HANDLER_DEV_ROUTING_ENV_VAR];
 
   if (configuredValue == null) {

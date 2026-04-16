@@ -4,8 +4,7 @@ import type { Rewrite } from 'next/dist/lib/load-custom-routes';
 import { isArray, isFunction } from '../../../utils/type-guards';
 import { dedupeRewriteIdentities } from './identity';
 import type {
-  RewriteRecord,
-  RouteHandlerRewriteLike,
+  RouteHandlerRewrite,
   RouteHandlerRewritePhaseConfig,
   RouteHandlerRewritePhases
 } from '../types';
@@ -13,7 +12,7 @@ import type {
 /**
  * Next.js rewrite with route handler properties.
  */
-type RewriteLike = Rewrite & RouteHandlerRewriteLike;
+type RewriteLike = Rewrite & RouteHandlerRewrite;
 type RewritePhaseObject = RouteHandlerRewritePhaseConfig<RewriteLike>;
 type ResolvedRewritePhases = RouteHandlerRewritePhases<RewriteLike>;
 
@@ -37,7 +36,7 @@ type NextConfigWithRewrites = NextConfig;
  * @param rewrites - Rewrite records to normalize.
  * @returns Deduplicated rewrite records.
  */
-const dedupeRewrites = <TRewrite extends RouteHandlerRewriteLike>(
+const dedupeRewrites = <TRewrite extends RouteHandlerRewrite>(
   rewrites: Array<TRewrite>
 ): Array<TRewrite> => {
   return dedupeRewriteIdentities(rewrites);
@@ -90,7 +89,7 @@ export const withRouteHandlerRewrites = <
   TNextConfig extends NextConfigWithRewrites
 >(
   nextConfig: TNextConfig,
-  routeRewrites: Array<RewriteRecord>
+  routeRewrites: Array<RouteHandlerRewrite>
 ): TNextConfig & {
   rewrites: () => Promise<ResolvedRewritePhases>;
 } => {

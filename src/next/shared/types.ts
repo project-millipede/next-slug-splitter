@@ -32,7 +32,7 @@ export type {
  * Represents one concrete rewrite that should be merged into the owning
  * Next.js config.
  */
-export type RouteHandlerRewriteLike = {
+export type RouteHandlerRewrite = {
   /**
    * Public request pathname matched by the rewrite.
    *
@@ -69,23 +69,13 @@ export type RouteHandlerRewriteLike = {
 export type { FactoryBindings, FactoryBindingValue };
 
 /**
- * Backwards-compatible alias for route handler rewrite entries.
- */
-export type RewriteRecord = RouteHandlerRewriteLike;
-
-/**
- * Canonical rewrite entry exported by the route handler library.
- */
-export type RouteHandlerRewrite = RewriteRecord;
-
-/**
  * Fully populated rewrite buckets organized by Next.js rewrite phase.
  *
  * The generic parameter allows callers to preserve richer rewrite record
  * shapes while still using the shared phase structure.
  */
 export type RouteHandlerRewritePhases<
-  TRewrite extends RouteHandlerRewriteLike = RouteHandlerRewrite
+  TRewrite extends RouteHandlerRewrite = RouteHandlerRewrite
 > = {
   /**
    * Rewrites applied before Next.js checks filesystem routes.
@@ -117,7 +107,7 @@ export type RouteHandlerRewritePhases<
  * omitted and later expanded into a full `RouteHandlerRewritePhases` object.
  */
 export type RouteHandlerRewritePhaseConfig<
-  TRewrite extends RouteHandlerRewriteLike = RouteHandlerRewrite
+  TRewrite extends RouteHandlerRewrite = RouteHandlerRewrite
 > = {
   /**
    * Optional rewrites to apply before filesystem routes are checked.
@@ -199,6 +189,11 @@ export type RouteHandlerDevelopmentRoutingMode = 'proxy' | 'rewrites';
 export type RouteHandlerWorkerPrewarmMode = 'off' | 'instrumentation';
 
 /**
+ * Router family selected for one route-handlers config.
+ */
+export type RouteHandlerRouterKind = 'pages' | 'app';
+
+/**
  * User-facing app-level routing policy.
  *
  * @remarks
@@ -242,17 +237,6 @@ export type ResolvedRouteHandlerPreparation = {
   /** Absolute path to the resolved tsconfig project file. */
   tsconfigPath: string;
 };
-
-/**
- * Backwards-compatible alias for one prepare-step shape.
- */
-export type RouteHandlerTscProjectPreparation = RouteHandlerPreparation;
-
-/**
- * Backwards-compatible alias for one resolved prepare-step shape.
- */
-export type ResolvedRouteHandlerTscProjectPreparation =
-  ResolvedRouteHandlerPreparation;
 
 /**
  * User-facing app configuration.
@@ -441,6 +425,10 @@ export type RouteHandlersConfigBase<
   TTarget extends object = RouteHandlersTargetConfigBase
 > = Partial<TTarget> & {
   /**
+   * Router family the config targets.
+   */
+  routerKind: RouteHandlerRouterKind;
+  /**
    * App-level configuration shared by all targets.
    */
   app?: RouteHandlersAppConfig;
@@ -462,16 +450,6 @@ export type RouteHandlersEntrypointInput<TConfig = unknown> = {
    * Route handlers configuration.
    */
   routeHandlersConfig?: TConfig;
-};
-
-/**
- * Next-derived runtime semantics consumed by downstream route-handler code.
- */
-export type RouteHandlerRuntimeSemantics = {
-  /**
-   * Shared locale configuration extracted from Next.js once at the entrypoint.
-   */
-  localeConfig: LocaleConfig;
 };
 
 /**
@@ -497,6 +475,10 @@ type ResolvedTargetStructuralConfigBase = Omit<
   'handlerBinding' | 'paths' | 'mdxCompileOptions'
 > & {
   /**
+   * Resolved router family for the owning config.
+   */
+  routerKind: RouteHandlerRouterKind;
+  /**
    * Resolved processor configuration used during planning.
    */
   processorConfig: ResolvedRouteHandlerProcessorConfig;
@@ -511,22 +493,36 @@ type ResolvedTargetStructuralConfigBase = Omit<
  */
 export type ResolvedRouteHandlersTargetConfigBase =
   ResolvedTargetStructuralConfigBase & {
-  /**
-   * Runtime/executable attachments that are not part of the structural target
-   * contract.
-   */
-  runtime: ResolvedRouteHandlersRuntimeAttachments;
-};
+    /**
+     * Runtime/executable attachments that are not part of the structural target
+     * contract.
+     */
+    runtime: ResolvedRouteHandlersRuntimeAttachments;
+  };
 
 /**
  * Resolved base configuration with app settings.
  */
 export type ResolvedRouteHandlersConfigBase =
   ResolvedRouteHandlersTargetConfigBase & {
+    /**
+     * Resolved app-level configuration.
+     */
+    app: ResolvedRouteHandlersAppConfig;
+  };
+
+/**
+ * Shared helper for resolved target configs that already have normalized
+ * locale semantics attached.
+ */
+export type ResolvedRouteHandlersConfigWithLocale<
+  TResolvedConfigBase extends ResolvedRouteHandlersConfigBase =
+    ResolvedRouteHandlersConfigBase
+> = TResolvedConfigBase & {
   /**
-   * Resolved app-level configuration.
+   * Normalized locale configuration for the current router path.
    */
-  app: ResolvedRouteHandlersAppConfig;
+  localeConfig: LocaleConfig;
 };
 
 export type RouteHandlerRewriteBuckets = {
@@ -536,7 +532,7 @@ export type RouteHandlerRewriteBuckets = {
    * Canonical locale-less paths (default locale) and explicit `/<locale>/...`
    * paths (non-default locales), without the default-locale-prefixed extras.
    */
-  rewrites: Array<RewriteRecord>;
+  rewrites: Array<RouteHandlerRewrite>;
 
   /**
    * Rewrite rules contributed specifically by default-locale-prefixed paths.
@@ -545,7 +541,7 @@ export type RouteHandlerRewriteBuckets = {
    * the baseline route rewrite for heavy routes that belong to the default
    * locale.
    */
-  rewritesOfDefaultLocale: Array<RewriteRecord>;
+  rewritesOfDefaultLocale: Array<RouteHandlerRewrite>;
 };
 
 /**

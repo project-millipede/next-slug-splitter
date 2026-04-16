@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
+import { createSingleLocaleConfig } from '../../core/locale-config';
+
 const readRouteHandlerLookupSnapshotMock = vi.hoisted(() => vi.fn());
 
 vi.mock(import('../../next/shared/lookup-persisted'), () => ({
@@ -9,7 +11,7 @@ vi.mock(import('../../next/shared/lookup-persisted'), () => ({
 import {
   filterStaticPathsAgainstHeavyRoutes,
   withHeavyRouteFilter
-} from '../../next/pages/lookup';
+} from '../../next/lookup';
 import { TEST_PRIMARY_ROUTE_SEGMENT } from '../helpers/fixtures';
 
 type StaticPathEntry = {
@@ -21,7 +23,7 @@ describe('filterStaticPathsAgainstHeavyRoutes', () => {
   type Scenario = {
     id: string;
     description: string;
-    slugParam?: string;
+    pathParamName?: string;
     paths: Array<StaticPathEntry>;
     expectedPaths: Array<StaticPathEntry>;
     heavyKeys: Array<string>;
@@ -47,7 +49,7 @@ describe('filterStaticPathsAgainstHeavyRoutes', () => {
     {
       id: 'Single-Segment',
       description: 'supports single-segment slug params',
-      slugParam: 'slug',
+      pathParamName: 'slug',
       paths: [
         { params: { slug: 'light-post' }, locale: 'en' },
         { params: { slug: 'heavy-post' }, locale: 'en' }
@@ -72,6 +74,20 @@ describe('filterStaticPathsAgainstHeavyRoutes', () => {
       fallback: false
     },
     {
+      id: 'Single-Locale-Missing-Locale',
+      description:
+        'filters heavy entries without explicit locale in single-locale mode',
+      paths: [
+        { params: { slug: ['heavy-page'] } },
+        { params: { slug: ['light-page'] } }
+      ],
+      expectedPaths: [{ params: { slug: ['light-page'] } }],
+      heavyKeys: [
+        `${createSingleLocaleConfig().defaultLocale}::heavy-page`
+      ],
+      fallback: false
+    },
+    {
       id: 'Fallback-Preserved',
       description: 'preserves fallback value from the inner getStaticPaths result',
       paths: [],
@@ -82,7 +98,8 @@ describe('filterStaticPathsAgainstHeavyRoutes', () => {
   ];
 
   test.for(scenarios)('[$id] $description', ({
-    slugParam,
+    id,
+    pathParamName,
     paths,
     expectedPaths,
     heavyKeys,
@@ -93,7 +110,10 @@ describe('filterStaticPathsAgainstHeavyRoutes', () => {
       fallback,
       (locale, slugArray) =>
         heavyKeys.includes(`${locale}::${slugArray.join('/')}`),
-      slugParam
+      pathParamName,
+      id === 'Single-Locale-Missing-Locale'
+        ? createSingleLocaleConfig()
+        : undefined
     );
 
     expect(result.paths).toEqual(expectedPaths);
@@ -106,7 +126,8 @@ describe('withHeavyRouteFilter', () => {
     vi.clearAllMocks();
     readRouteHandlerLookupSnapshotMock.mockResolvedValue({
       version: 1,
-      filterHeavyRoutesInStaticPaths: false,
+      filterHeavyRoutesFromStaticRouteResult: false,
+      localeConfig: createSingleLocaleConfig(),
       targets: [
         {
           targetId: TEST_PRIMARY_ROUTE_SEGMENT,
@@ -140,7 +161,11 @@ describe('withHeavyRouteFilter', () => {
   test('filters heavy routes from the persisted lookup snapshot and preserves fallback', async () => {
     readRouteHandlerLookupSnapshotMock.mockResolvedValue({
       version: 1,
-      filterHeavyRoutesInStaticPaths: true,
+      filterHeavyRoutesFromStaticRouteResult: true,
+      localeConfig: {
+        locales: ['en', 'de'],
+        defaultLocale: 'en'
+      },
       targets: [
         {
           targetId: TEST_PRIMARY_ROUTE_SEGMENT,
@@ -163,6 +188,38 @@ describe('withHeavyRouteFilter', () => {
     await expect(getStaticPaths({})).resolves.toEqual({
       paths: [{ params: { slug: ['light-page'] }, locale: 'en' }],
       fallback: 'blocking'
+    });
+  });
+
+  test('filters heavy routes without explicit locale in single-locale snapshot mode', async () => {
+    const singleLocaleConfig = createSingleLocaleConfig();
+
+    readRouteHandlerLookupSnapshotMock.mockResolvedValue({
+      version: 1,
+      filterHeavyRoutesFromStaticRouteResult: true,
+      localeConfig: singleLocaleConfig,
+      targets: [
+        {
+          targetId: TEST_PRIMARY_ROUTE_SEGMENT,
+          heavyRoutePathKeys: [`${singleLocaleConfig.defaultLocale}:heavy-page`]
+        }
+      ]
+    });
+
+    const getStaticPaths = withHeavyRouteFilter({
+      targetId: TEST_PRIMARY_ROUTE_SEGMENT,
+      getStaticPaths: async () => ({
+        paths: [
+          { params: { slug: ['light-page'] } },
+          { params: { slug: ['heavy-page'] } }
+        ],
+        fallback: false
+      })
+    });
+
+    await expect(getStaticPaths({})).resolves.toEqual({
+      paths: [{ params: { slug: ['light-page'] } }],
+      fallback: false
     });
   });
 });

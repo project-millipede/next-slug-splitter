@@ -109,19 +109,46 @@ const createFactoryExports = ({
   return exportsRecord;
 };
 
+/**
+ * Create a minimal handler-binding fixture for config-resolution tests.
+ *
+ * @param options Optional module-reference overrides.
+ * @param options.processorImport Optional processor module reference.
+ * @param options.pageDataCompilerImport Optional page-data compiler module
+ * reference.
+ * @returns A normalized handler-binding test fixture.
+ */
 export const createTestHandlerBinding = ({
-  processorImport
+  processorImport,
+  pageDataCompilerImport
 }: {
   processorImport?: ModuleReference;
-} = {}): RouteHandlerBinding => {
+  pageDataCompilerImport?: ModuleReference;
+} = {}): RouteHandlerBinding & {
+  pageDataCompilerImport?: ModuleReference;
+} => {
   const resolvedProcessorImport =
     processorImport ?? packageModule(TEST_PRIMARY_PROCESSOR_IMPORT);
 
   return {
-    processorImport: resolvedProcessorImport
+    processorImport: resolvedProcessorImport,
+    ...(pageDataCompilerImport == null
+      ? {}
+      : {
+          pageDataCompilerImport
+        })
   };
 };
 
+/**
+ * Write a synthetic route-handler test package to `node_modules`.
+ *
+ * @param rootDir Temporary test root directory.
+ * @param options Optional factory-variant overrides.
+ * @param options.primaryVariants Exported primary factory variants.
+ * @param options.secondaryVariants Exported secondary factory variants.
+ * @returns A promise that settles after the package is materialized.
+ */
 export const writeTestRouteHandlerPackage = async (
   rootDir: string,
   {

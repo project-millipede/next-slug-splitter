@@ -1,4 +1,4 @@
-import type { RouteHandlerRewriteLike } from '../types';
+import type { RouteHandlerRewrite } from '../types';
 
 /**
  * Boolean flags that participate in rewrite identity.
@@ -27,7 +27,7 @@ type RewriteIdentityMap = Map<string, Map<string, Map<boolean, Set<boolean>>>>;
  * @returns Normalized rewrite identity state.
  */
 const toRewriteIdentityState = (
-  rewrite: RouteHandlerRewriteLike
+  rewrite: RouteHandlerRewrite
 ): RewriteIdentityState => ({
   disablesLocale: rewrite.locale === false,
   disablesBasePath: rewrite.basePath === false
@@ -105,7 +105,7 @@ const getOrCreateBasePathStates = (
  */
 const hasSeenRewriteIdentity = (
   rewriteMapsBySource: RewriteIdentityMap,
-  rewrite: RouteHandlerRewriteLike
+  rewrite: RouteHandlerRewrite
 ): boolean => {
   const destinationMap = rewriteMapsBySource.get(rewrite.source);
   if (destinationMap == null) {
@@ -134,7 +134,7 @@ const hasSeenRewriteIdentity = (
  */
 const markRewriteIdentitySeen = (
   rewriteMapsBySource: RewriteIdentityMap,
-  rewrite: RouteHandlerRewriteLike
+  rewrite: RouteHandlerRewrite
 ): void => {
   const { disablesLocale, disablesBasePath } = toRewriteIdentityState(rewrite);
   const destinationMap = getOrCreateDestinationMap(
@@ -153,7 +153,7 @@ const markRewriteIdentitySeen = (
  * @param rewrites - Rewrite records to deduplicate.
  * @returns Deduplicated rewrite records.
  */
-export const dedupeRewriteIdentities = <TRewrite extends RouteHandlerRewriteLike>(
+export const dedupeRewriteIdentities = <TRewrite extends RouteHandlerRewrite>(
   rewrites: Array<TRewrite>
 ): Array<TRewrite> => {
   const rewriteMapsBySource: RewriteIdentityMap = new Map();

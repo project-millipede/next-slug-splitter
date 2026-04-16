@@ -74,6 +74,7 @@ describe('route handler preparation', () => {
             }));
 
     return {
+      routerKind: 'pages',
       app: {
         rootDir,
         prepare

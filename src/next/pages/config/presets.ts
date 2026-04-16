@@ -3,10 +3,9 @@ import type {
   RouteHandlersTargetConfig
 } from '../types';
 
-import { normalizeHandlerRouteParam, normalizeRouteSegment } from '../../shared/config/options';
+import { resolveCatchAllRoutePresetIdentity } from '../../shared/config/catch-all-preset';
 import {
   createCatchAllBaseStaticPropsImport,
-  createCatchAllRouteBasePath,
   createCatchAllRouteHandlerNextPaths
 } from './paths';
 
@@ -26,28 +25,26 @@ export const createCatchAllRouteHandlersPreset = ({
   handlerBinding,
   mdxCompileOptions
 }: CreateCatchAllRouteHandlersPresetOptions): RouteHandlersTargetConfig => {
-  const normalizedRouteSegment = normalizeRouteSegment(routeSegment);
-  const normalizedHandlerRouteParam =
-    normalizeHandlerRouteParam(handlerRouteParam);
-  let resolvedTargetId = targetId;
-  if (resolvedTargetId == null) {
-    resolvedTargetId = normalizedRouteSegment.replace(/\//g, '-');
-  }
+  const resolvedPresetIdentity = resolveCatchAllRoutePresetIdentity({
+    targetId,
+    routeSegment,
+    handlerRouteParam
+  });
 
   return {
-    targetId: resolvedTargetId,
+    targetId: resolvedPresetIdentity.targetId,
     emitFormat,
     contentLocaleMode,
-    handlerRouteParam: normalizedHandlerRouteParam,
+    handlerRouteParam: resolvedPresetIdentity.handlerRouteParam,
     handlerBinding,
     mdxCompileOptions,
     baseStaticPropsImport: createCatchAllBaseStaticPropsImport({
-      routeSegment: normalizedRouteSegment,
-      handlerRouteParam: normalizedHandlerRouteParam
+      routeSegment: resolvedPresetIdentity.routeSegment,
+      handlerRouteParam: resolvedPresetIdentity.handlerRouteParam
     }),
-    routeBasePath: createCatchAllRouteBasePath(normalizedRouteSegment),
+    routeBasePath: resolvedPresetIdentity.routeBasePath,
     paths: createCatchAllRouteHandlerNextPaths({
-      routeSegment: normalizedRouteSegment,
+      routeSegment: resolvedPresetIdentity.routeSegment,
       contentPagesDir
     })
   };

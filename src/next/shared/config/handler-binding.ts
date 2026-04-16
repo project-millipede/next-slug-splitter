@@ -49,7 +49,9 @@ const readRouteHandlerBinding = (value: unknown): RouteHandlerBinding => {
 /**
  * Resolve the binding contract for one configured target.
  *
- * @param input - Binding resolution input.
+ * @param input Binding resolution input.
+ * @param input.rootDir Application root used to resolve module references.
+ * @param input.handlerBinding Raw configured binding value.
  * @returns Normalized runtime binding data used by the rest of the pipeline.
  */
 export const resolveRouteHandlerBinding = ({
@@ -59,6 +61,8 @@ export const resolveRouteHandlerBinding = ({
   rootDir: string;
   handlerBinding: unknown;
 }): ResolvedRouteHandlerBinding => {
+  // Shared binding resolution intentionally stays processor-only. App-only
+  // page-data compiler ownership is resolved in the App router path.
   const binding = readRouteHandlerBinding(handlerBinding);
 
   const processorImport = normalizeModuleReference(
@@ -76,7 +80,6 @@ export const resolveRouteHandlerBinding = ({
 
   return {
     processorConfig: {
-      kind: 'module',
       processorImport
     }
   };

@@ -1,41 +1,34 @@
-/**
- * Executes one resolved route-handler target without cache reuse.
- *
- * @remarks
- * This module is narrow by design. It takes a fully resolved Next target
- * config, delegates execution to the core pipeline, and converts the resulting
- * pipeline data into the Next-specific runtime result shape. Cache policy and
- * multi-target orchestration live in `index.ts`.
- *
- * Consumers never call the lower-level core pipeline directly from application
- * code. Instead they call the runtime pipeline, and this module is the point
- * where one resolved Next target is handed off to core execution.
- */
-import { executeRouteHandlerPipeline } from '../../../../core/pipeline';
+import { emitRouteHandlerPages } from '../../../../generator/pages/target/handlers';
 import { buildRouteHandlerNextResult } from '../results';
+import { executeRouteHandlerTargetWithRuntimeHarness } from '../../../shared/runtime/target';
 
 import type {
   PipelineMode,
-  RouteHandlerPipelineResult
 } from '../../../../core/types';
 import type { RouteHandlerNextResult } from '../../../shared/types';
 import type { ResolvedRouteHandlersConfig } from '../../types';
 
-/**
- * Execute one resolved route-handler target directly against the core pipeline.
- *
- * @param config - Fully resolved target config.
- * @param mode - Pipeline execution mode.
- * @returns Next integration result for the target.
- */
 export const executeRouteHandlerTarget = async (
   config: ResolvedRouteHandlersConfig,
   mode: PipelineMode
-): Promise<RouteHandlerNextResult> => {
-  // This is the per-target hand-off from the Next runtime layer into core
-  // planning/generation for one fully resolved target.
-  const coreResult: RouteHandlerPipelineResult =
-    await executeRouteHandlerPipeline(config, mode);
-
-  return buildRouteHandlerNextResult(config, coreResult);
-};
+): Promise<RouteHandlerNextResult> =>
+  executeRouteHandlerTargetWithRuntimeHarness({
+    config,
+    mode,
+    emitHandlerPages: async ({
+      paths,
+      heavyRoutes,
+      emitFormat,
+      handlerRouteParam,
+      routeBasePath
+    }) =>
+      emitRouteHandlerPages({
+        paths,
+        heavyRoutes,
+        emitFormat,
+        baseStaticPropsImport: config.baseStaticPropsImport,
+        handlerRouteParam,
+        routeBasePath
+      }),
+    buildNextResult: buildRouteHandlerNextResult
+  });

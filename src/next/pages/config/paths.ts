@@ -11,6 +11,26 @@ import type {
 import { isNonEmptyString } from '../../shared/config/shared';
 
 /**
+ * Render the Next.js filesystem segment for one dynamic route param.
+ *
+ * @param handlerRouteParam Dynamic route parameter descriptor.
+ * @returns Filesystem route segment such as `[slug]` or `[...slug]`.
+ */
+const toDynamicPageSegment = (
+  handlerRouteParam: DynamicRouteParam
+): string => {
+  if (handlerRouteParam.kind === 'single') {
+    return `[${handlerRouteParam.name}]`;
+  }
+
+  if (handlerRouteParam.kind === 'catch-all') {
+    return `[...${handlerRouteParam.name}]`;
+  }
+
+  return `[[...${handlerRouteParam.name}]]`;
+};
+
+/**
  * Build the import specifier of the source page whose `getStaticProps` should
  * be proxied by generated handler pages.
  *
@@ -31,12 +51,7 @@ export const createCatchAllBaseStaticPropsImport = ({
   handlerRouteParam: DynamicRouteParam;
 }): RelativeModuleReference => {
   const routeSegments = routeSegment.split('/');
-  const pageSegment =
-    handlerRouteParam.kind === 'single'
-      ? `[${handlerRouteParam.name}]`
-      : handlerRouteParam.kind === 'catch-all'
-        ? `[...${handlerRouteParam.name}]`
-        : `[[...${handlerRouteParam.name}]]`;
+  const pageSegment = toDynamicPageSegment(handlerRouteParam);
 
   return relativeModule(['pages', ...routeSegments, pageSegment].join('/'));
 };
