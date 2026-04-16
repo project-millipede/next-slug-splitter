@@ -1,10 +1,11 @@
 import type {
   DynamicRouteParam,
-  LocaleConfig,
   ResolvedRouteHandlerModuleReference,
   RouteHandlerModuleReference
 } from '../../core/types';
 import type {
+  RouteHandlersEntrypointInput as SharedRouteHandlersEntrypointInput,
+  ResolvedRouteHandlersConfigWithLocale,
   ResolvedRouteHandlersAppConfig,
   ResolvedRouteHandlersTargetConfigBase,
   RouteHandlerBinding,
@@ -31,21 +32,18 @@ export type RouteHandlersTargetConfig = RouteHandlersTargetConfigBase & {
  * Pages Router route-handlers config container.
  */
 export type RouteHandlersConfig =
-  RouteHandlersConfigBase<RouteHandlersTargetConfig>;
+  RouteHandlersConfigBase<RouteHandlersTargetConfig> & {
+    /**
+     * Router family discriminator.
+     */
+    routerKind: 'pages';
+  };
 
 /**
  * Pages Router entrypoint input.
  */
-export type RouteHandlersEntrypointInput = {
-  /**
-   * Application root directory.
-   */
-  rootDir?: string;
-  /**
-   * Route handlers configuration.
-   */
-  routeHandlersConfig?: RouteHandlersConfig;
-};
+export type RouteHandlersEntrypointInput =
+  SharedRouteHandlersEntrypointInput<RouteHandlersConfig>;
 
 /**
  * Options for creating a catch-all Pages Router preset.
@@ -78,6 +76,10 @@ export type CreateCatchAllRouteHandlersPresetOptions = Pick<
 export type ResolvedRouteHandlersConfigBase =
   ResolvedRouteHandlersTargetConfigBase & {
     /**
+     * Router family discriminator for the Pages Router contract.
+     */
+    routerKind: 'pages';
+    /**
      * Resolved app-level configuration.
      */
     app: ResolvedRouteHandlersAppConfig;
@@ -90,12 +92,8 @@ export type ResolvedRouteHandlersConfigBase =
 /**
  * Fully resolved Pages Router target config.
  */
-export type ResolvedRouteHandlersConfig = ResolvedRouteHandlersConfigBase & {
-  /**
-   * Locale configuration from the Next.js config.
-   */
-  localeConfig: LocaleConfig;
-};
+export type ResolvedRouteHandlersConfig =
+  ResolvedRouteHandlersConfigWithLocale<ResolvedRouteHandlersConfigBase>;
 
 /**
  * Narrow Pages Router planning config shared by target-wide and lazy one-file
