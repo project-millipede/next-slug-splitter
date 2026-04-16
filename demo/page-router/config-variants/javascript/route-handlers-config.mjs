@@ -49,6 +49,7 @@ const docsHandlerRouteParam = {
 
 /** @type {import('next-slug-splitter/next').RouteHandlersConfig} */
 export const routeHandlersConfig = {
+  routerKind: 'pages',
   app: {
     rootDir
   },

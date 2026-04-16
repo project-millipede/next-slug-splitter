@@ -11,11 +11,6 @@ import { routeHandlersConfig } from './route-handlers-config.mjs';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  i18n: {
-    locales: ['en'],
-    defaultLocale: 'en'
-  },
-
   pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'md', 'mdx'],
   reactStrictMode: false
 };

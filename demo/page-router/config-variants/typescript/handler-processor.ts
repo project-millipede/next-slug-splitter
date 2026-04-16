@@ -33,21 +33,39 @@ import {
 
 // Shared package boundary reused for every generated component import.
 const componentsModule = packageModule('@demo/components');
+
+type RuntimeTrait = 'selection' | 'wrapper';
+type RuntimeTraits = ReadonlyArray<RuntimeTrait>;
+type RuntimeConfig = {
+  runtimeTraits?: RuntimeTraits;
+};
+
+const runtimeTrait = {
+  selection: 'selection',
+  wrapper: 'wrapper'
+} as const;
+
+const runtimeTraits = {
+  selection: [runtimeTrait.selection],
+  wrapper: [runtimeTrait.wrapper],
+  wrapperAndSelection: [runtimeTrait.wrapper, runtimeTrait.selection]
+} as const;
+
 const metadataByKey: Readonly<
-  Partial<Record<string, { runtimeTraits: string[] }>>
+  Partial<Record<string, RuntimeConfig>>
 > = {
   Chart: {
-    runtimeTraits: ['wrapper']
+    runtimeTraits: runtimeTraits.wrapper
   },
   Counter: {
-    runtimeTraits: ['wrapper', 'selection']
+    runtimeTraits: runtimeTraits.wrapperAndSelection
   },
   DataTable: {
-    runtimeTraits: ['selection']
+    runtimeTraits: runtimeTraits.selection
   }
 };
 
-export const routeHandlerProcessor = defineRouteHandlerProcessor({
+export const routeHandlerProcessor = defineRouteHandlerProcessor<RuntimeConfig>({
   resolve({ capturedComponentKeys }) {
     return {
       factoryImport: relativeModule('lib/handler-factory/runtime'),

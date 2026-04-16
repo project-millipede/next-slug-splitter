@@ -5,7 +5,7 @@
  * (`pages/docs/[...slug].tsx`):
  *
  * - `getAllContentSlugs` — walks the content directory tree and returns
- *   every MDX file as a Next.js static-path entry (params + locale).
+ *   every MDX file as a Next.js static-path entry.
  * - `compileContentForSlug` — compiles a single MDX file into an IIFE
  *   string that the client-side `MdxContent` runtime can evaluate.
  *
@@ -36,7 +36,6 @@ const CONTENT_DIR = path.join(process.cwd(), 'content', 'pages');
 /** A single entry returned by `getStaticPaths` for the catch-all route. */
 type ContentSlugEntry = {
   params: { slug: string[] };
-  locale: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -99,8 +98,7 @@ export const getAllContentSlugs = async (): Promise<ContentSlugEntry[]> => {
   const files = await collectMdxFiles(CONTENT_DIR);
 
   return files.map(file => ({
-    params: { slug: filePathToSlug(file) },
-    locale: 'en'
+    params: { slug: filePathToSlug(file) }
   }));
 };
 

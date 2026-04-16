@@ -111,6 +111,8 @@ function PageCard({ page }: { page: PageEntry }) {
   return (
     <Link
       href={`/docs/${page.slug}`}
+      // In the Pages Router, `prefetch={false}` disables viewport prefetching
+      // but Next still prefetches on hover by default.
       prefetch={false}
       style={cardStyle(page.kind)}
     >

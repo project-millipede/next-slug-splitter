@@ -41,6 +41,7 @@ const docsHandlerRouteParam: DynamicRouteParam = {
 // ---------------------------------------------------------------------------
 
 export const routeHandlersConfig: RouteHandlersConfig = {
+  routerKind: 'pages',
   app: {
     rootDir,
     prepare: {
