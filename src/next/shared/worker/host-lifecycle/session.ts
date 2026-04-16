@@ -56,7 +56,37 @@ type SharedWorkerHostLifecycleDeferredReadyState = {
 };
 
 /**
- * Weakly-held readiness state keyed by host-managed worker session.
+ * Shared private readiness side table for host-managed sessions.
+ *
+ * Key:
+ * - the exact host-managed session object instance
+ * - object identity, not `sessionKey`
+ * - the same session object later passed back into the lifecycle readiness
+ *   helpers
+ *
+ * Value:
+ * - the deferred readiness settlement state for that session:
+ *   - `resolve`
+ *   - `reject`
+ *   - `settled`
+ *
+ * Why `WeakMap`:
+ * - keep the readiness mutators and settlement bookkeeping off the public
+ *   session shape
+ * - bind this hidden state to the lifetime of the exact session object
+ *
+ * When a session fully closes, this readiness entry is no longer part of the
+ * active host lifecycle for that session.
+ *
+ * As long as some other code still holds a strong reference to the same session
+ * object, this entry may still exist.
+ *
+ * Once that exact session object is no longer strongly referenced anywhere and
+ * is eventually garbage-collected, the whole `WeakMap` entry disappears with
+ * it.
+ *
+ * The map is shared across worker families, but each session instance gets its
+ * own private readiness entry.
  */
 const sharedWorkerHostLifecycleReadyStates = new WeakMap<
   SharedWorkerHostLifecycleSessionBase,
@@ -196,15 +226,27 @@ export const rejectSharedWorkerHostLifecycleSessionReady = ({
 };
 
 /**
- * Create one host-managed lifecycle session from a low-level base session.
+ * Create one worker-family-specific host-managed session from a low-level base
+ * session.
  *
  * @template TResponse Successful worker response union carried by the session.
+ * @template TSession Concrete worker-family session shape layered onto the
+ * shared lifecycle session fields.
  * @param session Base session created by the low-level host primitives.
- * @returns Host-managed session extended with lifecycle state.
+ * @param createSession Worker-family builder that returns the final session
+ * object which should own the deferred-readiness entry.
+ * @returns Host-managed session built from the shared lifecycle fields and the
+ * worker-family-specific fields.
  */
-export const createSharedWorkerHostLifecycleSession = <TResponse>(
-  session: SharedWorkerSession<TResponse>
-): SharedWorkerHostLifecycleSession<TResponse> => {
+export const createCustomSharedWorkerHostLifecycleSession = <
+  TResponse,
+  TSession extends SharedWorkerHostLifecycleSession<TResponse>
+>(
+  baseSession: SharedWorkerSession<TResponse>,
+  extendSession: (
+    lifecycleSession: SharedWorkerHostLifecycleSession<TResponse>
+  ) => TSession
+): TSession => {
   const { readyPromise, readyState } =
     createSharedWorkerHostLifecycleDeferredReadyState();
   const lifecycleSession: SharedWorkerHostLifecycleSession<TResponse> = {
@@ -212,7 +254,7 @@ export const createSharedWorkerHostLifecycleSession = <TResponse>(
      * Preserve the low-level shared worker session fields as the base of the
      * host-managed lifecycle session.
      */
-    ...session,
+    ...baseSession,
     /**
      * New host-managed sessions always begin in the startup phase.
      */
@@ -228,11 +270,34 @@ export const createSharedWorkerHostLifecycleSession = <TResponse>(
      */
     failureError: null
   };
+  /**
+   * Let the worker family decide whether the plain lifecycle session is already
+   * final or whether the final tracked session object should also include
+   * worker-family-specific fields.
+   */
+  const customizedSession = extendSession(lifecycleSession);
 
-  sharedWorkerHostLifecycleReadyStates.set(lifecycleSession, readyState);
+  sharedWorkerHostLifecycleReadyStates.set(customizedSession, readyState);
 
-  return lifecycleSession;
+  return customizedSession;
 };
+
+/**
+ * Create one host-managed lifecycle session from a low-level base session.
+ *
+ * @template TResponse Successful worker response union carried by the session.
+ * @param session Base session created by the low-level host primitives.
+ * @returns Host-managed session extended with lifecycle state.
+ */
+export const createSharedWorkerHostLifecycleSession = <TResponse>(
+  baseSession: SharedWorkerSession<TResponse>
+): SharedWorkerHostLifecycleSession<TResponse> =>
+  createCustomSharedWorkerHostLifecycleSession(
+    baseSession,
+    // The plain shared lifecycle constructor does not add any worker-family
+    // fields, so the lifecycle session itself is already the final session.
+    lifecycleSession => lifecycleSession
+  );
 
 /**
  * Mark one host-managed session as ready for general work.

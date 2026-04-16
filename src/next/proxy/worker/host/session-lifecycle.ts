@@ -17,7 +17,7 @@ import {
 } from '../../../shared/worker/host/session-lifecycle';
 import { createSharedWorkerHostLifecycleMachine } from '../../../shared/worker/host-lifecycle/machine';
 import {
-  createSharedWorkerHostLifecycleSession,
+  createCustomSharedWorkerHostLifecycleSession,
   forceCloseSharedWorkerHostLifecycleSession
 } from '../../../shared/worker/host-lifecycle/session';
 import type { SharedWorkerHostLifecycleSession } from '../../../shared/worker/host-lifecycle/types';
@@ -464,13 +464,24 @@ const createRouteHandlerProxyWorkerSession = ({
     sessionKey,
     child
   });
-  const session = Object.assign(
-    createSharedWorkerHostLifecycleSession(baseSession),
-    {
+  const session = createCustomSharedWorkerHostLifecycleSession(
+    baseSession,
+    lifecycleSession => ({
+      ...lifecycleSession,
+      /**
+       * Bind the long-lived worker session to the parent bootstrap generation
+       * that created it so reuse can reject sessions from older generations.
+       */
       bootstrapGenerationToken,
+      /**
+       * Seed the proxy-specific bootstrap promise with a settled placeholder so
+       * the session has a complete proxy-owned shape before the real bootstrap
+       * IPC request is assembled and sent below.
+       */
       bootstrapPromise: Promise.resolve()
-    }
-  ) as RouteHandlerProxyWorkerSession;
+    })
+  );
+
   const stderrChunks: Array<Buffer> = [];
 
   child.on('message', (envelope: RouteHandlerProxyWorkerResponseEnvelope) => {
@@ -542,17 +553,24 @@ const createRouteHandlerProxyWorkerSession = ({
     }
   };
 
-  session.bootstrapPromise =
-    sendRouteHandlerProxyWorkerRequest(session, bootstrapRequest).then(response => {
-      if (
-        response.subject !== 'bootstrapped' ||
-        response.payload.bootstrapGenerationToken !== bootstrapGenerationToken
-      ) {
-        throw new Error(
-          'next-slug-splitter proxy worker bootstrap returned an unexpected generation token.'
-        );
-      }
-    });
+  /**
+   * Replace the settled placeholder promise with the real bootstrap IPC flow
+   * now that the worker session exists and the bootstrap request can be sent
+   * through it.
+   */
+  session.bootstrapPromise = sendRouteHandlerProxyWorkerRequest(
+    session,
+    bootstrapRequest
+  ).then(response => {
+    if (
+      response.subject !== 'bootstrapped' ||
+      response.payload.bootstrapGenerationToken !== bootstrapGenerationToken
+    ) {
+      throw new Error(
+        'next-slug-splitter proxy worker bootstrap returned an unexpected generation token.'
+      );
+    }
+  });
 
   return session;
 };
