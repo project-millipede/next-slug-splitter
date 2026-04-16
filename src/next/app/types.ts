@@ -1,35 +1,298 @@
 import type {
-  ResolvedRouteHandlersConfigBase as SharedResolvedRouteHandlersConfigBase,
+  ProcessorRouteHandlerBinding,
+  RouteHandlersAppConfig as SharedRouteHandlersAppConfig,
+  RouteHandlersEntrypointInput as SharedRouteHandlersEntrypointInput,
+  ResolvedRouteHandlersConfigWithLocale,
+  ResolvedRouteHandlersAppConfig,
+  ResolvedRouteHandlersTargetConfigBase,
   RouteHandlersConfigBase,
   RouteHandlersTargetConfigBase
 } from '../shared/types';
-import type { LocaleConfig } from '../../core/types';
+import type {
+  DynamicRouteParam,
+  LocaleConfig,
+  ResolvedRouteHandlerModuleReference,
+  RouteHandlerModuleReference
+} from '../../core/types';
+import type { ResolvedModuleReference } from '../../module-reference';
+import type { JsonValue } from '../../utils/type-guards-json';
+
+export type AppRouteStaticParamValue = string | Array<string> | undefined;
 
 /**
- * Placeholder App Router target config.
+ * Param bag shape shared by App Router route-module helpers.
+ */
+export type AppRouteParams = Record<string, AppRouteStaticParamValue>;
+
+/**
+ * Canonical App-owned static-params enumerator shared by the public light page
+ * and generated heavy pages.
+ */
+export type GetAppRouteStaticParams<
+  TParams extends AppRouteParams = AppRouteParams
+> = () => Array<TParams> | Promise<Array<TParams>>;
+
+/**
+ * App-owned page helper that loads the props consumed by the public light page
+ * and generated heavy pages.
  *
- * App Router-specific fields will be introduced here as that integration
- * contract is designed. For now this file exists to keep router-specific type
- * work out of `next/shared/types.ts`.
+ * @remarks
+ * App Router does not expose a built-in `getStaticProps` equivalent, so the
+ * preferred contract gives both page variants one explicit shared page helper.
  */
-export type RouteHandlersTargetConfig = RouteHandlersTargetConfigBase;
+export type LoadAppPageProps<
+  TParams extends AppRouteParams = AppRouteParams,
+  TRouteData = unknown
+> = (params: TParams) => TRouteData | Promise<TRouteData>;
 
 /**
- * Placeholder App Router config container.
+ * Optional App-owned page metadata helper shared by the public light page and
+ * generated heavy pages.
  */
-export type RouteHandlersConfig =
-  RouteHandlersConfigBase<RouteHandlersTargetConfig>;
+export type GenerateAppPageMetadata<
+  TParams extends AppRouteParams = AppRouteParams,
+  TMetadata = unknown
+> = (params: TParams) => TMetadata | Promise<TMetadata>;
 
 /**
- * Placeholder resolved App Router base config.
+ * Serializable invocation shape shared by the public page-data compiler helper
+ * and by app-authored page-data compiler modules.
+ */
+export type AppPageDataCompilerCompileInput<
+  TInput extends JsonValue = JsonValue
+> = {
+  /**
+   * Stable target identifier used to look up the configured compiler module.
+   */
+  targetId: string;
+  /**
+   * Serializable payload chosen by the route contract.
+   */
+  input: TInput;
+};
+
+/**
+ * App-owned page-data compiler executed by the library in an isolated worker.
+ */
+export type AppPageDataCompiler<
+  TInput extends JsonValue = JsonValue,
+  TResult extends JsonValue = JsonValue
+> = {
+  /**
+   * Compile or otherwise prepare page data outside the Next server process.
+   */
+  compile: (
+    input: AppPageDataCompilerCompileInput<TInput>
+  ) => TResult | Promise<TResult>;
+};
+
+/**
+ * Preferred App Router page contract owned by the route folder.
+ *
+ * @remarks
+ * This is the closest App Router analogue to the Pages Router `getStaticProps`
+ * seam:
+ * - the public catch-all page calls it directly
+ * - generated heavy pages call it directly
+ * - workers do not own these page semantics
+ */
+export type AppRoutePageContract<
+  TParams extends AppRouteParams = AppRouteParams
+> = {
+  /**
+   * Enumerate every params object the target can statically generate.
+   */
+  getStaticParams: GetAppRouteStaticParams<TParams>;
+  /**
+   * Load the route data consumed by page rendering.
+   */
+  loadPageProps: LoadAppPageProps<TParams>;
+  /**
+   * Optional metadata helper mirrored into generated heavy pages.
+   */
+  generatePageMetadata?: GenerateAppPageMetadata<TParams>;
+  /**
+   * Optional segment revalidation value mirrored into generated heavy pages.
+   */
+  revalidate?: number | false;
+};
+
+/**
+ * Build-time inspection result for one resolved App Router route contract.
+ */
+export type ResolvedAppRouteModuleContract = {
+  /**
+   * Whether the route contract exports `generatePageMetadata`.
+   */
+  hasGeneratePageMetadata: boolean;
+  /**
+   * Literal `revalidate` value exported by the route contract when present.
+   */
+  revalidate?: number | false;
+};
+
+/**
+ * App-only extension of the shared processor binding.
+ */
+export type AppRouteHandlerBinding = ProcessorRouteHandlerBinding & {
+  /**
+   * App-owned page-data compiler module executed by the library in an
+   * isolated worker.
+   *
+   * This stays separate from `processorImport`: processors own generation
+   * planning, while page-data compilers own isolated page-data preparation.
+   */
+  pageDataCompilerImport?: RouteHandlerModuleReference;
+};
+
+/**
+ * App-owned multi-locale config used at the public config boundary.
+ *
+ * @remarks
+ * Single-locale App Router setups omit `app.localeConfig` entirely.
+ */
+export type AppRouteHandlersLocaleConfig = {
+  /**
+   * Supported locale codes for the App Router target set.
+   */
+  locales: Array<string>;
+  /**
+   * Default locale used for canonical locale-less ownership.
+   */
+  defaultLocale: string;
+};
+
+/**
+ * App-owned app-level config that extends the shared app config with the
+ * optional declarative locale contract.
+ */
+export type AppRouteHandlersAppConfig = SharedRouteHandlersAppConfig & {
+  /**
+   * Declarative locale contract for multi-locale App Router flows.
+   *
+   * Omit this field entirely for single-locale apps.
+   */
+  localeConfig?: AppRouteHandlersLocaleConfig;
+};
+
+/**
+ * App Router target config.
+ */
+export type RouteHandlersTargetConfig = Omit<
+  RouteHandlersTargetConfigBase,
+  'handlerBinding'
+> & {
+  /**
+   * App-only handler binding that extends the shared processor binding.
+   */
+  handlerBinding: AppRouteHandlerBinding;
+  /**
+   * Route-owned App page contract imported by the public page and generated
+   * heavy pages.
+   *
+   * Required/optional exports:
+   * - `getStaticParams`
+   * - `loadPageProps(params)`
+   * - optional `generatePageMetadata(params)`
+   * - optional `revalidate`
+   */
+  routeModuleImport: RouteHandlerModuleReference;
+};
+
+/**
+ * App Router config container.
+ */
+export type RouteHandlersConfig = Omit<
+  RouteHandlersConfigBase<RouteHandlersTargetConfig>,
+  'app'
+> & {
+  /**
+   * Router family discriminator for the App Router path.
+   */
+  routerKind: 'app';
+  /**
+   * App-owned app-level config, including the optional multi-locale contract.
+   */
+  app?: AppRouteHandlersAppConfig;
+};
+
+/**
+ * Options for creating a catch-all App Router preset.
+ */
+export type CreateAppCatchAllRouteHandlersPresetOptions = Pick<
+  RouteHandlersTargetConfig,
+  | 'targetId'
+  | 'contentLocaleMode'
+  | 'emitFormat'
+  | 'handlerBinding'
+  | 'mdxCompileOptions'
+  | 'routeModuleImport'
+> & {
+  /**
+   * Public route segment for the catch-all target (e.g. `docs`).
+   */
+  routeSegment: string;
+  /**
+   * Optional App Router filesystem subtree used for emitted handlers.
+   *
+   * Defaults to {@link routeSegment}. This may include route groups such as
+   * `docs/(docs-shared)` when the filesystem tree should be narrower than the
+   * public route path.
+   */
+  routeTreeSegment?: string;
+  /**
+   * Dynamic route parameter for the handler page.
+   */
+  handlerRouteParam: DynamicRouteParam;
+  /**
+   * Directory containing content page files.
+   */
+  contentPagesDir: string;
+};
+
+/**
+ * App Router entrypoint input.
+ */
+export type RouteHandlersEntrypointInput =
+  SharedRouteHandlersEntrypointInput<RouteHandlersConfig>;
+
+/**
+ * Resolved App Router base config.
  */
 export type ResolvedRouteHandlersConfigBase =
-  SharedResolvedRouteHandlersConfigBase;
+  ResolvedRouteHandlersTargetConfigBase & {
+    /**
+     * Router family discriminator for the App Router contract.
+     */
+    routerKind: 'app';
+    /**
+     * Resolved app-level configuration.
+     */
+    app: ResolvedRouteHandlersAppConfig;
+    /**
+     * Resolved route-contract import used by App Router helpers and generated
+     * heavy pages.
+     */
+    routeModuleImport: ResolvedRouteHandlerModuleReference;
+    /**
+     * Internal App Router segment used for generated handler destinations.
+     */
+    handlerRouteSegment: string;
+    /**
+     * Build-time inspection result for the resolved route contract.
+     */
+    routeModule: ResolvedAppRouteModuleContract;
+    /**
+     * Optional resolved page-data compiler configuration used by App Router
+     * route contracts at page time through an isolated library-owned worker.
+     */
+    pageDataCompilerConfig?: {
+      pageDataCompilerImport: ResolvedModuleReference;
+    };
+  };
 
 /**
- * Placeholder resolved App Router config.
+ * Fully resolved App Router config.
  */
 export type ResolvedRouteHandlersConfig =
-  SharedResolvedRouteHandlersConfigBase & {
-    localeConfig: LocaleConfig;
-  };
+  ResolvedRouteHandlersConfigWithLocale<ResolvedRouteHandlersConfigBase>;

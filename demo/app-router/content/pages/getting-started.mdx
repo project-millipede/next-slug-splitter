@@ -1,0 +1,23 @@
+# Getting Started
+
+Welcome to the **next-slug-splitter** demo. This is a _light_ page — it contains
+only standard Markdown elements and no custom React components.
+
+## Why does this matter?
+
+In a typical Next.js content site, every page that shares a dynamic route
+(e.g. `[...slug].tsx`) bundles the same JavaScript — including heavy components
+that only a few pages actually use.
+
+**next-slug-splitter** solves this by:
+
+1. Scanning your MDX content at build time
+2. Detecting which pages use custom React components
+3. Generating dedicated route handlers for those "heavy" pages
+4. Keeping the shared catch-all route lean for "light" pages like this one
+
+## Result
+
+- Light pages ship minimal JavaScript
+- Heavy pages only bundle the components they need
+- No manual route management required
