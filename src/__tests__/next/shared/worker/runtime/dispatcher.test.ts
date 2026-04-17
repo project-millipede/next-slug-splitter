@@ -82,7 +82,7 @@ describe('shared worker runtime dispatcher', () => {
     });
   });
 
-  test('fails for unsupported subjects', async () => {
+  test('fails when no handler is registered for the subject', async () => {
     await expect(
       dispatchWorkerRequestBySubject<
         DispatcherTestRequest,
@@ -122,7 +122,7 @@ describe('shared worker runtime dispatcher', () => {
         }
       })
     ).rejects.toThrow(
-      'next-slug-splitter worker runtime does not support subject "unknown-subject".'
+      'next-slug-splitter worker runtime has no handler for subject "unknown-subject".'
     );
   });
 });

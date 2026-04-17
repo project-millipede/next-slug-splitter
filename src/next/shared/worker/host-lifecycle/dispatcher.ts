@@ -1,9 +1,20 @@
 import type { WorkerAnyHostLifecycleEvent } from './types';
+import {
+  resolveSubjectHandler,
+  type SubjectDispatchHandler,
+  type SubjectDispatchHandlerMap
+} from '../dispatch-by-subject';
+
+const MISSING_HANDLER_ERROR_PREFIX =
+  'next-slug-splitter host lifecycle has no handler for subject';
 
 /**
  * Shared typed dispatcher for internal host lifecycle events.
  *
  * @remarks
+ * This module is a thin semantic wrapper over `dispatch-by-subject.ts` using
+ * the host lifecycle's `event` / `context` terminology.
+ *
  * This helper mirrors the runtime-side subject dispatcher while staying
  * clearly separate from the IPC wire protocol:
  * - events are internal to the parent process
@@ -23,16 +34,7 @@ export type WorkerHostLifecycleEventHandler<
   TEvent extends WorkerAnyHostLifecycleEvent,
   TContext,
   TResult
-> = (input: {
-  /**
-   * Narrowed lifecycle event for this handler.
-   */
-  event: TEvent;
-  /**
-   * Dynamic per-dispatch context supplied by the caller.
-   */
-  context: TContext;
-}) => Promise<TResult>;
+> = SubjectDispatchHandler<'event', 'context', TEvent, TContext, TResult>;
 
 /**
  * Typed handler map used by the shared host lifecycle dispatcher.
@@ -45,13 +47,7 @@ export type WorkerHostLifecycleEventHandlerMap<
   TEvent extends WorkerAnyHostLifecycleEvent,
   TContext,
   TResult
-> = {
-  [TSubject in TEvent['subject']]: WorkerHostLifecycleEventHandler<
-    Extract<TEvent, { subject: TSubject }>,
-    TContext,
-    TResult
-  >;
-};
+> = SubjectDispatchHandlerMap<'event', 'context', TEvent, TContext, TResult>;
 
 /**
  * Resolve one internal host lifecycle event by `subject`.
@@ -78,18 +74,11 @@ export const dispatchWorkerHostLifecycleEventBySubject = async <
   context: TContext;
   handlers: WorkerHostLifecycleEventHandlerMap<TEvent, TContext, TResult>;
 }): Promise<TResult> => {
-  const handler = (
-    handlers as unknown as Record<
-      string,
-      WorkerHostLifecycleEventHandler<TEvent, TContext, TResult>
-    >
-  )[event.subject];
-
-  if (handler == null) {
-    throw new Error(
-      `next-slug-splitter host lifecycle does not support subject "${event.subject}".`
-    );
-  }
+  const handler = resolveSubjectHandler({
+    subject: event.subject,
+    handlers,
+    missingHandlerErrorPrefix: MISSING_HANDLER_ERROR_PREFIX
+  });
 
   return await handler({
     event,

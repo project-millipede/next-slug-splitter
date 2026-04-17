@@ -1,9 +1,29 @@
 import type { WorkerAnyRequestAction } from '../types';
+import {
+  resolveSubjectHandler,
+  type SubjectDispatchHandler,
+  type SubjectDispatchHandlerMap
+} from '../dispatch-by-subject';
+
+/**
+ * Domain request union actually handled by the runtime dispatcher after shared
+ * control subjects have been removed.
+ */
+type WorkerHandledRequest<
+  TRequest extends WorkerAnyRequestAction,
+  TSharedSubject extends string
+> = Exclude<TRequest, { subject: TSharedSubject }>;
+
+const MISSING_HANDLER_ERROR_PREFIX =
+  'next-slug-splitter worker runtime has no handler for subject';
 
 /**
  * Shared typed dispatcher for worker-family domain actions.
  *
  * @remarks
+ * This module is a thin semantic wrapper over `dispatch-by-subject.ts` using
+ * the worker runtime's `action` / `state` terminology.
+ *
  * This helper stays intentionally narrow:
  * - shared runtime lifecycle stays outside the dispatcher
  * - worker-family domain subjects stay outside shared transport
@@ -41,16 +61,13 @@ export type WorkerSubjectHandler<
   TAction extends WorkerAnyRequestAction,
   TResponse,
   TExtensionState
-> = (input: {
-  /**
-   * Narrowed request action for this handler.
-   */
-  action: TAction;
-  /**
-   * Current retained worker-family state.
-   */
-  state: TExtensionState;
-}) => Promise<WorkerDispatchResult<TResponse, TExtensionState>>;
+> = SubjectDispatchHandler<
+  'action',
+  'state',
+  TAction,
+  TExtensionState,
+  WorkerDispatchResult<TResponse, TExtensionState>
+>;
 
 /**
  * Typed handler map used by the shared worker dispatcher.
@@ -65,16 +82,13 @@ export type WorkerSubjectHandlerMap<
   TResponse,
   TExtensionState,
   TSharedSubject extends string
-> = {
-  [TSubject in Exclude<
-    TRequest['subject'],
-    TSharedSubject
-  >]: WorkerSubjectHandler<
-    Extract<TRequest, { subject: TSubject }>,
-    TResponse,
-    TExtensionState
-  >;
-};
+> = SubjectDispatchHandlerMap<
+  'action',
+  'state',
+  WorkerHandledRequest<TRequest, TSharedSubject>,
+  TExtensionState,
+  WorkerDispatchResult<TResponse, TExtensionState>
+>;
 
 /**
  * Resolve one domain request action by `subject`.
@@ -108,22 +122,11 @@ export const dispatchWorkerRequestBySubject = async <
     TSharedSubject
   >;
 }): Promise<WorkerDispatchResult<TResponse, TExtensionState>> => {
-  const handler = (
-    handlers as unknown as Record<
-      string,
-      WorkerSubjectHandler<
-        Exclude<TRequest, { subject: TSharedSubject }>,
-        TResponse,
-        TExtensionState
-      >
-    >
-  )[action.subject];
-
-  if (handler == null) {
-    throw new Error(
-      `next-slug-splitter worker runtime does not support subject "${action.subject}".`
-    );
-  }
+  const handler = resolveSubjectHandler({
+    subject: action.subject,
+    handlers,
+    missingHandlerErrorPrefix: MISSING_HANDLER_ERROR_PREFIX
+  });
 
   return await handler({
     action,

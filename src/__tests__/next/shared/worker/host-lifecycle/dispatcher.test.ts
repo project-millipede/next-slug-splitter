@@ -32,7 +32,7 @@ describe('shared worker host lifecycle dispatcher', () => {
     expect(result).toBe('alpha');
   });
 
-  test('throws when the event subject is unsupported', async () => {
+  test('throws when no handler is registered for the event subject', async () => {
     await expect(
       dispatchWorkerHostLifecycleEventBySubject({
         event: {
@@ -42,7 +42,7 @@ describe('shared worker host lifecycle dispatcher', () => {
         handlers: {}
       })
     ).rejects.toThrow(
-      'next-slug-splitter host lifecycle does not support subject "unsupported-subject".'
+      'next-slug-splitter host lifecycle has no handler for subject "unsupported-subject".'
     );
   });
 });
