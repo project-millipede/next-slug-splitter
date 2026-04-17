@@ -6,6 +6,11 @@ import type {
   RouteHandlersConfig
 } from '../../types';
 
+const isAppRouteHandlersConfig = (
+  routeHandlersConfig: RouteHandlersConfig
+): routeHandlersConfig is AppRouteHandlersConfig =>
+  resolveRouteHandlerRouterKind(routeHandlersConfig) === 'app';
+
 /**
  * Narrow one loaded route-handlers config to the App Router contract.
  */
@@ -17,11 +22,11 @@ export const requireAppRouteHandlersConfig = (
     return undefined;
   }
 
-  if (resolveRouteHandlerRouterKind(routeHandlersConfig) !== 'app') {
+  if (!isAppRouteHandlersConfig(routeHandlersConfig)) {
     throw createConfigError(
       `${label} currently supports only routeHandlersConfig.routerKind = "app".`
     );
   }
 
-  return routeHandlersConfig as AppRouteHandlersConfig;
+  return routeHandlersConfig;
 };

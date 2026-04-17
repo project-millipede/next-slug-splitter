@@ -69,9 +69,9 @@ export const loadRouteHandlerProxyRuntimeAttachments = async (
     );
   }
 
-  const routeHandlersConfig = (await loadSlugSplitterConfigFromPath(
+  const routeHandlersConfig = await loadSlugSplitterConfigFromPath(
     resolvedRegistration.configPath
-  )) as RouteHandlersConfig;
+  );
   const appContext = resolveRouteHandlersAppContext(
     routeHandlersConfig,
     resolvedRegistration.rootDir

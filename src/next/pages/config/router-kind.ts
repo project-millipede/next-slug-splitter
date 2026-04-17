@@ -6,6 +6,11 @@ import type {
   RouteHandlersConfig
 } from '../../types';
 
+const isPagesRouteHandlersConfig = (
+  routeHandlersConfig: RouteHandlersConfig
+): routeHandlersConfig is PagesRouteHandlersConfig =>
+  resolveRouteHandlerRouterKind(routeHandlersConfig) === 'pages';
+
 /**
  * Narrow one loaded route-handlers config to the Pages Router contract.
  */
@@ -17,11 +22,11 @@ export const requirePagesRouteHandlersConfig = (
     return undefined;
   }
 
-  if (resolveRouteHandlerRouterKind(routeHandlersConfig) !== 'pages') {
+  if (!isPagesRouteHandlersConfig(routeHandlersConfig)) {
     throw createConfigError(
       `${label} currently supports only routeHandlersConfig.routerKind = "pages".`
     );
   }
 
-  return routeHandlersConfig as PagesRouteHandlersConfig;
+  return routeHandlersConfig;
 };

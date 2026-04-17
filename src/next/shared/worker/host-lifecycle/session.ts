@@ -232,8 +232,8 @@ export const rejectSharedWorkerHostLifecycleSessionReady = ({
  * @template TResponse Successful worker response union carried by the session.
  * @template TSession Concrete worker-family session shape layered onto the
  * shared lifecycle session fields.
- * @param session Base session created by the low-level host primitives.
- * @param createSession Worker-family builder that returns the final session
+ * @param baseSession Base session created by the low-level host primitives.
+ * @param extendSession Worker-family builder that returns the final session
  * object which should own the deferred-readiness entry.
  * @returns Host-managed session built from the shared lifecycle fields and the
  * worker-family-specific fields.
@@ -286,7 +286,7 @@ export const createCustomSharedWorkerHostLifecycleSession = <
  * Create one host-managed lifecycle session from a low-level base session.
  *
  * @template TResponse Successful worker response union carried by the session.
- * @param session Base session created by the low-level host primitives.
+ * @param baseSession Base session created by the low-level host primitives.
  * @returns Host-managed session extended with lifecycle state.
  */
 export const createSharedWorkerHostLifecycleSession = <TResponse>(
