@@ -84,7 +84,9 @@ export const resolveWorkerHostLifecycleMachineSession = async <
       }
 
       await processEvent({
-        workerSessions,
+        context: {
+          workerSessions
+        },
         event: {
           subject: 'replacement-requested',
           payload: {
@@ -131,7 +133,9 @@ export const resolveWorkerHostLifecycleMachineSession = async <
         request
       });
       await processEvent({
-        workerSessions,
+        context: {
+          workerSessions
+        },
         event: {
           subject: 'session-ready',
           payload: {
@@ -146,7 +150,9 @@ export const resolveWorkerHostLifecycleMachineSession = async <
       );
 
       await processEvent({
-        workerSessions,
+        context: {
+          workerSessions
+        },
         event: {
           subject: 'session-start-failed',
           payload: {
@@ -156,7 +162,9 @@ export const resolveWorkerHostLifecycleMachineSession = async <
         }
       });
       await processEvent({
-        workerSessions,
+        context: {
+          workerSessions
+        },
         event: {
           subject: 'force-close-requested',
           payload: {
@@ -249,7 +257,9 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
   if (session.phase === 'failed') {
     if (!session.closed) {
       await processEvent({
-        workerSessions,
+        context: {
+          workerSessions
+        },
         event: {
           subject: 'force-close-requested',
           payload: {
@@ -275,7 +285,9 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
      *    transport is attempted.
      */
     await processEvent({
-      workerSessions,
+      context: {
+        workerSessions
+      },
       event: {
         subject: 'shutdown-requested',
         payload: {
@@ -304,7 +316,9 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
          *     condition and kill the underlying session immediately.
          */
         await processEvent({
-          workerSessions,
+          context: {
+            workerSessions
+          },
           event: {
             subject: 'force-close-requested',
             payload: {
@@ -343,7 +357,9 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
              *    force-close condition and fall back to killing the session.
              */
             await processEvent({
-              workerSessions,
+              context: {
+                workerSessions
+              },
               event: {
                 subject: 'force-close-requested',
                 payload: {
@@ -371,7 +387,9 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
       );
 
       await processEvent({
-        workerSessions,
+        context: {
+          workerSessions
+        },
         event: {
           subject: 'shutdown-failed',
           payload: {
@@ -382,7 +400,9 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
         }
       });
       await processEvent({
-        workerSessions,
+        context: {
+          workerSessions
+        },
         event: {
           subject: 'force-close-requested',
           payload: {
@@ -452,7 +472,9 @@ export const observeWorkerHostLifecycleMachineSessionTermination = <
   const { processEvent } = context;
 
   void processEvent({
-    workerSessions,
+    context: {
+      workerSessions
+    },
     event: {
       subject: 'termination-observed',
       payload: {

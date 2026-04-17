@@ -1,5 +1,3 @@
-import type { WorkerSessionRegistry } from '../../../host/session-lifecycle';
-
 import {
   dispatchWorkerHostLifecycleEventBySubject,
   type WorkerHostLifecycleEventHandlerMap
@@ -10,11 +8,15 @@ import {
   markWorkerHostSessionReady,
   rejectWorkerHostLifecycleSessionReady
 } from '../../session';
-import type { WorkerHostLifecycleSession } from '../../types';
+import type {
+  WorkerHostLifecycleSession,
+  WorkerHostLifecycleSessionBase
+} from '../../types';
 
 import { createWorkerHostLifecycleReplacementError } from './error-helpers';
 import type {
   WorkerHostLifecycleMachineBoundaryEvent,
+  WorkerHostLifecycleMachineEventDispatchContext,
   WorkerHostLifecycleMachineDerivedEvent,
   WorkerHostLifecycleMachineEvent,
   WorkerHostLifecycleMachineEventProcessor
@@ -26,11 +28,14 @@ import type {
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-type WorkerHostLifecycleMachineBoundaryHandlerMap<TSession, TRequest> =
-  WorkerHostLifecycleEventHandlerMap<
-    WorkerHostLifecycleMachineBoundaryEvent<TSession, TRequest>,
-    void
-  >;
+type WorkerHostLifecycleMachineBoundaryHandlerMap<
+  TSession extends WorkerHostLifecycleSessionBase,
+  TRequest
+> = WorkerHostLifecycleEventHandlerMap<
+  WorkerHostLifecycleMachineBoundaryEvent<TSession, TRequest>,
+  WorkerHostLifecycleMachineEventDispatchContext<TSession>,
+  void
+>;
 
 /**
  * Typed handler map for internally derived host lifecycle events.
@@ -38,11 +43,14 @@ type WorkerHostLifecycleMachineBoundaryHandlerMap<TSession, TRequest> =
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-type WorkerHostLifecycleMachineDerivedHandlerMap<TSession, TRequest> =
-  WorkerHostLifecycleEventHandlerMap<
-    WorkerHostLifecycleMachineDerivedEvent<TSession, TRequest>,
-    void
-  >;
+type WorkerHostLifecycleMachineDerivedHandlerMap<
+  TSession extends WorkerHostLifecycleSessionBase,
+  TRequest
+> = WorkerHostLifecycleEventHandlerMap<
+  WorkerHostLifecycleMachineDerivedEvent<TSession, TRequest>,
+  WorkerHostLifecycleMachineEventDispatchContext<TSession>,
+  void
+>;
 
 /**
  * Shared event-processing helpers for the host lifecycle machine.
@@ -67,7 +75,6 @@ type WorkerHostLifecycleMachineDerivedHandlerMap<TSession, TRequest> =
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  * @param workerLabel Human-readable worker label used in diagnostics.
- * @param workerSessions Active worker-session registry.
  * @returns Typed handler map keyed by lifecycle-event `subject`.
  */
 export const createWorkerHostLifecycleMachineBoundaryEventHandlers = <
@@ -75,8 +82,7 @@ export const createWorkerHostLifecycleMachineBoundaryEventHandlers = <
   TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 >(
-  workerLabel: string,
-  workerSessions: WorkerSessionRegistry<TSession>
+  workerLabel: string
 ): WorkerHostLifecycleMachineBoundaryHandlerMap<TSession, TRequest> => ({
   'replacement-requested': async ({ event: nextEvent }): Promise<void> => {
     if (nextEvent.payload.session.phase !== 'starting') {
@@ -103,7 +109,10 @@ export const createWorkerHostLifecycleMachineBoundaryEventHandlers = <
       nextEvent.payload.session.phase = 'shutting-down';
     }
   },
-  'termination-observed': async ({ event: nextEvent }): Promise<void> => {
+  'termination-observed': async ({
+    event: nextEvent,
+    context
+  }): Promise<void> => {
     const { session, rejectionError } = nextEvent.payload;
 
     if (
@@ -121,7 +130,7 @@ export const createWorkerHostLifecycleMachineBoundaryEventHandlers = <
     }
 
     finalizeWorkerHostLifecycleSession<TResponse, TSession>({
-      workerSessions,
+      workerSessions: context.workerSessions,
       session,
       rejectionError
     });
@@ -211,23 +220,28 @@ export const createWorkerHostLifecycleMachineEventProcessor = <
 >(
   workerLabel: string
 ): WorkerHostLifecycleMachineEventProcessor<TSession, TRequest> => {
-  return async ({ workerSessions, event }): Promise<void> => {
-    const handlers: WorkerHostLifecycleEventHandlerMap<
-      WorkerHostLifecycleMachineEvent<TSession, TRequest>,
-      void
-    > = {
-      ...createWorkerHostLifecycleMachineBoundaryEventHandlers<
-        TResponse,
-        TSession,
-        TRequest
-      >(workerLabel, workerSessions),
-      ...createWorkerHostLifecycleMachineDerivedEventHandlers<
-        TResponse,
-        TSession,
-        TRequest
-      >(workerLabel)
-    };
+  const handlers: WorkerHostLifecycleEventHandlerMap<
+    WorkerHostLifecycleMachineEvent<TSession, TRequest>,
+    WorkerHostLifecycleMachineEventDispatchContext<TSession>,
+    void
+  > = {
+    ...createWorkerHostLifecycleMachineBoundaryEventHandlers<
+      TResponse,
+      TSession,
+      TRequest
+    >(workerLabel),
+    ...createWorkerHostLifecycleMachineDerivedEventHandlers<
+      TResponse,
+      TSession,
+      TRequest
+    >(workerLabel)
+  };
 
-    await dispatchWorkerHostLifecycleEventBySubject(event, handlers);
+  return async ({ context, event }): Promise<void> => {
+    await dispatchWorkerHostLifecycleEventBySubject({
+      event,
+      context,
+      handlers
+    });
   };
 };

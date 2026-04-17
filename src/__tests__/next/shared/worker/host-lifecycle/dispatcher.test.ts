@@ -11,31 +11,36 @@ describe('shared worker host lifecycle dispatcher', () => {
   test('routes lifecycle events by subject with narrowed payloads', async () => {
     const result = await dispatchWorkerHostLifecycleEventBySubject<
       TestHostLifecycleEvent,
+      { traceId: string },
       string
-    >(
-      {
+    >({
+      event: {
         subject: 'session-ready',
         payload: {
           sessionKey: 'alpha'
         }
       },
-      {
+      context: {
+        traceId: 'trace-1'
+      },
+      handlers: {
         'session-ready': async ({ event }) => event.payload.sessionKey,
         'shutdown-requested': async ({ event }) => event.payload.reason
       }
-    );
+    });
 
     expect(result).toBe('alpha');
   });
 
   test('throws when the event subject is unsupported', async () => {
     await expect(
-      dispatchWorkerHostLifecycleEventBySubject(
-        {
+      dispatchWorkerHostLifecycleEventBySubject({
+        event: {
           subject: 'unsupported-subject'
         },
-        {}
-      )
+        context: undefined,
+        handlers: {}
+      })
     ).rejects.toThrow(
       'next-slug-splitter host lifecycle does not support subject "unsupported-subject".'
     );

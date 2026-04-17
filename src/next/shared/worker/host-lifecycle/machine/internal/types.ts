@@ -148,6 +148,20 @@ export type WorkerHostLifecycleMachineEvent<TSession, TRequest> =
   | WorkerHostLifecycleMachineDerivedEvent<TSession, TRequest>;
 
 /**
+ * Dynamic dispatch context passed into one host lifecycle event handler.
+ *
+ * @template TSession Concrete host-managed session shape.
+ */
+export type WorkerHostLifecycleMachineEventDispatchContext<
+  TSession extends WorkerHostLifecycleSessionBase
+> = {
+  /**
+   * Active worker-session registry for the current event dispatch.
+   */
+  workerSessions: WorkerSessionRegistry<TSession>;
+};
+
+/**
  * Cross-cutting event-processor callback used by the grouped internal machine
  * context.
  *
@@ -159,9 +173,9 @@ export type WorkerHostLifecycleMachineEventProcessor<
   TRequest
 > = (input: {
   /**
-   * Active worker-session registry.
+   * Dynamic dispatch context for the current event.
    */
-  workerSessions: WorkerSessionRegistry<TSession>;
+  context: WorkerHostLifecycleMachineEventDispatchContext<TSession>;
   /**
    * Internal lifecycle event to process.
    */
