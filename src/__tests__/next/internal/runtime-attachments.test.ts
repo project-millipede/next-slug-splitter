@@ -15,6 +15,7 @@ const writeRuntimeAttachmentsConfig = async (
     'const remarkPlugin = () => undefined;',
     'const recmaPlugin = () => undefined;',
     'export default {',
+    "  routerKind: 'pages',",
     `  app: { rootDir: ${JSON.stringify(rootDir)} },`,
     "  targetId: 'docs',",
     "  routeBasePath: '/docs',",
