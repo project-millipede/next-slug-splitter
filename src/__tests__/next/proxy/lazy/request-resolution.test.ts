@@ -15,16 +15,23 @@ vi.mock(import('../../../../core/discovery'), async importOriginal => {
 
 import { resolveRouteHandlerLazyRequest } from '../../../../next/proxy/lazy/request-resolution';
 
+import type { LocalizedRoutePath, LocaleConfig } from '../../../../core/types';
+import type {
+  RouteHandlerLazyRequestIdentity,
+  RouteHandlerLazyRequestResolution,
+  RouteHandlerLazyResolvedTarget
+} from '../../../../next/proxy/lazy/types';
+
 const rootDir = '/repo/app';
-const localeConfig = {
+const localeConfig: LocaleConfig = {
   locales: ['en', 'de'],
   defaultLocale: 'en'
 };
-const singleLocaleConfig = {
+const singleLocaleConfig: LocaleConfig = {
   locales: ['en'],
   defaultLocale: 'en'
 };
-const docsConfig = {
+const docsConfig: RouteHandlerLazyResolvedTarget = {
   routerKind: 'pages' as const,
   targetId: 'docs',
   routeBasePath: '/docs',
@@ -36,7 +43,7 @@ const docsConfig = {
     handlersDir: path.join(rootDir, 'pages', 'docs', '_handlers')
   }
 };
-const blogConfig = {
+const blogConfig: RouteHandlerLazyResolvedTarget = {
   routerKind: 'pages' as const,
   targetId: 'blog',
   routeBasePath: '/blog',
@@ -48,8 +55,11 @@ const blogConfig = {
     handlersDir: path.join(rootDir, 'pages', 'blog', '_handlers')
   }
 };
-const resolvedTargets = [docsConfig, blogConfig];
-const singleLocaleResolvedTargets = [
+const resolvedTargets: Array<RouteHandlerLazyResolvedTarget> = [
+  docsConfig,
+  blogConfig
+];
+const singleLocaleResolvedTargets: Array<RouteHandlerLazyResolvedTarget> = [
   {
     ...docsConfig,
     localeConfig: singleLocaleConfig
@@ -92,39 +102,13 @@ describe('proxy lazy request resolution', () => {
     id: string;
     description: string;
     pathname: string;
-    resolvedRoutePath:
-      | {
-          locale: string;
-          slugArray: Array<string>;
-          filePath: string;
-        }
-      | null;
-    expected:
-      | {
-          kind: 'matched-route-file';
-          pathname: string;
-          config: typeof docsConfig | typeof blogConfig;
-          identity: {
-            pathname: string;
-            locale: string;
-            slugArray: Array<string>;
-          };
-          routePath: {
-            locale: string;
-            slugArray: Array<string>;
-            filePath: string;
-          };
-        }
-      | {
-          kind: 'missing-route-file';
-          pathname: string;
-          config: typeof docsConfig | typeof blogConfig;
-          identity: {
-            pathname: string;
-            locale: string;
-            slugArray: Array<string>;
-          };
-        };
+    resolvedRoutePath: LocalizedRoutePath | null;
+    expected: Extract<
+      RouteHandlerLazyRequestResolution,
+      {
+        kind: 'matched-route-file' | 'missing-route-file';
+      }
+    >;
   };
 
   const scenarios: ReadonlyArray<Scenario> = [

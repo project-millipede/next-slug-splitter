@@ -21,7 +21,15 @@ vi.mock(import('../../../../next/proxy/bootstrap-persisted'), async importOrigin
 
 import { bootstrapRouteHandlerProxyWorker } from '../../../../next/proxy/worker/runtime/bootstrap';
 
-const TEST_LOCALE_CONFIG = {
+import type { LocaleConfig } from '../../../../core/types';
+import type {
+  PersistedRouteHandlerProxyBootstrap,
+  PersistedRouteHandlerProxyBootstrapAppTarget,
+  PersistedRouteHandlerProxyBootstrapPagesTarget,
+  PersistedRouteHandlerProxyBootstrapTarget
+} from '../../../../next/proxy/bootstrap-persisted';
+
+const TEST_LOCALE_CONFIG: LocaleConfig = {
   locales: ['en'],
   defaultLocale: 'en'
 };
@@ -32,19 +40,16 @@ const createBootstrapManifest = ({
   targets = [createBootstrapTarget()]
 }: {
   bootstrapGenerationToken?: string;
-  localeConfig?: {
-    locales: readonly string[];
-    defaultLocale: string;
-  };
-  targets?: Array<unknown>;
-} = {}) => ({
+  localeConfig?: LocaleConfig;
+  targets?: Array<PersistedRouteHandlerProxyBootstrapTarget>;
+} = {}): PersistedRouteHandlerProxyBootstrap => ({
   version: 1,
   bootstrapGenerationToken,
   localeConfig,
   targets
 });
 
-function createBootstrapTarget() {
+function createBootstrapTarget(): PersistedRouteHandlerProxyBootstrapPagesTarget {
   return {
     routerKind: 'pages',
     targetId: 'docs',
@@ -55,6 +60,7 @@ function createBootstrapTarget() {
       name: 'slug',
       kind: 'catch-all'
     },
+    handlerRouteSegment: '_handlers',
     baseStaticPropsImport: {
       kind: 'package',
       specifier: '@test/base-static-props'
@@ -73,7 +79,7 @@ function createBootstrapTarget() {
   };
 }
 
-function createAppBootstrapTarget() {
+function createAppBootstrapTarget(): PersistedRouteHandlerProxyBootstrapAppTarget {
   return {
     routerKind: 'app',
     targetId: 'docs',

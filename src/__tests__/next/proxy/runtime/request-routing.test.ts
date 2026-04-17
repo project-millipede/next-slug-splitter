@@ -13,7 +13,9 @@ import * as proxyRoutingState from '../../../../next/proxy/runtime/routing-state
 import * as proxyWorkerClient from '../../../../next/proxy/worker/host/client';
 import { handleRouteHandlerProxyRequest } from '../../../../next/proxy/runtime/request-routing';
 
+import type { LocaleConfig } from '../../../../core/types';
 import type {
+  RouteHandlerProxyConfigRegistration,
   RouteHandlerProxyRoutingState
 } from '../../../../next/proxy/runtime/types';
 import type { NextRequest } from 'next/server.js';
@@ -170,10 +172,7 @@ describe('proxy request routing', () => {
       description: string;
       requestUrl: string;
       headers?: Record<string, string>;
-      localeConfig: {
-        locales: Array<string>;
-        defaultLocale: string;
-      };
+      localeConfig: LocaleConfig;
       rewrites: Array<[string, string]>;
       targetRouteBasePaths: Array<string>;
       expectedTarget: string;
@@ -264,25 +263,19 @@ describe('proxy request routing', () => {
       description: string;
       requestUrl: string;
       headers?: Record<string, string>;
-      localeConfig: {
-        locales: Array<string>;
-        defaultLocale: string;
-      };
+      localeConfig: LocaleConfig;
       targetRouteBasePaths: Array<string>;
       workerResult: RouteHandlerProxyWorkerResponse;
       expectedMode: 'rewrite' | 'pass-through' | 'redirect';
       expectedTarget?: string;
       expectedRewrite: string | null;
       expectedLocation?: string | null;
-        expectedWorkerArgs: {
-          pathname: string;
-          localeConfig: {
-            locales: Array<string>;
-            defaultLocale: string;
-          };
-          bootstrapGenerationToken: string;
-          configRegistration: Record<string, never>;
-        };
+      expectedWorkerArgs: {
+        pathname: string;
+        localeConfig: LocaleConfig;
+        bootstrapGenerationToken: string;
+        configRegistration: RouteHandlerProxyConfigRegistration;
+      };
     };
 
     const scenarios: ReadonlyArray<Scenario> = [
