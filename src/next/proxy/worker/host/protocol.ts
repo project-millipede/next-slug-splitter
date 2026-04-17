@@ -1,6 +1,6 @@
 import {
-  sendSharedWorkerRequest,
-  type SharedWorkerPendingRequest
+  sendWorkerRequest,
+  type WorkerPendingRequest
 } from '../../../shared/worker/host/protocol';
 
 import type {
@@ -20,7 +20,7 @@ import type { RouteHandlerProxyWorkerSession } from './session-lifecycle';
  * worker-family-specific error messages while delegating the shared transport
  * mechanics to `src/next/shared/worker/host/protocol.ts`.
  */
-export type RouteHandlerProxyWorkerPendingRequest = SharedWorkerPendingRequest<
+export type RouteHandlerProxyWorkerPendingRequest = WorkerPendingRequest<
   | RouteHandlerProxyWorkerBootstrapResponse
   | RouteHandlerProxyWorkerShutdownResponse
   | RouteHandlerProxyWorkerResponse
@@ -40,7 +40,7 @@ export const sendRouteHandlerProxyWorkerRequest = <
   session: RouteHandlerProxyWorkerSession,
   request: TRequest
 ): Promise<RouteHandlerProxyWorkerExchangeResponse<TRequest>> =>
-  sendSharedWorkerRequest<
+  sendWorkerRequest<
     TRequest,
     RouteHandlerProxyWorkerExchangeResponse<TRequest>,
     RouteHandlerProxyWorkerSession

@@ -2,7 +2,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { isFunction } from '../../../../utils/type-guards';
-import { createSharedWorkerRuntimeMachine } from '../../../shared/worker/runtime/machine';
+import { createWorkerRuntimeMachine } from '../../../shared/worker/runtime/machine';
 
 import type { AppPageDataCompiler } from '../../types';
 import type {
@@ -84,7 +84,7 @@ const loadAppPageDataCompiler = async (
  * @returns Shared runtime machine for one App page-data worker process.
  */
 export const createAppPageDataWorkerRuntimeMachine = () =>
-  createSharedWorkerRuntimeMachine<
+  createWorkerRuntimeMachine<
     AppPageDataWorkerRequest,
     AppPageDataCompiledResponse,
     AppPageDataWorkerExtensionState

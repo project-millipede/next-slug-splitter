@@ -1,13 +1,13 @@
-import { waitForSharedWorkerTermination } from '../../../host/session-lifecycle';
-import type { SharedWorkerSessionRegistry } from '../../../host/session-lifecycle';
-import type { SharedWorkerHostLifecycleSession } from '../../types';
+import { waitForWorkerTermination } from '../../../host/session-lifecycle';
+import type { WorkerSessionRegistry } from '../../../host/session-lifecycle';
+import type { WorkerHostLifecycleSession } from '../../types';
 
 import {
-  toSharedWorkerHostLifecycleError,
-  waitForSharedWorkerHostAcknowledgement,
-  waitForSharedWorkerHostSessionReady
+  toWorkerHostLifecycleError,
+  waitForWorkerHostAcknowledgement,
+  waitForWorkerHostSessionReady
 } from './error-helpers';
-import type { SharedWorkerHostLifecycleMachineContext } from './types';
+import type { WorkerHostLifecycleMachineContext } from './types';
 
 /**
  * Shared session-operation helpers for the host lifecycle machine.
@@ -38,21 +38,17 @@ import type { SharedWorkerHostLifecycleMachineContext } from './types';
  * @param input.request Worker-family session-resolution input.
  * @returns Ready host-managed session for the request.
  */
-export const resolveSharedWorkerHostLifecycleMachineSession = async <
+export const resolveWorkerHostLifecycleMachineSession = async <
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>,
+  TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 >({
   context,
   workerSessions,
   request
 }: {
-  context: SharedWorkerHostLifecycleMachineContext<
-    TResponse,
-    TSession,
-    TRequest
-  >;
-  workerSessions: SharedWorkerSessionRegistry<TSession>;
+  context: WorkerHostLifecycleMachineContext<TResponse, TSession, TRequest>;
+  workerSessions: WorkerSessionRegistry<TSession>;
   request: TRequest;
 }): Promise<TSession> => {
   /**
@@ -81,10 +77,7 @@ export const resolveSharedWorkerHostLifecycleMachineSession = async <
         }) === 'reuse'
       ) {
         if (existingSession.phase === 'starting') {
-          await waitForSharedWorkerHostSessionReady(
-            workerLabel,
-            existingSession
-          );
+          await waitForWorkerHostSessionReady(workerLabel, existingSession);
         }
 
         return existingSession;
@@ -101,14 +94,14 @@ export const resolveSharedWorkerHostLifecycleMachineSession = async <
           }
         }
       });
-      await shutdownSharedWorkerHostLifecycleMachineSession({
+      await shutdownWorkerHostLifecycleMachineSession({
         context,
         workerSessions,
         session: existingSession,
         reason: sessionContext.replaceReason
       });
 
-      return await resolveSharedWorkerHostLifecycleMachineSession({
+      return await resolveWorkerHostLifecycleMachineSession({
         context,
         workerSessions,
         request
@@ -117,7 +110,7 @@ export const resolveSharedWorkerHostLifecycleMachineSession = async <
 
     await existingSession.terminationPromise;
 
-    return await resolveSharedWorkerHostLifecycleMachineSession({
+    return await resolveWorkerHostLifecycleMachineSession({
       context,
       workerSessions,
       request
@@ -147,7 +140,7 @@ export const resolveSharedWorkerHostLifecycleMachineSession = async <
         }
       });
     } catch (error) {
-      const readinessError = toSharedWorkerHostLifecycleError(
+      const readinessError = toWorkerHostLifecycleError(
         error,
         `next-slug-splitter ${workerLabel} failed during startup.`
       );
@@ -183,11 +176,11 @@ export const resolveSharedWorkerHostLifecycleMachineSession = async <
   void startFlowPromise.catch(() => {});
 
   try {
-    await waitForSharedWorkerHostSessionReady(workerLabel, nextSession);
+    await waitForWorkerHostSessionReady(workerLabel, nextSession);
     await startFlowPromise;
     return nextSession;
   } catch (error) {
-    throw toSharedWorkerHostLifecycleError(
+    throw toWorkerHostLifecycleError(
       error,
       `next-slug-splitter ${workerLabel} failed to resolve a session.`
     );
@@ -208,9 +201,9 @@ export const resolveSharedWorkerHostLifecycleMachineSession = async <
  * @param input.reason Diagnostic reason recorded for the shutdown.
  * @returns `void` after shutdown or forced close has fully terminated.
  */
-export const shutdownSharedWorkerHostLifecycleMachineSession = async <
+export const shutdownWorkerHostLifecycleMachineSession = async <
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>,
+  TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 >({
   context,
@@ -218,12 +211,8 @@ export const shutdownSharedWorkerHostLifecycleMachineSession = async <
   session,
   reason
 }: {
-  context: SharedWorkerHostLifecycleMachineContext<
-    TResponse,
-    TSession,
-    TRequest
-  >;
-  workerSessions: SharedWorkerSessionRegistry<TSession>;
+  context: WorkerHostLifecycleMachineContext<TResponse, TSession, TRequest>;
+  workerSessions: WorkerSessionRegistry<TSession>;
   session: TSession;
   reason: string;
 }): Promise<void> => {
@@ -231,11 +220,7 @@ export const shutdownSharedWorkerHostLifecycleMachineSession = async <
    * Split the grouped internal machine context into the shutdown rules and the
    * shared event processor used by this shutdown flow.
    */
-  const {
-    processEvent,
-    shutdown: shutdownContext,
-    workerLabel
-  } = context;
+  const { processEvent, shutdown: shutdownContext, workerLabel } = context;
   /**
    * Early Return 1
    * Reuse the in-flight shared shutdown promise when another caller already
@@ -305,14 +290,13 @@ export const shutdownSharedWorkerHostLifecycleMachineSession = async <
        * 2. Send the shutdown request and wait only for its acknowledgement
        *    window, not for full process termination.
        */
-      const shutdownAcknowledgement =
-        await waitForSharedWorkerHostAcknowledgement(
-          shutdownContext.requestShutdown({
-            session,
-            reason
-          }),
-          shutdownContext.acknowledgementTimeoutMs
-        );
+      const shutdownAcknowledgement = await waitForWorkerHostAcknowledgement(
+        shutdownContext.requestShutdown({
+          session,
+          reason
+        }),
+        shutdownContext.acknowledgementTimeoutMs
+      );
 
       if (shutdownAcknowledgement === 'timeout') {
         /**
@@ -348,7 +332,7 @@ export const shutdownSharedWorkerHostLifecycleMachineSession = async <
              * 4. After acknowledgement, optionally wait for full process
              *    termination within the configured timeout window.
              */
-            await waitForSharedWorkerTermination(
+            await waitForWorkerTermination(
               session,
               shutdownContext.terminationTimeoutMs,
               shutdownContext.terminationTimeoutErrorMessage
@@ -381,7 +365,7 @@ export const shutdownSharedWorkerHostLifecycleMachineSession = async <
        * 3. Normalize the shutdown transport failure, record it in lifecycle
        *    state, and fall back to force-close immediately.
        */
-      const shutdownError = toSharedWorkerHostLifecycleError(
+      const shutdownError = toWorkerHostLifecycleError(
         error,
         `next-slug-splitter ${workerLabel} failed while sending shutdown.`
       );
@@ -446,9 +430,9 @@ export const shutdownSharedWorkerHostLifecycleMachineSession = async <
  * callers.
  * @returns `void` after the termination event has been dispatched.
  */
-export const observeSharedWorkerHostLifecycleMachineSessionTermination = <
+export const observeWorkerHostLifecycleMachineSessionTermination = <
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>,
+  TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 >({
   context,
@@ -456,12 +440,8 @@ export const observeSharedWorkerHostLifecycleMachineSessionTermination = <
   session,
   rejectionError
 }: {
-  context: SharedWorkerHostLifecycleMachineContext<
-    TResponse,
-    TSession,
-    TRequest
-  >;
-  workerSessions: SharedWorkerSessionRegistry<TSession>;
+  context: WorkerHostLifecycleMachineContext<TResponse, TSession, TRequest>;
+  workerSessions: WorkerSessionRegistry<TSession>;
   session: TSession;
   rejectionError?: Error;
 }): void => {

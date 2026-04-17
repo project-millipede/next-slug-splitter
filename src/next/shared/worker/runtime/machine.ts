@@ -1,13 +1,13 @@
 import {
-  SharedWorkerShutdownResponse,
-  type SharedWorkerAnyRequestAction,
-  type SharedWorkerAnyResponseAction
+  WorkerShutdownResponse,
+  type WorkerAnyRequestAction,
+  type WorkerAnyResponseAction
 } from '../types';
-import { disconnectSharedWorkerRuntimeProcess } from './entry';
-import { handleSharedWorkerRuntimeRequest } from './protocol';
+import { disconnectWorkerRuntimeProcess } from './entry';
+import { handleWorkerRuntimeRequest } from './protocol';
 import {
-  dispatchSharedWorkerRequestBySubject,
-  type SharedWorkerSubjectHandlerMap
+  dispatchWorkerRequestBySubject,
+  type WorkerSubjectHandlerMap
 } from './dispatcher';
 
 /**
@@ -27,18 +27,18 @@ import {
 /**
  * Lifecycle phase for one long-lived worker runtime.
  */
-export type SharedWorkerRuntimePhase = 'running' | 'shutting-down' | 'closed';
+export type WorkerRuntimePhase = 'running' | 'shutting-down' | 'closed';
 
 /**
  * Full shared runtime-machine state for one worker family.
  *
  * @template TExtensionState Retained worker-family state.
  */
-export type SharedWorkerRuntimeMachineState<TExtensionState> = {
+export type WorkerRuntimeMachineState<TExtensionState> = {
   /**
    * Current shared lifecycle phase.
    */
-  phase: SharedWorkerRuntimePhase;
+  phase: WorkerRuntimePhase;
   /**
    * Current retained worker-family state.
    */
@@ -50,7 +50,7 @@ export type SharedWorkerRuntimeMachineState<TExtensionState> = {
  *
  * @template TExtensionState Retained worker-family state.
  */
-export type SharedWorkerRuntimeShutdownHandler<TExtensionState> = (input: {
+export type WorkerRuntimeShutdownHandler<TExtensionState> = (input: {
   /**
    * Current retained worker-family state at shutdown start.
    */
@@ -64,9 +64,9 @@ export type SharedWorkerRuntimeShutdownHandler<TExtensionState> = (input: {
  * @template TResponse Successful domain response-action union.
  * @template TExtensionState Retained worker-family state.
  */
-export type CreateSharedWorkerRuntimeMachineOptions<
-  TRequest extends SharedWorkerAnyRequestAction,
-  TResponse extends SharedWorkerAnyResponseAction,
+export type CreateWorkerRuntimeMachineOptions<
+  TRequest extends WorkerAnyRequestAction,
+  TResponse extends WorkerAnyResponseAction,
   TExtensionState
 > = {
   /**
@@ -80,7 +80,7 @@ export type CreateSharedWorkerRuntimeMachineOptions<
   /**
    * Worker-family domain handler map keyed by request `subject`.
    */
-  handlers: SharedWorkerSubjectHandlerMap<
+  handlers: WorkerSubjectHandlerMap<
     TRequest,
     TResponse,
     TExtensionState,
@@ -89,7 +89,7 @@ export type CreateSharedWorkerRuntimeMachineOptions<
   /**
    * Optional worker-family shutdown cleanup hook.
    */
-  onShutdown?: SharedWorkerRuntimeShutdownHandler<TExtensionState>;
+  onShutdown?: WorkerRuntimeShutdownHandler<TExtensionState>;
 };
 
 /**
@@ -98,8 +98,8 @@ export type CreateSharedWorkerRuntimeMachineOptions<
  * @template TRequest Full worker-family request union.
  * @template TExtensionState Retained worker-family state.
  */
-export type SharedWorkerRuntimeMachine<
-  TRequest extends SharedWorkerAnyRequestAction,
+export type WorkerRuntimeMachine<
+  TRequest extends WorkerAnyRequestAction,
   TExtensionState
 > = {
   /**
@@ -114,7 +114,7 @@ export type SharedWorkerRuntimeMachine<
    *
    * @returns The current lifecycle phase plus retained worker-family state.
    */
-  getState: () => SharedWorkerRuntimeMachineState<TExtensionState>;
+  getState: () => WorkerRuntimeMachineState<TExtensionState>;
 };
 
 /**
@@ -122,7 +122,7 @@ export type SharedWorkerRuntimeMachine<
  *
  * @returns Shared shutdown acknowledgement action.
  */
-const createSharedWorkerShutdownResponse = (): SharedWorkerShutdownResponse => ({
+const createWorkerShutdownResponse = (): WorkerShutdownResponse => ({
   subject: 'shutdown-complete'
 });
 
@@ -140,31 +140,30 @@ const createSharedWorkerShutdownResponse = (): SharedWorkerShutdownResponse => (
  * @param options.onShutdown Optional worker-family shutdown cleanup hook.
  * @returns Shared runtime machine for one worker family.
  */
-export const createSharedWorkerRuntimeMachine = <
-  TRequest extends SharedWorkerAnyRequestAction,
-  TResponse extends SharedWorkerAnyResponseAction,
+export const createWorkerRuntimeMachine = <
+  TRequest extends WorkerAnyRequestAction,
+  TResponse extends WorkerAnyResponseAction,
   TExtensionState
 >({
   workerLabel,
   initialExtensionState,
   handlers,
   onShutdown
-}: CreateSharedWorkerRuntimeMachineOptions<
+}: CreateWorkerRuntimeMachineOptions<
   TRequest,
   TResponse,
   TExtensionState
->): SharedWorkerRuntimeMachine<TRequest, TExtensionState> => {
-  let machineState: SharedWorkerRuntimeMachineState<TExtensionState> = {
+>): WorkerRuntimeMachine<TRequest, TExtensionState> => {
+  let machineState: WorkerRuntimeMachineState<TExtensionState> = {
     phase: 'running',
     extensionState: initialExtensionState
   };
-  let shutdownResponsePromise: Promise<SharedWorkerShutdownResponse> | null =
-    null;
+  let shutdownResponsePromise: Promise<WorkerShutdownResponse> | null = null;
   let hasDisconnectedAfterShutdown = false;
 
   const resolveResponse = async (
     request: TRequest
-  ): Promise<TResponse | SharedWorkerShutdownResponse> => {
+  ): Promise<TResponse | WorkerShutdownResponse> => {
     if (request.subject === 'shutdown') {
       if (shutdownResponsePromise == null) {
         machineState = {
@@ -188,7 +187,7 @@ export const createSharedWorkerRuntimeMachine = <
             phase: 'closed'
           };
 
-          return createSharedWorkerShutdownResponse();
+          return createWorkerShutdownResponse();
         })();
       }
 
@@ -202,7 +201,7 @@ export const createSharedWorkerRuntimeMachine = <
     }
 
     const { response, nextExtensionState } =
-      await dispatchSharedWorkerRequestBySubject<
+      await dispatchWorkerRequestBySubject<
         TRequest,
         TResponse,
         TExtensionState,
@@ -225,7 +224,7 @@ export const createSharedWorkerRuntimeMachine = <
 
   return {
     handleRequest: async (request: TRequest): Promise<void> => {
-      await handleSharedWorkerRuntimeRequest({
+      await handleWorkerRuntimeRequest({
         workerLabel,
         request,
         resolveResponse,
@@ -236,12 +235,12 @@ export const createSharedWorkerRuntimeMachine = <
             !hasDisconnectedAfterShutdown
           ) {
             hasDisconnectedAfterShutdown = true;
-            disconnectSharedWorkerRuntimeProcess();
+            disconnectWorkerRuntimeProcess();
           }
         }
       });
     },
-    getState: (): SharedWorkerRuntimeMachineState<TExtensionState> => ({
+    getState: (): WorkerRuntimeMachineState<TExtensionState> => ({
       phase: machineState.phase,
       extensionState: machineState.extensionState
     })

@@ -5,7 +5,7 @@ import {
 } from './bootstrap';
 import { resolveRouteHandlerProxyLazyMiss } from './resolve-lazy-miss';
 import { debugRouteHandlerProxyWorker } from '../debug-log';
-import { createSharedWorkerRuntimeMachine } from '../../../shared/worker/runtime/machine';
+import { createWorkerRuntimeMachine } from '../../../shared/worker/runtime/machine';
 
 import type {
   RouteHandlerProxyWorkerBootstrapResponse,
@@ -73,7 +73,7 @@ const clearRouteHandlerProxyWorkerBootstrapState = ({
  * @returns Shared runtime machine for one proxy worker process.
  */
 export const createRouteHandlerProxyWorkerRuntimeMachine = () =>
-  createSharedWorkerRuntimeMachine<
+  createWorkerRuntimeMachine<
     RouteHandlerProxyWorkerRequest,
     RouteHandlerProxyWorkerBootstrapResponse | RouteHandlerProxyWorkerResponse,
     RouteHandlerProxyWorkerExtensionState

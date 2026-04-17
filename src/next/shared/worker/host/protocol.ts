@@ -1,10 +1,10 @@
 import type { ChildProcess, Serializable } from 'node:child_process';
 
-import type { SharedWorkerHostProtocolState } from './global-state';
+import type { WorkerHostProtocolState } from './global-state';
 import type {
-  SharedWorkerAnyRequestAction,
-  SharedWorkerDeferredSettler,
-  SharedWorkerResponseEnvelope
+  WorkerAnyRequestAction,
+  WorkerDeferredSettler,
+  WorkerResponseEnvelope
 } from '../types';
 
 /**
@@ -30,18 +30,17 @@ import type {
 /**
  * One pending host-side request awaiting a worker response.
  */
-export type SharedWorkerPendingRequest<TResponse> =
-  SharedWorkerDeferredSettler<TResponse>;
+export type WorkerPendingRequest<TResponse> = WorkerDeferredSettler<TResponse>;
 
 /**
  * Minimal host-side session contract required by the shared protocol helpers.
  */
-export type SharedWorkerProtocolSession<TResponse> = {
+export type WorkerProtocolSession<TResponse> = {
   closed: boolean;
   child: {
     send?: ChildProcess['send'];
   };
-  pendingRequests: Map<string, SharedWorkerPendingRequest<TResponse>>;
+  pendingRequests: Map<string, WorkerPendingRequest<TResponse>>;
 };
 
 /**
@@ -54,7 +53,7 @@ export type SharedWorkerProtocolSession<TResponse> = {
  * - `missingIpcSendErrorMessage` is used when the child no longer exposes a
  *   usable IPC `send(...)` function
  */
-export type SharedWorkerRequestSendErrorMessages = {
+export type WorkerRequestSendErrorMessages = {
   /**
    * Error surfaced when the host already knows the session is closed.
    */
@@ -73,8 +72,8 @@ export type SharedWorkerRequestSendErrorMessages = {
  * @param requestIdPrefix - Stable worker-family request id prefix.
  * @returns Stable request id string for one worker message.
  */
-export const createSharedWorkerRequestId = (
-  protocolState: SharedWorkerHostProtocolState,
+export const createWorkerRequestId = (
+  protocolState: WorkerHostProtocolState,
   requestIdPrefix: string
 ): string => `${requestIdPrefix}-${String(++protocolState.requestSequence)}`;
 
@@ -85,8 +84,8 @@ export const createSharedWorkerRequestId = (
  * @param protocolState - Shared host-side protocol state.
  * @returns `void` after the request id sequence has been reset.
  */
-export const resetSharedWorkerProtocolState = (
-  protocolState: SharedWorkerHostProtocolState
+export const resetWorkerProtocolState = (
+  protocolState: WorkerHostProtocolState
 ): void => {
   protocolState.requestSequence = 0;
 };
@@ -98,8 +97,8 @@ export const resetSharedWorkerProtocolState = (
  * @param error - Shared error surfaced to callers.
  * @returns `void` after every pending request has been rejected and cleared.
  */
-export const rejectSharedWorkerSessionPendingRequests = <TResponse>(
-  session: Pick<SharedWorkerProtocolSession<TResponse>, 'pendingRequests'>,
+export const rejectWorkerSessionPendingRequests = <TResponse>(
+  session: Pick<WorkerProtocolSession<TResponse>, 'pendingRequests'>,
   error: Error
 ): void => {
   for (const pendingRequest of session.pendingRequests.values()) {
@@ -118,10 +117,10 @@ export const rejectSharedWorkerSessionPendingRequests = <TResponse>(
  * @param pendingRequest Promise settlement callbacks for the in-flight request.
  * @returns `void` after the pending request has been stored by request id.
  */
-const registerSharedWorkerPendingRequest = <TResponse>(
-  session: Pick<SharedWorkerProtocolSession<TResponse>, 'pendingRequests'>,
+const registerWorkerPendingRequest = <TResponse>(
+  session: Pick<WorkerProtocolSession<TResponse>, 'pendingRequests'>,
   requestId: string,
-  pendingRequest: SharedWorkerPendingRequest<TResponse>
+  pendingRequest: WorkerPendingRequest<TResponse>
 ): void => {
   session.pendingRequests.set(requestId, pendingRequest);
 };
@@ -135,10 +134,10 @@ const registerSharedWorkerPendingRequest = <TResponse>(
  * @returns The removed pending request when one was registered for the given
  * request id.
  */
-const unregisterSharedWorkerPendingRequest = <TResponse>(
-  session: Pick<SharedWorkerProtocolSession<TResponse>, 'pendingRequests'>,
+const unregisterWorkerPendingRequest = <TResponse>(
+  session: Pick<WorkerProtocolSession<TResponse>, 'pendingRequests'>,
   requestId: string
-): SharedWorkerPendingRequest<TResponse> | undefined => {
+): WorkerPendingRequest<TResponse> | undefined => {
   const pendingRequest = session.pendingRequests.get(requestId);
 
   if (pendingRequest == null) {
@@ -159,9 +158,9 @@ const unregisterSharedWorkerPendingRequest = <TResponse>(
  * @param envelope Validated shared worker response envelope.
  * @returns `void` after the pending request has been resolved or rejected.
  */
-const completeSharedWorkerPendingRequestFromEnvelope = <TResponse>(
-  pendingRequest: SharedWorkerPendingRequest<TResponse>,
-  envelope: SharedWorkerResponseEnvelope<TResponse>
+const completeWorkerPendingRequestFromEnvelope = <TResponse>(
+  pendingRequest: WorkerPendingRequest<TResponse>,
+  envelope: WorkerResponseEnvelope<TResponse>
 ): void => {
   if (envelope.ok) {
     pendingRequest.resolve(envelope.response);
@@ -180,13 +179,13 @@ const completeSharedWorkerPendingRequestFromEnvelope = <TResponse>(
  * @returns `void` after the matching pending request has been resolved or
  * rejected when applicable.
  */
-export const resolveSharedWorkerResponseEnvelope = <TResponse>(
-  session: SharedWorkerProtocolSession<TResponse>,
-  envelope: SharedWorkerResponseEnvelope<TResponse>
+export const resolveWorkerResponseEnvelope = <TResponse>(
+  session: WorkerProtocolSession<TResponse>,
+  envelope: WorkerResponseEnvelope<TResponse>
 ): void => {
   // 1. Claim the matching pending request by request id. Unknown or already
   //    settled ids are ignored.
-  const pendingRequest = unregisterSharedWorkerPendingRequest(
+  const pendingRequest = unregisterWorkerPendingRequest(
     session,
     envelope.requestId
   );
@@ -196,7 +195,7 @@ export const resolveSharedWorkerResponseEnvelope = <TResponse>(
   }
 
   // 2. Complete the claimed pending request from the trusted envelope.
-  completeSharedWorkerPendingRequestFromEnvelope(pendingRequest, envelope);
+  completeWorkerPendingRequestFromEnvelope(pendingRequest, envelope);
 };
 
 /**
@@ -209,8 +208,8 @@ export const resolveSharedWorkerResponseEnvelope = <TResponse>(
  * been marked closed.
  * @returns `void` when the session is still open.
  */
-const assertSharedWorkerSessionOpen = <TResponse>(
-  session: Pick<SharedWorkerProtocolSession<TResponse>, 'closed'>,
+const assertWorkerSessionOpen = <TResponse>(
+  session: Pick<WorkerProtocolSession<TResponse>, 'closed'>,
   closedSessionErrorMessage: string
 ): void => {
   if (session.closed) {
@@ -229,10 +228,10 @@ const assertSharedWorkerSessionOpen = <TResponse>(
  * exposes a usable `send(...)` function.
  * @returns `void` when the child still supports IPC request sending.
  */
-function assertSharedWorkerIpcSendAvailable<TResponse>(
-  session: SharedWorkerProtocolSession<TResponse>,
+function assertWorkerIpcSendAvailable<TResponse>(
+  session: WorkerProtocolSession<TResponse>,
   missingIpcSendErrorMessage: string
-): asserts session is SharedWorkerProtocolSession<TResponse> & {
+): asserts session is WorkerProtocolSession<TResponse> & {
   child: {
     send: NonNullable<ChildProcess['send']>;
   };
@@ -258,26 +257,26 @@ function assertSharedWorkerIpcSendAvailable<TResponse>(
  * @param options - Worker-family-specific transport messages.
  * @returns One typed worker response.
  */
-export const sendSharedWorkerRequest = <
-  TRequest extends Serializable & SharedWorkerAnyRequestAction,
+export const sendWorkerRequest = <
+  TRequest extends Serializable & WorkerAnyRequestAction,
   TResponse,
-  TSession extends SharedWorkerProtocolSession<TResponse>
+  TSession extends WorkerProtocolSession<TResponse>
 >(
   session: TSession,
   request: TRequest,
   {
     closedSessionErrorMessage,
     missingIpcSendErrorMessage
-  }: SharedWorkerRequestSendErrorMessages
+  }: WorkerRequestSendErrorMessages
 ): Promise<TResponse> =>
   new Promise((resolve, reject) => {
     try {
       // 1. Fail fast when the host already knows this session can no longer
       //    accept requests.
-      assertSharedWorkerSessionOpen(session, closedSessionErrorMessage);
+      assertWorkerSessionOpen(session, closedSessionErrorMessage);
       // 2. Verify that the child process still exposes the IPC send capability
       //    required for worker messaging.
-      assertSharedWorkerIpcSendAvailable(session, missingIpcSendErrorMessage);
+      assertWorkerIpcSendAvailable(session, missingIpcSendErrorMessage);
     } catch (error) {
       reject(error);
       return;
@@ -285,7 +284,7 @@ export const sendSharedWorkerRequest = <
 
     // 3. Register the pending request before sending so the matching response
     //    envelope can resolve this promise by request id.
-    registerSharedWorkerPendingRequest(session, request.requestId, {
+    registerWorkerPendingRequest(session, request.requestId, {
       resolve,
       reject
     });
@@ -298,7 +297,7 @@ export const sendSharedWorkerRequest = <
         return;
       }
 
-      unregisterSharedWorkerPendingRequest(session, request.requestId);
+      unregisterWorkerPendingRequest(session, request.requestId);
       reject(error);
     });
   });
@@ -311,7 +310,7 @@ export const sendSharedWorkerRequest = <
  * @param stderrChunks - Buffered stderr output collected for the session.
  * @returns Error object describing the worker exit.
  */
-export const createSharedWorkerExitError = ({
+export const createWorkerExitError = ({
   workerLabel,
   exitCode,
   stderrChunks

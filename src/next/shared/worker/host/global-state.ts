@@ -20,7 +20,7 @@
  * This state currently tracks only the monotonic request-id sequence used to
  * correlate IPC requests and responses for long-lived worker sessions.
  */
-export type SharedWorkerHostProtocolState = {
+export type WorkerHostProtocolState = {
   /**
    * Monotonic host-side request id sequence.
    */
@@ -36,7 +36,7 @@ export type SharedWorkerHostProtocolState = {
  * - install hooks only once
  * - collapse repeated shutdown signals onto one in-flight cleanup promise
  */
-export type SharedWorkerHostProcessShutdownState = {
+export type WorkerHostProcessShutdownState = {
   /**
    * Whether the relevant process hooks have already been installed.
    */
@@ -56,7 +56,7 @@ export type SharedWorkerHostProcessShutdownState = {
  * generic helper gives the codebase exactly one place that touches `globalThis`
  * for worker-host singleton behavior.
  */
-export type SharedWorkerHostGlobalState<TClientState> = {
+export type WorkerHostGlobalState<TClientState> = {
   /**
    * Worker-family-specific client state for sessions and request dedupe.
    */
@@ -64,11 +64,11 @@ export type SharedWorkerHostGlobalState<TClientState> = {
   /**
    * Host-side IPC protocol state.
    */
-  protocol: SharedWorkerHostProtocolState;
+  protocol: WorkerHostProtocolState;
   /**
    * Process-shutdown state for graceful cleanup.
    */
-  processShutdown: SharedWorkerHostProcessShutdownState;
+  processShutdown: WorkerHostProcessShutdownState;
 };
 
 /**
@@ -76,18 +76,17 @@ export type SharedWorkerHostGlobalState<TClientState> = {
  *
  * @returns Newly initialized protocol state.
  */
-export const createSharedWorkerHostProtocolState =
-  (): SharedWorkerHostProtocolState => ({
-    requestSequence: 0
-  });
+export const createWorkerHostProtocolState = (): WorkerHostProtocolState => ({
+  requestSequence: 0
+});
 
 /**
  * Create a fresh shared process-shutdown-state bucket.
  *
  * @returns Newly initialized process-shutdown state.
  */
-export const createSharedWorkerHostProcessShutdownState =
-  (): SharedWorkerHostProcessShutdownState => ({
+export const createWorkerHostProcessShutdownState =
+  (): WorkerHostProcessShutdownState => ({
     hasInstalledHooks: false,
     shutdownPromise: null
   });
@@ -98,19 +97,19 @@ export const createSharedWorkerHostProcessShutdownState =
  * @param createClientState - Worker-family-specific client-state initializer.
  * @returns Newly initialized host-global state.
  */
-const createSharedWorkerHostGlobalState = <TClientState>(
+const createWorkerHostGlobalState = <TClientState>(
   createClientState: () => TClientState
-): SharedWorkerHostGlobalState<TClientState> => ({
+): WorkerHostGlobalState<TClientState> => ({
   client: createClientState(),
-  protocol: createSharedWorkerHostProtocolState(),
-  processShutdown: createSharedWorkerHostProcessShutdownState()
+  protocol: createWorkerHostProtocolState(),
+  processShutdown: createWorkerHostProcessShutdownState()
 });
 
 /**
  * Augmented global object shape that may already hold one shared host state.
  */
-type SharedWorkerHostGlobal = typeof globalThis & {
-  [key: symbol]: SharedWorkerHostGlobalState<unknown> | undefined;
+type WorkerHostGlobal = typeof globalThis & {
+  [key: symbol]: WorkerHostGlobalState<unknown> | undefined;
 };
 
 /**
@@ -123,20 +122,20 @@ type SharedWorkerHostGlobal = typeof globalThis & {
  * initializer.
  * @returns Shared host-global state for the current parent process.
  */
-export const getSharedWorkerHostGlobalState = <TClientState>(
+export const getWorkerHostGlobalState = <TClientState>(
   symbolKey: string,
   createClientState: () => TClientState
-): SharedWorkerHostGlobalState<TClientState> => {
-  const sharedStateSymbol = Symbol.for(symbolKey);
-  const globalWorkerHost = globalThis as SharedWorkerHostGlobal;
-  const existingState = globalWorkerHost[sharedStateSymbol];
+): WorkerHostGlobalState<TClientState> => {
+  const workerHostStateSymbol = Symbol.for(symbolKey);
+  const globalWorkerHost = globalThis as WorkerHostGlobal;
+  const existingState = globalWorkerHost[workerHostStateSymbol];
 
   if (existingState != null) {
-    return existingState as SharedWorkerHostGlobalState<TClientState>;
+    return existingState as WorkerHostGlobalState<TClientState>;
   }
 
-  const createdState = createSharedWorkerHostGlobalState(createClientState);
-  globalWorkerHost[sharedStateSymbol] = createdState;
+  const createdState = createWorkerHostGlobalState(createClientState);
+  globalWorkerHost[workerHostStateSymbol] = createdState;
 
   return createdState;
 };

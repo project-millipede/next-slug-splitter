@@ -3,10 +3,12 @@ import process from 'node:process';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 const bootstrapRouteHandlerProxyWorkerMock = vi.hoisted(() => vi.fn());
-const closeRouteHandlerProxyWorkerBootstrapStateMock = vi.hoisted(() => vi.fn());
+const closeRouteHandlerProxyWorkerBootstrapStateMock = vi.hoisted(() =>
+  vi.fn()
+);
 const resolveRouteHandlerProxyLazyMissMock = vi.hoisted(() => vi.fn());
 const debugRouteHandlerProxyWorkerMock = vi.hoisted(() => vi.fn());
-const disconnectSharedWorkerRuntimeProcessMock = vi.hoisted(() => vi.fn());
+const disconnectWorkerRuntimeProcessMock = vi.hoisted(() => vi.fn());
 
 vi.mock(import('../../../../../next/proxy/worker/runtime/bootstrap'), () => ({
   bootstrapRouteHandlerProxyWorker: bootstrapRouteHandlerProxyWorkerMock,
@@ -14,17 +16,20 @@ vi.mock(import('../../../../../next/proxy/worker/runtime/bootstrap'), () => ({
     closeRouteHandlerProxyWorkerBootstrapStateMock
 }));
 
-vi.mock(import('../../../../../next/proxy/worker/runtime/resolve-lazy-miss'), () => ({
-  resolveRouteHandlerProxyLazyMiss: resolveRouteHandlerProxyLazyMissMock
-}));
+vi.mock(
+  import('../../../../../next/proxy/worker/runtime/resolve-lazy-miss'),
+  () => ({
+    resolveRouteHandlerProxyLazyMiss: resolveRouteHandlerProxyLazyMissMock
+  })
+);
 
 vi.mock(import('../../../../../next/proxy/worker/debug-log'), () => ({
   debugRouteHandlerProxyWorker: debugRouteHandlerProxyWorkerMock
 }));
 
 vi.mock(import('../../../../../next/shared/worker/runtime/entry'), () => ({
-  disconnectSharedWorkerRuntimeProcess:
-    disconnectSharedWorkerRuntimeProcessMock as unknown as () => never
+  disconnectWorkerRuntimeProcess:
+    disconnectWorkerRuntimeProcessMock as unknown as () => never
 }));
 
 import { createRouteHandlerProxyWorkerRuntimeMachine } from '../../../../../next/proxy/worker/runtime/machine';
@@ -104,9 +109,9 @@ describe('proxy worker runtime machine', () => {
       }
     });
 
-    expect(closeRouteHandlerProxyWorkerBootstrapStateMock).toHaveBeenCalledTimes(
-      1
-    );
+    expect(
+      closeRouteHandlerProxyWorkerBootstrapStateMock
+    ).toHaveBeenCalledTimes(1);
     expect(closeRouteHandlerProxyWorkerBootstrapStateMock).toHaveBeenCalledWith(
       firstBootstrapState
     );
@@ -195,6 +200,6 @@ describe('proxy worker runtime machine', () => {
         bootstrapState: null
       }
     });
-    expect(disconnectSharedWorkerRuntimeProcessMock).toHaveBeenCalledTimes(1);
+    expect(disconnectWorkerRuntimeProcessMock).toHaveBeenCalledTimes(1);
   });
 });

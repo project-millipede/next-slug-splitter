@@ -1,14 +1,12 @@
-import type { SharedWorkerHostLifecycleSession } from '../../types';
+import type { WorkerHostLifecycleSession } from '../../types';
 
 import {
-  observeSharedWorkerHostLifecycleMachineSessionTermination,
-  resolveSharedWorkerHostLifecycleMachineSession,
-  shutdownSharedWorkerHostLifecycleMachineSession
+  observeWorkerHostLifecycleMachineSessionTermination,
+  resolveWorkerHostLifecycleMachineSession,
+  shutdownWorkerHostLifecycleMachineSession
 } from './session-operations';
-import type { SharedWorkerHostLifecycleMachineContext } from './types';
-import type {
-  SharedWorkerHostLifecycleMachine
-} from '../types';
+import type { WorkerHostLifecycleMachineContext } from './types';
+import type { WorkerHostLifecycleMachine } from '../types';
 
 /**
  * Shared API assembly for the host lifecycle machine.
@@ -17,28 +15,21 @@ import type {
  * This module binds the extracted session-operation helpers directly into the
  * public machine methods returned by the factory.
  */
-export const createSharedWorkerHostLifecycleMachineApi = <
+export const createWorkerHostLifecycleMachineApi = <
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>,
+  TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 >(
-  context: SharedWorkerHostLifecycleMachineContext<TResponse, TSession, TRequest>
-): SharedWorkerHostLifecycleMachine<TResponse, TSession, TRequest> => ({
-  resolveSession: async ({
-    workerSessions,
-    request
-  }): Promise<TSession> =>
-    await resolveSharedWorkerHostLifecycleMachineSession({
+  context: WorkerHostLifecycleMachineContext<TResponse, TSession, TRequest>
+): WorkerHostLifecycleMachine<TResponse, TSession, TRequest> => ({
+  resolveSession: async ({ workerSessions, request }): Promise<TSession> =>
+    await resolveWorkerHostLifecycleMachineSession({
       context,
       workerSessions,
       request
     }),
-  shutdownSession: async ({
-    workerSessions,
-    session,
-    reason
-  }): Promise<void> =>
-    await shutdownSharedWorkerHostLifecycleMachineSession({
+  shutdownSession: async ({ workerSessions, session, reason }): Promise<void> =>
+    await shutdownWorkerHostLifecycleMachineSession({
       context,
       workerSessions,
       session,
@@ -49,7 +40,7 @@ export const createSharedWorkerHostLifecycleMachineApi = <
     session,
     rejectionError
   }): void =>
-    observeSharedWorkerHostLifecycleMachineSessionTermination({
+    observeWorkerHostLifecycleMachineSessionTermination({
       context,
       workerSessions,
       session,

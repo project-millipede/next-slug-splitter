@@ -1,6 +1,6 @@
 import process from 'node:process';
 
-import type { SharedWorkerHostProcessShutdownState } from './global-state';
+import type { WorkerHostProcessShutdownState } from './global-state';
 
 /**
  * Shared process-lifecycle hooks for graceful worker cleanup.
@@ -22,13 +22,10 @@ import type { SharedWorkerHostProcessShutdownState } from './global-state';
 const SHARED_WORKER_SIGINT_EXIT_CODE = 130;
 const SHARED_WORKER_SIGTERM_EXIT_CODE = 143;
 
-export type SharedWorkerProcessShutdownSignal =
-  | 'SIGINT'
-  | 'SIGTERM'
-  | 'SIGBREAK';
+export type WorkerProcessShutdownSignal = 'SIGINT' | 'SIGTERM' | 'SIGBREAK';
 
-const resolveSharedWorkerProcessShutdownExitCode = (
-  signal: SharedWorkerProcessShutdownSignal
+const resolveWorkerProcessShutdownExitCode = (
+  signal: WorkerProcessShutdownSignal
 ): number => {
   if (signal === 'SIGTERM') {
     return SHARED_WORKER_SIGTERM_EXIT_CODE;
@@ -37,7 +34,7 @@ const resolveSharedWorkerProcessShutdownExitCode = (
   return SHARED_WORKER_SIGINT_EXIT_CODE;
 };
 
-type SharedWorkerProcessShutdownHooks = {
+type WorkerProcessShutdownHooks = {
   /**
    * Gracefully clear all parent-owned worker sessions.
    */
@@ -50,33 +47,33 @@ type SharedWorkerProcessShutdownHooks = {
   getActiveSessionCount?: () => number;
 };
 
-type SharedWorkerProcessShutdownStartInfo = {
+type WorkerProcessShutdownStartInfo = {
   /**
    * Process signal that started the graceful shutdown flow.
    */
-  signal: SharedWorkerProcessShutdownSignal;
+  signal: WorkerProcessShutdownSignal;
   /**
    * Number of still-active worker sessions observed when shutdown began.
    */
   sessionCount: number;
 };
 
-type SharedWorkerProcessShutdownCompleteInfo = {
+type WorkerProcessShutdownCompleteInfo = {
   /**
    * Process signal that started the graceful shutdown flow.
    */
-  signal: SharedWorkerProcessShutdownSignal;
+  signal: WorkerProcessShutdownSignal;
   /**
    * Conventional process exit code paired with the shutdown signal.
    */
   exitCode: number;
 };
 
-type SharedWorkerProcessShutdownErrorInfo = {
+type WorkerProcessShutdownErrorInfo = {
   /**
    * Process signal that started the graceful shutdown flow.
    */
-  signal: SharedWorkerProcessShutdownSignal;
+  signal: WorkerProcessShutdownSignal;
   /**
    * Conventional process exit code paired with the shutdown signal.
    */
@@ -87,50 +84,43 @@ type SharedWorkerProcessShutdownErrorInfo = {
   error: unknown;
 };
 
-type SharedWorkerProcessShutdownCallbacks = {
+type WorkerProcessShutdownCallbacks = {
   /**
    * Optional callback fired once shutdown starts and the active session count
    * has been sampled.
    */
-  onShutdownStart?: (
-    input: SharedWorkerProcessShutdownStartInfo
-  ) => void;
+  onShutdownStart?: (input: WorkerProcessShutdownStartInfo) => void;
   /**
    * Optional callback fired after worker-session cleanup completes
    * successfully.
    */
-  onShutdownComplete?: (
-    input: SharedWorkerProcessShutdownCompleteInfo
-  ) => void;
+  onShutdownComplete?: (input: WorkerProcessShutdownCompleteInfo) => void;
   /**
    * Optional callback fired when worker-session cleanup throws.
    */
-  onShutdownError?: (
-    input: SharedWorkerProcessShutdownErrorInfo
-  ) => void;
+  onShutdownError?: (input: WorkerProcessShutdownErrorInfo) => void;
 };
 
-type StartSharedWorkerProcessShutdownInput =
-  SharedWorkerProcessShutdownCallbacks & {
-    /**
-     * Shared parent-process shutdown state used to keep cleanup idempotent.
-     */
-    processShutdownState: SharedWorkerHostProcessShutdownState;
-    /**
-     * Process signal currently being translated into graceful cleanup.
-     */
-    signal: SharedWorkerProcessShutdownSignal;
-    /**
-     * Worker-family hooks used to inspect and clear retained sessions.
-     */
-    hooks: SharedWorkerProcessShutdownHooks;
-    /**
-     * Whether the helper should call `process.exit(...)` after cleanup.
-     */
-    exitAfterCleanup: boolean;
-  };
+type StartWorkerProcessShutdownInput = WorkerProcessShutdownCallbacks & {
+  /**
+   * Shared parent-process shutdown state used to keep cleanup idempotent.
+   */
+  processShutdownState: WorkerHostProcessShutdownState;
+  /**
+   * Process signal currently being translated into graceful cleanup.
+   */
+  signal: WorkerProcessShutdownSignal;
+  /**
+   * Worker-family hooks used to inspect and clear retained sessions.
+   */
+  hooks: WorkerProcessShutdownHooks;
+  /**
+   * Whether the helper should call `process.exit(...)` after cleanup.
+   */
+  exitAfterCleanup: boolean;
+};
 
-const startSharedWorkerProcessShutdown = ({
+const startWorkerProcessShutdown = ({
   processShutdownState,
   signal,
   hooks,
@@ -138,13 +128,13 @@ const startSharedWorkerProcessShutdown = ({
   onShutdownStart,
   onShutdownComplete,
   onShutdownError
-}: StartSharedWorkerProcessShutdownInput): void => {
+}: StartWorkerProcessShutdownInput): void => {
   if (processShutdownState.shutdownPromise != null) {
     return;
   }
 
   processShutdownState.shutdownPromise = (async () => {
-    const exitCode = resolveSharedWorkerProcessShutdownExitCode(signal);
+    const exitCode = resolveWorkerProcessShutdownExitCode(signal);
     const sessionCount = hooks.getActiveSessionCount?.() ?? 0;
 
     onShutdownStart?.({
@@ -172,11 +162,11 @@ const startSharedWorkerProcessShutdown = ({
   })();
 };
 
-const installSharedWorkerExitHook = ({
+const installWorkerExitHook = ({
   processShutdownState,
   clearWorkerSessions
 }: {
-  processShutdownState: SharedWorkerHostProcessShutdownState;
+  processShutdownState: WorkerHostProcessShutdownState;
   clearWorkerSessions: () => Promise<void>;
 }): void => {
   process.once('exit', () => {
@@ -196,7 +186,7 @@ const installSharedWorkerExitHook = ({
  * @param input - Hook-installation input.
  * @returns `void` after the relevant process hooks have been installed.
  */
-export const installSharedWorkerProcessShutdownHooks = ({
+export const installWorkerProcessShutdownHooks = ({
   processShutdownState,
   hooks,
   includeProcessExitHook = false,
@@ -204,9 +194,9 @@ export const installSharedWorkerProcessShutdownHooks = ({
   onShutdownStart,
   onShutdownComplete,
   onShutdownError
-}: SharedWorkerProcessShutdownCallbacks & {
-  processShutdownState: SharedWorkerHostProcessShutdownState;
-  hooks: SharedWorkerProcessShutdownHooks;
+}: WorkerProcessShutdownCallbacks & {
+  processShutdownState: WorkerHostProcessShutdownState;
+  hooks: WorkerProcessShutdownHooks;
   includeProcessExitHook?: boolean;
   exitAfterSignalCleanup?: boolean;
 }): void => {
@@ -217,14 +207,14 @@ export const installSharedWorkerProcessShutdownHooks = ({
   processShutdownState.hasInstalledHooks = true;
 
   if (includeProcessExitHook) {
-    installSharedWorkerExitHook({
+    installWorkerExitHook({
       processShutdownState,
       clearWorkerSessions: hooks.clearWorkerSessions
     });
   }
 
   process.once('SIGINT', () => {
-    startSharedWorkerProcessShutdown({
+    startWorkerProcessShutdown({
       processShutdownState,
       signal: 'SIGINT',
       hooks,
@@ -236,7 +226,7 @@ export const installSharedWorkerProcessShutdownHooks = ({
   });
 
   process.once('SIGTERM', () => {
-    startSharedWorkerProcessShutdown({
+    startWorkerProcessShutdown({
       processShutdownState,
       signal: 'SIGTERM',
       hooks,
@@ -249,7 +239,7 @@ export const installSharedWorkerProcessShutdownHooks = ({
 
   if (process.platform === 'win32') {
     process.once('SIGBREAK', () => {
-      startSharedWorkerProcessShutdown({
+      startWorkerProcessShutdown({
         processShutdownState,
         signal: 'SIGBREAK',
         hooks,

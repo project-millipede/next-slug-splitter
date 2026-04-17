@@ -1,8 +1,8 @@
 import {
-  getSharedWorkerHostGlobalState,
-  type SharedWorkerHostGlobalState,
-  type SharedWorkerHostProcessShutdownState,
-  type SharedWorkerHostProtocolState
+  getWorkerHostGlobalState,
+  type WorkerHostGlobalState,
+  type WorkerHostProcessShutdownState,
+  type WorkerHostProtocolState
 } from '../../../shared/worker/host/global-state';
 
 import type { AppPageDataWorkerSession } from './session-lifecycle';
@@ -11,13 +11,13 @@ export type AppPageDataWorkerClientState = {
   workerSessions: Map<string, AppPageDataWorkerSession>;
 };
 
-export type AppPageDataWorkerProtocolState = SharedWorkerHostProtocolState;
+export type AppPageDataWorkerProtocolState = WorkerHostProtocolState;
 
 export type AppPageDataWorkerProcessShutdownState =
-  SharedWorkerHostProcessShutdownState;
+  WorkerHostProcessShutdownState;
 
 export type AppPageDataWorkerHostGlobalState =
-  SharedWorkerHostGlobalState<AppPageDataWorkerClientState>;
+  WorkerHostGlobalState<AppPageDataWorkerClientState>;
 
 const APP_PAGE_DATA_WORKER_HOST_GLOBAL_STATE_KEY =
   'next-slug-splitter.app-page-data-worker-host-global-state';
@@ -39,7 +39,7 @@ const createAppPageDataWorkerClientState =
  */
 export const getAppPageDataWorkerHostGlobalState =
   (): AppPageDataWorkerHostGlobalState =>
-    getSharedWorkerHostGlobalState(
+    getWorkerHostGlobalState(
       APP_PAGE_DATA_WORKER_HOST_GLOBAL_STATE_KEY,
       createAppPageDataWorkerClientState
     );

@@ -1,8 +1,8 @@
-import type { SharedWorkerSessionRegistry } from '../../host/session-lifecycle';
+import type { WorkerSessionRegistry } from '../../host/session-lifecycle';
 
 import type {
-  SharedWorkerHostLifecycleSession,
-  SharedWorkerHostLifecycleSessionBase
+  WorkerHostLifecycleSession,
+  WorkerHostLifecycleSessionBase
 } from '../types';
 
 /**
@@ -19,7 +19,7 @@ import type {
 /**
  * Reuse-or-replace decision for one host-managed worker session.
  */
-export type SharedWorkerHostLifecycleReuseDecision = 'reuse' | 'replace';
+export type WorkerHostLifecycleReuseDecision = 'reuse' | 'replace';
 
 /**
  * Public session-definition options for one host lifecycle machine.
@@ -27,8 +27,8 @@ export type SharedWorkerHostLifecycleReuseDecision = 'reuse' | 'replace';
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-export type SharedWorkerHostLifecycleMachineSessionOptions<
-  TSession extends SharedWorkerHostLifecycleSessionBase,
+export type WorkerHostLifecycleMachineSessionOptions<
+  TSession extends WorkerHostLifecycleSessionBase,
   TRequest
 > = {
   /**
@@ -47,7 +47,7 @@ export type SharedWorkerHostLifecycleMachineSessionOptions<
     /**
      * Active worker-session registry that will own the session.
      */
-    workerSessions: SharedWorkerSessionRegistry<TSession>;
+    workerSessions: WorkerSessionRegistry<TSession>;
     /**
      * Worker-family request that triggered session creation.
      */
@@ -65,7 +65,7 @@ export type SharedWorkerHostLifecycleMachineSessionOptions<
      * Worker-family request that wants to use the session.
      */
     request: TRequest;
-  }) => SharedWorkerHostLifecycleReuseDecision;
+  }) => WorkerHostLifecycleReuseDecision;
   /**
    * Perform worker-family startup/readiness work for a fresh session.
    *
@@ -95,8 +95,8 @@ export type SharedWorkerHostLifecycleMachineSessionOptions<
  *
  * @template TSession Concrete host-managed session shape.
  */
-export type SharedWorkerHostLifecycleMachineShutdownOptions<
-  TSession extends SharedWorkerHostLifecycleSessionBase
+export type WorkerHostLifecycleMachineShutdownOptions<
+  TSession extends WorkerHostLifecycleSessionBase
 > = {
   /**
    * Send the shared shutdown request over IPC.
@@ -135,7 +135,7 @@ export type SharedWorkerHostLifecycleMachineShutdownOptions<
     /**
      * Active worker-session registry.
      */
-    workerSessions: SharedWorkerSessionRegistry<TSession>;
+    workerSessions: WorkerSessionRegistry<TSession>;
     /**
      * Session being force-closed.
      */
@@ -154,9 +154,9 @@ export type SharedWorkerHostLifecycleMachineShutdownOptions<
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-export type CreateSharedWorkerHostLifecycleMachineOptions<
+export type CreateWorkerHostLifecycleMachineOptions<
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>,
+  TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 > = {
   /**
@@ -166,11 +166,11 @@ export type CreateSharedWorkerHostLifecycleMachineOptions<
   /**
    * Public session-definition options.
    */
-  session: SharedWorkerHostLifecycleMachineSessionOptions<TSession, TRequest>;
+  session: WorkerHostLifecycleMachineSessionOptions<TSession, TRequest>;
   /**
    * Public shutdown-definition options.
    */
-  shutdown: SharedWorkerHostLifecycleMachineShutdownOptions<TSession>;
+  shutdown: WorkerHostLifecycleMachineShutdownOptions<TSession>;
 };
 
 /**
@@ -180,9 +180,9 @@ export type CreateSharedWorkerHostLifecycleMachineOptions<
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-export type SharedWorkerHostLifecycleMachine<
+export type WorkerHostLifecycleMachine<
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>,
+  TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 > = {
   /**
@@ -194,7 +194,7 @@ export type SharedWorkerHostLifecycleMachine<
    * @returns Ready host-managed session for the request.
    */
   resolveSession: (input: {
-    workerSessions: SharedWorkerSessionRegistry<TSession>;
+    workerSessions: WorkerSessionRegistry<TSession>;
     request: TRequest;
   }) => Promise<TSession>;
   /**
@@ -207,7 +207,7 @@ export type SharedWorkerHostLifecycleMachine<
    * @returns `void` after shutdown or forced close has fully terminated.
    */
   shutdownSession: (input: {
-    workerSessions: SharedWorkerSessionRegistry<TSession>;
+    workerSessions: WorkerSessionRegistry<TSession>;
     session: TSession;
     reason: string;
   }) => Promise<void>;
@@ -222,7 +222,7 @@ export type SharedWorkerHostLifecycleMachine<
    * @returns `void` after the session has been finalized.
    */
   observeSessionTermination: (input: {
-    workerSessions: SharedWorkerSessionRegistry<TSession>;
+    workerSessions: WorkerSessionRegistry<TSession>;
     session: TSession;
     rejectionError?: Error;
   }) => void;

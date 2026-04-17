@@ -1,10 +1,10 @@
 import process from 'node:process';
 
 import {
-  createSharedWorkerRequestId,
-  resetSharedWorkerProtocolState
+  createWorkerRequestId,
+  resetWorkerProtocolState
 } from '../../../shared/worker/host/protocol';
-import { installSharedWorkerProcessShutdownHooks } from '../../../shared/worker/host/process-shutdown';
+import { installWorkerProcessShutdownHooks } from '../../../shared/worker/host/process-shutdown';
 import { getAppPageDataWorkerHostGlobalState } from './global-state';
 import { sendAppPageDataWorkerRequest } from './protocol';
 import {
@@ -14,9 +14,7 @@ import {
 } from './session-lifecycle';
 
 import type { JsonValue } from '../../../../utils/type-guards-json';
-import type {
-  AppPageDataCompileRequest,
-} from '../types';
+import type { AppPageDataCompileRequest } from '../types';
 
 const appPageDataWorkerClientState =
   getAppPageDataWorkerHostGlobalState().client;
@@ -33,7 +31,7 @@ const workerSessions = appPageDataWorkerClientState.workerSessions;
  * @returns `void`. Hooks are installed idempotently through shared state.
  */
 const installAppPageDataWorkerProcessShutdownHooks = (): void => {
-  installSharedWorkerProcessShutdownHooks({
+  installWorkerProcessShutdownHooks({
     processShutdownState: appPageDataWorkerProcessShutdownState,
     hooks: {
       clearWorkerSessions: clearAppPageDataWorkerClientSessions
@@ -58,7 +56,7 @@ export const clearAppPageDataWorkerClientSessions = async (): Promise<void> => {
   }
 
   workerSessions.clear();
-  resetSharedWorkerProtocolState(appPageDataWorkerProtocolState);
+  resetWorkerProtocolState(appPageDataWorkerProtocolState);
   appPageDataWorkerProcessShutdownState.shutdownPromise = null;
 };
 
@@ -115,7 +113,7 @@ export const compileAppPageDataWithWorker = async <
     rootDir
   });
   const request: AppPageDataCompileRequest = {
-    requestId: createSharedWorkerRequestId(
+    requestId: createWorkerRequestId(
       appPageDataWorkerProtocolState,
       'app-page-data-worker-request'
     ),

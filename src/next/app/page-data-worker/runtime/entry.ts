@@ -1,4 +1,4 @@
-import { installSharedWorkerRuntimeRequestLoop } from '../../../shared/worker/runtime/entry';
+import { installWorkerRuntimeRequestLoop } from '../../../shared/worker/runtime/entry';
 import { createAppPageDataWorkerRuntimeMachine } from './machine';
 
 import type { AppPageDataWorkerRequest } from '../types';
@@ -24,7 +24,7 @@ import type { AppPageDataWorkerRequest } from '../types';
 const main = async (): Promise<void> => {
   const runtimeMachine = createAppPageDataWorkerRuntimeMachine();
 
-  installSharedWorkerRuntimeRequestLoop<AppPageDataWorkerRequest>({
+  installWorkerRuntimeRequestLoop<AppPageDataWorkerRequest>({
     workerLabel: 'App page-data worker',
     handleRequest: runtimeMachine.handleRequest
   });

@@ -1,4 +1,4 @@
-import type { SharedWorkerAnyRequestAction } from '../types';
+import type { WorkerAnyRequestAction } from '../types';
 
 /**
  * Shared typed dispatcher for worker-family domain actions.
@@ -19,7 +19,7 @@ import type { SharedWorkerAnyRequestAction } from '../types';
  * @template TResponse Successful domain response action.
  * @template TExtensionState Retained worker-family state.
  */
-export type SharedWorkerDispatchResult<TResponse, TExtensionState> = {
+export type WorkerDispatchResult<TResponse, TExtensionState> = {
   /**
    * Successful domain response action returned by the handler.
    */
@@ -37,8 +37,8 @@ export type SharedWorkerDispatchResult<TResponse, TExtensionState> = {
  * @template TResponse Successful domain response action.
  * @template TExtensionState Retained worker-family state.
  */
-export type SharedWorkerSubjectHandler<
-  TAction extends SharedWorkerAnyRequestAction,
+export type WorkerSubjectHandler<
+  TAction extends WorkerAnyRequestAction,
   TResponse,
   TExtensionState
 > = (input: {
@@ -50,7 +50,7 @@ export type SharedWorkerSubjectHandler<
    * Current retained worker-family state.
    */
   state: TExtensionState;
-}) => Promise<SharedWorkerDispatchResult<TResponse, TExtensionState>>;
+}) => Promise<WorkerDispatchResult<TResponse, TExtensionState>>;
 
 /**
  * Typed handler map used by the shared worker dispatcher.
@@ -60,13 +60,16 @@ export type SharedWorkerSubjectHandler<
  * @template TExtensionState Retained worker-family state.
  * @template TSharedSubject Shared control subjects excluded from the map.
  */
-export type SharedWorkerSubjectHandlerMap<
-  TRequest extends SharedWorkerAnyRequestAction,
+export type WorkerSubjectHandlerMap<
+  TRequest extends WorkerAnyRequestAction,
   TResponse,
   TExtensionState,
   TSharedSubject extends string
 > = {
-  [TSubject in Exclude<TRequest['subject'], TSharedSubject>]: SharedWorkerSubjectHandler<
+  [TSubject in Exclude<
+    TRequest['subject'],
+    TSharedSubject
+  >]: WorkerSubjectHandler<
     Extract<TRequest, { subject: TSubject }>,
     TResponse,
     TExtensionState
@@ -86,8 +89,8 @@ export type SharedWorkerSubjectHandlerMap<
  * @param input.handlers Typed handler map keyed by request `subject`.
  * @returns The resolved response action plus an optional next retained state.
  */
-export const dispatchSharedWorkerRequestBySubject = async <
-  TRequest extends SharedWorkerAnyRequestAction,
+export const dispatchWorkerRequestBySubject = async <
+  TRequest extends WorkerAnyRequestAction,
   TResponse,
   TExtensionState,
   TSharedSubject extends string
@@ -98,17 +101,17 @@ export const dispatchSharedWorkerRequestBySubject = async <
 }: {
   action: Exclude<TRequest, { subject: TSharedSubject }>;
   state: TExtensionState;
-  handlers: SharedWorkerSubjectHandlerMap<
+  handlers: WorkerSubjectHandlerMap<
     TRequest,
     TResponse,
     TExtensionState,
     TSharedSubject
   >;
-}): Promise<SharedWorkerDispatchResult<TResponse, TExtensionState>> => {
+}): Promise<WorkerDispatchResult<TResponse, TExtensionState>> => {
   const handler = (
     handlers as unknown as Record<
       string,
-      SharedWorkerSubjectHandler<
+      WorkerSubjectHandler<
         Exclude<TRequest, { subject: TSharedSubject }>,
         TResponse,
         TExtensionState

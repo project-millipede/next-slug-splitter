@@ -1,7 +1,7 @@
 import { debugRouteHandlerProxy } from '../../observability/debug-log';
 import {
-  createSharedWorkerRequestId,
-  resetSharedWorkerProtocolState
+  createWorkerRequestId,
+  resetWorkerProtocolState
 } from '../../../shared/worker/host/protocol';
 import { getRouteHandlerProxyWorkerHostGlobalState } from './global-state';
 import { sendRouteHandlerProxyWorkerRequest } from './protocol';
@@ -19,7 +19,7 @@ import type {
 } from '../../runtime/types';
 import type {
   RouteHandlerProxyWorkerResolveLazyMissRequest,
-  RouteHandlerProxyWorkerResponse,
+  RouteHandlerProxyWorkerResponse
 } from '../types';
 
 /**
@@ -84,21 +84,22 @@ const workerSessions = routeHandlerProxyWorkerClientState.workerSessions;
  * @returns `void` after every known worker session has been shut down and all
  * client-side worker bookkeeping has been cleared.
  */
-export const clearRouteHandlerProxyWorkerClientSessions = async (): Promise<void> => {
-  const activeWorkerSessions = [...workerSessions.values()];
+export const clearRouteHandlerProxyWorkerClientSessions =
+  async (): Promise<void> => {
+    const activeWorkerSessions = [...workerSessions.values()];
 
-  for (const workerSession of activeWorkerSessions) {
-    await shutdownRouteHandlerProxyWorkerSessionGracefully({
-      workerSessions,
-      session: workerSession,
-      reason: 'client-clear'
-    });
-  }
+    for (const workerSession of activeWorkerSessions) {
+      await shutdownRouteHandlerProxyWorkerSessionGracefully({
+        workerSessions,
+        session: workerSession,
+        reason: 'client-clear'
+      });
+    }
 
-  workerSessions.clear();
-  inFlightLazyMissResolutions.clear();
-  resetSharedWorkerProtocolState(routeHandlerProxyWorkerProtocolState);
-};
+    workerSessions.clear();
+    inFlightLazyMissResolutions.clear();
+    resetWorkerProtocolState(routeHandlerProxyWorkerProtocolState);
+  };
 
 /**
  * Ensure the current long-lived worker session is bootstrapped and ready.
@@ -178,15 +179,15 @@ export const resolveRouteHandlerProxyLazyMissWithWorker = async ({
   })
     .then(session => {
       const request: RouteHandlerProxyWorkerResolveLazyMissRequest = {
-          requestId: createSharedWorkerRequestId(
-            routeHandlerProxyWorkerProtocolState,
-            'route-handler-proxy-worker-request'
-          ),
-          subject: 'resolve-lazy-miss',
-          payload: {
-            pathname
-          }
-        };
+        requestId: createWorkerRequestId(
+          routeHandlerProxyWorkerProtocolState,
+          'route-handler-proxy-worker-request'
+        ),
+        subject: 'resolve-lazy-miss',
+        payload: {
+          pathname
+        }
+      };
 
       return sendRouteHandlerProxyWorkerRequest(session, request);
     })

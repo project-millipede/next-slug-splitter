@@ -1,5 +1,5 @@
 import { debugRouteHandlerProxy } from '../../observability/debug-log';
-import { installSharedWorkerProcessShutdownHooks } from '../../../shared/worker/host/process-shutdown';
+import { installWorkerProcessShutdownHooks } from '../../../shared/worker/host/process-shutdown';
 import { getRouteHandlerProxyWorkerHostGlobalState } from './global-state';
 
 /**
@@ -36,7 +36,7 @@ const routeHandlerProxyWorkerProcessShutdownState =
 export const installRouteHandlerProxyWorkerProcessShutdownHooks = (
   hooks: RouteHandlerProxyWorkerProcessShutdownHooks
 ): void => {
-  installSharedWorkerProcessShutdownHooks({
+  installWorkerProcessShutdownHooks({
     processShutdownState: routeHandlerProxyWorkerProcessShutdownState,
     hooks,
     exitAfterSignalCleanup: true,

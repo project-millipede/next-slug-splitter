@@ -1,6 +1,6 @@
 import process from 'node:process';
 
-import { assertSharedWorkerRuntimeIpcChannel } from './protocol';
+import { assertWorkerRuntimeIpcChannel } from './protocol';
 
 /**
  * Shared worker-runtime entry helpers.
@@ -31,16 +31,14 @@ import { assertSharedWorkerRuntimeIpcChannel } from './protocol';
  * @param input - Request-loop installation input.
  * @returns `void` after the process message handler has been installed.
  */
-export const installSharedWorkerRuntimeRequestLoop = <
-  TRequest extends object
->({
+export const installWorkerRuntimeRequestLoop = <TRequest extends object>({
   workerLabel,
   handleRequest
 }: {
   workerLabel: string;
   handleRequest: (request: TRequest) => Promise<void>;
 }): void => {
-  assertSharedWorkerRuntimeIpcChannel(workerLabel);
+  assertWorkerRuntimeIpcChannel(workerLabel);
 
   process.on('message', rawMessage => {
     if (rawMessage == null || typeof rawMessage !== 'object') {
@@ -56,7 +54,7 @@ export const installSharedWorkerRuntimeRequestLoop = <
  *
  * @returns `void` after the disconnect-and-exit path has been triggered.
  */
-export const disconnectSharedWorkerRuntimeProcess = (): void => {
+export const disconnectWorkerRuntimeProcess = (): void => {
   process.disconnect?.();
   process.exit(0);
 };

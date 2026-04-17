@@ -20,7 +20,7 @@
  *
  * @template TValue Successful value carried by the deferred promise.
  */
-export type SharedWorkerDeferredSettler<TValue> = {
+export type WorkerDeferredSettler<TValue> = {
   /**
    * Resolve the deferred promise with one successful value.
    */
@@ -121,7 +121,7 @@ type ActionWithPayloadProps<TPayload> = {
  *
  * @template TPayload Payload type for one action.
  */
-type SharedWorkerActionPayload<TPayload> = IfStrictExtends<
+type WorkerActionPayload<TPayload> = IfStrictExtends<
   TPayload,
   NoPayload,
   ActionWithoutPayloadProps,
@@ -131,7 +131,7 @@ type SharedWorkerActionPayload<TPayload> = IfStrictExtends<
 /**
  * Minimal request shape shared by every worker-family IPC request.
  */
-export type SharedWorkerRequestBase = {
+export type WorkerRequestBase = {
   /**
    * Correlation id used to match the response to the original request.
    */
@@ -144,15 +144,15 @@ export type SharedWorkerRequestBase = {
  * @template TSubject Discriminating request subject.
  * @template TPayload Structured payload for the request action.
  */
-export type SharedWorkerRequestAction<
+export type WorkerRequestAction<
   TSubject extends string,
   TPayload = NoPayload
-> = SharedWorkerRequestBase & {
+> = WorkerRequestBase & {
   /**
    * Discriminating request subject routed by the shared runtime dispatcher.
    */
   subject: TSubject;
-} & SharedWorkerActionPayload<TPayload>;
+} & WorkerActionPayload<TPayload>;
 
 /**
  * Canonical successful response action traveling from the worker back to the
@@ -161,7 +161,7 @@ export type SharedWorkerRequestAction<
  * @template TSubject Discriminating response subject.
  * @template TPayload Structured payload for the response action.
  */
-export type SharedWorkerResponseAction<
+export type WorkerResponseAction<
   TSubject extends string,
   TPayload = NoPayload
 > = {
@@ -169,13 +169,13 @@ export type SharedWorkerResponseAction<
    * Discriminating response subject returned by the worker.
    */
   subject: TSubject;
-} & SharedWorkerActionPayload<TPayload>;
+} & WorkerActionPayload<TPayload>;
 
 /**
  * Minimal request-action shape used by shared worker dispatch and runtime
  * helpers.
  */
-export type SharedWorkerAnyRequestAction = SharedWorkerRequestBase & {
+export type WorkerAnyRequestAction = WorkerRequestBase & {
   /**
    * Discriminating request subject.
    */
@@ -185,7 +185,7 @@ export type SharedWorkerAnyRequestAction = SharedWorkerRequestBase & {
 /**
  * Minimal response-action shape used by shared worker transport helpers.
  */
-export type SharedWorkerAnyResponseAction = {
+export type WorkerAnyResponseAction = {
   /**
    * Discriminating response subject.
    */
@@ -195,20 +195,19 @@ export type SharedWorkerAnyResponseAction = {
 /**
  * Shared graceful-shutdown request used by long-lived worker families.
  */
-export type SharedWorkerShutdownRequest = SharedWorkerRequestAction<'shutdown'>;
+export type WorkerShutdownRequest = WorkerRequestAction<'shutdown'>;
 
 /**
  * Shared graceful-shutdown acknowledgement returned by long-lived workers.
  */
-export type SharedWorkerShutdownResponse =
-  SharedWorkerResponseAction<'shutdown-complete'>;
+export type WorkerShutdownResponse = WorkerResponseAction<'shutdown-complete'>;
 
 /**
  * Shared worker-side success or failure response envelope.
  *
  * @template TResponse Successful worker response action type.
  */
-export type SharedWorkerResponseEnvelope<TResponse> =
+export type WorkerResponseEnvelope<TResponse> =
   | {
       /**
        * Correlation id copied from the originating request.

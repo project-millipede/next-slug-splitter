@@ -2,8 +2,8 @@ import { spawn } from 'node:child_process';
 import process from 'node:process';
 
 import {
-  rejectSharedWorkerSessionPendingRequests,
-  type SharedWorkerPendingRequest
+  rejectWorkerSessionPendingRequests,
+  type WorkerPendingRequest
 } from './protocol';
 
 /**
@@ -31,9 +31,9 @@ import {
  * @remarks
  * This base shape contains only payload-independent host-side session state.
  * Response-typed pending-request tracking is layered on top by
- * {@link SharedWorkerSession}.
+ * {@link WorkerSession}.
  */
-export type SharedWorkerSessionBase = {
+export type WorkerSessionBase = {
   /**
    * Stable registry key used to identify and reuse one worker session.
    */
@@ -73,20 +73,19 @@ export type SharedWorkerSessionBase = {
  *   when they still need the real `pendingRequests` map shape, but do not
  *   read or forward any successful response value from those stored requests
  */
-export type SharedWorkerSession<TResponse> = SharedWorkerSessionBase & {
+export type WorkerSession<TResponse> = WorkerSessionBase & {
   /**
    * In-flight host requests keyed by request id until one matching worker
    * response arrives.
    */
-  pendingRequests: Map<string, SharedWorkerPendingRequest<TResponse>>;
+  pendingRequests: Map<string, WorkerPendingRequest<TResponse>>;
 };
 
 /**
  * Registry of live worker sessions keyed by stable session identity.
  */
-export type SharedWorkerSessionRegistry<
-  TSession extends { sessionKey: string }
-> = Map<string, TSession>;
+export type WorkerSessionRegistry<TSession extends { sessionKey: string }> =
+  Map<string, TSession>;
 
 /**
  * Spawn one child worker process with an IPC channel.
@@ -94,7 +93,7 @@ export type SharedWorkerSessionRegistry<
  * @param input - Spawn input.
  * @returns Child-process handle for the worker session.
  */
-export const spawnSharedWorkerChild = ({
+export const spawnWorkerChild = ({
   workerArgv,
   workerCwd,
   stdio,
@@ -129,13 +128,13 @@ export const spawnSharedWorkerChild = ({
  * @param input - Base-session input.
  * @returns Newly initialized shared base session.
  */
-export const createSharedWorkerSession = <TResponse>({
+export const createWorkerSession = <TResponse>({
   sessionKey,
   child
 }: {
   sessionKey: string;
   child: ReturnType<typeof spawn>;
-}): SharedWorkerSession<TResponse> => {
+}): WorkerSession<TResponse> => {
   let resolveWorkerSessionTermination = (): void => {};
 
   return {
@@ -161,12 +160,12 @@ export const createSharedWorkerSession = <TResponse>({
  * @param session - Worker session that may still own its registry slot.
  * @returns `void` after the registry entry has been removed when applicable.
  */
-export const unregisterSharedWorkerSession = <
+export const unregisterWorkerSession = <
   TSession extends {
     sessionKey: string;
   }
 >(
-  workerSessions: SharedWorkerSessionRegistry<TSession>,
+  workerSessions: WorkerSessionRegistry<TSession>,
   session: TSession
 ): void => {
   if (workerSessions.get(session.sessionKey) === session) {
@@ -191,15 +190,13 @@ export const unregisterSharedWorkerSession = <
  * @returns `void` after the session has been marked closed and the child has
  * been killed.
  */
-export const forceCloseSharedWorkerSession = <
-  TSession extends SharedWorkerSessionBase
->({
+export const forceCloseWorkerSession = <TSession extends WorkerSessionBase>({
   workerSessions,
   session,
   reason,
   onSessionClose
 }: {
-  workerSessions: SharedWorkerSessionRegistry<TSession>;
+  workerSessions: WorkerSessionRegistry<TSession>;
   session: TSession;
   reason: string;
   onSessionClose?: (reason: string) => void;
@@ -231,25 +228,25 @@ export const forceCloseSharedWorkerSession = <
  * @returns `void` after registry ownership, pending requests, and termination
  * state have been settled.
  */
-export const finalizeSharedWorkerSession = <
+export const finalizeWorkerSession = <
   TResponse,
-  TSession extends SharedWorkerSession<TResponse>
+  TSession extends WorkerSession<TResponse>
 >({
   workerSessions,
   session,
   rejectionError
 }: {
-  workerSessions: SharedWorkerSessionRegistry<TSession>;
+  workerSessions: WorkerSessionRegistry<TSession>;
   session: TSession;
   rejectionError?: Error;
 }): void => {
   const wasAlreadyClosed = session.closed;
 
   session.closed = true;
-  unregisterSharedWorkerSession(workerSessions, session);
+  unregisterWorkerSession(workerSessions, session);
 
   if (rejectionError != null && session.pendingRequests.size > 0) {
-    rejectSharedWorkerSessionPendingRequests(session, rejectionError);
+    rejectWorkerSessionPendingRequests(session, rejectionError);
   }
 
   if (!wasAlreadyClosed || session.pendingRequests.size === 0) {
@@ -265,8 +262,8 @@ export const finalizeSharedWorkerSession = <
  * @param timeoutErrorMessage - Error message surfaced on timeout.
  * @returns A promise that settles after full worker termination.
  */
-export const waitForSharedWorkerTermination = async <
-  TSession extends SharedWorkerSessionBase
+export const waitForWorkerTermination = async <
+  TSession extends WorkerSessionBase
 >(
   session: TSession,
   timeoutMs: number,

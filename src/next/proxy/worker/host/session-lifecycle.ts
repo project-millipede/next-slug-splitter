@@ -4,24 +4,24 @@ import { fileURLToPath } from 'node:url';
 
 import { debugRouteHandlerProxy } from '../../observability/debug-log';
 import {
-  createSharedWorkerExitError,
-  createSharedWorkerRequestId,
-  resolveSharedWorkerResponseEnvelope
+  createWorkerExitError,
+  createWorkerRequestId,
+  resolveWorkerResponseEnvelope
 } from '../../../shared/worker/host/protocol';
 import { getRouteHandlerProxyWorkerHostGlobalState } from './global-state';
 import { sendRouteHandlerProxyWorkerRequest } from './protocol';
 import {
-  createSharedWorkerSession,
-  spawnSharedWorkerChild,
-  type SharedWorkerSessionRegistry
+  createWorkerSession,
+  spawnWorkerChild,
+  type WorkerSessionRegistry
 } from '../../../shared/worker/host/session-lifecycle';
-import { createSharedWorkerHostLifecycleMachine } from '../../../shared/worker/host-lifecycle/machine';
+import { createWorkerHostLifecycleMachine } from '../../../shared/worker/host-lifecycle/machine';
 import {
-  createCustomSharedWorkerHostLifecycleSession,
-  forceCloseSharedWorkerHostLifecycleSession
+  createCustomWorkerHostLifecycleSession,
+  forceCloseWorkerHostLifecycleSession
 } from '../../../shared/worker/host-lifecycle/session';
-import type { SharedWorkerHostLifecycleSession } from '../../../shared/worker/host-lifecycle/types';
-import type { SharedWorkerShutdownRequest } from '../../../shared/worker/types';
+import type { WorkerHostLifecycleSession } from '../../../shared/worker/host-lifecycle/types';
+import type { WorkerShutdownRequest } from '../../../shared/worker/types';
 
 import type {
   BootstrapGenerationToken,
@@ -57,7 +57,7 @@ const SLUG_SPLITTER_CONFIG_ROOT_DIR_ENV = 'SLUG_SPLITTER_CONFIG_ROOT_DIR';
 const EXPERIMENTAL_STRIP_TYPES_FLAG = '--experimental-strip-types';
 const ROUTE_HANDLER_PROXY_WORKER_SHUTDOWN_TIMEOUT_MS = 2000;
 
-export type RouteHandlerProxyWorkerSession = SharedWorkerHostLifecycleSession<
+export type RouteHandlerProxyWorkerSession = WorkerHostLifecycleSession<
   | RouteHandlerProxyWorkerBootstrapResponse
   | RouteHandlerProxyWorkerShutdownResponse
   | RouteHandlerProxyWorkerResponse
@@ -67,7 +67,7 @@ export type RouteHandlerProxyWorkerSession = SharedWorkerHostLifecycleSession<
 };
 
 type RouteHandlerProxyWorkerSessionRegistry =
-  SharedWorkerSessionRegistry<RouteHandlerProxyWorkerSession>;
+  WorkerSessionRegistry<RouteHandlerProxyWorkerSession>;
 
 const routeHandlerProxyWorkerProtocolState =
   getRouteHandlerProxyWorkerHostGlobalState().protocol;
@@ -279,7 +279,7 @@ const forceCloseRouteHandlerProxyWorkerSession = ({
     });
   }
 
-  forceCloseSharedWorkerHostLifecycleSession({
+  forceCloseWorkerHostLifecycleSession({
     workerSessions,
     session,
     reason,
@@ -311,7 +311,7 @@ const forceCloseRouteHandlerProxyWorkerSession = ({
  * is delegated into the shared machine.
  */
 const routeHandlerProxyWorkerHostLifecycleMachine =
-  createSharedWorkerHostLifecycleMachine<
+  createWorkerHostLifecycleMachine<
     | RouteHandlerProxyWorkerBootstrapResponse
     | RouteHandlerProxyWorkerShutdownResponse
     | RouteHandlerProxyWorkerResponse,
@@ -340,8 +340,8 @@ const routeHandlerProxyWorkerHostLifecycleMachine =
     },
     shutdown: {
       requestShutdown: async ({ session, reason }) => {
-        const request: SharedWorkerShutdownRequest = {
-          requestId: createSharedWorkerRequestId(
+        const request: WorkerShutdownRequest = {
+          requestId: createWorkerRequestId(
             routeHandlerProxyWorkerProtocolState,
             'route-handler-proxy-worker-request'
           ),
@@ -450,13 +450,13 @@ const createRouteHandlerProxyWorkerSession = ({
     bootstrapGenerationToken
   });
 
-  const child = spawnSharedWorkerChild({
+  const child = spawnWorkerChild({
     workerArgv,
     workerCwd,
     workerEnvironment,
     stdio: ['ignore', 'pipe', 'pipe', 'ipc']
   });
-  const baseSession = createSharedWorkerSession<
+  const baseSession = createWorkerSession<
     | RouteHandlerProxyWorkerBootstrapResponse
     | RouteHandlerProxyWorkerShutdownResponse
     | RouteHandlerProxyWorkerResponse
@@ -464,7 +464,7 @@ const createRouteHandlerProxyWorkerSession = ({
     sessionKey,
     child
   });
-  const session = createCustomSharedWorkerHostLifecycleSession(
+  const session = createCustomWorkerHostLifecycleSession(
     baseSession,
     lifecycleSession => ({
       ...lifecycleSession,
@@ -485,7 +485,7 @@ const createRouteHandlerProxyWorkerSession = ({
   const stderrChunks: Array<Buffer> = [];
 
   child.on('message', (envelope: RouteHandlerProxyWorkerResponseEnvelope) => {
-    resolveSharedWorkerResponseEnvelope(session, envelope);
+    resolveWorkerResponseEnvelope(session, envelope);
   });
 
   child.stderr?.on('data', chunk => {
@@ -529,7 +529,7 @@ const createRouteHandlerProxyWorkerSession = ({
       workerSessions,
       session,
       rejectionError: shouldRejectPendingRequests
-        ? createSharedWorkerExitError({
+        ? createWorkerExitError({
             workerLabel: 'proxy worker',
             exitCode,
             stderrChunks
@@ -541,7 +541,7 @@ const createRouteHandlerProxyWorkerSession = ({
   const bootstrapRequest: RouteHandlerProxyWorkerBootstrapRequest = {
     // Bootstrap carries the clear adapter-owned registration values the
     // worker needs to reload runtime attachments for this generation.
-    requestId: createSharedWorkerRequestId(
+    requestId: createWorkerRequestId(
       routeHandlerProxyWorkerProtocolState,
       'route-handler-proxy-worker-request'
     ),

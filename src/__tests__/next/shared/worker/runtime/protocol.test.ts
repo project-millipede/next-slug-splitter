@@ -3,9 +3,9 @@ import process from 'node:process';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import {
-  assertSharedWorkerRuntimeIpcChannel,
-  handleSharedWorkerRuntimeRequest,
-  writeSharedWorkerRuntimeResponse
+  assertWorkerRuntimeIpcChannel,
+  handleWorkerRuntimeRequest,
+  writeWorkerRuntimeResponse
 } from '../../../../../next/shared/worker/runtime/protocol';
 
 const originalProcessSendDescriptor = Object.getOwnPropertyDescriptor(
@@ -44,7 +44,7 @@ describe('shared worker runtime protocol', () => {
 
     setProcessSend(send as typeof process.send);
 
-    await writeSharedWorkerRuntimeResponse({
+    await writeWorkerRuntimeResponse({
       workerLabel: 'build worker',
       response: {
         requestId: 'request-1',
@@ -71,7 +71,7 @@ describe('shared worker runtime protocol', () => {
     setProcessSend(undefined);
 
     expect(() => {
-      assertSharedWorkerRuntimeIpcChannel('proxy worker');
+      assertWorkerRuntimeIpcChannel('proxy worker');
     }).toThrow('next-slug-splitter proxy worker requires an IPC channel.');
   });
 
@@ -83,12 +83,12 @@ describe('shared worker runtime protocol', () => {
 
     setProcessSend(send as typeof process.send);
 
-    await handleSharedWorkerRuntimeRequest({
+    await handleWorkerRuntimeRequest({
       workerLabel: 'proxy worker',
-        request: {
-          requestId: 'request-1',
-          subject: 'bootstrap'
-        },
+      request: {
+        requestId: 'request-1',
+        subject: 'bootstrap'
+      },
       resolveResponse: async () => {
         throw new Error('boom');
       }

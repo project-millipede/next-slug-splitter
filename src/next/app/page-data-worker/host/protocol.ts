@@ -1,6 +1,6 @@
 import {
-  sendSharedWorkerRequest,
-  type SharedWorkerPendingRequest
+  sendWorkerRequest,
+  type WorkerPendingRequest
 } from '../../../shared/worker/host/protocol';
 
 import type { AppPageDataWorkerSession } from './session-lifecycle';
@@ -11,7 +11,7 @@ import type {
 } from '../types';
 
 export type AppPageDataWorkerPendingRequest =
-  SharedWorkerPendingRequest<AppPageDataWorkerResponse>;
+  WorkerPendingRequest<AppPageDataWorkerResponse>;
 
 /**
  * Send one typed request to the App page-data worker.
@@ -28,7 +28,7 @@ export const sendAppPageDataWorkerRequest = <
   session: AppPageDataWorkerSession,
   request: TRequest
 ): Promise<AppPageDataWorkerExchangeResponse<TRequest>> =>
-  sendSharedWorkerRequest<
+  sendWorkerRequest<
     TRequest,
     AppPageDataWorkerExchangeResponse<TRequest>,
     AppPageDataWorkerSession

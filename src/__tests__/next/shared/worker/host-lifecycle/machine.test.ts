@@ -3,17 +3,13 @@ import type { spawn } from 'node:child_process';
 
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import { createSharedWorkerSession } from '../../../../../next/shared/worker/host/session-lifecycle';
-import {
-  createSharedWorkerHostLifecycleMachine
-} from '../../../../../next/shared/worker/host-lifecycle/machine';
-import {
-  createSharedWorkerHostLifecycleSession
-} from '../../../../../next/shared/worker/host-lifecycle/session';
+import { createWorkerSession } from '../../../../../next/shared/worker/host/session-lifecycle';
+import { createWorkerHostLifecycleMachine } from '../../../../../next/shared/worker/host-lifecycle/machine';
+import { createWorkerHostLifecycleSession } from '../../../../../next/shared/worker/host-lifecycle/session';
 
-import type { SharedWorkerHostLifecycleSession } from '../../../../../next/shared/worker/host-lifecycle/types';
+import type { WorkerHostLifecycleSession } from '../../../../../next/shared/worker/host-lifecycle/types';
 
-type SharedWorkerChildStub = EventEmitter & {
+type WorkerChildStub = EventEmitter & {
   kill: ReturnType<typeof vi.fn>;
 };
 
@@ -22,7 +18,7 @@ type TestSessionRequest = {
   compatibilityToken: string;
 };
 
-type TestSession = SharedWorkerHostLifecycleSession<string> & {
+type TestSession = WorkerHostLifecycleSession<string> & {
   compatibilityToken: string;
   child: ReturnType<typeof spawn>;
 };
@@ -62,12 +58,12 @@ const createDeferredPromise = (): DeferredPromise => {
  * microtask.
  * @returns Event-emitting child-process stub.
  */
-const createSharedWorkerChildStub = ({
+const createWorkerChildStub = ({
   closeOnKill = true
 }: {
   closeOnKill?: boolean;
-} = {}): SharedWorkerChildStub => {
-  const child = new EventEmitter() as SharedWorkerChildStub;
+} = {}): WorkerChildStub => {
+  const child = new EventEmitter() as WorkerChildStub;
 
   child.kill = vi.fn(() => {
     if (closeOnKill) {
@@ -91,7 +87,7 @@ describe('shared worker host lifecycle machine', () => {
     const workerSessions = new Map<string, TestSession>();
     const startupDeferred = createDeferredPromise();
     const createdSessions: Array<TestSession> = [];
-    const machine = createSharedWorkerHostLifecycleMachine<
+    const machine = createWorkerHostLifecycleMachine<
       string,
       TestSession,
       TestSessionRequest
@@ -100,10 +96,10 @@ describe('shared worker host lifecycle machine', () => {
       session: {
         createSessionKey: request => request.sessionKey,
         createSession: ({ workerSessions: sessionRegistry, request }) => {
-          const child = createSharedWorkerChildStub();
+          const child = createWorkerChildStub();
           const session = Object.assign(
-            createSharedWorkerHostLifecycleSession(
-              createSharedWorkerSession<string>({
+            createWorkerHostLifecycleSession(
+              createWorkerSession<string>({
                 sessionKey: request.sessionKey,
                 child: child as unknown as ReturnType<typeof spawn>
               })
@@ -177,7 +173,7 @@ describe('shared worker host lifecycle machine', () => {
     ]);
     const createdSessions: Array<TestSession> = [];
     const requestShutdown = vi.fn(async () => undefined);
-    const machine = createSharedWorkerHostLifecycleMachine<
+    const machine = createWorkerHostLifecycleMachine<
       string,
       TestSession,
       TestSessionRequest
@@ -186,12 +182,12 @@ describe('shared worker host lifecycle machine', () => {
       session: {
         createSessionKey: request => request.sessionKey,
         createSession: ({ workerSessions: sessionRegistry, request }) => {
-          const child = createSharedWorkerChildStub({
+          const child = createWorkerChildStub({
             closeOnKill: false
           });
           const session = Object.assign(
-            createSharedWorkerHostLifecycleSession(
-              createSharedWorkerSession<string>({
+            createWorkerHostLifecycleSession(
+              createWorkerSession<string>({
                 sessionKey: request.sessionKey,
                 child: child as unknown as ReturnType<typeof spawn>
               })
@@ -287,7 +283,7 @@ describe('shared worker host lifecycle machine', () => {
   test('marks a failed startup before finalizing to closed', async () => {
     const workerSessions = new Map<string, TestSession>();
     const createdSessions: Array<TestSession> = [];
-    const machine = createSharedWorkerHostLifecycleMachine<
+    const machine = createWorkerHostLifecycleMachine<
       string,
       TestSession,
       TestSessionRequest
@@ -296,12 +292,12 @@ describe('shared worker host lifecycle machine', () => {
       session: {
         createSessionKey: request => request.sessionKey,
         createSession: ({ workerSessions: sessionRegistry, request }) => {
-          const child = createSharedWorkerChildStub({
+          const child = createWorkerChildStub({
             closeOnKill: false
           });
           const session = Object.assign(
-            createSharedWorkerHostLifecycleSession(
-              createSharedWorkerSession<string>({
+            createWorkerHostLifecycleSession(
+              createWorkerSession<string>({
                 sessionKey: request.sessionKey,
                 child: child as unknown as ReturnType<typeof spawn>
               })
@@ -356,18 +352,13 @@ describe('shared worker host lifecycle machine', () => {
   test('reuses one in-flight shutdown promise for repeated callers', async () => {
     const workerSessions = new Map<string, TestSession>();
     const requestShutdown = vi.fn(
-      async ({
-        session
-      }: {
-        session: TestSession;
-        reason: string;
-      }) => {
+      async ({ session }: { session: TestSession; reason: string }) => {
         queueMicrotask(() => {
           session.child.emit('close', 0, null);
         });
       }
     );
-    const machine = createSharedWorkerHostLifecycleMachine<
+    const machine = createWorkerHostLifecycleMachine<
       string,
       TestSession,
       TestSessionRequest
@@ -376,10 +367,10 @@ describe('shared worker host lifecycle machine', () => {
       session: {
         createSessionKey: request => request.sessionKey,
         createSession: ({ workerSessions: sessionRegistry, request }) => {
-          const child = createSharedWorkerChildStub();
+          const child = createWorkerChildStub();
           const session = Object.assign(
-            createSharedWorkerHostLifecycleSession(
-              createSharedWorkerSession<string>({
+            createWorkerHostLifecycleSession(
+              createWorkerSession<string>({
                 sessionKey: request.sessionKey,
                 child: child as unknown as ReturnType<typeof spawn>
               })
@@ -434,7 +425,7 @@ describe('shared worker host lifecycle machine', () => {
     vi.useFakeTimers();
 
     const workerSessions = new Map<string, TestSession>();
-    const machine = createSharedWorkerHostLifecycleMachine<
+    const machine = createWorkerHostLifecycleMachine<
       string,
       TestSession,
       TestSessionRequest
@@ -443,10 +434,10 @@ describe('shared worker host lifecycle machine', () => {
       session: {
         createSessionKey: request => request.sessionKey,
         createSession: ({ workerSessions: sessionRegistry, request }) => {
-          const child = createSharedWorkerChildStub();
+          const child = createWorkerChildStub();
           const session = Object.assign(
-            createSharedWorkerHostLifecycleSession(
-              createSharedWorkerSession<string>({
+            createWorkerHostLifecycleSession(
+              createWorkerSession<string>({
                 sessionKey: request.sessionKey,
                 child: child as unknown as ReturnType<typeof spawn>
               })
@@ -467,8 +458,7 @@ describe('shared worker host lifecycle machine', () => {
         }
       },
       shutdown: {
-        requestShutdown: async () =>
-          await new Promise<void>(() => {}),
+        requestShutdown: async () => await new Promise<void>(() => {}),
         acknowledgementTimeoutMs: 50
       }
     });

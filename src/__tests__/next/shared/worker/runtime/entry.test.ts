@@ -3,8 +3,8 @@ import process from 'node:process';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import {
-  disconnectSharedWorkerRuntimeProcess,
-  installSharedWorkerRuntimeRequestLoop
+  disconnectWorkerRuntimeProcess,
+  installWorkerRuntimeRequestLoop
 } from '../../../../../next/shared/worker/runtime/entry';
 
 const originalProcessSendDescriptor = Object.getOwnPropertyDescriptor(
@@ -33,9 +33,7 @@ const restoreProcessSend = (): void => {
   Object.defineProperty(process, 'send', originalProcessSendDescriptor);
 };
 
-const setProcessDisconnect = (
-  disconnect: typeof process.disconnect
-): void => {
+const setProcessDisconnect = (disconnect: typeof process.disconnect): void => {
   Object.defineProperty(process, 'disconnect', {
     value: disconnect,
     writable: true,
@@ -53,7 +51,11 @@ const restoreProcessDisconnect = (): void => {
     return;
   }
 
-  Object.defineProperty(process, 'disconnect', originalProcessDisconnectDescriptor);
+  Object.defineProperty(
+    process,
+    'disconnect',
+    originalProcessDisconnectDescriptor
+  );
 };
 
 describe('shared worker runtime entry', () => {
@@ -70,7 +72,7 @@ describe('shared worker runtime entry', () => {
     setProcessSend(send as typeof process.send);
     const initialMessageListeners = process.listeners('message');
 
-    installSharedWorkerRuntimeRequestLoop<{
+    installWorkerRuntimeRequestLoop<{
       requestId: string;
       subject: 'shutdown';
     }>({
@@ -82,7 +84,9 @@ describe('shared worker runtime entry', () => {
     const messageHandler = nextMessageListeners.at(-1);
 
     if (messageHandler == null) {
-      throw new Error('Expected shared worker runtime to install a message handler.');
+      throw new Error(
+        'Expected shared worker runtime to install a message handler.'
+      );
     }
 
     (messageHandler as (rawMessage: unknown) => void)(null);
@@ -109,16 +113,16 @@ describe('shared worker runtime entry', () => {
 
   test('disconnects and exits the worker process during shutdown', () => {
     const disconnect = vi.fn();
-    const exit = vi
-      .spyOn(process, 'exit')
-      .mockImplementation(((code?: number) => {
-        throw new Error(`exit ${String(code)}`);
-      }) as typeof process.exit);
+    const exit = vi.spyOn(process, 'exit').mockImplementation(((
+      code?: number
+    ) => {
+      throw new Error(`exit ${String(code)}`);
+    }) as typeof process.exit);
 
     setProcessDisconnect(disconnect as typeof process.disconnect);
 
     expect(() => {
-      disconnectSharedWorkerRuntimeProcess();
+      disconnectWorkerRuntimeProcess();
     }).toThrow('exit 0');
 
     expect(disconnect).toHaveBeenCalledTimes(1);

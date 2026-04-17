@@ -1,11 +1,9 @@
-import type { SharedWorkerHostLifecycleSession } from '../types';
+import type { WorkerHostLifecycleSession } from '../types';
 
-import {
-  createSharedWorkerHostLifecycleMachineInternal
-} from './internal/create-machine';
+import { createWorkerHostLifecycleMachineInternal } from './internal/create-machine';
 import type {
-  CreateSharedWorkerHostLifecycleMachineOptions,
-  SharedWorkerHostLifecycleMachine,
+  CreateWorkerHostLifecycleMachineOptions,
+  WorkerHostLifecycleMachine
 } from './types';
 
 /**
@@ -22,11 +20,11 @@ import type {
  */
 
 export type {
-  CreateSharedWorkerHostLifecycleMachineOptions,
-  SharedWorkerHostLifecycleMachine,
-  SharedWorkerHostLifecycleMachineSessionOptions,
-  SharedWorkerHostLifecycleMachineShutdownOptions,
-  SharedWorkerHostLifecycleReuseDecision
+  CreateWorkerHostLifecycleMachineOptions,
+  WorkerHostLifecycleMachine,
+  WorkerHostLifecycleMachineSessionOptions,
+  WorkerHostLifecycleMachineShutdownOptions,
+  WorkerHostLifecycleReuseDecision
 } from './types';
 
 /**
@@ -38,23 +36,17 @@ export type {
  * @param options Machine-creation options.
  * @returns Shared host lifecycle machine for one worker family.
  */
-export const createSharedWorkerHostLifecycleMachine = <
+export const createWorkerHostLifecycleMachine = <
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>,
+  TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 >(
-  options: CreateSharedWorkerHostLifecycleMachineOptions<
+  options: CreateWorkerHostLifecycleMachineOptions<
     TResponse,
     TSession,
     TRequest
   >
-): SharedWorkerHostLifecycleMachine<
-  TResponse,
-  TSession,
-  TRequest
-> =>
-  createSharedWorkerHostLifecycleMachineInternal<
-    TResponse,
-    TSession,
-    TRequest
-  >(options);
+): WorkerHostLifecycleMachine<TResponse, TSession, TRequest> =>
+  createWorkerHostLifecycleMachineInternal<TResponse, TSession, TRequest>(
+    options
+  );

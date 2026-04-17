@@ -1,19 +1,15 @@
 import { describe, expect, test } from 'vitest';
 
-import {
-  dispatchSharedWorkerHostLifecycleEventBySubject
-} from '../../../../../next/shared/worker/host-lifecycle/dispatcher';
-import type {
-  SharedWorkerHostLifecycleEvent
-} from '../../../../../next/shared/worker/host-lifecycle/types';
+import { dispatchWorkerHostLifecycleEventBySubject } from '../../../../../next/shared/worker/host-lifecycle/dispatcher';
+import type { WorkerHostLifecycleEvent } from '../../../../../next/shared/worker/host-lifecycle/types';
 
 type TestHostLifecycleEvent =
-  | SharedWorkerHostLifecycleEvent<'session-ready', { sessionKey: string }>
-  | SharedWorkerHostLifecycleEvent<'shutdown-requested', { reason: string }>;
+  | WorkerHostLifecycleEvent<'session-ready', { sessionKey: string }>
+  | WorkerHostLifecycleEvent<'shutdown-requested', { reason: string }>;
 
 describe('shared worker host lifecycle dispatcher', () => {
   test('routes lifecycle events by subject with narrowed payloads', async () => {
-    const result = await dispatchSharedWorkerHostLifecycleEventBySubject<
+    const result = await dispatchWorkerHostLifecycleEventBySubject<
       TestHostLifecycleEvent,
       string
     >(
@@ -34,7 +30,7 @@ describe('shared worker host lifecycle dispatcher', () => {
 
   test('throws when the event subject is unsupported', async () => {
     await expect(
-      dispatchSharedWorkerHostLifecycleEventBySubject(
+      dispatchWorkerHostLifecycleEventBySubject(
         {
           subject: 'unsupported-subject'
         },

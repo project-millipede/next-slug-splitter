@@ -1,11 +1,11 @@
 import type { LocaleConfig } from '../../../core/types';
 import type { RouteHandlerOutputSynchronizationStatus } from '../../../generator/shared/protocol/output-lifecycle';
 import type {
-  SharedWorkerRequestAction,
-  SharedWorkerResponseAction,
-  SharedWorkerResponseEnvelope,
-  SharedWorkerShutdownRequest,
-  SharedWorkerShutdownResponse
+  WorkerRequestAction,
+  WorkerResponseAction,
+  WorkerResponseEnvelope,
+  WorkerShutdownRequest,
+  WorkerShutdownResponse
 } from '../../shared/worker/types';
 import type {
   BootstrapGenerationToken,
@@ -63,7 +63,7 @@ type RouteHandlerProxyWorkerBootstrapRequestPayload = {
 /**
  * Bootstrap request action for the dev-only proxy worker.
  */
-export type RouteHandlerProxyWorkerBootstrapRequest = SharedWorkerRequestAction<
+export type RouteHandlerProxyWorkerBootstrapRequest = WorkerRequestAction<
   'bootstrap',
   RouteHandlerProxyWorkerBootstrapRequestPayload
 >;
@@ -87,11 +87,10 @@ type RouteHandlerProxyWorkerResolveLazyMissPayload = {
  * classified without importing the heavy MDX-analysis graph into the main
  * proxy runtime.
  */
-export type RouteHandlerProxyWorkerResolveLazyMissRequest =
-  SharedWorkerRequestAction<
-    'resolve-lazy-miss',
-    RouteHandlerProxyWorkerResolveLazyMissPayload
-  >;
+export type RouteHandlerProxyWorkerResolveLazyMissRequest = WorkerRequestAction<
+  'resolve-lazy-miss',
+  RouteHandlerProxyWorkerResolveLazyMissPayload
+>;
 
 /**
  * Serialized request sent from the thin proxy runtime into the dev-only lazy
@@ -109,7 +108,7 @@ export type RouteHandlerProxyWorkerResolveLazyMissRequest =
 export type RouteHandlerProxyWorkerRequest =
   | RouteHandlerProxyWorkerBootstrapRequest
   | RouteHandlerProxyWorkerResolveLazyMissRequest
-  | SharedWorkerShutdownRequest;
+  | WorkerShutdownRequest;
 
 /**
  * Payload returned when the worker has finished bootstrapping one generation.
@@ -125,7 +124,7 @@ type RouteHandlerProxyWorkerBootstrappedPayload = {
  * Acknowledgement returned when the long-lived worker session has finished its
  * one-time bootstrap work for the current generation.
  */
-export type RouteHandlerProxyWorkerBootstrapResponse = SharedWorkerResponseAction<
+export type RouteHandlerProxyWorkerBootstrapResponse = WorkerResponseAction<
   'bootstrapped',
   RouteHandlerProxyWorkerBootstrappedPayload
 >;
@@ -134,8 +133,7 @@ export type RouteHandlerProxyWorkerBootstrapResponse = SharedWorkerResponseActio
  * Acknowledgement returned when the worker has flushed retained caches and is
  * ready to terminate.
  */
-export type RouteHandlerProxyWorkerShutdownResponse =
-  SharedWorkerShutdownResponse;
+export type RouteHandlerProxyWorkerShutdownResponse = WorkerShutdownResponse;
 
 /**
  * Payload returned when a lazy miss resolves to a heavy route handler.
@@ -169,7 +167,7 @@ type RouteHandlerProxyWorkerHeavyPayload = {
 /**
  * Response action for a heavy lazy-miss resolution.
  */
-export type RouteHandlerProxyWorkerHeavyResponse = SharedWorkerResponseAction<
+export type RouteHandlerProxyWorkerHeavyResponse = WorkerResponseAction<
   'heavy',
   RouteHandlerProxyWorkerHeavyPayload
 >;
@@ -191,11 +189,10 @@ type RouteHandlerProxyWorkerPassThroughPayload = {
 /**
  * Response action for a pass-through lazy-miss resolution.
  */
-export type RouteHandlerProxyWorkerPassThroughResponse =
-  SharedWorkerResponseAction<
-    'pass-through',
-    RouteHandlerProxyWorkerPassThroughPayload
-  >;
+export type RouteHandlerProxyWorkerPassThroughResponse = WorkerResponseAction<
+  'pass-through',
+  RouteHandlerProxyWorkerPassThroughPayload
+>;
 
 /**
  * Serialized worker response for one proxy lazy-miss resolution.
@@ -240,7 +237,7 @@ export type RouteHandlerProxyWorkerExchange =
       /**
        * Request variant sent to the worker.
        */
-      request: SharedWorkerShutdownRequest;
+      request: WorkerShutdownRequest;
       /**
        * Successful response paired with the request variant.
        */
@@ -260,9 +257,8 @@ export type RouteHandlerProxyWorkerExchangeResponse<
  * One IPC response envelope traveling from the worker back to the thin proxy
  * runtime.
  */
-export type RouteHandlerProxyWorkerResponseEnvelope =
-  SharedWorkerResponseEnvelope<
-    | RouteHandlerProxyWorkerBootstrapResponse
-    | RouteHandlerProxyWorkerShutdownResponse
-    | RouteHandlerProxyWorkerResponse
-  >;
+export type RouteHandlerProxyWorkerResponseEnvelope = WorkerResponseEnvelope<
+  | RouteHandlerProxyWorkerBootstrapResponse
+  | RouteHandlerProxyWorkerShutdownResponse
+  | RouteHandlerProxyWorkerResponse
+>;

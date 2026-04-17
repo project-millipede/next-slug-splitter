@@ -1,8 +1,5 @@
 import process from 'node:process';
-import type {
-  SharedWorkerAnyRequestAction,
-  SharedWorkerResponseEnvelope
-} from '../types';
+import type { WorkerAnyRequestAction, WorkerResponseEnvelope } from '../types';
 
 /**
  * Shared worker-runtime IPC protocol helpers.
@@ -22,8 +19,8 @@ import type {
  * - business data travels under `payload`
  */
 
-export type SharedWorkerRuntimeResponseEnvelope<TResponse> =
-  SharedWorkerResponseEnvelope<TResponse>;
+export type WorkerRuntimeResponseEnvelope<TResponse> =
+  WorkerResponseEnvelope<TResponse>;
 
 /**
  * Validate that the current worker process was spawned with an IPC channel.
@@ -31,11 +28,11 @@ export type SharedWorkerRuntimeResponseEnvelope<TResponse> =
  * @param workerLabel - Human-readable worker label used in the error message.
  * @returns `void` when the worker can speak to its parent over IPC.
  */
-export const assertSharedWorkerRuntimeIpcChannel = (
-  workerLabel: string
-): void => {
+export const assertWorkerRuntimeIpcChannel = (workerLabel: string): void => {
   if (typeof process.send !== 'function') {
-    throw new Error(`next-slug-splitter ${workerLabel} requires an IPC channel.`);
+    throw new Error(
+      `next-slug-splitter ${workerLabel} requires an IPC channel.`
+    );
   }
 };
 
@@ -51,12 +48,12 @@ export const assertSharedWorkerRuntimeIpcChannel = (
  *
  * @param input - Response-writing input.
  */
-export const writeSharedWorkerRuntimeResponse = async <TResponse>({
+export const writeWorkerRuntimeResponse = async <TResponse>({
   workerLabel,
   response
 }: {
   workerLabel: string;
-  response: SharedWorkerResponseEnvelope<TResponse>;
+  response: WorkerResponseEnvelope<TResponse>;
 }): Promise<void> =>
   new Promise((resolve, reject) => {
     if (typeof process.send !== 'function') {
@@ -91,8 +88,8 @@ export const writeSharedWorkerRuntimeResponse = async <TResponse>({
  * @param input - Request-handling input.
  * @returns `void` after the request has been fully answered.
  */
-export const handleSharedWorkerRuntimeRequest = async <
-  TRequest extends SharedWorkerAnyRequestAction,
+export const handleWorkerRuntimeRequest = async <
+  TRequest extends WorkerAnyRequestAction,
   TResponse
 >({
   workerLabel,
@@ -103,12 +100,15 @@ export const handleSharedWorkerRuntimeRequest = async <
   workerLabel: string;
   request: TRequest;
   resolveResponse: (request: TRequest) => Promise<TResponse>;
-  onSuccess?: (input: { request: TRequest; response: TResponse }) => Promise<void> | void;
+  onSuccess?: (input: {
+    request: TRequest;
+    response: TResponse;
+  }) => Promise<void> | void;
 }): Promise<void> => {
   try {
     const response = await resolveResponse(request);
 
-    await writeSharedWorkerRuntimeResponse({
+    await writeWorkerRuntimeResponse({
       workerLabel,
       response: {
         requestId: request.requestId,
@@ -123,7 +123,7 @@ export const handleSharedWorkerRuntimeRequest = async <
     });
   } catch (error) {
     try {
-      await writeSharedWorkerRuntimeResponse({
+      await writeWorkerRuntimeResponse({
         workerLabel,
         response: {
           requestId: request.requestId,

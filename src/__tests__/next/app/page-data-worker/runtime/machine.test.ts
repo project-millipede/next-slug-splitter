@@ -3,11 +3,11 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-const disconnectSharedWorkerRuntimeProcessMock = vi.hoisted(() => vi.fn());
+const disconnectWorkerRuntimeProcessMock = vi.hoisted(() => vi.fn());
 
 vi.mock(import('../../../../../next/shared/worker/runtime/entry'), () => ({
-  disconnectSharedWorkerRuntimeProcess:
-    disconnectSharedWorkerRuntimeProcessMock as unknown as () => never
+  disconnectWorkerRuntimeProcess:
+    disconnectWorkerRuntimeProcessMock as unknown as () => never
 }));
 
 import { createAppPageDataWorkerRuntimeMachine } from '../../../../../next/app/page-data-worker/runtime/machine';
@@ -73,45 +73,48 @@ describe('App page-data worker runtime machine', () => {
 
     setProcessSend(send as typeof process.send);
 
-    await withTempDir('next-slug-splitter-app-page-data-machine-', async rootDir => {
-      const compilerModulePath = path.join(rootDir, 'content-compiler.mjs');
+    await withTempDir(
+      'next-slug-splitter-app-page-data-machine-',
+      async rootDir => {
+        const compilerModulePath = path.join(rootDir, 'content-compiler.mjs');
 
-      await writeTestModule(compilerModulePath, createCompilerModuleSource());
+        await writeTestModule(compilerModulePath, createCompilerModuleSource());
 
-      const machine = createAppPageDataWorkerRuntimeMachine();
+        const machine = createAppPageDataWorkerRuntimeMachine();
 
-      await machine.handleRequest({
-        requestId: 'request-1',
-        subject: 'compile-page-data',
-        payload: {
-          targetId: 'docs',
-          compilerModulePath,
-          input: {
-            slug: ['guides', 'intro']
-          }
-        }
-      });
-
-      expect(send).toHaveBeenCalledWith(
-        {
+        await machine.handleRequest({
           requestId: 'request-1',
-          ok: true,
-          response: {
-            subject: 'page-data-compiled',
-            payload: {
-              result: {
-                compilerInstanceId: expect.any(String),
-                targetId: 'docs',
-                input: {
-                  slug: ['guides', 'intro']
+          subject: 'compile-page-data',
+          payload: {
+            targetId: 'docs',
+            compilerModulePath,
+            input: {
+              slug: ['guides', 'intro']
+            }
+          }
+        });
+
+        expect(send).toHaveBeenCalledWith(
+          {
+            requestId: 'request-1',
+            ok: true,
+            response: {
+              subject: 'page-data-compiled',
+              payload: {
+                result: {
+                  compilerInstanceId: expect.any(String),
+                  targetId: 'docs',
+                  input: {
+                    slug: ['guides', 'intro']
+                  }
                 }
               }
             }
-          }
-        },
-        expect.any(Function)
-      );
-    });
+          },
+          expect.any(Function)
+        );
+      }
+    );
   });
 
   test('uses the shared shutdown path', async () => {
@@ -129,7 +132,7 @@ describe('App page-data worker runtime machine', () => {
       subject: 'shutdown'
     });
 
-    expect(disconnectSharedWorkerRuntimeProcessMock).toHaveBeenCalledTimes(1);
+    expect(disconnectWorkerRuntimeProcessMock).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenCalledWith(
       {
         requestId: 'request-1',

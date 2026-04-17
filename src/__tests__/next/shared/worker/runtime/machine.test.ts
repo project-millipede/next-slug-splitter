@@ -2,22 +2,22 @@ import process from 'node:process';
 
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-const disconnectSharedWorkerRuntimeProcessMock = vi.hoisted(() => vi.fn());
+const disconnectWorkerRuntimeProcessMock = vi.hoisted(() => vi.fn());
 
 vi.mock(import('../../../../../next/shared/worker/runtime/entry'), () => ({
-  disconnectSharedWorkerRuntimeProcess:
-    disconnectSharedWorkerRuntimeProcessMock as unknown as () => never
+  disconnectWorkerRuntimeProcess:
+    disconnectWorkerRuntimeProcessMock as unknown as () => never
 }));
 
-import { createSharedWorkerRuntimeMachine } from '../../../../../next/shared/worker/runtime/machine';
+import { createWorkerRuntimeMachine } from '../../../../../next/shared/worker/runtime/machine';
 import type {
-  SharedWorkerRequestAction,
-  SharedWorkerShutdownRequest
+  WorkerRequestAction,
+  WorkerShutdownRequest
 } from '../../../../../next/shared/worker/types';
 
 type MachineTestRequest =
-  | SharedWorkerRequestAction<'increment', { amount: number }>
-  | SharedWorkerShutdownRequest;
+  | WorkerRequestAction<'increment', { amount: number }>
+  | WorkerShutdownRequest;
 
 type MachineTestResponse = {
   subject: 'incremented';
@@ -62,7 +62,7 @@ describe('shared worker runtime machine', () => {
 
     setProcessSend(send as typeof process.send);
 
-    const machine = createSharedWorkerRuntimeMachine<
+    const machine = createWorkerRuntimeMachine<
       MachineTestRequest,
       MachineTestResponse,
       { count: number }
@@ -126,7 +126,7 @@ describe('shared worker runtime machine', () => {
 
     setProcessSend(send as typeof process.send);
 
-    const machine = createSharedWorkerRuntimeMachine<
+    const machine = createWorkerRuntimeMachine<
       MachineTestRequest,
       MachineTestResponse,
       { count: number }
@@ -167,7 +167,7 @@ describe('shared worker runtime machine', () => {
         count: 0
       }
     });
-    expect(disconnectSharedWorkerRuntimeProcessMock).toHaveBeenCalledTimes(1);
+    expect(disconnectWorkerRuntimeProcessMock).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenNthCalledWith(
       1,
       {
@@ -200,7 +200,7 @@ describe('shared worker runtime machine', () => {
 
     setProcessSend(send as typeof process.send);
 
-    const machine = createSharedWorkerRuntimeMachine<
+    const machine = createWorkerRuntimeMachine<
       MachineTestRequest,
       MachineTestResponse,
       { count: number }

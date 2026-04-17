@@ -1,12 +1,12 @@
-import type { SharedWorkerSessionRegistry } from '../../../host/session-lifecycle';
+import type { WorkerSessionRegistry } from '../../../host/session-lifecycle';
 
 import type {
-  SharedWorkerHostLifecycleEvent,
-  SharedWorkerHostLifecycleSession,
-  SharedWorkerHostLifecycleSessionBase
+  WorkerHostLifecycleEvent,
+  WorkerHostLifecycleSession,
+  WorkerHostLifecycleSessionBase
 } from '../../types';
 
-import type { SharedWorkerHostLifecycleReuseDecision } from '../types';
+import type { WorkerHostLifecycleReuseDecision } from '../types';
 
 /**
  * Internal host-lifecycle machine implementation contracts.
@@ -24,7 +24,7 @@ import type { SharedWorkerHostLifecycleReuseDecision } from '../types';
  *
  * @template TSession Concrete host-managed session shape.
  */
-type SessionReadyEvent<TSession> = SharedWorkerHostLifecycleEvent<
+type SessionReadyEvent<TSession> = WorkerHostLifecycleEvent<
   'session-ready',
   {
     session: TSession;
@@ -36,7 +36,7 @@ type SessionReadyEvent<TSession> = SharedWorkerHostLifecycleEvent<
  *
  * @template TSession Concrete host-managed session shape.
  */
-type SessionStartFailedEvent<TSession> = SharedWorkerHostLifecycleEvent<
+type SessionStartFailedEvent<TSession> = WorkerHostLifecycleEvent<
   'session-start-failed',
   {
     session: TSession;
@@ -50,22 +50,21 @@ type SessionStartFailedEvent<TSession> = SharedWorkerHostLifecycleEvent<
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-type ReplacementRequestedEvent<TSession, TRequest> =
-  SharedWorkerHostLifecycleEvent<
-    'replacement-requested',
-    {
-      session: TSession;
-      request: TRequest;
-      reason: string;
-    }
-  >;
+type ReplacementRequestedEvent<TSession, TRequest> = WorkerHostLifecycleEvent<
+  'replacement-requested',
+  {
+    session: TSession;
+    request: TRequest;
+    reason: string;
+  }
+>;
 
 /**
  * Internal lifecycle event fired when graceful shutdown starts.
  *
  * @template TSession Concrete host-managed session shape.
  */
-type ShutdownRequestedEvent<TSession> = SharedWorkerHostLifecycleEvent<
+type ShutdownRequestedEvent<TSession> = WorkerHostLifecycleEvent<
   'shutdown-requested',
   {
     session: TSession;
@@ -78,7 +77,7 @@ type ShutdownRequestedEvent<TSession> = SharedWorkerHostLifecycleEvent<
  *
  * @template TSession Concrete host-managed session shape.
  */
-type ShutdownFailedEvent<TSession> = SharedWorkerHostLifecycleEvent<
+type ShutdownFailedEvent<TSession> = WorkerHostLifecycleEvent<
   'shutdown-failed',
   {
     session: TSession;
@@ -92,7 +91,7 @@ type ShutdownFailedEvent<TSession> = SharedWorkerHostLifecycleEvent<
  *
  * @template TSession Concrete host-managed session shape.
  */
-type ForceCloseRequestedEvent<TSession> = SharedWorkerHostLifecycleEvent<
+type ForceCloseRequestedEvent<TSession> = WorkerHostLifecycleEvent<
   'force-close-requested',
   {
     session: TSession;
@@ -105,7 +104,7 @@ type ForceCloseRequestedEvent<TSession> = SharedWorkerHostLifecycleEvent<
  *
  * @template TSession Concrete host-managed session shape.
  */
-type TerminationObservedEvent<TSession> = SharedWorkerHostLifecycleEvent<
+type TerminationObservedEvent<TSession> = WorkerHostLifecycleEvent<
   'termination-observed',
   {
     session: TSession;
@@ -120,10 +119,7 @@ type TerminationObservedEvent<TSession> = SharedWorkerHostLifecycleEvent<
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-export type SharedWorkerHostLifecycleMachineBoundaryEvent<
-  TSession,
-  TRequest
-> =
+export type WorkerHostLifecycleMachineBoundaryEvent<TSession, TRequest> =
   | ReplacementRequestedEvent<TSession, TRequest>
   | ShutdownRequestedEvent<TSession>
   | TerminationObservedEvent<TSession>;
@@ -135,10 +131,7 @@ export type SharedWorkerHostLifecycleMachineBoundaryEvent<
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-export type SharedWorkerHostLifecycleMachineDerivedEvent<
-  TSession,
-  TRequest
-> =
+export type WorkerHostLifecycleMachineDerivedEvent<TSession, TRequest> =
   | SessionReadyEvent<TSession>
   | SessionStartFailedEvent<TSession>
   | ShutdownFailedEvent<TSession>
@@ -150,9 +143,9 @@ export type SharedWorkerHostLifecycleMachineDerivedEvent<
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-export type SharedWorkerHostLifecycleMachineEvent<TSession, TRequest> =
-  | SharedWorkerHostLifecycleMachineBoundaryEvent<TSession, TRequest>
-  | SharedWorkerHostLifecycleMachineDerivedEvent<TSession, TRequest>;
+export type WorkerHostLifecycleMachineEvent<TSession, TRequest> =
+  | WorkerHostLifecycleMachineBoundaryEvent<TSession, TRequest>
+  | WorkerHostLifecycleMachineDerivedEvent<TSession, TRequest>;
 
 /**
  * Cross-cutting event-processor callback used by the grouped internal machine
@@ -161,18 +154,18 @@ export type SharedWorkerHostLifecycleMachineEvent<TSession, TRequest> =
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-export type SharedWorkerHostLifecycleMachineEventProcessor<
-  TSession extends SharedWorkerHostLifecycleSessionBase,
+export type WorkerHostLifecycleMachineEventProcessor<
+  TSession extends WorkerHostLifecycleSessionBase,
   TRequest
 > = (input: {
   /**
    * Active worker-session registry.
    */
-  workerSessions: SharedWorkerSessionRegistry<TSession>;
+  workerSessions: WorkerSessionRegistry<TSession>;
   /**
    * Internal lifecycle event to process.
    */
-  event: SharedWorkerHostLifecycleMachineEvent<TSession, TRequest>;
+  event: WorkerHostLifecycleMachineEvent<TSession, TRequest>;
 }) => Promise<void>;
 
 /**
@@ -180,13 +173,13 @@ export type SharedWorkerHostLifecycleMachineEventProcessor<
  *
  * @template TSession Concrete host-managed session shape.
  */
-export type SharedWorkerHostLifecycleMachineForceCloseInvoker<
-  TSession extends SharedWorkerHostLifecycleSessionBase
+export type WorkerHostLifecycleMachineForceCloseInvoker<
+  TSession extends WorkerHostLifecycleSessionBase
 > = (input: {
   /**
    * Active worker-session registry.
    */
-  workerSessions: SharedWorkerSessionRegistry<TSession>;
+  workerSessions: WorkerSessionRegistry<TSession>;
   /**
    * Session being force-closed.
    */
@@ -211,8 +204,8 @@ export type SharedWorkerHostLifecycleMachineForceCloseInvoker<
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-export type SharedWorkerHostLifecycleMachineSessionContext<
-  TSession extends SharedWorkerHostLifecycleSessionBase,
+export type WorkerHostLifecycleMachineSessionContext<
+  TSession extends WorkerHostLifecycleSessionBase,
   TRequest
 > = {
   /**
@@ -226,7 +219,7 @@ export type SharedWorkerHostLifecycleMachineSessionContext<
     /**
      * Active worker-session registry that will own the created session.
      */
-    workerSessions: SharedWorkerSessionRegistry<TSession>;
+    workerSessions: WorkerSessionRegistry<TSession>;
     /**
      * Worker-family request that triggered session creation.
      */
@@ -244,7 +237,7 @@ export type SharedWorkerHostLifecycleMachineSessionContext<
      * Worker-family request that wants to use the session.
      */
     request: TRequest;
-  }) => SharedWorkerHostLifecycleReuseDecision;
+  }) => WorkerHostLifecycleReuseDecision;
   /**
    * Perform worker-family startup/readiness work for a fresh session.
    */
@@ -276,8 +269,8 @@ export type SharedWorkerHostLifecycleMachineSessionContext<
  *
  * @template TSession Concrete host-managed session shape.
  */
-export type SharedWorkerHostLifecycleMachineShutdownContext<
-  TSession extends SharedWorkerHostLifecycleSessionBase
+export type WorkerHostLifecycleMachineShutdownContext<
+  TSession extends WorkerHostLifecycleSessionBase
 > = {
   /**
    * Send the shared shutdown request over IPC.
@@ -308,7 +301,7 @@ export type SharedWorkerHostLifecycleMachineShutdownContext<
   /**
    * Shared force-close invoker.
    */
-  invokeForceClose: SharedWorkerHostLifecycleMachineForceCloseInvoker<TSession>;
+  invokeForceClose: WorkerHostLifecycleMachineForceCloseInvoker<TSession>;
 };
 
 /**
@@ -319,9 +312,9 @@ export type SharedWorkerHostLifecycleMachineShutdownContext<
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-export type SharedWorkerHostLifecycleMachineContext<
+export type WorkerHostLifecycleMachineContext<
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>,
+  TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 > = {
   /**
@@ -331,16 +324,13 @@ export type SharedWorkerHostLifecycleMachineContext<
   /**
    * Grouped session rules used by session resolution and startup flows.
    */
-  session: SharedWorkerHostLifecycleMachineSessionContext<TSession, TRequest>;
+  session: WorkerHostLifecycleMachineSessionContext<TSession, TRequest>;
   /**
    * Grouped shutdown rules used by graceful shutdown and force-close flows.
    */
-  shutdown: SharedWorkerHostLifecycleMachineShutdownContext<TSession>;
+  shutdown: WorkerHostLifecycleMachineShutdownContext<TSession>;
   /**
    * Cross-cutting internal lifecycle event processor.
    */
-  processEvent: SharedWorkerHostLifecycleMachineEventProcessor<
-    TSession,
-    TRequest
-  >;
+  processEvent: WorkerHostLifecycleMachineEventProcessor<TSession, TRequest>;
 };

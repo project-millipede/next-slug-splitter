@@ -1,10 +1,7 @@
+import type { IfStrictExtends, NoPayload } from '../types';
 import type {
-  IfStrictExtends,
-  NoPayload
-} from '../types';
-import type {
-  SharedWorkerSession,
-  SharedWorkerSessionBase
+  WorkerSession,
+  WorkerSessionBase
 } from '../host/session-lifecycle';
 
 /**
@@ -19,7 +16,7 @@ import type {
  * - `failed`: startup or later lifecycle work failed before full close
  * - `closed`: the session has fully terminated and cannot be reused
  */
-export type SharedWorkerHostLifecyclePhase =
+export type WorkerHostLifecyclePhase =
   | 'starting'
   | 'ready'
   | 'shutting-down'
@@ -29,9 +26,9 @@ export type SharedWorkerHostLifecyclePhase =
 /**
  * Backwards-compatible alias for the shared host lifecycle phase type.
  *
- * @deprecated Use {@link SharedWorkerHostLifecyclePhase} instead.
+ * @deprecated Use {@link WorkerHostLifecyclePhase} instead.
  */
-export type SharedWorkerHostSessionPhase = SharedWorkerHostLifecyclePhase;
+export type WorkerHostSessionPhase = WorkerHostLifecyclePhase;
 
 /**
  * Strategy A for host lifecycle events: omit the payload property entirely.
@@ -55,7 +52,7 @@ type HostLifecycleEventWithPayloadProps<TPayload> = {
  *
  * @template TPayload Structured payload for one host lifecycle event.
  */
-type SharedWorkerHostLifecycleEventPayload<TPayload> = IfStrictExtends<
+type WorkerHostLifecycleEventPayload<TPayload> = IfStrictExtends<
   TPayload,
   NoPayload,
   HostLifecycleEventWithoutPayloadProps,
@@ -74,7 +71,7 @@ type SharedWorkerHostLifecycleEventPayload<TPayload> = IfStrictExtends<
  * - they are not worker IPC responses
  * - they intentionally do not carry `requestId`
  */
-export type SharedWorkerHostLifecycleEvent<
+export type WorkerHostLifecycleEvent<
   TSubject extends string,
   TPayload = NoPayload
 > = {
@@ -83,12 +80,12 @@ export type SharedWorkerHostLifecycleEvent<
    * dispatcher.
    */
   subject: TSubject;
-} & SharedWorkerHostLifecycleEventPayload<TPayload>;
+} & WorkerHostLifecycleEventPayload<TPayload>;
 
 /**
  * Minimal host lifecycle event shape used by the shared dispatcher.
  */
-export type SharedWorkerAnyHostLifecycleEvent = {
+export type WorkerAnyHostLifecycleEvent = {
   /**
    * Discriminating lifecycle-event subject.
    */
@@ -101,13 +98,13 @@ export type SharedWorkerAnyHostLifecycleEvent = {
  * @remarks
  * This base shape contains only lifecycle fields that do not depend on the
  * worker-family response union. Response-typed pending-request tracking stays
- * layered on top by {@link SharedWorkerHostLifecycleSession}.
+ * layered on top by {@link WorkerHostLifecycleSession}.
  */
-export type SharedWorkerHostLifecycleSessionBase = SharedWorkerSessionBase & {
+export type WorkerHostLifecycleSessionBase = WorkerSessionBase & {
   /**
    * Current parent-process lifecycle phase for the session.
    */
-  phase: SharedWorkerHostLifecyclePhase;
+  phase: WorkerHostLifecyclePhase;
   /**
    * Shared readiness promise for the session.
    *
@@ -127,7 +124,7 @@ export type SharedWorkerHostLifecycleSessionBase = SharedWorkerSessionBase & {
  *
  * @template TResponse Successful worker response union carried by the session.
  * Aspects of `TResponse` here:
- * - it is inherited from {@link SharedWorkerSession}
+ * - it is inherited from {@link WorkerSession}
  * - it still describes the successful response type carried by the stored
  *   `resolve(...)` callback in `pendingRequests`
  * - some lifecycle helpers still thread `TResponse` through their signatures
@@ -135,5 +132,5 @@ export type SharedWorkerHostLifecycleSessionBase = SharedWorkerSessionBase & {
  *   paths and do not inspect any successful response value from those stored
  *   pending requests
  */
-export type SharedWorkerHostLifecycleSession<TResponse> =
-  SharedWorkerHostLifecycleSessionBase & SharedWorkerSession<TResponse>;
+export type WorkerHostLifecycleSession<TResponse> =
+  WorkerHostLifecycleSessionBase & WorkerSession<TResponse>;

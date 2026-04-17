@@ -1,10 +1,10 @@
 import type { JsonValue } from '../../../utils/type-guards-json';
 import type {
-  SharedWorkerRequestAction,
-  SharedWorkerResponseAction,
-  SharedWorkerResponseEnvelope,
-  SharedWorkerShutdownRequest,
-  SharedWorkerShutdownResponse
+  WorkerRequestAction,
+  WorkerResponseAction,
+  WorkerResponseEnvelope,
+  WorkerShutdownRequest,
+  WorkerShutdownResponse
 } from '../../shared/worker/types';
 
 /**
@@ -28,7 +28,7 @@ type AppPageDataCompileRequestPayload = {
 /**
  * Request action used to compile one page-data payload in the isolated worker.
  */
-export type AppPageDataCompileRequest = SharedWorkerRequestAction<
+export type AppPageDataCompileRequest = WorkerRequestAction<
   'compile-page-data',
   AppPageDataCompileRequestPayload
 >;
@@ -39,7 +39,7 @@ export type AppPageDataCompileRequest = SharedWorkerRequestAction<
  */
 export type AppPageDataWorkerRequest =
   | AppPageDataCompileRequest
-  | SharedWorkerShutdownRequest;
+  | WorkerShutdownRequest;
 
 /**
  * Payload returned after successfully compiling one page-data payload.
@@ -54,7 +54,7 @@ type AppPageDataCompiledResponsePayload = {
 /**
  * Successful compile response returned by the App page-data worker.
  */
-export type AppPageDataCompiledResponse = SharedWorkerResponseAction<
+export type AppPageDataCompiledResponse = WorkerResponseAction<
   'page-data-compiled',
   AppPageDataCompiledResponsePayload
 >;
@@ -64,7 +64,7 @@ export type AppPageDataCompiledResponse = SharedWorkerResponseAction<
  */
 export type AppPageDataWorkerResponse =
   | AppPageDataCompiledResponse
-  | SharedWorkerShutdownResponse;
+  | WorkerShutdownResponse;
 
 /**
  * Request/response pair carried by the App page-data worker protocol.
@@ -84,11 +84,11 @@ export type AppPageDataWorkerExchange =
       /**
        * Request variant sent to the worker.
        */
-      request: SharedWorkerShutdownRequest;
+      request: WorkerShutdownRequest;
       /**
        * Successful response paired with the request variant.
        */
-      response: SharedWorkerShutdownResponse;
+      response: WorkerShutdownResponse;
     };
 
 /**
@@ -104,4 +104,4 @@ export type AppPageDataWorkerExchangeResponse<
  * Outer IPC response envelope used by the App page-data worker.
  */
 export type AppPageDataWorkerResponseEnvelope =
-  SharedWorkerResponseEnvelope<AppPageDataWorkerResponse>;
+  WorkerResponseEnvelope<AppPageDataWorkerResponse>;

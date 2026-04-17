@@ -3,22 +3,22 @@ import type { spawn } from 'node:child_process';
 
 import { describe, expect, test, vi } from 'vitest';
 
-import { createSharedWorkerSession } from '../../../../../next/shared/worker/host/session-lifecycle';
+import { createWorkerSession } from '../../../../../next/shared/worker/host/session-lifecycle';
 import {
-  createSharedWorkerHostLifecycleSession,
-  finalizeSharedWorkerHostLifecycleSession,
-  markSharedWorkerHostSessionFailed,
-  markSharedWorkerHostSessionReady
+  createWorkerHostLifecycleSession,
+  finalizeWorkerHostLifecycleSession,
+  markWorkerHostSessionFailed,
+  markWorkerHostSessionReady
 } from '../../../../../next/shared/worker/host-lifecycle/session';
 
-import type { SharedWorkerHostLifecycleSession } from '../../../../../next/shared/worker/host-lifecycle/types';
+import type { WorkerHostLifecycleSession } from '../../../../../next/shared/worker/host-lifecycle/types';
 
-type SharedWorkerChildStub = EventEmitter & {
+type WorkerChildStub = EventEmitter & {
   kill: ReturnType<typeof vi.fn>;
 };
 
-const createSharedWorkerChildStub = (): SharedWorkerChildStub => {
-  const child = new EventEmitter() as SharedWorkerChildStub;
+const createWorkerChildStub = (): WorkerChildStub => {
+  const child = new EventEmitter() as WorkerChildStub;
 
   child.kill = vi.fn(() => true);
 
@@ -26,10 +26,10 @@ const createSharedWorkerChildStub = (): SharedWorkerChildStub => {
 };
 
 const createManagedSession = <TResponse>(
-  child: SharedWorkerChildStub
-): SharedWorkerHostLifecycleSession<TResponse> =>
-  createSharedWorkerHostLifecycleSession(
-    createSharedWorkerSession<TResponse>({
+  child: WorkerChildStub
+): WorkerHostLifecycleSession<TResponse> =>
+  createWorkerHostLifecycleSession(
+    createWorkerSession<TResponse>({
       sessionKey: 'managed-session',
       child: child as unknown as ReturnType<typeof spawn>
     })
@@ -37,7 +37,7 @@ const createManagedSession = <TResponse>(
 
 describe('shared worker host lifecycle session helpers', () => {
   test('creates host-managed sessions in the starting phase with a shared readiness promise', async () => {
-    const session = createManagedSession<string>(createSharedWorkerChildStub());
+    const session = createManagedSession<string>(createWorkerChildStub());
 
     expect(session.phase).toBe('starting');
     expect(session.failureError).toBeNull();
@@ -45,9 +45,9 @@ describe('shared worker host lifecycle session helpers', () => {
   });
 
   test('marks the session ready and resolves the shared readiness promise', async () => {
-    const session = createManagedSession<string>(createSharedWorkerChildStub());
+    const session = createManagedSession<string>(createWorkerChildStub());
 
-    markSharedWorkerHostSessionReady(session);
+    markWorkerHostSessionReady(session);
 
     await expect(session.readyPromise).resolves.toBeUndefined();
     expect(session.phase).toBe('ready');
@@ -55,10 +55,10 @@ describe('shared worker host lifecycle session helpers', () => {
   });
 
   test('marks the session failed and rejects the shared readiness promise', async () => {
-    const session = createManagedSession<string>(createSharedWorkerChildStub());
+    const session = createManagedSession<string>(createWorkerChildStub());
     const failure = new Error('startup failed');
 
-    markSharedWorkerHostSessionFailed({
+    markWorkerHostSessionFailed({
       session,
       error: failure
     });
@@ -69,12 +69,12 @@ describe('shared worker host lifecycle session helpers', () => {
   });
 
   test('finalizes the session to closed after termination is observed', async () => {
-    const session = createManagedSession<string>(createSharedWorkerChildStub());
+    const session = createManagedSession<string>(createWorkerChildStub());
     const workerSessions = new Map([[session.sessionKey, session]]);
 
-    finalizeSharedWorkerHostLifecycleSession<
+    finalizeWorkerHostLifecycleSession<
       string,
-      SharedWorkerHostLifecycleSession<string>
+      WorkerHostLifecycleSession<string>
     >({
       workerSessions,
       session

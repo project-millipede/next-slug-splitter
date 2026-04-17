@@ -1,4 +1,4 @@
-import { installSharedWorkerRuntimeRequestLoop } from '../../../shared/worker/runtime/entry';
+import { installWorkerRuntimeRequestLoop } from '../../../shared/worker/runtime/entry';
 import { debugRouteHandlerProxyWorker } from '../debug-log';
 import { createRouteHandlerProxyWorkerRuntimeMachine } from './machine';
 
@@ -26,7 +26,7 @@ import type { RouteHandlerProxyWorkerRequest } from '../types';
 const main = async (): Promise<void> => {
   const runtimeMachine = createRouteHandlerProxyWorkerRuntimeMachine();
 
-  installSharedWorkerRuntimeRequestLoop<RouteHandlerProxyWorkerRequest>({
+  installWorkerRuntimeRequestLoop<RouteHandlerProxyWorkerRequest>({
     workerLabel: 'proxy worker',
     handleRequest: async request => {
       debugRouteHandlerProxyWorker('request:start', {

@@ -1,15 +1,15 @@
 import { describe, expect, test } from 'vitest';
 
-import { dispatchSharedWorkerRequestBySubject } from '../../../../../next/shared/worker/runtime/dispatcher';
+import { dispatchWorkerRequestBySubject } from '../../../../../next/shared/worker/runtime/dispatcher';
 import type {
-  SharedWorkerRequestAction,
-  SharedWorkerShutdownRequest
+  WorkerRequestAction,
+  WorkerShutdownRequest
 } from '../../../../../next/shared/worker/types';
 
 type DispatcherTestRequest =
-  | SharedWorkerRequestAction<'bootstrap', { generation: string }>
-  | SharedWorkerRequestAction<'resolve-lazy-miss', { pathname: string }>
-  | SharedWorkerShutdownRequest;
+  | WorkerRequestAction<'bootstrap', { generation: string }>
+  | WorkerRequestAction<'resolve-lazy-miss', { pathname: string }>
+  | WorkerShutdownRequest;
 
 type DispatcherTestResponse =
   | {
@@ -27,7 +27,7 @@ type DispatcherTestResponse =
 
 describe('shared worker runtime dispatcher', () => {
   test('routes one request by subject with typed payload access', async () => {
-    const result = await dispatchSharedWorkerRequestBySubject<
+    const result = await dispatchWorkerRequestBySubject<
       DispatcherTestRequest,
       DispatcherTestResponse,
       { handled: Array<string> },
@@ -84,7 +84,7 @@ describe('shared worker runtime dispatcher', () => {
 
   test('fails for unsupported subjects', async () => {
     await expect(
-      dispatchSharedWorkerRequestBySubject<
+      dispatchWorkerRequestBySubject<
         DispatcherTestRequest,
         DispatcherTestResponse,
         { handled: Array<string> },

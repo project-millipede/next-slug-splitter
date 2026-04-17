@@ -1,22 +1,15 @@
-import type { SharedWorkerSessionRegistry } from '../../../host/session-lifecycle';
-import type { SharedWorkerHostLifecycleSession } from '../../types';
-import {
-  forceCloseSharedWorkerHostLifecycleSession
-} from '../../session';
+import type { WorkerHostLifecycleSession } from '../../types';
+import { forceCloseWorkerHostLifecycleSession } from '../../session';
 
-import {
-  createSharedWorkerHostLifecycleMachineApi
-} from './api';
-import {
-  createSharedWorkerHostLifecycleMachineEventProcessor
-} from './event-processor';
+import { createWorkerHostLifecycleMachineApi } from './api';
+import { createWorkerHostLifecycleMachineEventProcessor } from './event-processor';
 import type {
-  SharedWorkerHostLifecycleMachineContext,
-  SharedWorkerHostLifecycleMachineShutdownContext
+  WorkerHostLifecycleMachineContext,
+  WorkerHostLifecycleMachineShutdownContext
 } from './types';
 import type {
-  CreateSharedWorkerHostLifecycleMachineOptions,
-  SharedWorkerHostLifecycleMachine
+  CreateWorkerHostLifecycleMachineOptions,
+  WorkerHostLifecycleMachine
 } from '../types';
 
 /**
@@ -29,9 +22,9 @@ import type {
  * @param options Public machine-creation options.
  * @returns Fully normalized internal machine context.
  */
-const resolveSharedWorkerHostLifecycleMachineContext = <
+const resolveWorkerHostLifecycleMachineContext = <
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>,
+  TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 >({
   workerLabel,
@@ -49,16 +42,16 @@ const resolveSharedWorkerHostLifecycleMachineContext = <
     terminationTimeoutErrorMessage,
     forceCloseSession: forceCloseSessionHook
   }
-}: CreateSharedWorkerHostLifecycleMachineOptions<TResponse, TSession, TRequest>): SharedWorkerHostLifecycleMachineContext<
+}: CreateWorkerHostLifecycleMachineOptions<
   TResponse,
   TSession,
   TRequest
-> => {
+>): WorkerHostLifecycleMachineContext<TResponse, TSession, TRequest> => {
   /**
    * Create the default force-close invoker for the normalized shutdown
    * context.
    */
-  const invokeForceClose: SharedWorkerHostLifecycleMachineShutdownContext<TSession>['invokeForceClose'] =
+  const invokeForceClose: WorkerHostLifecycleMachineShutdownContext<TSession>['invokeForceClose'] =
     ({ workerSessions, session, reason }): void => {
       if (forceCloseSessionHook != null) {
         forceCloseSessionHook({
@@ -69,7 +62,7 @@ const resolveSharedWorkerHostLifecycleMachineContext = <
         return;
       }
 
-      forceCloseSharedWorkerHostLifecycleSession({
+      forceCloseWorkerHostLifecycleSession({
         workerSessions,
         session,
         reason
@@ -92,12 +85,11 @@ const resolveSharedWorkerHostLifecycleMachineContext = <
       terminationTimeoutErrorMessage,
       terminationTimeoutMs
     },
-    processEvent:
-      createSharedWorkerHostLifecycleMachineEventProcessor<
-        TResponse,
-        TSession,
-        TRequest
-      >(workerLabel)
+    processEvent: createWorkerHostLifecycleMachineEventProcessor<
+      TResponse,
+      TSession,
+      TRequest
+    >(workerLabel)
   };
 };
 
@@ -110,23 +102,22 @@ const resolveSharedWorkerHostLifecycleMachineContext = <
  * @param options Public machine-creation options.
  * @returns Shared host lifecycle machine for one worker family.
  */
-export const createSharedWorkerHostLifecycleMachineInternal = <
+export const createWorkerHostLifecycleMachineInternal = <
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>,
+  TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 >(
-  options: CreateSharedWorkerHostLifecycleMachineOptions<
+  options: CreateWorkerHostLifecycleMachineOptions<
     TResponse,
     TSession,
     TRequest
   >
-): SharedWorkerHostLifecycleMachine<TResponse, TSession, TRequest> => {
-  const context =
-    resolveSharedWorkerHostLifecycleMachineContext<
-      TResponse,
-      TSession,
-      TRequest
-    >(options);
+): WorkerHostLifecycleMachine<TResponse, TSession, TRequest> => {
+  const context = resolveWorkerHostLifecycleMachineContext<
+    TResponse,
+    TSession,
+    TRequest
+  >(options);
 
-  return createSharedWorkerHostLifecycleMachineApi(context);
+  return createWorkerHostLifecycleMachineApi(context);
 };

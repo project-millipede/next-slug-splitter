@@ -1,8 +1,8 @@
 import {
-  getSharedWorkerHostGlobalState,
-  type SharedWorkerHostGlobalState,
-  type SharedWorkerHostProcessShutdownState,
-  type SharedWorkerHostProtocolState
+  getWorkerHostGlobalState,
+  type WorkerHostGlobalState,
+  type WorkerHostProcessShutdownState,
+  type WorkerHostProtocolState
 } from '../../../shared/worker/host/global-state';
 
 import type { RouteHandlerProxyWorkerResponse } from '../types';
@@ -37,14 +37,13 @@ export type RouteHandlerProxyWorkerClientState = {
 /**
  * Shared host-side IPC protocol state.
  */
-export type RouteHandlerProxyWorkerProtocolState =
-  SharedWorkerHostProtocolState;
+export type RouteHandlerProxyWorkerProtocolState = WorkerHostProtocolState;
 
 /**
  * Shared process-shutdown state for graceful worker cleanup.
  */
 export type RouteHandlerProxyWorkerProcessShutdownState =
-  SharedWorkerHostProcessShutdownState;
+  WorkerHostProcessShutdownState;
 
 /**
  * Full process-global host state shared by every public worker host entry.
@@ -55,7 +54,7 @@ export type RouteHandlerProxyWorkerProcessShutdownState =
  * `globalThis` for host-worker singleton behavior.
  */
 export type RouteHandlerProxyWorkerHostGlobalState =
-  SharedWorkerHostGlobalState<RouteHandlerProxyWorkerClientState>;
+  WorkerHostGlobalState<RouteHandlerProxyWorkerClientState>;
 
 /**
  * Process-global symbol key used to store the host-worker singleton state.
@@ -85,7 +84,7 @@ const createRouteHandlerProxyWorkerClientState =
  */
 export const getRouteHandlerProxyWorkerHostGlobalState =
   (): RouteHandlerProxyWorkerHostGlobalState =>
-    getSharedWorkerHostGlobalState(
+    getWorkerHostGlobalState(
       ROUTE_HANDLER_PROXY_WORKER_HOST_GLOBAL_STATE_KEY,
       createRouteHandlerProxyWorkerClientState
     );

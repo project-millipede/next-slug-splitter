@@ -1,4 +1,4 @@
-import type { SharedWorkerAnyHostLifecycleEvent } from './types';
+import type { WorkerAnyHostLifecycleEvent } from './types';
 
 /**
  * Shared typed dispatcher for internal host lifecycle events.
@@ -18,8 +18,8 @@ import type { SharedWorkerAnyHostLifecycleEvent } from './types';
  * @template TEvent Narrowed lifecycle event handled by this function.
  * @template TResult Result returned by the handler.
  */
-export type SharedWorkerHostLifecycleEventHandler<
-  TEvent extends SharedWorkerAnyHostLifecycleEvent,
+export type WorkerHostLifecycleEventHandler<
+  TEvent extends WorkerAnyHostLifecycleEvent,
   TResult
 > = (input: {
   /**
@@ -34,11 +34,11 @@ export type SharedWorkerHostLifecycleEventHandler<
  * @template TEvent Full lifecycle-event union handled by the dispatcher.
  * @template TResult Result returned by each handler.
  */
-export type SharedWorkerHostLifecycleEventHandlerMap<
-  TEvent extends SharedWorkerAnyHostLifecycleEvent,
+export type WorkerHostLifecycleEventHandlerMap<
+  TEvent extends WorkerAnyHostLifecycleEvent,
   TResult
 > = {
-  [TSubject in TEvent['subject']]: SharedWorkerHostLifecycleEventHandler<
+  [TSubject in TEvent['subject']]: WorkerHostLifecycleEventHandler<
     Extract<TEvent, { subject: TSubject }>,
     TResult
   >;
@@ -53,17 +53,19 @@ export type SharedWorkerHostLifecycleEventHandlerMap<
  * @param handlers Typed handler map keyed by event `subject`.
  * @returns The value returned by the resolved handler.
  */
-export const dispatchSharedWorkerHostLifecycleEventBySubject = async <
-  TEvent extends SharedWorkerAnyHostLifecycleEvent,
+export const dispatchWorkerHostLifecycleEventBySubject = async <
+  TEvent extends WorkerAnyHostLifecycleEvent,
   TResult
 >(
   event: TEvent,
-  handlers: SharedWorkerHostLifecycleEventHandlerMap<TEvent, TResult>
+  handlers: WorkerHostLifecycleEventHandlerMap<TEvent, TResult>
 ): Promise<TResult> => {
-  const handler = (handlers as unknown as Record<
-    string,
-    SharedWorkerHostLifecycleEventHandler<TEvent, TResult>
-  >)[event.subject];
+  const handler = (
+    handlers as unknown as Record<
+      string,
+      WorkerHostLifecycleEventHandler<TEvent, TResult>
+    >
+  )[event.subject];
 
   if (handler == null) {
     throw new Error(

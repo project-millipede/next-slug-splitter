@@ -1,23 +1,23 @@
-import type { SharedWorkerSessionRegistry } from '../../../host/session-lifecycle';
+import type { WorkerSessionRegistry } from '../../../host/session-lifecycle';
 
 import {
-  dispatchSharedWorkerHostLifecycleEventBySubject,
-  type SharedWorkerHostLifecycleEventHandlerMap
+  dispatchWorkerHostLifecycleEventBySubject,
+  type WorkerHostLifecycleEventHandlerMap
 } from '../../dispatcher';
 import {
-  finalizeSharedWorkerHostLifecycleSession,
-  markSharedWorkerHostSessionFailed,
-  markSharedWorkerHostSessionReady,
-  rejectSharedWorkerHostLifecycleSessionReady
+  finalizeWorkerHostLifecycleSession,
+  markWorkerHostSessionFailed,
+  markWorkerHostSessionReady,
+  rejectWorkerHostLifecycleSessionReady
 } from '../../session';
-import type { SharedWorkerHostLifecycleSession } from '../../types';
+import type { WorkerHostLifecycleSession } from '../../types';
 
-import { createSharedWorkerHostLifecycleReplacementError } from './error-helpers';
+import { createWorkerHostLifecycleReplacementError } from './error-helpers';
 import type {
-  SharedWorkerHostLifecycleMachineBoundaryEvent,
-  SharedWorkerHostLifecycleMachineDerivedEvent,
-  SharedWorkerHostLifecycleMachineEvent,
-  SharedWorkerHostLifecycleMachineEventProcessor
+  WorkerHostLifecycleMachineBoundaryEvent,
+  WorkerHostLifecycleMachineDerivedEvent,
+  WorkerHostLifecycleMachineEvent,
+  WorkerHostLifecycleMachineEventProcessor
 } from './types';
 
 /**
@@ -26,9 +26,9 @@ import type {
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-type SharedWorkerHostLifecycleMachineBoundaryHandlerMap<TSession, TRequest> =
-  SharedWorkerHostLifecycleEventHandlerMap<
-    SharedWorkerHostLifecycleMachineBoundaryEvent<TSession, TRequest>,
+type WorkerHostLifecycleMachineBoundaryHandlerMap<TSession, TRequest> =
+  WorkerHostLifecycleEventHandlerMap<
+    WorkerHostLifecycleMachineBoundaryEvent<TSession, TRequest>,
     void
   >;
 
@@ -38,9 +38,9 @@ type SharedWorkerHostLifecycleMachineBoundaryHandlerMap<TSession, TRequest> =
  * @template TSession Concrete host-managed session shape.
  * @template TRequest Worker-family session-resolution input.
  */
-type SharedWorkerHostLifecycleMachineDerivedHandlerMap<TSession, TRequest> =
-  SharedWorkerHostLifecycleEventHandlerMap<
-    SharedWorkerHostLifecycleMachineDerivedEvent<TSession, TRequest>,
+type WorkerHostLifecycleMachineDerivedHandlerMap<TSession, TRequest> =
+  WorkerHostLifecycleEventHandlerMap<
+    WorkerHostLifecycleMachineDerivedEvent<TSession, TRequest>,
     void
   >;
 
@@ -70,27 +70,27 @@ type SharedWorkerHostLifecycleMachineDerivedHandlerMap<TSession, TRequest> =
  * @param workerSessions Active worker-session registry.
  * @returns Typed handler map keyed by lifecycle-event `subject`.
  */
-export const createSharedWorkerHostLifecycleMachineBoundaryEventHandlers = <
+export const createWorkerHostLifecycleMachineBoundaryEventHandlers = <
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>,
+  TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 >(
   workerLabel: string,
-  workerSessions: SharedWorkerSessionRegistry<TSession>
-): SharedWorkerHostLifecycleMachineBoundaryHandlerMap<TSession, TRequest> => ({
+  workerSessions: WorkerSessionRegistry<TSession>
+): WorkerHostLifecycleMachineBoundaryHandlerMap<TSession, TRequest> => ({
   'replacement-requested': async ({ event: nextEvent }): Promise<void> => {
     if (nextEvent.payload.session.phase !== 'starting') {
       return;
     }
 
-    const replacementError = createSharedWorkerHostLifecycleReplacementError(
+    const replacementError = createWorkerHostLifecycleReplacementError(
       workerLabel,
       nextEvent.payload.session,
       nextEvent.payload.reason
     );
 
     nextEvent.payload.session.failureError = replacementError;
-    rejectSharedWorkerHostLifecycleSessionReady({
+    rejectWorkerHostLifecycleSessionReady({
       session: nextEvent.payload.session,
       error: replacementError
     });
@@ -114,13 +114,13 @@ export const createSharedWorkerHostLifecycleMachineBoundaryEventHandlers = <
     ) {
       session.phase = 'failed';
       session.failureError = rejectionError;
-      rejectSharedWorkerHostLifecycleSessionReady({
+      rejectWorkerHostLifecycleSessionReady({
         session,
         error: rejectionError
       });
     }
 
-    finalizeSharedWorkerHostLifecycleSession<TResponse, TSession>({
+    finalizeWorkerHostLifecycleSession<TResponse, TSession>({
       workerSessions,
       session,
       rejectionError
@@ -145,24 +145,24 @@ export const createSharedWorkerHostLifecycleMachineBoundaryEventHandlers = <
  * @param workerLabel Human-readable worker label used in diagnostics.
  * @returns Typed handler map keyed by derived lifecycle-event `subject`.
  */
-export const createSharedWorkerHostLifecycleMachineDerivedEventHandlers = <
+export const createWorkerHostLifecycleMachineDerivedEventHandlers = <
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>,
+  TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 >(
   workerLabel: string
-): SharedWorkerHostLifecycleMachineDerivedHandlerMap<TSession, TRequest> => ({
+): WorkerHostLifecycleMachineDerivedHandlerMap<TSession, TRequest> => ({
   'session-ready': async ({ event: nextEvent }): Promise<void> => {
-    markSharedWorkerHostSessionReady(nextEvent.payload.session);
+    markWorkerHostSessionReady(nextEvent.payload.session);
   },
   'session-start-failed': async ({ event: nextEvent }): Promise<void> => {
-    markSharedWorkerHostSessionFailed({
+    markWorkerHostSessionFailed({
       session: nextEvent.payload.session,
       error: nextEvent.payload.error
     });
   },
   'shutdown-failed': async ({ event: nextEvent }): Promise<void> => {
-    markSharedWorkerHostSessionFailed({
+    markWorkerHostSessionFailed({
       session: nextEvent.payload.session,
       error: nextEvent.payload.error
     });
@@ -187,7 +187,7 @@ export const createSharedWorkerHostLifecycleMachineDerivedEventHandlers = <
       nextEvent.payload.session.phase = 'failed';
     }
 
-    rejectSharedWorkerHostLifecycleSessionReady({
+    rejectWorkerHostLifecycleSessionReady({
       session: nextEvent.payload.session,
       error: forceCloseError
     });
@@ -204,30 +204,30 @@ export const createSharedWorkerHostLifecycleMachineDerivedEventHandlers = <
  * @returns Shared event processor that dispatches host lifecycle events by
  * `subject`.
  */
-export const createSharedWorkerHostLifecycleMachineEventProcessor = <
+export const createWorkerHostLifecycleMachineEventProcessor = <
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>,
+  TSession extends WorkerHostLifecycleSession<TResponse>,
   TRequest
 >(
   workerLabel: string
-): SharedWorkerHostLifecycleMachineEventProcessor<TSession, TRequest> => {
+): WorkerHostLifecycleMachineEventProcessor<TSession, TRequest> => {
   return async ({ workerSessions, event }): Promise<void> => {
-    const handlers: SharedWorkerHostLifecycleEventHandlerMap<
-      SharedWorkerHostLifecycleMachineEvent<TSession, TRequest>,
+    const handlers: WorkerHostLifecycleEventHandlerMap<
+      WorkerHostLifecycleMachineEvent<TSession, TRequest>,
       void
     > = {
-      ...createSharedWorkerHostLifecycleMachineBoundaryEventHandlers<
+      ...createWorkerHostLifecycleMachineBoundaryEventHandlers<
         TResponse,
         TSession,
         TRequest
       >(workerLabel, workerSessions),
-      ...createSharedWorkerHostLifecycleMachineDerivedEventHandlers<
+      ...createWorkerHostLifecycleMachineDerivedEventHandlers<
         TResponse,
         TSession,
         TRequest
       >(workerLabel)
     };
 
-    await dispatchSharedWorkerHostLifecycleEventBySubject(event, handlers);
+    await dispatchWorkerHostLifecycleEventBySubject(event, handlers);
   };
 };

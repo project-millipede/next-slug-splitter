@@ -1,14 +1,14 @@
 import {
-  finalizeSharedWorkerSession,
-  forceCloseSharedWorkerSession,
-  type SharedWorkerSession,
-  type SharedWorkerSessionRegistry
+  finalizeWorkerSession,
+  forceCloseWorkerSession,
+  type WorkerSession,
+  type WorkerSessionRegistry
 } from '../host/session-lifecycle';
-import type { SharedWorkerDeferredSettler } from '../types';
+import type { WorkerDeferredSettler } from '../types';
 
 import type {
-  SharedWorkerHostLifecycleSession,
-  SharedWorkerHostLifecycleSessionBase
+  WorkerHostLifecycleSession,
+  WorkerHostLifecycleSessionBase
 } from './types';
 
 /**
@@ -33,7 +33,7 @@ import type {
 /**
  * Deferred readiness state tracked outside the public session shape.
  */
-type SharedWorkerHostLifecycleReadyState = SharedWorkerDeferredSettler<void> & {
+type WorkerHostLifecycleReadyState = WorkerDeferredSettler<void> & {
   /**
    * Whether the readiness promise has already been settled.
    */
@@ -44,7 +44,7 @@ type SharedWorkerHostLifecycleReadyState = SharedWorkerDeferredSettler<void> & {
  * Deferred readiness promise and settlement state for one host-managed
  * session.
  */
-type SharedWorkerHostLifecycleDeferredReadyState = {
+type WorkerHostLifecycleDeferredReadyState = {
   /**
    * Shared readiness promise observed by compatible callers.
    */
@@ -52,7 +52,7 @@ type SharedWorkerHostLifecycleDeferredReadyState = {
   /**
    * Deferred settlement state stored in the side WeakMap.
    */
-  readyState: SharedWorkerHostLifecycleReadyState;
+  readyState: WorkerHostLifecycleReadyState;
 };
 
 /**
@@ -88,9 +88,9 @@ type SharedWorkerHostLifecycleDeferredReadyState = {
  * The map is shared across worker families, but each session instance gets its
  * own private readiness entry.
  */
-const sharedWorkerHostLifecycleReadyStates = new WeakMap<
-  SharedWorkerHostLifecycleSessionBase,
-  SharedWorkerHostLifecycleReadyState
+const workerHostLifecycleReadyStates = new WeakMap<
+  WorkerHostLifecycleSessionBase,
+  WorkerHostLifecycleReadyState
 >();
 
 /**
@@ -98,8 +98,8 @@ const sharedWorkerHostLifecycleReadyStates = new WeakMap<
  *
  * @returns Deferred readiness promise and settlement state.
  */
-const createSharedWorkerHostLifecycleDeferredReadyState =
-  (): SharedWorkerHostLifecycleDeferredReadyState => {
+const createWorkerHostLifecycleDeferredReadyState =
+  (): WorkerHostLifecycleDeferredReadyState => {
     /**
      * Deferred settlement callbacks captured from the readiness promise.
      *
@@ -164,10 +164,10 @@ const createSharedWorkerHostLifecycleDeferredReadyState =
  * @returns `void` after the readiness promise has been settled when
  * applicable.
  */
-export const resolveSharedWorkerHostLifecycleSessionReady = (
-  session: SharedWorkerHostLifecycleSessionBase
+export const resolveWorkerHostLifecycleSessionReady = (
+  session: WorkerHostLifecycleSessionBase
 ): void => {
-  const readyState = sharedWorkerHostLifecycleReadyStates.get(session);
+  const readyState = workerHostLifecycleReadyStates.get(session);
 
   if (readyState == null) {
     throw new Error(
@@ -198,14 +198,14 @@ export const resolveSharedWorkerHostLifecycleSessionReady = (
  * @returns `void` after the readiness promise has been rejected when
  * applicable.
  */
-export const rejectSharedWorkerHostLifecycleSessionReady = ({
+export const rejectWorkerHostLifecycleSessionReady = ({
   session,
   error
 }: {
-  session: SharedWorkerHostLifecycleSessionBase;
+  session: WorkerHostLifecycleSessionBase;
   error: Error;
 }): void => {
-  const readyState = sharedWorkerHostLifecycleReadyStates.get(session);
+  const readyState = workerHostLifecycleReadyStates.get(session);
 
   if (readyState == null) {
     throw new Error(
@@ -238,18 +238,18 @@ export const rejectSharedWorkerHostLifecycleSessionReady = ({
  * @returns Host-managed session built from the shared lifecycle fields and the
  * worker-family-specific fields.
  */
-export const createCustomSharedWorkerHostLifecycleSession = <
+export const createCustomWorkerHostLifecycleSession = <
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>
+  TSession extends WorkerHostLifecycleSession<TResponse>
 >(
-  baseSession: SharedWorkerSession<TResponse>,
+  baseSession: WorkerSession<TResponse>,
   extendSession: (
-    lifecycleSession: SharedWorkerHostLifecycleSession<TResponse>
+    lifecycleSession: WorkerHostLifecycleSession<TResponse>
   ) => TSession
 ): TSession => {
   const { readyPromise, readyState } =
-    createSharedWorkerHostLifecycleDeferredReadyState();
-  const lifecycleSession: SharedWorkerHostLifecycleSession<TResponse> = {
+    createWorkerHostLifecycleDeferredReadyState();
+  const lifecycleSession: WorkerHostLifecycleSession<TResponse> = {
     /**
      * Preserve the low-level shared worker session fields as the base of the
      * host-managed lifecycle session.
@@ -277,7 +277,7 @@ export const createCustomSharedWorkerHostLifecycleSession = <
    */
   const customizedSession = extendSession(lifecycleSession);
 
-  sharedWorkerHostLifecycleReadyStates.set(customizedSession, readyState);
+  workerHostLifecycleReadyStates.set(customizedSession, readyState);
 
   return customizedSession;
 };
@@ -289,10 +289,10 @@ export const createCustomSharedWorkerHostLifecycleSession = <
  * @param baseSession Base session created by the low-level host primitives.
  * @returns Host-managed session extended with lifecycle state.
  */
-export const createSharedWorkerHostLifecycleSession = <TResponse>(
-  baseSession: SharedWorkerSession<TResponse>
-): SharedWorkerHostLifecycleSession<TResponse> =>
-  createCustomSharedWorkerHostLifecycleSession(
+export const createWorkerHostLifecycleSession = <TResponse>(
+  baseSession: WorkerSession<TResponse>
+): WorkerHostLifecycleSession<TResponse> =>
+  createCustomWorkerHostLifecycleSession(
     baseSession,
     // The plain shared lifecycle constructor does not add any worker-family
     // fields, so the lifecycle session itself is already the final session.
@@ -306,8 +306,8 @@ export const createSharedWorkerHostLifecycleSession = <TResponse>(
  * @param session Host-managed session.
  * @returns `void` after the phase and readiness promise have been settled.
  */
-export const markSharedWorkerHostSessionReady = <TResponse>(
-  session: SharedWorkerHostLifecycleSession<TResponse>
+export const markWorkerHostSessionReady = <TResponse>(
+  session: WorkerHostLifecycleSession<TResponse>
 ): void => {
   /**
    * Promote the session into the externally observable ready phase.
@@ -318,7 +318,7 @@ export const markSharedWorkerHostSessionReady = <TResponse>(
    * ready for normal work.
    */
   session.failureError = null;
-  resolveSharedWorkerHostLifecycleSessionReady(session);
+  resolveWorkerHostLifecycleSessionReady(session);
 };
 
 /**
@@ -332,11 +332,11 @@ export const markSharedWorkerHostSessionReady = <TResponse>(
  * @returns `void` after the phase, failure state, and readiness promise have
  * been settled.
  */
-export const markSharedWorkerHostSessionFailed = ({
+export const markWorkerHostSessionFailed = ({
   session,
   error
 }: {
-  session: SharedWorkerHostLifecycleSessionBase;
+  session: WorkerHostLifecycleSessionBase;
   error: Error;
 }): void => {
   /**
@@ -349,7 +349,7 @@ export const markSharedWorkerHostSessionFailed = ({
    * waiters and later shutdown/finalization logic.
    */
   session.failureError = error;
-  rejectSharedWorkerHostLifecycleSessionReady({
+  rejectWorkerHostLifecycleSessionReady({
     session,
     error
   });
@@ -366,20 +366,20 @@ export const markSharedWorkerHostSessionFailed = ({
  * @param input.onSessionClose Optional worker-family close hook.
  * @returns `void` after the low-level session has been killed.
  */
-export const forceCloseSharedWorkerHostLifecycleSession = <
-  TSession extends SharedWorkerHostLifecycleSessionBase
+export const forceCloseWorkerHostLifecycleSession = <
+  TSession extends WorkerHostLifecycleSessionBase
 >({
   workerSessions,
   session,
   reason,
   onSessionClose
 }: {
-  workerSessions: SharedWorkerSessionRegistry<TSession>;
+  workerSessions: WorkerSessionRegistry<TSession>;
   session: TSession;
   reason: string;
   onSessionClose?: (reason: string) => void;
 }): void => {
-  rejectSharedWorkerHostLifecycleSessionReady({
+  rejectWorkerHostLifecycleSessionReady({
     session,
     error:
       session.failureError ??
@@ -387,7 +387,7 @@ export const forceCloseSharedWorkerHostLifecycleSession = <
         `next-slug-splitter worker session "${session.sessionKey}" closed before it became ready (${reason}).`
       )
   });
-  forceCloseSharedWorkerSession({
+  forceCloseWorkerSession({
     workerSessions,
     session,
     reason,
@@ -415,15 +415,15 @@ export const forceCloseSharedWorkerHostLifecycleSession = <
  * callers.
  * @returns `void` after the low-level termination state has been settled.
  */
-export const finalizeSharedWorkerHostLifecycleSession = <
+export const finalizeWorkerHostLifecycleSession = <
   TResponse,
-  TSession extends SharedWorkerHostLifecycleSession<TResponse>
+  TSession extends WorkerHostLifecycleSession<TResponse>
 >({
   workerSessions,
   session,
   rejectionError
 }: {
-  workerSessions: SharedWorkerSessionRegistry<TSession>;
+  workerSessions: WorkerSessionRegistry<TSession>;
   session: TSession;
   rejectionError?: Error;
 }): void => {
@@ -443,7 +443,7 @@ export const finalizeSharedWorkerHostLifecycleSession = <
      * visible after the session fully closes.
      */
     session.failureError ??= normalizedError;
-    rejectSharedWorkerHostLifecycleSessionReady({
+    rejectWorkerHostLifecycleSessionReady({
       session,
       error: normalizedError
     });
@@ -454,7 +454,7 @@ export const finalizeSharedWorkerHostLifecycleSession = <
    * session is fully closed and cannot be reused.
    */
   session.phase = 'closed';
-  finalizeSharedWorkerSession<TResponse, TSession>({
+  finalizeWorkerSession<TResponse, TSession>({
     workerSessions,
     session,
     rejectionError

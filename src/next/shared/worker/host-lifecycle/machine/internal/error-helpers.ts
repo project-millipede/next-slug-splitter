@@ -1,4 +1,4 @@
-import type { SharedWorkerHostLifecycleSessionBase } from '../../types';
+import type { WorkerHostLifecycleSessionBase } from '../../types';
 
 /**
  * Shared error and wait helpers for the host lifecycle machine.
@@ -19,7 +19,7 @@ import type { SharedWorkerHostLifecycleSessionBase } from '../../types';
  * `Error`.
  * @returns Normalized `Error` instance.
  */
-export const toSharedWorkerHostLifecycleError = (
+export const toWorkerHostLifecycleError = (
   error: unknown,
   fallbackMessage: string
 ): Error => (error instanceof Error ? error : new Error(fallbackMessage));
@@ -33,7 +33,7 @@ export const toSharedWorkerHostLifecycleError = (
  * @returns The acknowledgement response, or the string `'timeout'` when the
  * wait exceeded the configured timeout.
  */
-export const waitForSharedWorkerHostAcknowledgement = async <TResponse>(
+export const waitForWorkerHostAcknowledgement = async <TResponse>(
   requestPromise: Promise<TResponse>,
   timeoutMs: number
 ): Promise<TResponse | 'timeout'> => {
@@ -62,9 +62,9 @@ export const waitForSharedWorkerHostAcknowledgement = async <TResponse>(
  * @param session Session that failed to become ready.
  * @returns Readiness failure error.
  */
-export const createSharedWorkerHostLifecycleReadinessError = (
+export const createWorkerHostLifecycleReadinessError = (
   workerLabel: string,
-  session: SharedWorkerHostLifecycleSessionBase
+  session: WorkerHostLifecycleSessionBase
 ): Error =>
   session.failureError ??
   new Error(
@@ -79,9 +79,9 @@ export const createSharedWorkerHostLifecycleReadinessError = (
  * @param reason Diagnostic replacement reason.
  * @returns Replacement readiness error.
  */
-export const createSharedWorkerHostLifecycleReplacementError = (
+export const createWorkerHostLifecycleReplacementError = (
   workerLabel: string,
-  session: SharedWorkerHostLifecycleSessionBase,
+  session: WorkerHostLifecycleSessionBase,
   reason: string
 ): Error =>
   new Error(
@@ -95,17 +95,17 @@ export const createSharedWorkerHostLifecycleReplacementError = (
  * @param session Host-managed session.
  * @returns `void` after the session is ready.
  */
-export const waitForSharedWorkerHostSessionReady = async (
+export const waitForWorkerHostSessionReady = async (
   workerLabel: string,
-  session: SharedWorkerHostLifecycleSessionBase
+  session: WorkerHostLifecycleSessionBase
 ): Promise<void> => {
   try {
     await session.readyPromise;
   } catch {
-    throw createSharedWorkerHostLifecycleReadinessError(workerLabel, session);
+    throw createWorkerHostLifecycleReadinessError(workerLabel, session);
   }
 
   if (session.phase !== 'ready') {
-    throw createSharedWorkerHostLifecycleReadinessError(workerLabel, session);
+    throw createWorkerHostLifecycleReadinessError(workerLabel, session);
   }
 };

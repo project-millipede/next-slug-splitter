@@ -1,30 +1,28 @@
 import { describe, expect, test, vi } from 'vitest';
 
+import { createWorkerHostProtocolState } from '../../../../../next/shared/worker/host/global-state';
 import {
-  createSharedWorkerHostProtocolState
-} from '../../../../../next/shared/worker/host/global-state';
-import {
-  createSharedWorkerRequestId,
-  sendSharedWorkerRequest,
-  resetSharedWorkerProtocolState
+  createWorkerRequestId,
+  sendWorkerRequest,
+  resetWorkerProtocolState
 } from '../../../../../next/shared/worker/host/protocol';
 
 describe('shared worker host protocol', () => {
   test('request id sequencing resets correctly', () => {
-    const protocolState = createSharedWorkerHostProtocolState();
+    const protocolState = createWorkerHostProtocolState();
 
-    expect(
-      createSharedWorkerRequestId(protocolState, 'shared-worker-request')
-    ).toBe('shared-worker-request-1');
-    expect(
-      createSharedWorkerRequestId(protocolState, 'shared-worker-request')
-    ).toBe('shared-worker-request-2');
+    expect(createWorkerRequestId(protocolState, 'shared-worker-request')).toBe(
+      'shared-worker-request-1'
+    );
+    expect(createWorkerRequestId(protocolState, 'shared-worker-request')).toBe(
+      'shared-worker-request-2'
+    );
 
-    resetSharedWorkerProtocolState(protocolState);
+    resetWorkerProtocolState(protocolState);
 
-    expect(
-      createSharedWorkerRequestId(protocolState, 'shared-worker-request')
-    ).toBe('shared-worker-request-1');
+    expect(createWorkerRequestId(protocolState, 'shared-worker-request')).toBe(
+      'shared-worker-request-1'
+    );
   });
 
   test('rejects IPC sends for closed sessions', async () => {
@@ -38,7 +36,7 @@ describe('shared worker host protocol', () => {
     };
 
     await expect(
-      sendSharedWorkerRequest(
+      sendWorkerRequest(
         session,
         {
           requestId: 'request-1',
@@ -63,7 +61,7 @@ describe('shared worker host protocol', () => {
     };
 
     await expect(
-      sendSharedWorkerRequest(
+      sendWorkerRequest(
         session,
         {
           requestId: 'request-1',
