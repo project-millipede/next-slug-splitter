@@ -4,12 +4,16 @@ import {
   type WorkerSession,
   type WorkerSessionRegistry
 } from '../host/session-lifecycle';
-import type { WorkerDeferredSettler } from '../types';
 
 import type {
   WorkerHostLifecycleSession,
   WorkerHostLifecycleSessionBase
 } from './types';
+import {
+  initializeWorkerHostLifecycleSessionReadiness,
+  rejectWorkerHostLifecycleSessionReadiness,
+  resolveWorkerHostLifecycleSessionReadiness
+} from './session-readiness';
 
 /**
  * Shared low-level session-state helpers for the host lifecycle layer.
@@ -17,7 +21,7 @@ import type {
  * @remarks
  * This module intentionally stays below the host lifecycle FSM:
  * - create the shared host-managed session shape
- * - settle the shared `readyPromise`
+ * - initialize and settle the shared readiness boundary
  * - mark `ready` and `failed` phase transitions
  * - bridge low-level force-close/finalization helpers onto lifecycle state
  *
@@ -31,201 +35,6 @@ import type {
  */
 
 /**
- * Deferred readiness state tracked outside the public session shape.
- */
-type WorkerHostLifecycleReadyState = WorkerDeferredSettler<void> & {
-  /**
-   * Whether the readiness promise has already been settled.
-   */
-  settled: boolean;
-};
-
-/**
- * Deferred readiness promise and settlement state for one host-managed
- * session.
- */
-type WorkerHostLifecycleDeferredReadyState = {
-  /**
-   * Shared readiness promise observed by compatible callers.
-   */
-  readyPromise: Promise<void>;
-  /**
-   * Deferred settlement state stored in the side WeakMap.
-   */
-  readyState: WorkerHostLifecycleReadyState;
-};
-
-/**
- * Shared private readiness side table for host-managed sessions.
- *
- * Key:
- * - the exact host-managed session object instance
- * - object identity, not `sessionKey`
- * - the same session object later passed back into the lifecycle readiness
- *   helpers
- *
- * Value:
- * - the deferred readiness settlement state for that session:
- *   - `resolve`
- *   - `reject`
- *   - `settled`
- *
- * Why `WeakMap`:
- * - keep the readiness mutators and settlement bookkeeping off the public
- *   session shape
- * - bind this hidden state to the lifetime of the exact session object
- *
- * When a session fully closes, this readiness entry is no longer part of the
- * active host lifecycle for that session.
- *
- * As long as some other code still holds a strong reference to the same session
- * object, this entry may still exist.
- *
- * Once that exact session object is no longer strongly referenced anywhere and
- * is eventually garbage-collected, the whole `WeakMap` entry disappears with
- * it.
- *
- * The map is shared across worker families, but each session instance gets its
- * own private readiness entry.
- */
-const workerHostLifecycleReadyStates = new WeakMap<
-  WorkerHostLifecycleSessionBase,
-  WorkerHostLifecycleReadyState
->();
-
-/**
- * Create the shared deferred readiness promise for one host-managed session.
- *
- * @returns Deferred readiness promise and settlement state.
- */
-const createWorkerHostLifecycleDeferredReadyState =
-  (): WorkerHostLifecycleDeferredReadyState => {
-    /**
-     * Deferred settlement callbacks captured from the readiness promise.
-     *
-     * Aspects:
-     * 1. `resolveReady` settles the shared readiness promise successfully.
-     * 2. `rejectReady` settles the shared readiness promise with one lifecycle
-     *    failure.
-     */
-    let resolveReady: (() => void) | null = null;
-    let rejectReady: ((error: Error) => void) | null = null;
-
-    /**
-     * Capture the shared readiness promise settlement callbacks so later
-     * lifecycle transitions can resolve or reject the same promise from
-     * outside this executor.
-     *
-     * Aspects:
-     * 1. `resolve` becomes the deferred success callback.
-     * 2. `reject` becomes the deferred failure callback.
-     */
-    const readyPromise = new Promise<void>((resolve, reject) => {
-      resolveReady = resolve;
-      rejectReady = reject;
-    });
-
-    /**
-     * Validate that the promise executor installed both deferred settlement
-     * callbacks before this readiness state is published.
-     */
-    if (resolveReady == null || rejectReady == null) {
-      throw new Error(
-        'next-slug-splitter host lifecycle readiness callbacks were not initialized.'
-      );
-    }
-
-    /**
-     * Host lifecycle transitions deliberately reject readiness in these cases:
-     * 1. a still-starting session is replaced
-     * 2. startup/readiness work fails
-     * 3. the session is force-closed before readiness
-     *
-     * Swallowing the detached rejection branch avoids unhandled-rejection
-     * noise when a caller has already moved on to a different session promise.
-     */
-    readyPromise.catch(() => {});
-
-    return {
-      readyPromise,
-      readyState: {
-        resolve: resolveReady,
-        reject: rejectReady,
-        settled: false
-      }
-    };
-  };
-
-/**
- * Resolve the shared readiness promise when it is still pending.
- *
- * @template TResponse Successful worker response union carried by the session.
- * @param session Host-managed session whose readiness promise should resolve.
- * @returns `void` after the readiness promise has been settled when
- * applicable.
- */
-export const resolveWorkerHostLifecycleSessionReady = (
-  session: WorkerHostLifecycleSessionBase
-): void => {
-  const readyState = workerHostLifecycleReadyStates.get(session);
-
-  if (readyState == null) {
-    throw new Error(
-      'next-slug-splitter host lifecycle session is missing readiness state.'
-    );
-  }
-
-  if (readyState.settled) {
-    return;
-  }
-
-  /**
-   * Mark the deferred readiness state as settled before invoking the stored
-   * resolver so repeated lifecycle transitions cannot resolve it twice.
-   */
-  readyState.settled = true;
-  readyState.resolve();
-};
-
-/**
- * Reject the shared readiness promise when it is still pending.
- *
- * @template TResponse Successful worker response union carried by the session.
- * @param input Rejection input.
- * @param input.session Host-managed session whose readiness promise should be
- * rejected.
- * @param input.error Lifecycle failure to expose to readiness waiters.
- * @returns `void` after the readiness promise has been rejected when
- * applicable.
- */
-export const rejectWorkerHostLifecycleSessionReady = ({
-  session,
-  error
-}: {
-  session: WorkerHostLifecycleSessionBase;
-  error: Error;
-}): void => {
-  const readyState = workerHostLifecycleReadyStates.get(session);
-
-  if (readyState == null) {
-    throw new Error(
-      'next-slug-splitter host lifecycle session is missing readiness state.'
-    );
-  }
-
-  if (readyState.settled) {
-    return;
-  }
-
-  /**
-   * Mark the deferred readiness state as settled before invoking the stored
-   * rejecter so repeated lifecycle transitions cannot reject it twice.
-   */
-  readyState.settled = true;
-  readyState.reject(error);
-};
-
-/**
  * Create one worker-family-specific host-managed session from a low-level base
  * session.
  *
@@ -234,7 +43,7 @@ export const rejectWorkerHostLifecycleSessionReady = ({
  * shared lifecycle session fields.
  * @param baseSession Base session created by the low-level host primitives.
  * @param extendSession Worker-family builder that returns the final session
- * object which should own the deferred-readiness entry.
+ * object which should own the private readiness registration.
  * @returns Host-managed session built from the shared lifecycle fields and the
  * worker-family-specific fields.
  */
@@ -247,8 +56,6 @@ export const createCustomWorkerHostLifecycleSession = <
     lifecycleSession: WorkerHostLifecycleSession<TResponse>
   ) => TSession
 ): TSession => {
-  const { readyPromise, readyState } =
-    createWorkerHostLifecycleDeferredReadyState();
   const lifecycleSession: WorkerHostLifecycleSession<TResponse> = {
     /**
      * Preserve the low-level shared worker session fields as the base of the
@@ -259,11 +66,6 @@ export const createCustomWorkerHostLifecycleSession = <
      * New host-managed sessions always begin in the startup phase.
      */
     phase: 'starting',
-    /**
-     * Shared readiness promise awaited by compatible callers while startup is
-     * still in progress.
-     */
-    readyPromise,
     /**
      * No lifecycle failure has been observed yet for a freshly created
      * session.
@@ -277,9 +79,57 @@ export const createCustomWorkerHostLifecycleSession = <
    */
   const customizedSession = extendSession(lifecycleSession);
 
-  workerHostLifecycleReadyStates.set(customizedSession, readyState);
+  initializeWorkerHostLifecycleSessionReadiness(customizedSession);
 
   return customizedSession;
+};
+
+/**
+ * Mark one host-managed session as ready for general work.
+ *
+ * @template TResponse Successful worker response union carried by the session.
+ * @param session Host-managed session.
+ * @returns `void` after the phase and readiness boundary have been settled.
+ */
+export const markWorkerHostSessionReady = <TResponse>(
+  session: WorkerHostLifecycleSession<TResponse>
+): void => {
+  /**
+   * Promote the session into the externally observable ready phase.
+   */
+  session.phase = 'ready';
+  /**
+   * Clear any stale lifecycle failure because the session successfully became
+   * ready for normal work.
+   */
+  session.failureError = null;
+  resolveWorkerHostLifecycleSessionReadiness(session);
+};
+
+/**
+ * Mark one host-managed session as failed.
+ *
+ * @template TResponse Successful worker response union carried by the session.
+ * @param session Host-managed session.
+ * @param error Lifecycle failure to record and surface to readiness waiters.
+ * @returns `void` after the phase, failure state, and readiness boundary have
+ * been settled.
+ */
+export const markWorkerHostSessionFailed = (
+  session: WorkerHostLifecycleSessionBase,
+  error: Error
+): void => {
+  /**
+   * Record that the session can no longer complete startup or continue normal
+   * lifecycle work.
+   */
+  session.phase = 'failed';
+  /**
+   * Preserve the lifecycle failure that should be surfaced to readiness
+   * waiters and later shutdown/finalization logic.
+   */
+  session.failureError = error;
+  rejectWorkerHostLifecycleSessionReadiness(session, error);
 };
 
 /**
@@ -298,62 +148,6 @@ export const createWorkerHostLifecycleSession = <TResponse>(
     // fields, so the lifecycle session itself is already the final session.
     lifecycleSession => lifecycleSession
   );
-
-/**
- * Mark one host-managed session as ready for general work.
- *
- * @template TResponse Successful worker response union carried by the session.
- * @param session Host-managed session.
- * @returns `void` after the phase and readiness promise have been settled.
- */
-export const markWorkerHostSessionReady = <TResponse>(
-  session: WorkerHostLifecycleSession<TResponse>
-): void => {
-  /**
-   * Promote the session into the externally observable ready phase.
-   */
-  session.phase = 'ready';
-  /**
-   * Clear any stale lifecycle failure because the session successfully became
-   * ready for normal work.
-   */
-  session.failureError = null;
-  resolveWorkerHostLifecycleSessionReady(session);
-};
-
-/**
- * Mark one host-managed session as failed.
- *
- * @template TResponse Successful worker response union carried by the session.
- * @param input Failure input.
- * @param input.session Host-managed session.
- * @param input.error Lifecycle failure to record and surface to readiness
- * waiters.
- * @returns `void` after the phase, failure state, and readiness promise have
- * been settled.
- */
-export const markWorkerHostSessionFailed = ({
-  session,
-  error
-}: {
-  session: WorkerHostLifecycleSessionBase;
-  error: Error;
-}): void => {
-  /**
-   * Record that the session can no longer complete startup or continue normal
-   * lifecycle work.
-   */
-  session.phase = 'failed';
-  /**
-   * Preserve the lifecycle failure that should be surfaced to readiness
-   * waiters and later shutdown/finalization logic.
-   */
-  session.failureError = error;
-  rejectWorkerHostLifecycleSessionReady({
-    session,
-    error
-  });
-};
 
 /**
  * Force-close one host-managed worker session immediately.
@@ -379,14 +173,13 @@ export const forceCloseWorkerHostLifecycleSession = <
   reason: string;
   onSessionClose?: (reason: string) => void;
 }): void => {
-  rejectWorkerHostLifecycleSessionReady({
+  rejectWorkerHostLifecycleSessionReadiness(
     session,
-    error:
-      session.failureError ??
+    session.failureError ??
       new Error(
         `next-slug-splitter worker session "${session.sessionKey}" closed before it became ready (${reason}).`
       )
-  });
+  );
   forceCloseWorkerSession({
     workerSessions,
     session,
@@ -443,10 +236,7 @@ export const finalizeWorkerHostLifecycleSession = <
      * visible after the session fully closes.
      */
     session.failureError ??= normalizedError;
-    rejectWorkerHostLifecycleSessionReady({
-      session,
-      error: normalizedError
-    });
+    rejectWorkerHostLifecycleSessionReadiness(session, normalizedError);
   }
 
   /**

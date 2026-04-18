@@ -5,9 +5,9 @@ import {
 import {
   finalizeWorkerHostLifecycleSession,
   markWorkerHostSessionFailed,
-  markWorkerHostSessionReady,
-  rejectWorkerHostLifecycleSessionReady
+  markWorkerHostSessionReady
 } from '../../session';
+import { rejectWorkerHostLifecycleSessionReadiness } from '../../session-readiness';
 import type {
   WorkerHostLifecycleSession,
   WorkerHostLifecycleSessionBase
@@ -21,6 +21,17 @@ import type {
   WorkerHostLifecycleMachineEvent,
   WorkerHostLifecycleMachineEventProcessor
 } from './types';
+
+/**
+ * Shared event-processing helpers for the host lifecycle machine.
+ *
+ * @remarks
+ * This module owns the typed internal event engine for the host lifecycle
+ * machine:
+ * - build boundary-entered handlers for externally triggered lifecycle events
+ * - build derived handlers for internally produced lifecycle transitions
+ * - dispatch those events through the shared host-lifecycle dispatcher
+ */
 
 /**
  * Typed handler map for boundary-entered host lifecycle events.
@@ -53,15 +64,6 @@ type WorkerHostLifecycleMachineDerivedHandlerMap<
 >;
 
 /**
- * Shared event-processing helpers for the host lifecycle machine.
- *
- * @remarks
- * This module owns the action-style internal host event flow:
- * - build typed lifecycle handlers for each `subject`
- * - dispatch events through the shared host-lifecycle dispatcher
- */
-
-/**
  * Create the boundary-entered lifecycle-event handlers for one host-machine
  * invocation.
  *
@@ -85,6 +87,11 @@ export const createWorkerHostLifecycleMachineBoundaryEventHandlers = <
   workerLabel: string
 ): WorkerHostLifecycleMachineBoundaryHandlerMap<TSession, TRequest> => ({
   'replacement-requested': async ({ event: nextEvent }): Promise<void> => {
+    /**
+     * Replacement only matters while readiness is still pending.
+     * Once a session is already `ready`, the surrounding resolution flow shuts
+     * it down explicitly instead of using this early-readiness rejection path.
+     */
     if (nextEvent.payload.session.phase !== 'starting') {
       return;
     }
@@ -96,12 +103,16 @@ export const createWorkerHostLifecycleMachineBoundaryEventHandlers = <
     );
 
     nextEvent.payload.session.failureError = replacementError;
-    rejectWorkerHostLifecycleSessionReady({
-      session: nextEvent.payload.session,
-      error: replacementError
-    });
+    rejectWorkerHostLifecycleSessionReadiness(
+      nextEvent.payload.session,
+      replacementError
+    );
   },
   'shutdown-requested': async ({ event: nextEvent }): Promise<void> => {
+    /**
+     * Record the shutdown phase only for still-live sessions.
+     * Failed and closed sessions are already terminal for lifecycle purposes.
+     */
     if (
       nextEvent.payload.session.phase !== 'failed' &&
       nextEvent.payload.session.phase !== 'closed'
@@ -113,6 +124,11 @@ export const createWorkerHostLifecycleMachineBoundaryEventHandlers = <
     event: nextEvent,
     context
   }): Promise<void> => {
+    /**
+     * Child-process termination is the final lifecycle boundary:
+     * 1. surface the exit error to any still-pending readiness waiters
+     * 2. finalize registry ownership and pending request settlement
+     */
     const { session, rejectionError } = nextEvent.payload;
 
     if (
@@ -123,10 +139,7 @@ export const createWorkerHostLifecycleMachineBoundaryEventHandlers = <
     ) {
       session.phase = 'failed';
       session.failureError = rejectionError;
-      rejectWorkerHostLifecycleSessionReady({
-        session,
-        error: rejectionError
-      });
+      rejectWorkerHostLifecycleSessionReadiness(session, rejectionError);
     }
 
     finalizeWorkerHostLifecycleSession<TResponse, TSession>({
@@ -165,18 +178,23 @@ export const createWorkerHostLifecycleMachineDerivedEventHandlers = <
     markWorkerHostSessionReady(nextEvent.payload.session);
   },
   'session-start-failed': async ({ event: nextEvent }): Promise<void> => {
-    markWorkerHostSessionFailed({
-      session: nextEvent.payload.session,
-      error: nextEvent.payload.error
-    });
+    markWorkerHostSessionFailed(
+      nextEvent.payload.session,
+      nextEvent.payload.error
+    );
   },
   'shutdown-failed': async ({ event: nextEvent }): Promise<void> => {
-    markWorkerHostSessionFailed({
-      session: nextEvent.payload.session,
-      error: nextEvent.payload.error
-    });
+    markWorkerHostSessionFailed(
+      nextEvent.payload.session,
+      nextEvent.payload.error
+    );
   },
   'force-close-requested': async ({ event: nextEvent }): Promise<void> => {
+    /**
+     * Once graceful shutdown is already in progress, the shutdown path owns the
+     * remaining teardown steps and this synthetic failure transition should not
+     * overwrite that state.
+     */
     if (nextEvent.payload.session.phase === 'shutting-down') {
       return;
     }
@@ -196,10 +214,10 @@ export const createWorkerHostLifecycleMachineDerivedEventHandlers = <
       nextEvent.payload.session.phase = 'failed';
     }
 
-    rejectWorkerHostLifecycleSessionReady({
-      session: nextEvent.payload.session,
-      error: forceCloseError
-    });
+    rejectWorkerHostLifecycleSessionReadiness(
+      nextEvent.payload.session,
+      forceCloseError
+    );
   }
 });
 
@@ -220,6 +238,10 @@ export const createWorkerHostLifecycleMachineEventProcessor = <
 >(
   workerLabel: string
 ): WorkerHostLifecycleMachineEventProcessor<TSession, TRequest> => {
+  /**
+   * Build the merged lifecycle handler registry once per machine instance.
+   * Only the event and its dynamic dispatch context vary per invocation.
+   */
   const handlers: WorkerHostLifecycleEventHandlerMap<
     WorkerHostLifecycleMachineEvent<TSession, TRequest>,
     WorkerHostLifecycleMachineEventDispatchContext<TSession>,
@@ -238,6 +260,10 @@ export const createWorkerHostLifecycleMachineEventProcessor = <
   };
 
   return async ({ context, event }): Promise<void> => {
+    /**
+     * Reuse the stable merged handler registry and supply only the per-dispatch
+     * event plus dynamic context.
+     */
     await dispatchWorkerHostLifecycleEventBySubject({
       event,
       context,

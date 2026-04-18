@@ -304,7 +304,8 @@ const forceCloseRouteHandlerProxyWorkerSession = ({
  *
  * Shared host lifecycle policy such as:
  * - reuse vs replace orchestration
- * - shared `readyPromise` handling
+ * - shared readiness-boundary handling
+ * - shared startup-sequence orchestration
  * - graceful shutdown idempotence
  * - failed/shutting-down/closed transitions
  *

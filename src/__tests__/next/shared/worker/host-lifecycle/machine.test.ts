@@ -83,7 +83,7 @@ describe('shared worker host lifecycle machine', () => {
     vi.useRealTimers();
   });
 
-  test('shares one readyPromise for compatible callers while the session is starting', async () => {
+  test('shares one readiness boundary for compatible callers while the session is starting', async () => {
     const workerSessions = new Map<string, TestSession>();
     const startupDeferred = createDeferredPromise();
     const createdSessions: Array<TestSession> = [];
@@ -165,7 +165,7 @@ describe('shared worker host lifecycle machine', () => {
     expect(createdSessions).toHaveLength(1);
   });
 
-  test('replaces an incompatible still-starting session and rejects its old readyPromise', async () => {
+  test('replaces an incompatible still-starting session and rejects its old readiness boundary', async () => {
     const workerSessions = new Map<string, TestSession>();
     const startupDeferredByToken = new Map<string, DeferredPromise>([
       ['generation-a', createDeferredPromise()],

@@ -106,14 +106,6 @@ export type WorkerHostLifecycleSessionBase = WorkerSessionBase & {
    */
   phase: WorkerHostLifecyclePhase;
   /**
-   * Shared readiness promise for the session.
-   *
-   * @remarks
-   * Compatible callers that observe the same session while it is still
-   * `starting` await this promise instead of spawning another session.
-   */
-  readyPromise: Promise<void>;
-  /**
    * Most recent lifecycle failure observed for the session.
    */
   failureError: Error | null;
