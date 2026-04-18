@@ -14,8 +14,8 @@ import path from 'node:path';
 
 import { toEmittedImportSpecifier } from '../../../module-reference';
 import {
-  type PreparedHandlerRenderConfig,
-  renderRouteHandlerModules
+  renderRouteHandlerModules,
+  type PreparedHandlerRenderConfig
 } from './render-modules';
 
 import type {

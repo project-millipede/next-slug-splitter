@@ -1,8 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { packageModule } from '../../module-reference';
-import type { ModuleReference } from '../../module-reference';
+import { packageModule, type ModuleReference } from '../../module-reference';
 import type { RouteHandlerBinding } from '../../next/shared/types';
 import type { LocaleConfig } from '../../core/types';
 

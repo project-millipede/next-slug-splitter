@@ -3,8 +3,8 @@ import path from 'node:path';
 import {
   isModuleReference,
   normalizeModuleReference,
-  type ResolvedModuleReference,
-  resolveModuleReferenceToPath
+  resolveModuleReferenceToPath,
+  type ResolvedModuleReference
 } from '../../../module-reference';
 import { createConfigError } from '../../../utils/errors';
 import { readObjectProperty } from '../../shared/config/shared';
@@ -192,8 +192,9 @@ export const resolveRouteHandlersConfigBase = async (
     requireSingleRouteHandlersConfigBase<RouteHandlersTargetConfig>(
       routeHandlersConfig
     );
-  const typedConfiguredRouteHandlers =
-    configuredRouteHandlers as RouteHandlersConfig | RouteHandlersTargetConfig;
+  const typedConfiguredRouteHandlers = configuredRouteHandlers as
+    | RouteHandlersConfig
+    | RouteHandlersTargetConfig;
   const resolvedRootDir = appConfig.rootDir;
   const normalizedTargetOptions = normalizeRouteHandlersTargetOptions(
     appConfig,
@@ -233,7 +234,9 @@ export const resolveRouteHandlersConfigBase = async (
       typedConfiguredRouteHandlers
     ),
     routeModuleImport: resolvedRouteModuleImport,
-    handlerRouteSegment: path.basename(normalizedTargetOptions.paths.handlersDir),
+    handlerRouteSegment: path.basename(
+      normalizedTargetOptions.paths.handlersDir
+    ),
     routeModule: await inspectAppRouteModuleContract({
       rootDir: resolvedRootDir,
       routeModuleImport: resolvedRouteModuleImport

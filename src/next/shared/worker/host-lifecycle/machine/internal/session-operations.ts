@@ -1,5 +1,7 @@
-import { waitForWorkerTermination } from '../../../host/session-lifecycle';
-import type { WorkerSessionRegistry } from '../../../host/session-lifecycle';
+import {
+  waitForWorkerTermination,
+  type WorkerSessionRegistry
+} from '../../../host/session-lifecycle';
 import { runAsyncSequenceAndWait } from '../../../../async/async-sequence';
 import { waitForWorkerHostLifecycleSessionReady } from '../../session-readiness';
 import type { WorkerHostLifecycleSession } from '../../types';

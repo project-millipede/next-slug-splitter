@@ -16,10 +16,6 @@ export type {
   RouteHandlerProcessor
 } from './shared/types';
 export type {
-  RouteHandlersConfig,
-  RouteHandlersTargetConfig
-} from './types';
-export type {
   AppPageDataCompiler,
   AppPageDataCompilerCompileInput,
   AppRouteParams,
@@ -30,6 +26,8 @@ export type {
   GetAppRouteStaticParams,
   PagesRouteHandlersConfig,
   PagesRouteHandlersTargetConfig,
+  RouteHandlersConfig,
+  RouteHandlersTargetConfig,
   RouteHandlerRouterKind
 } from './types';
 
@@ -39,9 +37,7 @@ export {
   packageModule
 } from '../module-reference';
 export { defineRouteHandlerProcessor } from '../core/processor';
-export {
-  runAppPageDataCompiler
-} from './app/page-data-compiler-run';
+export { runAppPageDataCompiler } from './app/page-data-compiler-run';
 export { createAppCatchAllRouteHandlersPreset } from './app/config/presets';
 export { createCatchAllRouteHandlersPreset } from './pages/config/presets';
 export { createRouteHandlersAdapterPath } from './integration/adapter-entry';

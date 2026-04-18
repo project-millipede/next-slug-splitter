@@ -14,8 +14,8 @@ import type { ComponentImportKind } from '../../../core/types';
 import { isString } from '../../../utils/type-guards';
 import {
   createGeneratorWriter,
-  type Writer,
-  writeStringLiteral
+  writeStringLiteral,
+  type Writer
 } from './emitter-utils';
 
 /**

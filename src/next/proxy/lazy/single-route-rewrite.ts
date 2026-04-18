@@ -2,8 +2,10 @@ import { buildRouteRewriteEntries } from '../../shared/rewrites/index';
 import path from 'node:path';
 
 import type { PlannedHeavyRoute } from '../../../core/types';
-import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
-import type { RouteHandlerLazyPlannerConfig } from './types';
+import type {
+  RouteHandlerLazyHeavyAnalysisResult,
+  RouteHandlerLazyPlannerConfig
+} from './types';
 
 /**
  * Resolve the concrete rewrite destination for the current pathname from one

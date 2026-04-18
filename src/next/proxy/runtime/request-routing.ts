@@ -1,9 +1,11 @@
-import type { NextRequest } from 'next/server.js';
-import { NextResponse } from 'next/server.js';
+import { NextResponse, type NextRequest } from 'next/server.js';
 
 import { resolveRouteHandlerProxyRewriteResponseDecision } from '../rewrite-readiness';
 import { debugRouteHandlerProxy } from '../observability/debug-log';
-import { analyzeRouteHandlerProxyRequestShape } from './request-shape';
+import {
+  analyzeRouteHandlerProxyRequestShape,
+  type RouteHandlerProxyRequestShape
+} from './request-shape';
 import { getRouteHandlerProxyRoutingState } from './routing-state';
 import {
   findMatchedRouteBasePath,
@@ -16,10 +18,9 @@ import type { LocaleConfig } from '../../../core/types';
 import type {
   RouteHandlerProxyDecision,
   RouteHandlerProxyConfigRegistration,
-  RouteHandlerProxyOptions
+  RouteHandlerProxyOptions,
+  RouteHandlerProxyRoutingState
 } from './types';
-import type { RouteHandlerProxyRequestShape } from './request-shape';
-import type { RouteHandlerProxyRoutingState } from './types';
 
 /**
  * Request classification and response creation for the dev proxy path.

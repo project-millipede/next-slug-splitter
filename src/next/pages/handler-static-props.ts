@@ -1,7 +1,9 @@
 import type { GetStaticProps, GetStaticPropsContext } from 'next';
 import type { ParsedUrlQuery } from 'node:querystring';
-import type { DynamicRouteParam } from '../shared/types';
-import { resolveRouteParamValue } from '../shared/types';
+import {
+  resolveRouteParamValue,
+  type DynamicRouteParam
+} from '../shared/types';
 
 /**
  * Signature for the handler's `getStaticProps` function.

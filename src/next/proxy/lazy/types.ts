@@ -2,18 +2,14 @@ import type {
   ContentLocaleMode,
   DynamicRouteParam,
   EmitFormat,
+  LocaleConfig,
   LocalizedRoutePath,
+  PlannedHeavyRoute,
   ResolvedRouteHandlerModuleReference
 } from '../../../core/types';
-import type { PlannedHeavyRoute } from '../../../core/types';
-import type { LocaleConfig } from '../../../core/types';
 import type { RouteHandlerOutputSynchronizationStatus } from '../../../generator/shared/protocol/output-lifecycle';
-import type {
-  ResolvedAppRouteModuleContract
-} from '../../app/types';
-import type {
-  ResolvedRouteHandlersTargetConfigBase
-} from '../../shared/types';
+import type { ResolvedAppRouteModuleContract } from '../../app/types';
+import type { ResolvedRouteHandlersTargetConfigBase } from '../../shared/types';
 import type { RouteHandlerLazySingleRouteCacheManager } from './single-route-cache-manager';
 
 /**

@@ -1,12 +1,11 @@
-import { describe, expect, test, vi } from 'vitest';
-import type { Mock } from 'vitest';
+import { describe, expect, test, vi, type Mock } from 'vitest';
 
 import { createAsyncGate } from '../../../../next/shared/async/async-gate';
 import {
-  type AsyncSequenceInput,
-  type AsyncSequenceWithWaitInput,
   runAsyncSequence,
-  runAsyncSequenceAndWait
+  runAsyncSequenceAndWait,
+  type AsyncSequenceInput,
+  type AsyncSequenceWithWaitInput
 } from '../../../../next/shared/async/async-sequence';
 
 describe('shared async sequence helpers', () => {

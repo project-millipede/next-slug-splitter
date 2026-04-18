@@ -12,8 +12,8 @@ import type { EmitFormat } from '../../../core/types';
 import { isString } from '../../../utils/type-guards';
 import { JsonValue } from '../../../utils/type-guards-json';
 import {
-  type ArrayLiteralWriteOptions,
-  writeStringArray
+  writeStringArray,
+  type ArrayLiteralWriteOptions
 } from './array-literal';
 
 /**

@@ -15,14 +15,12 @@ import type {
 } from '../types';
 
 import {
-  type NormalizedRouteHandlersTargetOptions,
-  type NormalizedRouteHandlersTargetRuntimeAttachments,
   normalizeRouteHandlersTargetRuntimeAttachments,
   normalizeRouteHandlersTargetOptions,
+  type NormalizedRouteHandlersTargetOptions,
+  type NormalizedRouteHandlersTargetRuntimeAttachments
 } from '../../shared/config/resolve-target';
-import {
-  resolveRouteHandlersConfigBase
-} from './resolve-target';
+import { resolveRouteHandlersConfigBase } from './resolve-target';
 import { isObjectRecord, readObjectProperty } from '../../shared/config/shared';
 
 const MISSING_ROUTE_HANDLERS_CONFIG_ERROR_MESSAGE =

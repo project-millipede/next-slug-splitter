@@ -13,7 +13,11 @@
  * stable formatting control.
  */
 import { VariableDeclarationKind, type WriterFunction } from 'ts-morph';
-import type { DynamicRouteParam, EmitFormat, LoadableComponentEntry } from '../../../core/types';
+import type {
+  DynamicRouteParam,
+  EmitFormat,
+  LoadableComponentEntry
+} from '../../../core/types';
 import {
   createGeneratedSourceFile,
   writeStringLiteral
@@ -26,9 +30,9 @@ import {
 } from '../../shared/protocol/handler-page-emission';
 import {
   groupComponentImports,
+  renderImportBlock,
   type HandlerComponentImportRecord,
-  type HandlerImportDeclarationRecord,
-  renderImportBlock
+  type HandlerImportDeclarationRecord
 } from '../../shared/protocol/import-block';
 
 /**
@@ -84,7 +88,6 @@ type HandlerPageEmitInput = {
    */
   emitFormat: EmitFormat;
 };
-
 
 /**
  * Creates the initializer for the generated `getStaticProps` export.
