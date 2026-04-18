@@ -4,6 +4,7 @@ import type { spawn } from 'node:child_process';
 import { describe, expect, test, vi } from 'vitest';
 
 import { createWorkerSession } from '../../../../../next/shared/worker/host/session-lifecycle';
+import { waitForWorkerHostLifecycleSessionReady } from '../../../../../next/shared/worker/host-lifecycle/session-readiness';
 import {
   createWorkerHostLifecycleSession,
   finalizeWorkerHostLifecycleSession,
@@ -36,42 +37,101 @@ const createManagedSession = <TResponse>(
   );
 
 describe('shared worker host lifecycle session helpers', () => {
-  test('creates host-managed sessions in the starting phase with a shared readiness promise', async () => {
+  const STARTUP_FAILURE_MESSAGE = 'startup failed' as const;
+
+  test('creates host-managed sessions in the starting phase', async () => {
     const session = createManagedSession<string>(createWorkerChildStub());
 
     expect(session.phase).toBe('starting');
     expect(session.failureError).toBeNull();
-    expect(session.readyPromise).toBeDefined();
   });
 
-  test('marks the session ready and resolves the shared readiness promise', async () => {
+  type SettlementOutcome =
+    | {
+        type: 'resolve';
+        phase: 'ready';
+        failure: null;
+      }
+    | {
+        type: 'reject';
+        phase: 'failed';
+        failure: Error;
+        message: typeof STARTUP_FAILURE_MESSAGE;
+      };
+
+  type SettlementScenario = {
+    id: string;
+    description: string;
+    apply: (session: WorkerHostLifecycleSession<string>) => void;
+    expected: SettlementOutcome;
+  };
+
+  const startupFailure = new Error(STARTUP_FAILURE_MESSAGE);
+
+  const settlementScenarios: SettlementScenario[] = [
+    {
+      id: 'Ready',
+      description:
+        'marks the session ready and settles the shared readiness boundary successfully',
+      apply: session => {
+        // Publish the successful lifecycle transition for this session instance.
+        markWorkerHostSessionReady(session);
+      },
+      expected: {
+        type: 'resolve',
+        phase: 'ready',
+        failure: null
+      }
+    },
+    {
+      id: 'Failed',
+      description:
+        'marks the session failed and settles the shared readiness boundary with the startup error',
+      apply: session => {
+        // Publish the failed lifecycle transition for this session instance.
+        markWorkerHostSessionFailed(session, startupFailure);
+      },
+      expected: {
+        type: 'reject',
+        phase: 'failed',
+        failure: startupFailure,
+        message: STARTUP_FAILURE_MESSAGE
+      }
+    }
+  ];
+
+  test.for(settlementScenarios)('[$id] $description', async ({
+    apply,
+    expected
+  }) => {
     const session = createManagedSession<string>(createWorkerChildStub());
 
-    markWorkerHostSessionReady(session);
+    // Each scenario publishes one lifecycle outcome before the readiness wait
+    // observes that same shared boundary.
+    apply(session);
 
-    await expect(session.readyPromise).resolves.toBeUndefined();
-    expect(session.phase).toBe('ready');
-    expect(session.failureError).toBeNull();
-  });
+    if (expected.type === 'reject') {
+      await expect(
+        waitForWorkerHostLifecycleSessionReady('test worker', session)
+      ).rejects.toThrow(expected.message);
+    } else {
+      await expect(
+        waitForWorkerHostLifecycleSessionReady('test worker', session)
+      ).resolves.toBeUndefined();
+    }
 
-  test('marks the session failed and rejects the shared readiness promise', async () => {
-    const session = createManagedSession<string>(createWorkerChildStub());
-    const failure = new Error('startup failed');
-
-    markWorkerHostSessionFailed({
-      session,
-      error: failure
-    });
-
-    await expect(session.readyPromise).rejects.toThrow('startup failed');
-    expect(session.phase).toBe('failed');
-    expect(session.failureError).toBe(failure);
+    // The visible session record should match the same outcome that the
+    // readiness boundary published to joined callers.
+    expect(session.phase).toBe(expected.phase);
+    expect(session.failureError).toBe(expected.failure);
   });
 
   test('finalizes the session to closed after termination is observed', async () => {
     const session = createManagedSession<string>(createWorkerChildStub());
     const workerSessions = new Map([[session.sessionKey, session]]);
 
+    // Finalization should publish the terminal closed phase and release the
+    // session from the active registry.
     finalizeWorkerHostLifecycleSession<
       string,
       WorkerHostLifecycleSession<string>

@@ -1,11 +1,12 @@
 import { waitForWorkerTermination } from '../../../host/session-lifecycle';
 import type { WorkerSessionRegistry } from '../../../host/session-lifecycle';
+import { runAsyncSequenceAndWait } from '../../../../async/async-sequence';
+import { waitForWorkerHostLifecycleSessionReady } from '../../session-readiness';
 import type { WorkerHostLifecycleSession } from '../../types';
 
 import {
   toWorkerHostLifecycleError,
-  waitForWorkerHostAcknowledgement,
-  waitForWorkerHostSessionReady
+  waitForWorkerHostAcknowledgement
 } from './error-helpers';
 import type { WorkerHostLifecycleMachineContext } from './types';
 
@@ -15,11 +16,11 @@ import type { WorkerHostLifecycleMachineContext } from './types';
  * @remarks
  * These helpers own the higher-level session actions the public machine
  * exposes:
- * - resolve or replace one session
+ * - resolve, reuse, or replace one session
  * - gracefully shut one session down
- * - observe full process termination
+ * - wait for full process termination where those flows require it
  *
- * The grouped internal machine context keeps these flows traceable:
+ * The grouped internal machine context keeps those actions traceable:
  * - `context.session` owns compatibility, creation, startup, and replacement
  * - `context.shutdown` owns shutdown transport, timing, and force-close
  * - `context.processEvent` records the shared internal lifecycle transitions
@@ -52,9 +53,11 @@ export const resolveWorkerHostLifecycleMachineSession = async <
   request: TRequest;
 }): Promise<TSession> => {
   /**
-   * Split the grouped internal machine context into the session rules,
-   * shutdown fallback rules, and the shared event processor used by this
-   * resolution flow.
+   * Split the grouped internal machine context into:
+   * 1. the session rules for creation, reuse, and replacement
+   * 2. the shutdown rules for force-close fallback
+   * 3. the shared event processor for lifecycle transitions
+   * 4. the worker label used in shared readiness and error messages
    */
   const {
     processEvent,
@@ -66,6 +69,12 @@ export const resolveWorkerHostLifecycleMachineSession = async <
   const existingSession = workerSessions.get(sessionKey);
 
   if (existingSession != null) {
+    /**
+     * 1. Resolve against an existing registry entry:
+     *    1. reuse compatible live sessions
+     *    2. replace incompatible live sessions
+     *    3. wait out non-live sessions before retrying
+     */
     if (
       existingSession.phase === 'starting' ||
       existingSession.phase === 'ready'
@@ -76,13 +85,27 @@ export const resolveWorkerHostLifecycleMachineSession = async <
           request
         }) === 'reuse'
       ) {
+        /**
+         * 1A. Reuse the compatible live session:
+         *     1. if it is still `starting`, join the shared readiness boundary
+         *     2. return the same session instance afterward
+         */
         if (existingSession.phase === 'starting') {
-          await waitForWorkerHostSessionReady(workerLabel, existingSession);
+          await waitForWorkerHostLifecycleSessionReady(
+            workerLabel,
+            existingSession
+          );
         }
 
         return existingSession;
       }
 
+      /**
+       * 1B. Replace the incompatible live session:
+       *     1. publish `replacement-requested`
+       *     2. shut the existing session down while it still owns the registry slot
+       *     3. recurse only after teardown finishes
+       */
       await processEvent({
         context: {
           workerSessions
@@ -110,6 +133,11 @@ export const resolveWorkerHostLifecycleMachineSession = async <
       });
     }
 
+    /**
+     * 1C. Retry after a non-live session:
+     *     1. wait for termination cleanup to finish
+     *     2. recurse after the registry entry becomes stable
+     */
     await existingSession.terminationPromise;
 
     return await resolveWorkerHostLifecycleMachineSession({
@@ -119,75 +147,121 @@ export const resolveWorkerHostLifecycleMachineSession = async <
     });
   }
 
+  /**
+   * 2. Create and publish a fresh session:
+   *    1. build the session from the worker-family factory
+   *    2. publish it in the registry before startup begins
+   */
   const nextSession = sessionContext.createSession({
     workerSessions,
     request
   });
 
+  /**
+   * This early publication lets concurrent resolution for the same key join
+   * the same in-flight lifecycle instead of creating a duplicate worker
+   * process.
+   */
   workerSessions.set(nextSession.sessionKey, nextSession);
 
-  const startFlowPromise = (async (): Promise<void> => {
-    try {
-      await sessionContext.startSession?.({
-        session: nextSession,
-        request
-      });
-      await processEvent({
-        context: {
-          workerSessions
-        },
-        event: {
-          subject: 'session-ready',
-          payload: {
-            session: nextSession
-          }
-        }
-      });
-    } catch (error) {
-      const readinessError = toWorkerHostLifecycleError(
-        error,
-        `next-slug-splitter ${workerLabel} failed during startup.`
-      );
-
-      await processEvent({
-        context: {
-          workerSessions
-        },
-        event: {
-          subject: 'session-start-failed',
-          payload: {
-            session: nextSession,
-            error: readinessError
-          }
-        }
-      });
-      await processEvent({
-        context: {
-          workerSessions
-        },
-        event: {
-          subject: 'force-close-requested',
-          payload: {
-            session: nextSession,
-            reason: 'session-start-failed'
-          }
-        }
-      });
-      shutdownContext.invokeForceClose({
-        workerSessions,
-        session: nextSession,
-        reason: 'session-start-failed'
-      });
-      throw readinessError;
-    }
-  })();
-  void startFlowPromise.catch(() => {});
-
   try {
-    await waitForWorkerHostSessionReady(workerLabel, nextSession);
-    await startFlowPromise;
+    /**
+     * 3. Run the shared startup async sequence:
+     *    1. `execute(...)` runs worker-family startup
+     *    2. `resolve(...)` publishes `session-ready`
+     *    3. `reject(...)` publishes startup failure plus force-close fallback
+     *    4. `wait(...)` joins the shared readiness boundary
+     *    5. `runAsyncSequenceAndWait(...)` re-joins the original sequence
+     *       after readiness
+     */
+    await runAsyncSequenceAndWait({
+      execute: async (): Promise<void> => {
+        /**
+         * 3A. Startup execution step:
+         *     1. delegate worker-family startup to the session rules
+         *     2. let the shared async sequence own success or failure after that
+         */
+        await sessionContext.startSession?.({
+          session: nextSession,
+          request
+        });
+      },
+      resolve: async (): Promise<void> => {
+        /**
+         * 3B. Successful startup publication:
+         *     1. publish `session-ready`
+         *     2. let joined callers cross the shared readiness boundary
+         */
+        await processEvent({
+          context: {
+            workerSessions
+          },
+          event: {
+            subject: 'session-ready',
+            payload: {
+              session: nextSession
+            }
+          }
+        });
+      },
+      reject: async (error): Promise<void> => {
+        /**
+         * 3C. Startup failure fallback:
+         *     1. publish `session-start-failed`
+         *     2. publish `force-close-requested`
+         *     3. invoke the transport-level force-close immediately after
+         */
+        await processEvent({
+          context: {
+            workerSessions
+          },
+          event: {
+            subject: 'session-start-failed',
+            payload: {
+              session: nextSession,
+              error
+            }
+          }
+        });
+        await processEvent({
+          context: {
+            workerSessions
+          },
+          event: {
+            subject: 'force-close-requested',
+            payload: {
+              session: nextSession,
+              reason: 'session-start-failed'
+            }
+          }
+        });
+        shutdownContext.invokeForceClose({
+          workerSessions,
+          session: nextSession,
+          reason: 'session-start-failed'
+        });
+      },
+      wait: async (): Promise<void> => {
+        /**
+         * 3D. Shared readiness join:
+         *     1. wait on the shared readiness boundary
+         *     2. let the async sequence surface completion only after readiness
+         */
+        await waitForWorkerHostLifecycleSessionReady(workerLabel, nextSession);
+      },
+      normalizeError: error =>
+        toWorkerHostLifecycleError(
+          error,
+          `next-slug-splitter ${workerLabel} failed during startup.`
+        )
+    });
     return nextSession;
   } catch (error) {
+    /**
+     * 4. Session-resolution boundary normalization:
+     *    1. normalize any startup-sequence failure at the outer resolution boundary
+     *    2. surface one consistent session-resolution error to callers
+     */
     throw toWorkerHostLifecycleError(
       error,
       `next-slug-splitter ${workerLabel} failed to resolve a session.`
@@ -250,12 +324,17 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
   }
 
   /**
-   * Early Return 3.
+   * Early Return 3
    * If the session already failed, skip graceful shutdown and fall back
    * directly to force-close before awaiting final termination.
    */
   if (session.phase === 'failed') {
     if (!session.closed) {
+      /**
+       * Failed sessions skip graceful shutdown entirely:
+       * 1. publish `force-close-requested`
+       * 2. invoke the transport-level force-close immediately after
+       */
       await processEvent({
         context: {
           workerSessions
@@ -281,8 +360,9 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
 
   const shutdownPromise = (async (): Promise<void> => {
     /**
-     * 1. Record that graceful shutdown has started before any shutdown
-     *    transport is attempted.
+     * 1. Start graceful shutdown:
+     *    1. record `shutdown-requested`
+     *    2. publish the shutdown phase before transport work begins
      */
     await processEvent({
       context: {
@@ -299,8 +379,9 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
 
     try {
       /**
-       * 2. Send the shutdown request and wait only for its acknowledgement
-       *    window, not for full process termination.
+       * 2. Send shutdown and wait only for acknowledgement:
+       *    1. request shutdown transport
+       *    2. wait for the acknowledgement window
        */
       const shutdownAcknowledgement = await waitForWorkerHostAcknowledgement(
         shutdownContext.requestShutdown({
@@ -310,10 +391,16 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
         shutdownContext.acknowledgementTimeoutMs
       );
 
+      /**
+       * 3. Branch on the acknowledgement result:
+       *    1. timeout means graceful shutdown did not make it through transport
+       *    2. acknowledgement means the graceful path can continue
+       */
       if (shutdownAcknowledgement === 'timeout') {
         /**
-         * 3A. Treat the missing shutdown acknowledgement as a force-close
-         *     condition and kill the underlying session immediately.
+         * 3A. Missing acknowledgement fallback:
+         *     1. publish `force-close-requested`
+         *     2. invoke the transport-level force-close immediately after
          */
         await processEvent({
           context: {
@@ -334,17 +421,24 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
         });
       } else {
         /**
-         * 3B. Continue after the worker acknowledged shutdown, so the graceful
-         *     shutdown request made it through transport successfully.
+         * 3B. Acknowledged graceful path:
+         *     1. continue only because shutdown transport succeeded
+         *     2. optionally wait for full process termination next
          */
         if (
           shutdownContext.terminationTimeoutMs != null &&
           shutdownContext.terminationTimeoutErrorMessage != null
         ) {
+          /**
+           * 4. Branch on post-acknowledgement termination:
+           *    1. termination in time keeps the graceful path
+           *    2. timeout falls back to force-close
+           */
           try {
             /**
-             * 4. After acknowledgement, optionally wait for full process
-             *    termination within the configured timeout window.
+             * 4A. Graceful termination window:
+             *     1. wait for full process termination
+             *     2. keep the graceful path if termination arrives in time
              */
             await waitForWorkerTermination(
               session,
@@ -353,8 +447,9 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
             );
           } catch {
             /**
-             * 5. Treat the acknowledged-but-not-terminated timeout as a
-             *    force-close condition and fall back to killing the session.
+             * 4B. Acknowledged-but-not-terminated fallback:
+             *     1. publish `force-close-requested`
+             *     2. invoke the transport-level force-close immediately after
              */
             await processEvent({
               context: {
@@ -378,8 +473,11 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
       }
     } catch (error) {
       /**
-       * 3. Normalize the shutdown transport failure, record it in lifecycle
-       *    state, and fall back to force-close immediately.
+       * 5. Shutdown transport failure path:
+       *    1. normalize the transport failure
+       *    2. publish `shutdown-failed`
+       *    3. publish `force-close-requested`
+       *    4. invoke the transport-level force-close immediately after
        */
       const shutdownError = toWorkerHostLifecycleError(
         error,
@@ -419,16 +517,17 @@ export const shutdownWorkerHostLifecycleMachineSession = async <
     }
 
     /**
-     * 6. Regardless of which shutdown branch ran, wait for the final
-     *    child-process termination signal before this shared shutdown promise
-     *    settles.
+     * 6. Final shared shutdown wait:
+     *    1. wait for the child-process termination signal
+     *    2. settle the shared shutdown promise only after termination
      */
     await session.terminationPromise;
   })();
 
   /**
    * Publish the shared shutdown promise immediately so later callers can join
-   * the same shutdown work instead of starting a second flow.
+   * the same shutdown work instead of starting a second flow for the same
+   * session.
    */
   session.shutdownPromise = shutdownPromise;
 
@@ -471,6 +570,12 @@ export const observeWorkerHostLifecycleMachineSessionTermination = <
    */
   const { processEvent } = context;
 
+  /**
+   * Termination observation is fire-and-forget from the callback site because
+   * the underlying child-process exit has already happened. The async event
+   * processor is only responsible for lifecycle bookkeeping and promise
+   * settlement after that terminal signal.
+   */
   void processEvent({
     context: {
       workerSessions

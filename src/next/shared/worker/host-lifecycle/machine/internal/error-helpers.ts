@@ -7,8 +7,7 @@ import type { WorkerHostLifecycleSessionBase } from '../../types';
  * These helpers stay intentionally small and stateless:
  * - normalize unknown failures
  * - wait for shutdown acknowledgement with timeout fallback
- * - surface readiness and replacement failures consistently
- * - await the shared `readyPromise` owned by the host lifecycle session
+ * - surface replacement failures consistently
  */
 
 /**
@@ -55,23 +54,6 @@ export const waitForWorkerHostAcknowledgement = async <TResponse>(
 };
 
 /**
- * Create the error surfaced when a host caller awaited a session that did not
- * become ready.
- *
- * @param workerLabel Human-readable worker label.
- * @param session Session that failed to become ready.
- * @returns Readiness failure error.
- */
-export const createWorkerHostLifecycleReadinessError = (
-  workerLabel: string,
-  session: WorkerHostLifecycleSessionBase
-): Error =>
-  session.failureError ??
-  new Error(
-    `next-slug-splitter ${workerLabel} session "${session.sessionKey}" did not become ready.`
-  );
-
-/**
  * Create the error surfaced when a still-starting session is replaced.
  *
  * @param workerLabel Human-readable worker label.
@@ -87,25 +69,3 @@ export const createWorkerHostLifecycleReplacementError = (
   new Error(
     `next-slug-splitter ${workerLabel} session "${session.sessionKey}" was replaced before startup completed (${reason}).`
   );
-
-/**
- * Await the shared readiness promise for one host-managed session.
- *
- * @param workerLabel Human-readable worker label.
- * @param session Host-managed session.
- * @returns `void` after the session is ready.
- */
-export const waitForWorkerHostSessionReady = async (
-  workerLabel: string,
-  session: WorkerHostLifecycleSessionBase
-): Promise<void> => {
-  try {
-    await session.readyPromise;
-  } catch {
-    throw createWorkerHostLifecycleReadinessError(workerLabel, session);
-  }
-
-  if (session.phase !== 'ready') {
-    throw createWorkerHostLifecycleReadinessError(workerLabel, session);
-  }
-};
