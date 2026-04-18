@@ -14,6 +14,9 @@ type WorkerHandledRequest<
   TSharedSubject extends string
 > = Exclude<TRequest, { subject: TSharedSubject }>;
 
+/**
+ * Stable diagnostic prefix passed into the shared subject resolver.
+ */
 const MISSING_HANDLER_ERROR_PREFIX =
   'next-slug-splitter worker runtime has no handler for subject';
 
@@ -92,6 +95,10 @@ export type WorkerSubjectHandlerMap<
 
 /**
  * Resolve one domain request action by `subject`.
+ *
+ * @remarks
+ * This wrapper keeps the worker runtime's `action` / `state` vocabulary and
+ * delegates only the subject-to-handler lookup to the shared resolver.
  *
  * @template TRequest Full request union for one worker family.
  * @template TResponse Successful domain response action.

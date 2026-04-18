@@ -5,9 +5,6 @@ import {
   type SubjectDispatchHandlerMap
 } from '../dispatch-by-subject';
 
-const MISSING_HANDLER_ERROR_PREFIX =
-  'next-slug-splitter host lifecycle has no handler for subject';
-
 /**
  * Shared typed dispatcher for internal host lifecycle events.
  *
@@ -17,11 +14,17 @@ const MISSING_HANDLER_ERROR_PREFIX =
  *
  * This helper mirrors the runtime-side subject dispatcher while staying
  * clearly separate from the IPC wire protocol:
- * - events are internal to the parent process
- * - events use `subject + payload`
+ * - events are internal to the host process
+ * - events use the internal `subject + payload` shape
  * - events intentionally do not carry `requestId`
  * - worker-family business logic still lives outside this helper
  */
+
+/**
+ * Stable diagnostic prefix passed into the shared subject resolver.
+ */
+const MISSING_HANDLER_ERROR_PREFIX =
+  'next-slug-splitter host lifecycle has no handler for subject';
 
 /**
  * One typed host lifecycle event handler keyed by `subject`.
@@ -51,6 +54,11 @@ export type WorkerHostLifecycleEventHandlerMap<
 
 /**
  * Resolve one internal host lifecycle event by `subject`.
+ *
+ * @remarks
+ * This wrapper keeps the host lifecycle layer's `event` / `context`
+ * vocabulary and delegates only the subject-to-handler lookup to the shared
+ * resolver.
  *
  * @template TEvent Full lifecycle-event union handled by the dispatcher.
  * @template TContext Dynamic dispatch context passed into the resolved handler.
