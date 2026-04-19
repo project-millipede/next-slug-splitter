@@ -16,8 +16,7 @@ const createProxyRequest = ({
     url: 'https://example.com/docs/interactive',
     method,
     headers: new Headers({
-      accept:
-        'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       ...headers
     }),
     nextUrl: new URL('https://example.com/docs/interactive'),
@@ -30,7 +29,7 @@ const createRewriteDecision = (): RouteHandlerProxyDecision => ({
   kind: 'rewrite',
   pathname: '/docs/interactive',
   routeBasePaths: ['/docs'],
-  rewriteDestination: '/docs/_handlers/interactive'
+  rewriteDestination: '/docs/generated-handlers/interactive'
 });
 
 describe('proxy rewrite redirect policy', () => {
@@ -99,7 +98,7 @@ describe('proxy rewrite redirect policy', () => {
         kind: 'rewrite',
         pathname: '/docs/interactive',
         routeBasePaths: ['/docs'],
-        rewriteDestination: '/docs/_handlers/interactive'
+        rewriteDestination: '/docs/generated-handlers/interactive'
       },
       false
     );
@@ -108,7 +107,7 @@ describe('proxy rewrite redirect policy', () => {
       kind: 'rewrite',
       pathname: '/docs/interactive',
       routeBasePaths: ['/docs'],
-      rewriteDestination: '/docs/_handlers/interactive'
+      rewriteDestination: '/docs/generated-handlers/interactive'
     });
   });
 });

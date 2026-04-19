@@ -27,13 +27,13 @@ const createResolvedConfig = ({
 }): ResolvedRouteHandlersConfig => ({
   routerKind: 'pages',
   targetId,
-    app: {
-      rootDir,
-      routing: {
-        development: 'proxy',
-        workerPrewarm: 'off'
-      }
-    },
+  app: {
+    rootDir,
+    routing: {
+      development: 'proxy',
+      workerPrewarm: 'off'
+    }
+  },
   localeConfig: {
     locales: ['en'],
     defaultLocale: 'en'
@@ -61,7 +61,7 @@ const createResolvedConfig = ({
   paths: {
     rootDir,
     contentPagesDir: `${rootDir}/content`,
-    handlersDir: `${rootDir}/pages/content/_handlers`
+    handlersDir: `${rootDir}/pages/content/generated-handlers`
   }
 });
 

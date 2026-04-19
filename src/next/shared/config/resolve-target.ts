@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import {
   createConfigError,
   createConfigMissingError
@@ -89,15 +91,15 @@ export type NormalizedRouteHandlersTargetOptions = Pick<
 export type NormalizedRouteHandlersTargetRuntimeAttachments =
   ResolvedRouteHandlersRuntimeAttachments;
 
+const GENERATED_HANDLER_SEGMENT = 'generated-handlers';
+
 export const requireSingleRouteHandlersConfigBase = <
   TTarget extends RouteHandlersTargetConfigBase
 >(
   routeHandlersConfig: SingleTargetRouteHandlersConfig<TTarget> | undefined
 ): SingleTargetRouteHandlersConfig<TTarget> => {
   if (routeHandlersConfig == null) {
-    throw createConfigMissingError(
-      'Missing routeHandlersConfig.'
-    );
+    throw createConfigMissingError('Missing routeHandlersConfig.');
   }
 
   if (isObjectRecord(routeHandlersConfig)) {
@@ -145,7 +147,9 @@ export const normalizeRouteHandlersTargetRuntimeAttachments = (
  */
 export const normalizeRouteHandlersTargetOptions = (
   appConfig: ResolvedRouteHandlersAppConfig,
-  routeHandlersConfig: SingleTargetRouteHandlersConfig<RouteHandlersTargetConfigBase> | undefined,
+  routeHandlersConfig:
+    | SingleTargetRouteHandlersConfig<RouteHandlersTargetConfigBase>
+    | undefined,
   routerKind: RouteHandlerRouterKind
 ): NormalizedRouteHandlersTargetOptions => {
   const configuredRouteHandlers =
@@ -181,6 +185,13 @@ export const normalizeRouteHandlersTargetOptions = (
       'paths.handlersDir'
     )
   };
+
+  if (path.basename(resolvedPaths.handlersDir) !== GENERATED_HANDLER_SEGMENT) {
+    throw createConfigError(
+      `paths.handlersDir must end with "${GENERATED_HANDLER_SEGMENT}".`
+    );
+  }
+
   const routeBasePath = normalizeRouteBasePath(
     readRequiredStringOption(
       configuredRouteHandlers.routeBasePath,

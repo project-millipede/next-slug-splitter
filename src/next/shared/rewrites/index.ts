@@ -2,10 +2,7 @@ import { toRoutePath } from '../../../core/discovery';
 import { isSingleLocaleConfig } from '../../../core/locale-config';
 import type { HeavyRouteCandidate, LocaleConfig } from '../../../core/types';
 import { dedupeRewriteIdentities } from './identity';
-import type {
-  RouteHandlerRewrite,
-  RouteHandlerRewriteBuckets
-} from '../types';
+import type { RouteHandlerRewrite, RouteHandlerRewriteBuckets } from '../types';
 
 /**
  * Sort route-handler rewrites by source path for deterministic output.
@@ -34,7 +31,7 @@ export const buildRouteRewriteBuckets = (
   heavyRoutes: Array<HeavyRouteCandidate>,
   localeConfig: LocaleConfig,
   routeBasePath: string,
-  handlerRouteSegment = '_handlers'
+  handlerRouteSegment = 'generated-handlers'
 ): RouteHandlerRewriteBuckets => {
   const rewrites: Array<RouteHandlerRewrite> = [];
   const rewritesOfDefaultLocale: Array<RouteHandlerRewrite> = [];

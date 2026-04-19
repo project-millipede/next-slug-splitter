@@ -8,16 +8,20 @@ vi.mock(import('../../../../next/proxy/runtime-attachments'), () => ({
     loadRouteHandlerProxyRuntimeAttachmentsMock
 }));
 
-vi.mock(import('../../../../next/proxy/bootstrap-persisted'), async importOriginal => {
-  const actual = await importOriginal<
-    typeof import('../../../../next/proxy/bootstrap-persisted')
-  >();
+vi.mock(
+  import('../../../../next/proxy/bootstrap-persisted'),
+  async importOriginal => {
+    const actual =
+      await importOriginal<
+        typeof import('../../../../next/proxy/bootstrap-persisted')
+      >();
 
-  return {
-    ...actual,
-    readRouteHandlerProxyBootstrap: readRouteHandlerProxyBootstrapMock
-  };
-});
+    return {
+      ...actual,
+      readRouteHandlerProxyBootstrap: readRouteHandlerProxyBootstrapMock
+    };
+  }
+);
 
 import { bootstrapRouteHandlerProxyWorker } from '../../../../next/proxy/worker/runtime/bootstrap';
 
@@ -60,7 +64,7 @@ function createBootstrapTarget(): PersistedRouteHandlerProxyBootstrapPagesTarget
       name: 'slug',
       kind: 'catch-all'
     },
-    handlerRouteSegment: '_handlers',
+    handlerRouteSegment: 'generated-handlers',
     baseStaticPropsImport: {
       kind: 'package',
       specifier: '@test/base-static-props'
@@ -74,7 +78,7 @@ function createBootstrapTarget(): PersistedRouteHandlerProxyBootstrapPagesTarget
     paths: {
       rootDir: '/repo/app',
       contentPagesDir: '/repo/app/content/pages',
-      handlersDir: '/repo/app/pages/_handlers'
+      handlersDir: '/repo/app/pages/generated-handlers'
     }
   };
 }
@@ -124,7 +128,9 @@ describe('proxy worker bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.SLUG_SPLITTER_CONFIG_ROOT_DIR = '/repo/app';
-    readRouteHandlerProxyBootstrapMock.mockResolvedValue(createBootstrapManifest());
+    readRouteHandlerProxyBootstrapMock.mockResolvedValue(
+      createBootstrapManifest()
+    );
     loadRouteHandlerProxyRuntimeAttachmentsMock.mockResolvedValue({
       docs: {
         mdxCompileOptions: {
@@ -151,7 +157,9 @@ describe('proxy worker bootstrap', () => {
     );
     const resolvedConfig = state.resolvedConfigsByTargetId.get('docs');
 
-    expect(readRouteHandlerProxyBootstrapMock).toHaveBeenCalledWith('/repo/app');
+    expect(readRouteHandlerProxyBootstrapMock).toHaveBeenCalledWith(
+      '/repo/app'
+    );
     expect(loadRouteHandlerProxyRuntimeAttachmentsMock).toHaveBeenCalledWith(
       TEST_CONFIG_REGISTRATION
     );
@@ -171,7 +179,7 @@ describe('proxy worker bootstrap', () => {
         paths: {
           rootDir: '/repo/app',
           contentPagesDir: '/repo/app/content/pages',
-          handlersDir: '/repo/app/pages/_handlers'
+          handlersDir: '/repo/app/pages/generated-handlers'
         }
       }
     ]);
@@ -200,12 +208,12 @@ describe('proxy worker bootstrap', () => {
       paths: {
         rootDir: '/repo/app',
         contentPagesDir: '/repo/app/content/pages',
-        handlersDir: '/repo/app/pages/_handlers'
+        handlersDir: '/repo/app/pages/generated-handlers'
       }
     });
-    expect(
-      resolvedConfig?.runtime.mdxCompileOptions.remarkPlugins
-    ).toEqual([expect.any(Function)]);
+    expect(resolvedConfig?.runtime.mdxCompileOptions.remarkPlugins).toEqual([
+      expect.any(Function)
+    ]);
   });
 
   it('throws when the structural manifest is missing', async () => {

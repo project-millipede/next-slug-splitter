@@ -74,8 +74,7 @@ const createWorkerSessionChild = (
           response: {
             subject: 'bootstrapped',
             payload: {
-              bootstrapGenerationToken:
-                message.payload.bootstrapGenerationToken
+              bootstrapGenerationToken: message.payload.bootstrapGenerationToken
             }
           }
         });
@@ -225,7 +224,8 @@ describe('proxy worker client', () => {
           subject: 'heavy',
           payload: {
             handlerSynchronizationStatus: 'created',
-            rewriteDestination: '/en/docs/_handlers/getting-started/en',
+            rewriteDestination:
+              '/en/docs/generated-handlers/getting-started/en',
             routeBasePath: '/docs'
           }
         },
@@ -233,7 +233,8 @@ describe('proxy worker client', () => {
           subject: 'heavy',
           payload: {
             handlerSynchronizationStatus: 'unchanged',
-            rewriteDestination: '/en/docs/_handlers/getting-started/en',
+            rewriteDestination:
+              '/en/docs/generated-handlers/getting-started/en',
             routeBasePath: '/docs'
           }
         }
@@ -263,7 +264,7 @@ describe('proxy worker client', () => {
       subject: 'heavy',
       payload: {
         handlerSynchronizationStatus: 'unchanged',
-        rewriteDestination: '/en/docs/_handlers/getting-started/en',
+        rewriteDestination: '/en/docs/generated-handlers/getting-started/en',
         routeBasePath: '/docs'
       }
     });
@@ -301,7 +302,7 @@ describe('proxy worker client', () => {
         subject: 'heavy',
         payload: {
           handlerSynchronizationStatus: 'created',
-          rewriteDestination: '/en/docs/_handlers/getting-started/en',
+          rewriteDestination: '/en/docs/generated-handlers/getting-started/en',
           routeBasePath: '/docs'
         }
       }
@@ -338,7 +339,7 @@ describe('proxy worker client', () => {
         subject: 'heavy',
         payload: {
           handlerSynchronizationStatus: 'created',
-          rewriteDestination: '/en/docs/_handlers/getting-started/en',
+          rewriteDestination: '/en/docs/generated-handlers/getting-started/en',
           routeBasePath: '/docs'
         }
       }
@@ -370,7 +371,7 @@ describe('proxy worker client', () => {
       subject: 'heavy',
       payload: {
         handlerSynchronizationStatus: 'created',
-        rewriteDestination: '/en/docs/_handlers/getting-started/en',
+        rewriteDestination: '/en/docs/generated-handlers/getting-started/en',
         routeBasePath: '/docs'
       }
     });
@@ -382,7 +383,7 @@ describe('proxy worker client', () => {
         subject: 'heavy',
         payload: {
           handlerSynchronizationStatus: 'created',
-          rewriteDestination: '/en/docs/_handlers/getting-started/en',
+          rewriteDestination: '/en/docs/generated-handlers/getting-started/en',
           routeBasePath: '/docs'
         }
       }
@@ -392,7 +393,7 @@ describe('proxy worker client', () => {
         subject: 'heavy',
         payload: {
           handlerSynchronizationStatus: 'created',
-          rewriteDestination: '/en/docs/_handlers/getting-started/en',
+          rewriteDestination: '/en/docs/generated-handlers/getting-started/en',
           routeBasePath: '/docs'
         }
       }

@@ -5,7 +5,8 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 const resolveLocalizedContentRouteMock = vi.hoisted(() => vi.fn());
 
 vi.mock(import('../../../../core/discovery'), async importOriginal => {
-  const actual = await importOriginal<typeof import('../../../../core/discovery')>();
+  const actual =
+    await importOriginal<typeof import('../../../../core/discovery')>();
 
   return {
     ...actual,
@@ -40,7 +41,7 @@ const docsConfig: RouteHandlerLazyResolvedTarget = {
   localeConfig,
   paths: {
     contentPagesDir: path.join(rootDir, 'docs', 'src', 'pages'),
-    handlersDir: path.join(rootDir, 'pages', 'docs', '_handlers')
+    handlersDir: path.join(rootDir, 'pages', 'docs', 'generated-handlers')
   }
 };
 const blogConfig: RouteHandlerLazyResolvedTarget = {
@@ -52,7 +53,7 @@ const blogConfig: RouteHandlerLazyResolvedTarget = {
   localeConfig,
   paths: {
     contentPagesDir: path.join(rootDir, 'blog', 'src', 'pages'),
-    handlersDir: path.join(rootDir, 'pages', 'blog', '_handlers')
+    handlersDir: path.join(rootDir, 'pages', 'blog', 'generated-handlers')
   }
 };
 const resolvedTargets: Array<RouteHandlerLazyResolvedTarget> = [
@@ -114,7 +115,8 @@ describe('proxy lazy request resolution', () => {
   const scenarios: ReadonlyArray<Scenario> = [
     {
       id: 'Default-Locale-Filename',
-      description: 'resolves a default-locale filename-mode request to the concrete content file',
+      description:
+        'resolves a default-locale filename-mode request to the concrete content file',
       pathname: '/docs/getting-started',
       resolvedRoutePath: {
         locale: 'en',
@@ -153,7 +155,8 @@ describe('proxy lazy request resolution', () => {
     },
     {
       id: 'Localized-Filename',
-      description: 'resolves a localized filename-mode request to the locale-specific content file',
+      description:
+        'resolves a localized filename-mode request to the locale-specific content file',
       pathname: '/de/docs/getting-started',
       resolvedRoutePath: {
         locale: 'de',
@@ -192,7 +195,8 @@ describe('proxy lazy request resolution', () => {
     },
     {
       id: 'Default-Locale-Content',
-      description: 'resolves default-locale content mode without requiring locale-named files',
+      description:
+        'resolves default-locale content mode without requiring locale-named files',
       pathname: '/blog/application-extensibility',
       resolvedRoutePath: {
         locale: 'en',
@@ -229,7 +233,8 @@ describe('proxy lazy request resolution', () => {
     },
     {
       id: 'Missing-Route-File',
-      description: 'distinguishes a missing content file from a pathname inside a known target',
+      description:
+        'distinguishes a missing content file from a pathname inside a known target',
       pathname: '/docs/missing-page',
       resolvedRoutePath: null,
       expected: {
@@ -245,15 +250,14 @@ describe('proxy lazy request resolution', () => {
     }
   ];
 
-  test.for(scenarios)('[$id] $description', async ({
-    pathname,
-    resolvedRoutePath,
-    expected
-  }) => {
-    resolveLocalizedContentRouteMock.mockResolvedValue(resolvedRoutePath);
+  test.for(scenarios)(
+    '[$id] $description',
+    async ({ pathname, resolvedRoutePath, expected }) => {
+      resolveLocalizedContentRouteMock.mockResolvedValue(resolvedRoutePath);
 
-    await expect(
-      resolveRouteHandlerLazyRequest(pathname, resolvedTargets)
-    ).resolves.toEqual(expected);
-  });
+      await expect(
+        resolveRouteHandlerLazyRequest(pathname, resolvedTargets)
+      ).resolves.toEqual(expected);
+    }
+  );
 });

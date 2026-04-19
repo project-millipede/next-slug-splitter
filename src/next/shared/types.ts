@@ -46,8 +46,8 @@ export type RouteHandlerRewrite = {
    * Internal destination pathname for the generated handler route.
    *
    * Examples:
-   * - `"/content/_handlers/example/en"`
-   * - `"/de/content/_handlers/example/de"`
+   * - `"/content/generated-handlers/example/en"`
+   * - `"/de/content/generated-handlers/example/de"`
    */
   destination: string;
 

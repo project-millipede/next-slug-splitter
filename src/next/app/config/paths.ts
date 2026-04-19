@@ -26,15 +26,13 @@ export const createCatchAllAppRouteHandlerNextPaths = ({
   contentPagesDir: string;
 }): Partial<RouteHandlerTargetPaths> => {
   if (!isNonEmptyString(contentPagesDir)) {
-    throw createConfigError(
-      'contentPagesDir must be a non-empty string path.'
-    );
+    throw createConfigError('contentPagesDir must be a non-empty string path.');
   }
 
   const routeTreeSegments = routeTreeSegment.split('/');
 
   return {
     contentPagesDir,
-    handlersDir: path.join('app', ...routeTreeSegments, '_handlers')
+    handlersDir: path.join('app', ...routeTreeSegments, 'generated-handlers')
   };
 };

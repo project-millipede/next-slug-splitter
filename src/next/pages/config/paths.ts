@@ -16,9 +16,7 @@ import { isNonEmptyString } from '../../shared/config/shared';
  * @param handlerRouteParam Dynamic route parameter descriptor.
  * @returns Filesystem route segment such as `[slug]` or `[...slug]`.
  */
-const toDynamicPageSegment = (
-  handlerRouteParam: DynamicRouteParam
-): string => {
+const toDynamicPageSegment = (handlerRouteParam: DynamicRouteParam): string => {
   if (handlerRouteParam.kind === 'single') {
     return `[${handlerRouteParam.name}]`;
   }
@@ -85,15 +83,13 @@ export const createCatchAllRouteHandlerNextPaths = ({
   contentPagesDir: string;
 }): Partial<RouteHandlerTargetPaths> => {
   if (!isNonEmptyString(contentPagesDir)) {
-    throw createConfigError(
-      'contentPagesDir must be a non-empty string path.'
-    );
+    throw createConfigError('contentPagesDir must be a non-empty string path.');
   }
 
   const routeSegments = routeSegment.split('/');
 
   return {
     contentPagesDir,
-    handlersDir: path.join('pages', ...routeSegments, '_handlers')
+    handlersDir: path.join('pages', ...routeSegments, 'generated-handlers')
   };
 };

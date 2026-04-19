@@ -172,7 +172,8 @@ describe('proxy lazy single-handler emission', () => {
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
-          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
+          lazySingleRouteCacheManager:
+            bootstrapState.lazySingleRouteCacheManager
         });
         if (analysisResult?.kind !== 'heavy') {
           throw new Error('Expected heavy single-route analysis.');
@@ -182,7 +183,7 @@ describe('proxy lazy single-handler emission', () => {
           rootDir,
           'pages',
           TEST_PRIMARY_ROUTE_SEGMENT,
-          '_handlers',
+          'generated-handlers',
           'guides',
           'en.tsx'
         );
@@ -198,7 +199,7 @@ describe('proxy lazy single-handler emission', () => {
             rootDir,
             'pages',
             TEST_PRIMARY_ROUTE_SEGMENT,
-            '_handlers',
+            'generated-handlers',
             'guides',
             'en.tsx'
           )
@@ -213,7 +214,7 @@ describe('proxy lazy single-handler emission', () => {
             '/content/guides',
             analysisResult
           )
-        ).toBe('/content/_handlers/guides/en');
+        ).toBe('/content/generated-handlers/guides/en');
       }
     );
   });

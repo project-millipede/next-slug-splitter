@@ -1,5 +1,3 @@
-import path from 'node:path';
-
 import {
   isModuleReference,
   normalizeModuleReference,
@@ -56,8 +54,6 @@ export type NormalizedAppRouteHandlersTargetOptions =
  */
 export type NormalizedAppRouteHandlersTargetRuntimeAttachments =
   NormalizedRouteHandlersTargetRuntimeAttachments;
-
-const APP_ROUTER_GENERATED_HANDLER_SEGMENT = 'generated-handlers';
 
 /**
  * Read one required module-reference option from a raw target config.
@@ -141,41 +137,17 @@ export const normalizeRouteHandlersTargetRuntimeAttachments = (
  *
  * @param appConfig Resolved app-level config shared by all targets.
  * @param routeHandlersConfig Raw target config or single-target config wrapper.
- * @returns Normalized target options with App Router path adjustments applied.
+ * @returns Normalized target options.
  */
 export const normalizeRouteHandlersTargetOptions = (
   appConfig: ResolvedRouteHandlersAppConfig,
   routeHandlersConfig?: RouteHandlersConfig | RouteHandlersTargetConfig
 ): NormalizedAppRouteHandlersTargetOptions =>
-  (() => {
-    const normalizedTargetOptions = normalizeSharedRouteHandlersTargetOptions(
-      appConfig,
-      routeHandlersConfig,
-      'app'
-    );
-
-    const handlersDirBasename = path.basename(
-      normalizedTargetOptions.paths.handlersDir
-    );
-
-    // App Router treats underscore-prefixed folders as private and excludes
-    // them from routing. When the conventional `_handlers` segment is
-    // configured, map it to a clean routable internal segment instead.
-    if (handlersDirBasename !== '_handlers') {
-      return normalizedTargetOptions;
-    }
-
-    return {
-      ...normalizedTargetOptions,
-      paths: {
-        ...normalizedTargetOptions.paths,
-        handlersDir: path.join(
-          path.dirname(normalizedTargetOptions.paths.handlersDir),
-          APP_ROUTER_GENERATED_HANDLER_SEGMENT
-        )
-      }
-    };
-  })();
+  normalizeSharedRouteHandlersTargetOptions(
+    appConfig,
+    routeHandlersConfig,
+    'app'
+  );
 
 /**
  * Resolve the target-local config for the App Router path.

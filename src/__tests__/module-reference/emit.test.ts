@@ -50,7 +50,7 @@ import {
  * │   ├── _app.tsx                  (../../_app)
  * │   └── docs/                     (../)               <-- 1 level up
  * │       ├── [...slug].tsx         (../[...slug])      <-- The Catch-all Route
- * │       └── _handlers/            (./)                <-- Current directory
+ * │       └── generated-handlers/   (./)                <-- Current directory
  * │           ├── interactive.ts    (./interactive)     <-- Sibling
  * │           └── dashboard.ts                          <-- BASE (PAGE_FILE)
  * └── scripts/
@@ -66,7 +66,7 @@ const ROOT = path.parse(process.cwd()).root;
 const abs = (...parts: string[]) => path.join(ROOT, 'demo', ...parts);
 
 // The BASE is now the auto-generated handler inside the docs/ route
-const PAGE_FILE = abs('pages', 'docs', '_handlers', 'dashboard.ts');
+const PAGE_FILE = abs('pages', 'docs', 'generated-handlers', 'dashboard.ts');
 
 describe('toEmittedImportSource', () => {
   type SourceScenario = {
@@ -113,7 +113,7 @@ describe('toEmittedImportSource', () => {
     {
       id: 'Abs-Sibling',
       description: 'Sibling handler absolute path receives leading ./ prefix',
-      source: abs('pages', 'docs', '_handlers', 'interactive.ts'),
+      source: abs('pages', 'docs', 'generated-handlers', 'interactive.ts'),
       expected: './interactive'
     },
     {
@@ -207,14 +207,15 @@ describe('Utility Helpers (Edge Cases)', () => {
   describe('toPosix', () => {
     test('converts Windows separators to forward slashes', () => {
       // This will now pass on Linux and Windows
-      expect(toPosix('pages\\docs\\_handlers\\dashboard.ts')).toBe(
-        'pages/docs/_handlers/dashboard.ts'
+      expect(
+        toPosix('pages\\docs\\generated-handlers\\dashboard.ts')
+      ).toBe('pages/docs/generated-handlers/dashboard.ts')
       );
     });
 
     test('leaves existing POSIX slashes alone', () => {
-      expect(toPosix('pages/docs/_handlers/dashboard.ts')).toBe(
-        'pages/docs/_handlers/dashboard.ts'
+      expect(toPosix('pages/docs/generated-handlers/dashboard.ts')).toBe(
+        'pages/docs/generated-handlers/dashboard.ts'
       );
     });
 
