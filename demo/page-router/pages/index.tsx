@@ -32,35 +32,38 @@ const pages: PageEntry[] = [
     slug: 'getting-started',
     title: 'Getting Started',
     kind: 'light',
-    description: 'Pure Markdown — no custom React components',
+    description: 'Pure Markdown — no custom React components'
   },
   {
     slug: 'tutorial',
     title: 'Tutorial',
     kind: 'light',
-    description: 'Pure Markdown — no custom React components',
+    description: 'Pure Markdown — no custom React components'
   },
   {
     slug: 'interactive',
     title: 'Interactive Demo',
     kind: 'heavy',
-    description: 'Uses <Counter /> — a stateful React component',
+    description: 'Uses <Counter /> — a stateful React component'
   },
   {
     slug: 'dashboard',
     title: 'Dashboard',
     kind: 'heavy',
-    description: 'Uses <Chart /> and <DataTable /> — multiple heavy components',
-  },
+    description: 'Uses <Chart /> and <DataTable /> — multiple heavy components'
+  }
 ];
 
 // ---------------------------------------------------------------------------
 // Styles
 // ---------------------------------------------------------------------------
 
-const kindColors: Record<PageKind, { border: string; bg: string; text: string }> = {
+const kindColors: Record<
+  PageKind,
+  { border: string; bg: string; text: string }
+> = {
   light: { border: '#d1d5db', bg: '#f3f4f6', text: '#6b7280' },
-  heavy: { border: '#f59e0b', bg: '#fef3c7', text: '#92400e' },
+  heavy: { border: '#f59e0b', bg: '#fef3c7', text: '#92400e' }
 };
 
 const cardStyle = (kind: PageKind): CSSProperties => ({
@@ -69,13 +72,13 @@ const cardStyle = (kind: PageKind): CSSProperties => ({
   border: `2px solid ${kindColors[kind].border}`,
   borderRadius: '0.5rem',
   textDecoration: 'none',
-  color: 'inherit',
+  color: 'inherit'
 });
 
 const cardHeaderStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: '0.5rem',
+  gap: '0.5rem'
 };
 
 const badgeStyle = (kind: PageKind): CSSProperties => ({
@@ -83,18 +86,18 @@ const badgeStyle = (kind: PageKind): CSSProperties => ({
   padding: '0.125rem 0.5rem',
   borderRadius: '9999px',
   background: kindColors[kind].bg,
-  color: kindColors[kind].text,
+  color: kindColors[kind].text
 });
 
 const descriptionStyle: CSSProperties = {
   margin: '0.25rem 0 0',
   fontSize: '0.875rem',
-  color: '#6b7280',
+  color: '#6b7280'
 };
 
 const gridStyle: CSSProperties = {
   display: 'grid',
-  gap: '1rem',
+  gap: '1rem'
 };
 
 // ---------------------------------------------------------------------------
@@ -149,8 +152,8 @@ function HowItWorks() {
         </li>
         <li>
           <strong>Heavy pages</strong> get auto-generated handlers in{' '}
-          <code>pages/docs/_handlers/</code> that import only the components
-          they need.
+          <code>pages/docs/generated-handlers/</code> that import only the
+          components they need.
         </li>
       </ul>
     </>

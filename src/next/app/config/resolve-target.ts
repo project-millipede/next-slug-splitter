@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import {
   isModuleReference,
   normalizeModuleReference,

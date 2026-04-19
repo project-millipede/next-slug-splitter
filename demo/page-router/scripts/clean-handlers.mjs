@@ -3,7 +3,7 @@
  * or dev session.
  *
  * The code generator (next-slug-splitter CLI) creates handler pages under
- * `pages/<section>/_handlers/`. These are derived artifacts that must be
+ * `pages/<section>/generated-handlers/`. These are derived artifacts that must be
  * regenerated whenever the content tree or generator logic changes.
  * Cleaning them first avoids stale handlers surviving across runs.
  *
@@ -21,7 +21,7 @@ import { join } from 'node:path';
 // ---------------------------------------------------------------------------
 
 const handlerDirs = [
-  join(process.cwd(), 'pages', 'docs', '_handlers'),
+  join(process.cwd(), 'pages', 'docs', 'generated-handlers')
 ];
 
 // ---------------------------------------------------------------------------

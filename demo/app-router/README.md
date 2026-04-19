@@ -59,6 +59,7 @@ pnpm dev:ts
 ```
 
 The default `dev` script automatically:
+
 1. Selects the JavaScript variant
 2. Generates ballast files (simulated heavy dependencies)
 3. Starts the Next.js dev server
@@ -84,10 +85,8 @@ app/docs/generated-handlers/
 
 These files are auto-generated and gitignored. Each one imports exactly the components that its page needs — nothing more.
 
-The demo config still uses the conventional `handlersDir: app/docs/_handlers`
-input so the public config shape matches the Pages Router mental model. The
-App Router implementation normalizes that to `app/docs/generated-handlers/`
-internally because underscore-prefixed folders are private in `app/`.
+The demo config now uses the same canonical generated handler segment directly:
+`handlersDir: app/docs/generated-handlers`.
 
 ### The demo target config
 
@@ -118,7 +117,7 @@ The preset derives the repetitive App target plumbing for the demo:
 - `targetId`
 - `routeBasePath`
 - generated App handler params always use `handlerRouteParam.name`
-- `paths.handlersDir` as `app/docs/_handlers`
+- `paths.handlersDir` as `app/docs/generated-handlers`
 
 The App-specific route contract stays explicit:
 
@@ -133,7 +132,7 @@ The demo uses:
 
 ```ts
 app: {
-  rootDir
+  rootDir;
 }
 ```
 

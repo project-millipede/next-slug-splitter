@@ -207,9 +207,8 @@ describe('Utility Helpers (Edge Cases)', () => {
   describe('toPosix', () => {
     test('converts Windows separators to forward slashes', () => {
       // This will now pass on Linux and Windows
-      expect(
-        toPosix('pages\\docs\\generated-handlers\\dashboard.ts')
-      ).toBe('pages/docs/generated-handlers/dashboard.ts')
+      expect(toPosix('pages\\docs\\generated-handlers\\dashboard.ts')).toBe(
+        'pages/docs/generated-handlers/dashboard.ts'
       );
     });
 
