@@ -3,14 +3,14 @@ import path from 'node:path';
 /**
  * Build the generated-output root directory implied by one App catch-all preset.
  *
- * @param routeTreeSegment - Normalized App Router subtree segment whose parent
- * directory should own the generated handlers. This may include route groups.
+ * @param routeSegment - Normalized App Router route segment whose conventional
+ * `app/<segment>` branch should own the generated handlers.
  * @returns Directory that should own the canonical generated-handler leaf.
  */
 export const createCatchAllAppRouteHandlerGeneratedRootDir = (
-  routeTreeSegment: string
+  routeSegment: string
 ): string => {
-  const routeTreeSegments = routeTreeSegment.split('/');
+  const routeSegments = routeSegment.split('/');
 
-  return path.join('app', ...routeTreeSegments);
+  return path.join('app', ...routeSegments);
 };

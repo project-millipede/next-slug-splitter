@@ -116,6 +116,9 @@ const createResolvedAppConfig = ({ rootDir }: { rootDir: string }) =>
   });
 
 const TEST_RESOLVED_APP_CONFIG = createResolvedAppConfig(TEST_APP);
+const TEST_PRIMARY_ROUTE_CONTRACT = relativeModule('pages/content/[...entry]');
+const TEST_SECONDARY_ROUTE_CONTRACT = relativeModule('pages/secondary/[item]');
+const TEST_DOCS_ROUTE_CONTRACT = relativeModule('pages/docs/[...entry]');
 
 describe('next config helpers', () => {
   beforeEach(() => {
@@ -148,12 +151,11 @@ describe('next config helpers', () => {
           kind: 'catch-all'
         },
         contentDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+        routeContract: TEST_PRIMARY_ROUTE_CONTRACT,
         handlerBinding: createTestHandlerBinding()
       });
 
-      expect(routeHandlersConfig.routeContract).toEqual(
-        relativeModule('pages/content/[...entry]')
-      );
+      expect(routeHandlersConfig.routeContract).toEqual(TEST_PRIMARY_ROUTE_CONTRACT);
       expect(routeHandlersConfig.targetId).toBe(TEST_PRIMARY_ROUTE_SEGMENT);
       expect(routeHandlersConfig.routeBasePath).toBe('/content');
       expect(routeHandlersConfig.contentDir).toBe(
@@ -172,13 +174,14 @@ describe('next config helpers', () => {
           kind: 'single'
         },
         contentDir: TEST_SECONDARY_CONTENT_PAGES_DIR,
+        routeContract: TEST_SECONDARY_ROUTE_CONTRACT,
         handlerBinding: createTestHandlerBinding({
           processorImport: packageModule(TEST_SECONDARY_PROCESSOR_IMPORT)
         })
       });
 
       expect(routeHandlersConfig.routeContract).toEqual(
-        relativeModule('pages/secondary/[item]')
+        TEST_SECONDARY_ROUTE_CONTRACT
       );
       expect(routeHandlersConfig.targetId).toBe(TEST_SECONDARY_ROUTE_SEGMENT);
       expect(routeHandlersConfig.routeBasePath).toBe('/secondary');
@@ -211,26 +214,6 @@ describe('next config helpers', () => {
       );
       expect(routeHandlersConfig.generatedRootDir).toBe(
         path.join('app', 'content')
-      );
-    });
-
-    test('supports routeTreeSegment for App route groups while preserving the public route path', () => {
-      const routeHandlersConfig = createAppCatchAllRouteHandlersPreset({
-        routeSegment: 'docs',
-        routeTreeSegment: 'docs/(docs-shared)',
-        handlerRouteParam: {
-          name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-          kind: 'catch-all'
-        },
-        contentDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
-        routeContract: relativeModule('lib/docs-route-module'),
-        handlerBinding: createTestHandlerBinding()
-      });
-
-      expect(routeHandlersConfig.targetId).toBe('docs');
-      expect(routeHandlersConfig.routeBasePath).toBe('/docs');
-      expect(routeHandlersConfig.generatedRootDir).toBe(
-        path.join('app', 'docs', '(docs-shared)')
       );
     });
   });
@@ -405,6 +388,7 @@ describe('next config helpers', () => {
         },
         contentLocaleMode: 'default-locale',
         contentDir: TEST_SECONDARY_CONTENT_PAGES_DIR,
+        routeContract: TEST_SECONDARY_ROUTE_CONTRACT,
         handlerBinding: createTestHandlerBinding({
           processorImport: packageModule(TEST_SECONDARY_PROCESSOR_IMPORT)
         })
@@ -428,6 +412,7 @@ describe('next config helpers', () => {
           kind: 'catch-all'
         },
         contentDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+        routeContract: TEST_PRIMARY_ROUTE_CONTRACT,
         handlerBinding: createTestHandlerBinding(),
         mdxCompileOptions: {
           remarkPlugins: [testRemarkPlugin],
@@ -460,6 +445,7 @@ describe('next config helpers', () => {
               kind: 'catch-all'
             },
             contentDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+            routeContract: TEST_PRIMARY_ROUTE_CONTRACT,
             handlerBinding: createTestHandlerBinding()
           }),
           mdxCompileOptions: {
@@ -489,6 +475,7 @@ describe('next config helpers', () => {
               kind: 'catch-all'
             },
             contentDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+            routeContract: TEST_PRIMARY_ROUTE_CONTRACT,
             handlerBinding: createTestHandlerBinding()
           }),
           createCatchAllRouteHandlersPreset({
@@ -498,6 +485,7 @@ describe('next config helpers', () => {
               kind: 'single'
             },
             contentDir: TEST_SECONDARY_CONTENT_PAGES_DIR,
+            routeContract: TEST_SECONDARY_ROUTE_CONTRACT,
             handlerBinding: createTestHandlerBinding({
               processorImport: packageModule(TEST_SECONDARY_PROCESSOR_IMPORT)
             })
@@ -538,6 +526,7 @@ describe('next config helpers', () => {
                   kind: 'catch-all'
                 },
                 contentDir: 'content-a',
+                routeContract: TEST_DOCS_ROUTE_CONTRACT,
                 handlerBinding: createTestHandlerBinding()
               }),
               createCatchAllRouteHandlersPreset({
@@ -547,6 +536,7 @@ describe('next config helpers', () => {
                   kind: 'catch-all'
                 },
                 contentDir: 'content-b',
+                routeContract: TEST_DOCS_ROUTE_CONTRACT,
                 handlerBinding: createTestHandlerBinding()
               })
             ]

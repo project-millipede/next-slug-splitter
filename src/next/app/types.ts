@@ -247,14 +247,6 @@ export type CreateAppCatchAllRouteHandlersPresetOptions = Pick<
    */
   routeSegment: string;
   /**
-   * Optional App Router filesystem subtree used for emitted handlers.
-   *
-   * Defaults to {@link routeSegment}. This may include route groups such as
-   * `docs/(docs-shared)` when the filesystem tree should be narrower than the
-   * public route path.
-   */
-  routeTreeSegment?: string;
-  /**
    * Dynamic route parameter for the handler page.
    */
   handlerRouteParam: DynamicRouteParam;

@@ -6,10 +6,7 @@ import type {
 import { createConfigError } from '../../../utils/errors';
 import { isNonEmptyString } from '../../shared/config/shared';
 import { resolveCatchAllRoutePresetIdentity } from '../../shared/config/catch-all-preset';
-import {
-  createCatchAllBaseStaticPropsImport,
-  createCatchAllRouteHandlerGeneratedRootDir
-} from './paths';
+import { createCatchAllRouteHandlerGeneratedRootDir } from './paths';
 
 /**
  * Create a catch-all target preset for next-slug-splitter.
@@ -25,6 +22,7 @@ export const createCatchAllRouteHandlersPreset = ({
   contentDir,
   emitFormat,
   handlerBinding,
+  routeContract,
   mdxCompileOptions
 }: CreateCatchAllRouteHandlersPresetOptions): RouteHandlersTargetConfig => {
   if (!isNonEmptyString(contentDir)) {
@@ -44,10 +42,7 @@ export const createCatchAllRouteHandlersPreset = ({
     handlerRouteParam: resolvedPresetIdentity.handlerRouteParam,
     handlerBinding,
     mdxCompileOptions,
-    routeContract: createCatchAllBaseStaticPropsImport(
-      resolvedPresetIdentity.routeSegment,
-      resolvedPresetIdentity.handlerRouteParam
-    ),
+    routeContract,
     routeBasePath: resolvedPresetIdentity.routeBasePath,
     contentDir,
     generatedRootDir: createCatchAllRouteHandlerGeneratedRootDir(

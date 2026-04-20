@@ -117,7 +117,10 @@ normalizes the missing `i18n` block into its internal single-locale
 
 import process from 'node:process';
 import path from 'node:path';
-import { createCatchAllRouteHandlersPreset } from 'next-slug-splitter/next';
+import {
+  createCatchAllRouteHandlersPreset,
+  relativeModule
+} from 'next-slug-splitter/next';
 import { routeHandlerBindings } from 'site-route-handlers/config';
 
 const rootDir = process.cwd();
@@ -148,12 +151,14 @@ export const routeHandlersConfig = {
       routeSegment: 'docs',
       handlerRouteParam: docsRouteParam,
       contentDir: path.resolve(rootDir, 'docs/src/pages'),
+      routeContract: relativeModule('pages/docs/[...slug]'),
       handlerBinding: routeHandlerBindings.docs
     }),
     createCatchAllRouteHandlersPreset({
       routeSegment: 'blog',
       handlerRouteParam: blogRouteParam,
       contentDir: path.resolve(rootDir, 'blog/src/pages'),
+      routeContract: relativeModule('pages/blog/[slug]'),
       contentLocaleMode: 'default-locale',
       handlerBinding: routeHandlerBindings.blog
     })
@@ -161,16 +166,15 @@ export const routeHandlersConfig = {
 };
 ```
 
-Each preset derives `generatedRootDir` from its `routeSegment`, then the
-library appends the canonical `generated-handlers/` leaf during target
+Each preset resolves `generatedRootDir` for you from its `routeSegment`, then
+the library appends the canonical `generated-handlers/` leaf during target
 resolution.
 
-For Pages Router targets, the preset also derives the route contract for you.
-That contract usually points at the catch-all page module itself, for example
-`pages/docs/[...slug].tsx`, because generated heavy handler pages reuse that
-page's `getStaticProps` contract rather than introducing a second data-loading
-entrypoint. Route enumeration still stays on that catch-all page through
-`getStaticPaths`.
+For Pages Router targets, point `routeContract` at the catch-all page module
+itself, for example `pages/docs/[...slug].tsx`, because generated heavy
+handler pages reuse that page's `getStaticProps` contract rather than
+introducing a second data-loading entrypoint. Route enumeration still stays on
+that catch-all page through `getStaticPaths`.
 
 No separate generation command is required for the standard integration path.
 `next build` runs route-handler generation automatically through the installed
@@ -225,8 +229,8 @@ export const routeHandlersConfig = {
 };
 ```
 
-This preset also derives `generatedRootDir` for you from `routeSegment`, and
-the library later resolves the final `generated-handlers/` directory under that
+This preset resolves `generatedRootDir` for you from `routeSegment`, and the
+library later resolves the final `generated-handlers/` directory under that
 root.
 
 Unlike the Pages Router path, App Router usually keeps the route contract in a
@@ -243,8 +247,6 @@ The App-specific fields are:
   the library executes in an isolated worker for page-data compilation
 - `app.localeConfig` — optional multi-locale semantics used for App-side
   worker routing and static-param filtering
-- `routeTreeSegment` — optional filesystem subtree for the emitted App handler
-  branch; use this when the App route tree includes route groups
 
 `app.localeConfig` is a library routing contract, not a direct mirror of
 Next.js `i18n` settings:
@@ -254,34 +256,10 @@ Next.js `i18n` settings:
 - `locales` lists every locale identity the library should reason about
 - `defaultLocale` must be included in `locales`
 
-If the App tree uses a route group, keep the public route path stable through
-`routeSegment` and place the generated handlers under the shared subtree through
-`routeTreeSegment`:
-
-```js
-createAppCatchAllRouteHandlersPreset({
-  routeSegment: 'docs',
-  routeTreeSegment: 'docs/(docs-shared)',
-  handlerRouteParam: docsRouteParam,
-  contentDir: path.resolve(rootDir, 'content/pages'),
-  routeContract: relativeModule('app/docs/[...slug]/route-contract'),
-  handlerBinding: {
-    ...routeHandlerBindings.docs,
-    pageDataCompilerImport: relativeModule(
-      'config-variants/javascript/content-compiler.mjs'
-    )
-  }
-});
-```
-
-In this route-group variant, the preset derives `generatedRootDir` from
-`routeTreeSegment`, so the final generated output lands under the shared App
-subtree automatically.
-
-That shape produces:
-
-- public route base path: `/docs`
-- generated handler subtree: `app/docs/(docs-shared)/generated-handlers/...`
+If the App tree needs route groups or another custom filesystem placement for
+generated handlers, use manual target config and set `generatedRootDir`
+directly there. The catch-all preset stays on the conventional
+`app/<routeSegment>` branch on purpose.
 
 Concrete comparison:
 
@@ -683,6 +661,7 @@ Create one catch-all target with normalized route and path values.
 | `routeSegment`      | Public route segment (e.g. `'docs'`, `'blog'`)                          |
 | `handlerRouteParam` | Dynamic route parameter configuration                                   |
 | `contentDir`        | Directory containing content pages                                      |
+| `routeContract`     | Pages route contract module, typically the catch-all page such as `pages/docs/[...slug].tsx` |
 | `generatedRootDir`  | Derived generated-output root; presets resolve this from `routeSegment` |
 | `handlerBinding`    | Binding with processor module for route planning                        |
 | `contentLocaleMode` | Locale detection mode (see below)                                       |
@@ -695,10 +674,8 @@ App-specific route-module inputs.
 | Option                       | Description                                                                                                                                                                                                                                       |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `routeSegment`               | Public route segment (e.g. `'docs'`)                                                                                                                                                                                                              |
-| `routeTreeSegment`           | Optional App Router filesystem subtree for emitted handlers; defaults to `routeSegment`                                                                                                                                                           |
 | `handlerRouteParam`          | Dynamic route parameter configuration                                                                                                                                                                                                             |
 | `contentDir`                 | Directory containing content pages                                                                                                                                                                                                                |
-| `generatedRootDir`           | Derived generated-output root; presets resolve this from `routeSegment` or `routeTreeSegment`                                                                                                                                                     |
 | `handlerBinding`             | Binding with processor module for route planning                                                                                                                                                                                                  |
 | `routeContract`              | Shared router-specific route contract. In Pages this usually resolves to the catch-all page module and its `getStaticProps`, while in App this is typically a dedicated `route-contract.ts` file that owns `getStaticParams` and `loadPageProps`. |
 | `routeContractRuntimeImport` | Optional worker-owned App route module loaded whenever the library executes the route contract outside Next's server graph; defaults to `routeContract`                                                                                           |

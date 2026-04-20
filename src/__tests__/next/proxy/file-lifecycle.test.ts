@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 
+import { relativeModule } from '../../../module-reference';
 import { createCatchAllRouteHandlersPreset } from '../../../next/config';
 import { synchronizeRouteHandlerProxyFile } from '../../../next/proxy/file-lifecycle';
 import { resolveRouteHandlerRoutingStrategy } from '../../../next/shared/policy/routing-strategy';
@@ -35,6 +36,7 @@ const createMultiTargetConfig = (rootDir: string): RouteHandlersConfig => ({
         kind: 'catch-all'
       },
       contentDir: path.join(rootDir, 'docs', 'src', 'pages'),
+      routeContract: relativeModule('pages/docs/[...entry]'),
       handlerBinding: createTestHandlerBinding()
     }),
     createCatchAllRouteHandlersPreset({
@@ -44,6 +46,7 @@ const createMultiTargetConfig = (rootDir: string): RouteHandlersConfig => ({
         kind: 'catch-all'
       },
       contentDir: path.join(rootDir, 'blog', 'src', 'pages'),
+      routeContract: relativeModule('pages/blog/[...entry]'),
       handlerBinding: createTestHandlerBinding()
     })
   ]

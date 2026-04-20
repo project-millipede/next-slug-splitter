@@ -9,6 +9,7 @@ vi.mock(import('../../../../core/capture'), () => ({
   captureRouteHandlerComponentGraph: captureRouteHandlerComponentGraphMock
 }));
 
+import { relativeModule } from '../../../../module-reference';
 import { createCatchAllRouteHandlersPreset } from '../../../../next/config';
 import { resolveRouteHandlersConfigsFromAppConfig } from '../../../../next/pages/config/resolve-configs';
 import { resolveRouteHandlersAppContext } from '../../../../next/shared/bootstrap/route-handlers-bootstrap';
@@ -77,6 +78,9 @@ const createSingleTargetConfig = ({
       kind: 'catch-all'
     },
     contentDir: path.join(rootDir, TEST_PRIMARY_CONTENT_PAGES_DIR),
+    routeContract: relativeModule(
+      `pages/${TEST_PRIMARY_ROUTE_SEGMENT}/[...${TEST_CATCH_ALL_ROUTE_PARAM_NAME}]`
+    ),
     handlerBinding: createTestHandlerBinding()
   })
 });
