@@ -163,50 +163,6 @@ describe('App Router config resolution', () => {
     });
   });
 
-  it('supports App presets that place generated handlers under a route group subtree', async () => {
-    await withTempDir('next-slug-splitter-app-config-', async rootDir => {
-      await writeTestRouteHandlerPackage(rootDir);
-
-      const routeModulePath = path.join(rootDir, 'dist', 'route-module.mjs');
-      await writeTestModule(routeModulePath, createRouteModuleSource());
-
-      const routeHandlersConfig: AppRouteHandlersConfig = {
-        routerKind: 'app',
-        app: {
-          rootDir
-        },
-        ...createAppCatchAllRouteHandlersPreset({
-          routeSegment: 'docs',
-          routeTreeSegment: 'docs/(docs-shared)',
-          handlerRouteParam: {
-            name: 'slug',
-            kind: 'catch-all'
-          },
-          contentDir: 'content',
-          routeContract: absoluteModule(routeModulePath),
-          handlerBinding: createTestHandlerBinding()
-        })
-      };
-
-      const appConfig = resolveRouteHandlersAppConfig({
-        rootDir,
-        routeHandlersConfig
-      });
-      const [resolvedTarget] =
-        await resolveRouteHandlersConfigBasesFromAppConfig(
-          appConfig,
-          routeHandlersConfig
-        );
-
-      expect(resolvedTarget.targetId).toBe('docs');
-      expect(resolvedTarget.routeBasePath).toBe('/docs');
-      expect(resolvedTarget.handlerRouteSegment).toBe('generated-handlers');
-      expect(resolvedTarget.paths.generatedDir).toBe(
-        path.join(rootDir, 'app', 'docs', '(docs-shared)', 'generated-handlers')
-      );
-    });
-  });
-
   it('fails validation when routeContract is missing', async () => {
     await withTempDir('next-slug-splitter-app-config-', async rootDir => {
       await writeTestRouteHandlerPackage(rootDir);

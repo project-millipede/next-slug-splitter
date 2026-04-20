@@ -5,16 +5,14 @@ import type {
 
 import { createConfigError } from '../../../utils/errors';
 import { resolveCatchAllRoutePresetIdentity } from '../../shared/config/catch-all-preset';
-import { normalizeRouteSegment } from '../../shared/config/options';
 import { isNonEmptyString } from '../../shared/config/shared';
 import { createCatchAllAppRouteHandlerGeneratedRootDir } from './paths';
 
 /**
  * Create a catch-all App Router target preset for next-slug-splitter.
  *
- * The public route identity still comes from `routeSegment`, while
- * `routeTreeSegment` optionally lets App Router place the emitted handler
- * subtree under a different filesystem branch such as a route group.
+ * The public route identity still comes from `routeSegment`, and the preset
+ * derives the conventional `app/<routeSegment>` generated-output root.
  *
  * @param options - Preset options describing one catch-all App target.
  * @returns Target config with normalized route and path values.
@@ -22,7 +20,6 @@ import { createCatchAllAppRouteHandlerGeneratedRootDir } from './paths';
 export const createAppCatchAllRouteHandlersPreset = ({
   targetId,
   routeSegment,
-  routeTreeSegment,
   handlerRouteParam,
   contentLocaleMode,
   contentDir,
@@ -40,10 +37,6 @@ export const createAppCatchAllRouteHandlersPreset = ({
     routeSegment,
     handlerRouteParam
   });
-  const normalizedRouteTreeSegment =
-    routeTreeSegment == null
-      ? resolvedPresetIdentity.routeSegment
-      : normalizeRouteSegment(routeTreeSegment);
 
   return {
     targetId: resolvedPresetIdentity.targetId,
@@ -56,7 +49,7 @@ export const createAppCatchAllRouteHandlersPreset = ({
     routeContract,
     contentDir,
     generatedRootDir: createCatchAllAppRouteHandlerGeneratedRootDir(
-      normalizedRouteTreeSegment
+      resolvedPresetIdentity.routeSegment
     )
   };
 };

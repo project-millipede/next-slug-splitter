@@ -39,7 +39,7 @@ export type RouteHandlersTargetConfig = RouteHandlersTargetConfigBase & {
    *    `getStaticPaths`; generated handlers do not own a separate
    *    route-enumerator contract in the Pages path.
    */
-  routeContract?: RouteHandlerModuleReference;
+  routeContract: RouteHandlerModuleReference;
 };
 
 /**
@@ -68,6 +68,7 @@ export type CreateCatchAllRouteHandlersPresetOptions = Pick<
   | 'contentLocaleMode'
   | 'emitFormat'
   | 'handlerBinding'
+  | 'routeContract'
   | 'mdxCompileOptions'
 > & {
   /**

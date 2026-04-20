@@ -3,10 +3,10 @@
  *
  * Defines a single catch-all target under the `/docs/` route segment.
  * The processor is a local TypeScript file compiled to JavaScript via
- * the `prepare` step before the pipeline loads it at runtime. The preset
- * also derives the Pages route contract from `pages/docs/[...slug].tsx`, and
- * it derives `generatedRootDir`, which later resolves to the canonical
- * `generated-handlers/` output leaf.
+ * the `prepare` step before the pipeline loads it at runtime. The config also
+ * points at the shared Pages route contract in `pages/docs/[...slug].tsx`, and
+ * the preset derives `generatedRootDir`, which later resolves to the
+ * canonical `generated-handlers/` output leaf.
  */
 
 import path from 'node:path';
@@ -59,6 +59,7 @@ export const routeHandlersConfig: RouteHandlersConfig = {
       handlerRouteParam: docsHandlerRouteParam,
       contentDir: path.join(rootDir, 'content', 'pages'),
       contentLocaleMode: 'default-locale',
+      routeContract: relativeModule('pages/docs/[...slug]'),
 
       handlerBinding: {
         // `prepare` compiles the processor into the app-root `dist/` folder.

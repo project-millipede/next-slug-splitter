@@ -128,6 +128,9 @@ contract. Generated heavy handlers reuse its `getStaticProps` contract instead
 of importing a separate dedicated `route-contract` file. Route enumeration
 still stays on that catch-all page through `getStaticPaths`.
 
+The demo config points `routeContract` directly at that same file:
+`pages/docs/[...slug].tsx`.
+
 For the full Pages-vs-App route-contract comparison, see the comparison table
 in the top-level [README](../../README.md).
 
