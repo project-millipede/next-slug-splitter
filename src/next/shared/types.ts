@@ -329,16 +329,6 @@ export const resolveRouteParamValue = (
 ): string | string[] | undefined => routeParamResolvers[param.kind](slug);
 
 /**
- * Runtime handler factory binding for one target.
- */
-export type RuntimeHandlerFactoryBinding = {
-  /**
-   * Base import path for the handler factory module.
-   */
-  importBase: RouteHandlerModuleReference;
-};
-
-/**
  * Public alias for processor route context.
  */
 export type {
@@ -363,12 +353,6 @@ export type ProcessorRouteHandlerBinding = {
 };
 
 export type RouteHandlerBinding = ProcessorRouteHandlerBinding;
-
-/**
- * Map of named bindings exported by a site-owned handler package.
- */
-export type RouteHandlerBindingMap = Record<string, RouteHandlerBinding>;
-
 /**
  * Router-agnostic configuration for one route handler target.
  *
