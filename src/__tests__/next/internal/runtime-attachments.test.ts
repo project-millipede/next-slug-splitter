@@ -19,7 +19,7 @@ const writeRuntimeAttachmentsConfig = async (
     `  app: { rootDir: ${JSON.stringify(rootDir)} },`,
     "  targetId: 'docs',",
     "  routeBasePath: '/docs',",
-    "  paths: { contentPagesDir: 'content/pages', handlersDir: 'pages/_handlers' },",
+    "  paths: { contentPagesDir: 'content/pages', handlersDir: 'pages/generated-handlers' },",
     "  handlerRouteParam: { name: 'slug', kind: 'catch-all' },",
     '  mdxCompileOptions: {',
     '    remarkPlugins: [remarkPlugin],',
@@ -45,7 +45,7 @@ const writeAppRuntimeAttachmentsConfig = async (
     `  app: { rootDir: ${JSON.stringify(rootDir)} },`,
     "  targetId: 'docs',",
     "  routeBasePath: '/docs',",
-    "  paths: { contentPagesDir: 'content/pages', handlersDir: 'app/docs/_handlers' },",
+    "  paths: { contentPagesDir: 'content/pages', handlersDir: 'app/docs/generated-handlers' },",
     "  handlerRouteParam: { name: 'slug', kind: 'catch-all' },",
     "  routeModuleImport: { kind: 'package', specifier: '@test/docs-route-module' },",
     '  mdxCompileOptions: {',
@@ -96,7 +96,10 @@ describe('proxy runtime attachments loader', () => {
     await withTempDir(
       'next-slug-splitter-runtime-attachments-',
       async rootDir => {
-        await writeRuntimeAttachmentsConfig(rootDir, 'route-handlers-config.mjs');
+        await writeRuntimeAttachmentsConfig(
+          rootDir,
+          'route-handlers-config.mjs'
+        );
 
         const runtimeAttachments =
           await loadRouteHandlerProxyRuntimeAttachments({

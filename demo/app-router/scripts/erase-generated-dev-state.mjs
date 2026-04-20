@@ -58,10 +58,7 @@ const discoverGeneratedHandlerDirs = async appRootDir => {
 
         const entryPath = path.join(currentDir, entry.name);
 
-        if (
-          entry.name === '_handlers' ||
-          entry.name === 'generated-handlers'
-        ) {
+        if (entry.name === 'generated-handlers') {
           discoveredHandlerDirs.push(entryPath);
           return;
         }

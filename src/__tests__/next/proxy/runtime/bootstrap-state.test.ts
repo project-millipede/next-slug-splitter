@@ -36,33 +36,34 @@ const createBootstrapManifest = ({
   targets
 });
 
-const createBootstrapTarget = (): PersistedRouteHandlerProxyBootstrapPagesTarget => ({
-  targetId: 'docs',
-  routerKind: 'pages',
-  routeBasePath: '/docs',
-  contentLocaleMode: 'filename',
-  emitFormat: 'ts',
-  handlerRouteParam: {
-    name: 'slug',
-    kind: 'catch-all'
-  },
-  handlerRouteSegment: '_handlers',
-  baseStaticPropsImport: {
-    kind: 'package',
-    specifier: '@test/base-static-props'
-  },
-  processorConfig: {
-    processorImport: {
+const createBootstrapTarget =
+  (): PersistedRouteHandlerProxyBootstrapPagesTarget => ({
+    targetId: 'docs',
+    routerKind: 'pages',
+    routeBasePath: '/docs',
+    contentLocaleMode: 'filename',
+    emitFormat: 'ts',
+    handlerRouteParam: {
+      name: 'slug',
+      kind: 'catch-all'
+    },
+    handlerRouteSegment: 'generated-handlers',
+    baseStaticPropsImport: {
       kind: 'package',
-      specifier: '@test/processor'
+      specifier: '@test/base-static-props'
+    },
+    processorConfig: {
+      processorImport: {
+        kind: 'package',
+        specifier: '@test/processor'
+      }
+    },
+    paths: {
+      rootDir: '/repo/app',
+      contentPagesDir: '/repo/app/content/pages',
+      handlersDir: '/repo/app/pages/generated-handlers'
     }
-  },
-  paths: {
-    rootDir: '/repo/app',
-    contentPagesDir: '/repo/app/content/pages',
-    handlersDir: '/repo/app/pages/_handlers'
-  }
-});
+  });
 
 describe('proxy bootstrap state', () => {
   beforeEach(() => {
@@ -78,18 +79,17 @@ describe('proxy bootstrap state', () => {
     );
 
     await expect(
-      getRouteHandlerProxyBootstrapState(
-        TEST_LOCALE_CONFIG,
-        {
-          rootDir: '/repo/app'
-        }
-      )
+      getRouteHandlerProxyBootstrapState(TEST_LOCALE_CONFIG, {
+        rootDir: '/repo/app'
+      })
     ).resolves.toEqual({
       hasConfiguredTargets: true,
       targetRouteBasePaths: ['/docs'],
       bootstrapGenerationToken: 'bootstrap-token'
     });
-    expect(readRouteHandlerProxyBootstrapMock).toHaveBeenCalledWith('/repo/app');
+    expect(readRouteHandlerProxyBootstrapMock).toHaveBeenCalledWith(
+      '/repo/app'
+    );
   });
 
   it('throws when the persisted bootstrap manifest is missing', async () => {

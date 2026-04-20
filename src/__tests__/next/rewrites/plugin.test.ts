@@ -12,7 +12,7 @@ describe('rewrite plugin', () => {
     const routeRewrites: Array<RouteHandlerRewrite> = [
       {
         source: '/content/example',
-        destination: '/content/_handlers/example/en',
+        destination: '/content/generated-handlers/example/en',
         locale: false
       }
     ];
@@ -35,7 +35,7 @@ describe('rewrite plugin', () => {
 
     expect(generatedRewrite).toEqual({
       source: '/content/example',
-      destination: '/content/_handlers/example/en',
+      destination: '/content/generated-handlers/example/en',
       locale: false
     });
     expect(existingBeforeFileRewrite).toEqual({
@@ -61,15 +61,15 @@ describe('rewrite plugin', () => {
       beforeFiles: [
         {
           source: '/content/value|item',
-          destination: '/content/_handlers/value|item'
+          destination: '/content/generated-handlers/value|item'
         },
         {
           source: '/content/value|item',
-          destination: '/content/_handlers/value|item'
+          destination: '/content/generated-handlers/value|item'
         },
         {
           source: '/content/value|item',
-          destination: '/content/_handlers/value|item',
+          destination: '/content/generated-handlers/value|item',
           locale: false
         }
       ],
@@ -90,11 +90,11 @@ describe('rewrite plugin', () => {
     expect(rewrites.beforeFiles).toEqual([
       {
         source: '/content/value|item',
-        destination: '/content/_handlers/value|item'
+        destination: '/content/generated-handlers/value|item'
       },
       {
         source: '/content/value|item',
-        destination: '/content/_handlers/value|item',
+        destination: '/content/generated-handlers/value|item',
         locale: false
       }
     ]);

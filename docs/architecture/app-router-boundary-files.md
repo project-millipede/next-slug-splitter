@@ -11,8 +11,7 @@ app/docs/[...slug]/page.tsx
 app/docs/generated-handlers/.../page.tsx
 ```
 
-The user-facing config may still declare `handlersDir: app/docs/_handlers`, but
-the App Router path normalizes that internal generated branch to
+The generated handler branch now uses one shared canonical segment:
 `app/docs/generated-handlers`.
 
 The key rule is simple: if a boundary file should apply to both the public

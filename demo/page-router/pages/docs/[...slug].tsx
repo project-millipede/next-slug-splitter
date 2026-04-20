@@ -4,7 +4,7 @@
  * This is the "light" page: it renders content that does not require any
  * custom React components. Heavy pages (those that import components like
  * Counter, Chart, etc.) are served by auto-generated handlers under
- * `_handlers/` instead, keeping this page's client bundle minimal.
+ * `generated-handlers/` instead, keeping this page's client bundle minimal.
  */
 
 import type { GetStaticProps } from 'next';

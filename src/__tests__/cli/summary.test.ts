@@ -13,24 +13,24 @@ describe('cli summary formatting', () => {
     rewrites: [
       {
         source: '/docs/dashboard',
-        destination: '/docs/_handlers/dashboard',
+        destination: '/docs/generated-handlers/dashboard',
         locale: false
       },
       {
         source: '/docs/interactive',
-        destination: '/docs/_handlers/interactive',
+        destination: '/docs/generated-handlers/interactive',
         locale: false
       }
     ],
     rewritesOfDefaultLocale: [
       {
         source: '/en/docs/dashboard',
-        destination: '/en/docs/_handlers/dashboard',
+        destination: '/en/docs/generated-handlers/dashboard',
         locale: false
       },
       {
         source: '/en/docs/interactive',
-        destination: '/en/docs/_handlers/interactive',
+        destination: '/en/docs/generated-handlers/interactive',
         locale: false
       }
     ]

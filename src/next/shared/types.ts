@@ -46,8 +46,8 @@ export type RouteHandlerRewrite = {
    * Internal destination pathname for the generated handler route.
    *
    * Examples:
-   * - `"/content/_handlers/example/en"`
-   * - `"/de/content/_handlers/example/de"`
+   * - `"/content/generated-handlers/example/en"`
+   * - `"/de/content/generated-handlers/example/de"`
    */
   destination: string;
 
@@ -134,6 +134,12 @@ export type RouteHandlerNextPaths = RouteHandlerPaths;
  * Target-local filesystem path overrides.
  *
  * Excludes `rootDir` as that is resolved at the app level.
+ *
+ * Current contract:
+ * 1. Catch-all preset helpers derive the canonical `generated-handlers` leaf.
+ * 2. Manual target configs may still set `paths.handlersDir` directly.
+ * 3. Direct `paths.handlersDir` values must already include that final
+ *    segment themselves.
  */
 export type RouteHandlerTargetPaths = Omit<RouteHandlerNextPaths, 'rootDir'>;
 

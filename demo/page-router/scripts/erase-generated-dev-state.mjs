@@ -28,14 +28,14 @@ const resolveAppRootDir = () => {
  * Discover generated route-handler directories below the app `pages` tree.
  *
  * @param appRootDir - Absolute app root directory.
- * @returns Absolute `_handlers` directories.
+ * @returns Absolute generated handler directories.
  */
 const discoverGeneratedHandlerDirs = async appRootDir => {
   const pagesDir = path.join(appRootDir, 'pages');
   const discoveredHandlerDirs = [];
 
   /**
-   * Walk one directory subtree and collect `_handlers` directories.
+   * Walk one directory subtree and collect generated handler directories.
    *
    * @param currentDir - Absolute directory currently being inspected.
    */
@@ -58,7 +58,7 @@ const discoverGeneratedHandlerDirs = async appRootDir => {
 
         const entryPath = path.join(currentDir, entry.name);
 
-        if (entry.name === '_handlers') {
+        if (entry.name === 'generated-handlers') {
           discoveredHandlerDirs.push(entryPath);
           return;
         }

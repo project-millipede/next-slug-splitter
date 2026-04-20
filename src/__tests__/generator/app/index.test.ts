@@ -13,7 +13,7 @@ describe('App Router generator contract', () => {
       paths: {
         rootDir: '/repo',
         contentPagesDir: '/repo/content',
-        handlersDir: '/repo/app/content/_handlers'
+        handlersDir: '/repo/app/content/generated-handlers'
       },
       heavyRoute: createPlannedHeavyRoute({
         locale: 'de',
@@ -50,7 +50,7 @@ describe('App Router generator contract', () => {
     });
 
     expect(renderedPage.pageFilePath).toBe(
-      '/repo/app/content/_handlers/guides/einfuehrung/de/page.tsx'
+      '/repo/app/content/generated-handlers/guides/einfuehrung/de/page.tsx'
     );
     expect(renderedPage.pageSource).toContain('const handlerParams = ');
     expect(renderedPage.pageSource).toContain(
@@ -83,7 +83,7 @@ describe('App Router generator contract', () => {
       paths: {
         rootDir: '/repo',
         contentPagesDir: '/repo/content',
-        handlersDir: '/repo/app/content/_handlers'
+        handlersDir: '/repo/app/content/generated-handlers'
       },
       heavyRoute: createPlannedHeavyRoute({
         locale: 'en',
@@ -108,8 +108,6 @@ describe('App Router generator contract', () => {
     });
 
     expect(renderedPage.pageSource).not.toContain('generatePageMetadata');
-    expect(renderedPage.pageSource).not.toContain(
-      'export const revalidate ='
-    );
+    expect(renderedPage.pageSource).not.toContain('export const revalidate =');
   });
 });

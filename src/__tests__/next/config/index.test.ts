@@ -3,11 +3,17 @@ import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const resolveModuleReferenceToFilePathMock = vi.hoisted(() =>
-  vi.fn<(rootDir: string, reference: { kind: string; path?: string; specifier?: string }) => string>()
+  vi.fn<
+    (
+      rootDir: string,
+      reference: { kind: string; path?: string; specifier?: string }
+    ) => string
+  >()
 );
 
 vi.mock(import('../../../module-reference'), async importOriginal => {
-  const actual = await importOriginal<typeof import('../../../module-reference')>();
+  const actual =
+    await importOriginal<typeof import('../../../module-reference')>();
 
   return {
     ...actual,
@@ -15,10 +21,7 @@ vi.mock(import('../../../module-reference'), async importOriginal => {
   };
 });
 
-import {
-  packageModule,
-  relativeModule
-} from '../../../module-reference';
+import { packageModule, relativeModule } from '../../../module-reference';
 import {
   createCatchAllRouteHandlersPreset,
   createAppCatchAllRouteHandlersPreset
@@ -101,11 +104,7 @@ const createAppConfig = (rootDir: string) => ({
   rootDir
 });
 
-const createResolvedAppConfig = ({
-  rootDir
-}: {
-  rootDir: string;
-}) =>
+const createResolvedAppConfig = ({ rootDir }: { rootDir: string }) =>
   resolveRouteHandlersAppConfig({
     rootDir,
     routeHandlersConfig: {
@@ -161,7 +160,7 @@ describe('next config helpers', () => {
         TEST_PRIMARY_CONTENT_PAGES_DIR
       );
       expect(routeHandlersConfig.paths?.handlersDir).toBe(
-        path.join('pages', 'content', '_handlers')
+        path.join('pages', 'content', 'generated-handlers')
       );
     });
 
@@ -184,7 +183,7 @@ describe('next config helpers', () => {
       expect(routeHandlersConfig.targetId).toBe(TEST_SECONDARY_ROUTE_SEGMENT);
       expect(routeHandlersConfig.routeBasePath).toBe('/secondary');
       expect(routeHandlersConfig.paths?.handlersDir).toBe(
-        path.join('pages', 'secondary', '_handlers')
+        path.join('pages', 'secondary', 'generated-handlers')
       );
     });
   });
@@ -211,7 +210,7 @@ describe('next config helpers', () => {
         TEST_PRIMARY_CONTENT_PAGES_DIR
       );
       expect(routeHandlersConfig.paths?.handlersDir).toBe(
-        path.join('app', 'content', '_handlers')
+        path.join('app', 'content', 'generated-handlers')
       );
     });
 
@@ -231,7 +230,7 @@ describe('next config helpers', () => {
       expect(routeHandlersConfig.targetId).toBe('docs');
       expect(routeHandlersConfig.routeBasePath).toBe('/docs');
       expect(routeHandlersConfig.paths?.handlersDir).toBe(
-        path.join('app', 'docs', '(docs-shared)', '_handlers')
+        path.join('app', 'docs', '(docs-shared)', 'generated-handlers')
       );
     });
   });
@@ -302,8 +301,14 @@ describe('next config helpers', () => {
       expected: Array<{ tsconfigPath: string }>;
     };
 
-    const firstTsconfigPath = path.join(TEST_APP.rootDir, 'tsconfig.first.json');
-    const secondTsconfigPath = path.join(TEST_APP.rootDir, 'tsconfig.second.json');
+    const firstTsconfigPath = path.join(
+      TEST_APP.rootDir,
+      'tsconfig.first.json'
+    );
+    const secondTsconfigPath = path.join(
+      TEST_APP.rootDir,
+      'tsconfig.second.json'
+    );
     const scenarios: ReadonlyArray<Scenario> = [
       {
         id: 'Omitted',
@@ -386,9 +391,7 @@ describe('next config helpers', () => {
             }
           } as unknown as RouteHandlersConfig
         })
-      ).toThrowError(
-        'routeHandlersConfig.app.prepare[0] must be an object.'
-      );
+      ).toThrowError('routeHandlersConfig.app.prepare[0] must be an object.');
     });
   });
 
@@ -438,9 +441,8 @@ describe('next config helpers', () => {
       });
 
       expect(
-        normalizeRouteHandlersTargetRuntimeAttachments(
-          routeHandlersConfig
-        ).mdxCompileOptions
+        normalizeRouteHandlersTargetRuntimeAttachments(routeHandlersConfig)
+          .mdxCompileOptions
       ).toEqual({
         remarkPlugins: [testRemarkPlugin],
         recmaPlugins: [testRecmaPlugin]
@@ -449,23 +451,21 @@ describe('next config helpers', () => {
 
     test('rejects invalid mdxCompileOptions plugin lists', () => {
       expect(() =>
-        normalizeRouteHandlersTargetRuntimeAttachments(
-          {
-            app: createAppConfig(TEST_APP.rootDir),
-            ...createCatchAllRouteHandlersPreset({
-              routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
-              handlerRouteParam: {
-                name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
-                kind: 'catch-all'
-              },
-              contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
-              handlerBinding: createTestHandlerBinding()
-            }),
-            mdxCompileOptions: {
-              remarkPlugins: 'not-an-array'
-            }
-          } as unknown as RouteHandlersConfig
-        )
+        normalizeRouteHandlersTargetRuntimeAttachments({
+          app: createAppConfig(TEST_APP.rootDir),
+          ...createCatchAllRouteHandlersPreset({
+            routeSegment: TEST_PRIMARY_ROUTE_SEGMENT,
+            handlerRouteParam: {
+              name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+              kind: 'catch-all'
+            },
+            contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+            handlerBinding: createTestHandlerBinding()
+          }),
+          mdxCompileOptions: {
+            remarkPlugins: 'not-an-array'
+          }
+        } as unknown as RouteHandlersConfig)
       ).toThrow(
         '[next-slug-splitter] mdxCompileOptions.remarkPlugins must be an array.'
       );
@@ -505,10 +505,11 @@ describe('next config helpers', () => {
         ]
       };
 
-      const normalizedTargets = resolveNormalizedRouteHandlersTargetsFromAppConfig(
-        TEST_RESOLVED_APP_CONFIG,
-        routeHandlersConfig
-      );
+      const normalizedTargets =
+        resolveNormalizedRouteHandlersTargetsFromAppConfig(
+          TEST_RESOLVED_APP_CONFIG,
+          routeHandlersConfig
+        );
 
       expect(normalizedTargets).toHaveLength(2);
       const [contentTarget, secondaryTarget] = normalizedTargets;

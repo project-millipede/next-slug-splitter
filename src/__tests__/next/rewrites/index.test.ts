@@ -54,7 +54,8 @@ describe('rewrite generation', () => {
   const scenarios: Scenario[] = [
     {
       id: 'Multi-Locale',
-      description: 'keeps the locale-aware default-locale alias in multi-locale apps',
+      description:
+        'keeps the locale-aware default-locale alias in multi-locale apps',
       heavyRoutes: multiLocaleHeavyRoutes,
       localeConfig: {
         locales: ['en', 'de'],
@@ -63,17 +64,17 @@ describe('rewrite generation', () => {
       expectedRewrites: [
         {
           source: '/content/nested/example',
-          destination: '/content/_handlers/nested/example/en',
+          destination: '/content/generated-handlers/nested/example/en',
           locale: false
         },
         {
           source: '/en/content/nested/example',
-          destination: '/en/content/_handlers/nested/example/en',
+          destination: '/en/content/generated-handlers/nested/example/en',
           locale: false
         },
         {
           source: '/de/content/nested/example',
-          destination: '/de/content/_handlers/nested/example/de',
+          destination: '/de/content/generated-handlers/nested/example/de',
           locale: false
         }
       ],
@@ -87,12 +88,12 @@ describe('rewrite generation', () => {
       expectedRewrites: [
         {
           source: '/content/dashboard',
-          destination: '/content/_handlers/dashboard',
+          destination: '/content/generated-handlers/dashboard',
           locale: false
         },
         {
           source: '/content/interactive',
-          destination: '/content/_handlers/interactive',
+          destination: '/content/generated-handlers/interactive',
           locale: false
         }
       ],
@@ -100,26 +101,24 @@ describe('rewrite generation', () => {
     }
   ];
 
-  test.for(scenarios)('[$id] $description', ({
-    heavyRoutes,
-    localeConfig,
-    expectedRewrites,
-    expectedLength
-  }) => {
-    const rewrites: Array<RouteHandlerRewrite> = buildRouteRewriteEntries({
-      heavyRoutes,
-      localeConfig,
-      routeBasePath: '/content'
-    });
+  test.for(scenarios)(
+    '[$id] $description',
+    ({ heavyRoutes, localeConfig, expectedRewrites, expectedLength }) => {
+      const rewrites: Array<RouteHandlerRewrite> = buildRouteRewriteEntries({
+        heavyRoutes,
+        localeConfig,
+        routeBasePath: '/content'
+      });
 
-    expectedRewrites.forEach(expectedRewrite => {
-      expect(rewrites).toContainEqual(expectedRewrite);
-    });
-    expect(
-      rewrites.some(rewrite => rewrite.source.includes('/_next/data/'))
-    ).toBe(false);
-    expect(rewrites).toHaveLength(expectedLength);
-  });
+      expectedRewrites.forEach(expectedRewrite => {
+        expect(rewrites).toContainEqual(expectedRewrite);
+      });
+      expect(
+        rewrites.some(rewrite => rewrite.source.includes('/_next/data/'))
+      ).toBe(false);
+      expect(rewrites).toHaveLength(expectedLength);
+    }
+  );
 
   test('supports an alternate internal handler route segment', () => {
     const rewrites: Array<RouteHandlerRewrite> = buildRouteRewriteEntries({

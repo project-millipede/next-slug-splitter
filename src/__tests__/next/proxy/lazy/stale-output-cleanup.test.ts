@@ -3,10 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const removeRenderedRouteHandlerPageIfPresentMock = vi.hoisted(() => vi.fn());
 const resolveRenderedHandlerPageLocationMock = vi.hoisted(() => vi.fn());
 
-vi.mock(import('../../../../generator/shared/protocol/output-lifecycle'), () => ({
-  removeRenderedRouteHandlerPageIfPresent:
-    removeRenderedRouteHandlerPageIfPresentMock
-}));
+vi.mock(
+  import('../../../../generator/shared/protocol/output-lifecycle'),
+  () => ({
+    removeRenderedRouteHandlerPageIfPresent:
+      removeRenderedRouteHandlerPageIfPresentMock
+  })
+);
 
 vi.mock(import('../../../../generator/pages/protocol/rendered-page'), () => ({
   resolveRenderedHandlerPageLocation: resolveRenderedHandlerPageLocationMock
@@ -22,22 +25,22 @@ describe('proxy lazy stale-output cleanup', () => {
     vi.clearAllMocks();
     removeRenderedRouteHandlerPageIfPresentMock.mockResolvedValue('removed');
     resolveRenderedHandlerPageLocationMock.mockReturnValue({
-      pageFilePath: '/repo/app/pages/content/_handlers/guides/en.tsx'
+      pageFilePath: '/repo/app/pages/content/generated-handlers/guides/en.tsx'
     });
   });
 
   it('delegates cleanup to the explicit known output location', async () => {
     await expect(
       removeRouteHandlerLazyOutputAtKnownLocation({
-        handlersDir: '/repo/app/pages/blog/_handlers',
+        handlersDir: '/repo/app/pages/blog/generated-handlers',
         pageFilePath:
-          '/repo/app/pages/blog/_handlers/application-extensibility/en.tsx'
+          '/repo/app/pages/blog/generated-handlers/application-extensibility/en.tsx'
       })
     ).resolves.toBe('removed');
 
     expect(removeRenderedRouteHandlerPageIfPresentMock).toHaveBeenCalledWith(
-      '/repo/app/pages/blog/_handlers/application-extensibility/en.tsx',
-      '/repo/app/pages/blog/_handlers'
+      '/repo/app/pages/blog/generated-handlers/application-extensibility/en.tsx',
+      '/repo/app/pages/blog/generated-handlers'
     );
   });
 
@@ -49,7 +52,7 @@ describe('proxy lazy stale-output cleanup', () => {
           emitFormat: 'ts',
           contentLocaleMode: 'filename',
           paths: {
-            handlersDir: '/repo/app/pages/content/_handlers'
+            handlersDir: '/repo/app/pages/content/generated-handlers'
           }
         },
         identity: {
@@ -61,14 +64,14 @@ describe('proxy lazy stale-output cleanup', () => {
 
     expect(resolveRenderedHandlerPageLocationMock).toHaveBeenCalledWith(
       {
-        handlersDir: '/repo/app/pages/content/_handlers'
+        handlersDir: '/repo/app/pages/content/generated-handlers'
       },
       'ts',
       'guides/en'
     );
     expect(removeRenderedRouteHandlerPageIfPresentMock).toHaveBeenCalledWith(
-      '/repo/app/pages/content/_handlers/guides/en.tsx',
-      '/repo/app/pages/content/_handlers'
+      '/repo/app/pages/content/generated-handlers/guides/en.tsx',
+      '/repo/app/pages/content/generated-handlers'
     );
   });
 });

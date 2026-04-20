@@ -21,10 +21,7 @@ import { join } from 'node:path';
 // Add new sections here as they are introduced.
 // ---------------------------------------------------------------------------
 
-const handlerDirs = [
-  join(process.cwd(), 'app', 'docs', '_handlers'),
-  join(process.cwd(), 'app', 'docs', 'generated-handlers')
-];
+const handlerDirs = [join(process.cwd(), 'app', 'docs', 'generated-handlers')];
 
 // ---------------------------------------------------------------------------
 // Cleanup

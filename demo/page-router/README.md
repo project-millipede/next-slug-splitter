@@ -8,9 +8,9 @@ MDX-based content sites frequently need interactive components embedded alongsid
 
 ```tsx
 // pages/docs/[...slug].tsx — the conventional approach
-import { Counter } from '../../components/counter';       // ~1 MB dependency
-import { Chart } from '../../components/chart';            // ~3 MB dependency
-import { DataTable } from '../../components/data-table';   // ~6 MB dependency
+import { Counter } from '../../components/counter'; // ~1 MB dependency
+import { Chart } from '../../components/chart'; // ~3 MB dependency
+import { DataTable } from '../../components/data-table'; // ~6 MB dependency
 
 const components = { Counter, Chart, DataTable };
 
@@ -23,13 +23,13 @@ There is no other practical option within the Pages Router — every page served
 
 With the conventional approach, this demo's build output would look like this:
 
-| Page | Route | Bundle Size |
-|---|---|---|
-| Home | `/` | 127 kB |
+| Page            | Route                   | Bundle Size  |
+| --------------- | ----------------------- | ------------ |
+| Home            | `/`                     | 127 kB       |
 | Getting Started | `/docs/getting-started` | **~1250 kB** |
-| Tutorial | `/docs/tutorial` | **~1250 kB** |
-| Interactive | `/docs/interactive` | **~1250 kB** |
-| Dashboard | `/docs/dashboard` | **~1250 kB** |
+| Tutorial        | `/docs/tutorial`        | **~1250 kB** |
+| Interactive     | `/docs/interactive`     | **~1250 kB** |
+| Dashboard       | `/docs/dashboard`       | **~1250 kB** |
 
 Every docs page loads **~1250 kB** — the combined weight of all component dependencies — regardless of whether it actually uses any of them.
 
@@ -41,13 +41,13 @@ The result is **per-page component scoping**: each page bundles only the compone
 
 ### Build output with next-slug-splitter
 
-| Page | Route | Components | Bundle Size |
-|---|---|---|---|
-| Home | `/` | — | 127 kB |
-| Getting Started | `/docs/getting-started` | none (light) | 141 kB |
-| Tutorial | `/docs/tutorial` | none (light) | 141 kB |
-| Interactive | `/docs/interactive` | Counter | 266 kB |
-| Dashboard | `/docs/dashboard` | Chart, DataTable | 1250 kB |
+| Page            | Route                   | Components       | Bundle Size |
+| --------------- | ----------------------- | ---------------- | ----------- |
+| Home            | `/`                     | —                | 127 kB      |
+| Getting Started | `/docs/getting-started` | none (light)     | 141 kB      |
+| Tutorial        | `/docs/tutorial`        | none (light)     | 141 kB      |
+| Interactive     | `/docs/interactive`     | Counter          | 266 kB      |
+| Dashboard       | `/docs/dashboard`       | Chart, DataTable | 1250 kB     |
 
 Light pages drop from ~1250 kB to **141 kB** — a ~89% reduction. The Interactive page loads only the Counter component it needs (266 kB instead of 1250 kB). Only the Dashboard page, which genuinely uses the heaviest components, pays the full cost.
 
@@ -57,9 +57,10 @@ The ballast files in this demo simulate realistic dependency sizes (visualizatio
 
 **Light pages** are served by the catch-all `pages/docs/[...slug].tsx` with an empty component registry — no heavy code is bundled.
 
-**Heavy pages** get auto-generated handlers in `pages/docs/_handlers/` that import only the specific components they need:
-- `_handlers/interactive.tsx` bundles only `Counter`
-- `_handlers/dashboard.tsx` bundles only `Chart` + `DataTable`
+**Heavy pages** get auto-generated handlers in `pages/docs/generated-handlers/` that import only the specific components they need:
+
+- `generated-handlers/interactive.tsx` bundles only `Counter`
+- `generated-handlers/dashboard.tsx` bundles only `Chart` + `DataTable`
 
 ## Quick Start
 
@@ -76,6 +77,7 @@ pnpm dev:ts
 ```
 
 The default `dev` script automatically:
+
 1. Selects the JavaScript variant
 2. Generates ballast files (simulated heavy dependencies)
 3. Starts the Next.js dev server
@@ -101,15 +103,16 @@ pnpm build:ts
 ```
 
 Compare the bundle sizes in the build output:
+
 - **Light pages** (`getting-started`, `tutorial`) — minimal JS, no component code
 - **Heavy pages** (`interactive`, `dashboard`) — include only their specific components
 
 ### Generated handlers
 
-After starting dev or running a build, look at `pages/docs/_handlers/`:
+After starting dev or running a build, look at `pages/docs/generated-handlers/`:
 
 ```
-pages/docs/_handlers/
+pages/docs/generated-handlers/
 ├── interactive.tsx   ← imports only Counter
 └── dashboard.tsx     ← imports only Chart + DataTable
 ```
@@ -201,7 +204,7 @@ Pages-specific and which belong to the shared proxy/readiness layer, see
 │   ├── 404.tsx              ← dev-only retry workaround for transient lazy-route 404s
 │   └── docs/
 │       ├── [...slug].tsx    ← catch-all for light pages
-│       └── _handlers/       ← auto-generated heavy page handlers
+│       └── generated-handlers/ ← auto-generated heavy page handlers
 └── scripts/
     ├── generate-ballast.mjs ← creates simulated heavy dependencies
     ├── clean-handlers.mjs   ← removes generated handlers before rebuild

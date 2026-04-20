@@ -50,7 +50,7 @@ export const createTestPaths = (rootDir: string): RouteHandlerNextPaths => ({
     rootDir,
     'pages',
     TEST_PRIMARY_ROUTE_SEGMENT,
-    '_handlers'
+    'generated-handlers'
   )
 });
 
@@ -127,7 +127,7 @@ export const createPipelineResult = (
   rewrites: [
     {
       source: '/de/content/nested/example',
-      destination: '/content/_handlers/nested/example/de'
+      destination: '/content/generated-handlers/nested/example/de'
     }
   ],
   rewritesOfDefaultLocale: [],

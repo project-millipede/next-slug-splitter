@@ -58,7 +58,7 @@ const createResolvedConfigFixture = (
     paths: {
       rootDir,
       contentPagesDir: `${rootDir}/content/pages`,
-      handlersDir: `${rootDir}/pages/_handlers`
+      handlersDir: `${rootDir}/pages/generated-handlers`
     },
     localeConfig: TEST_LOCALE_CONFIG,
     runtime: {
@@ -150,11 +150,7 @@ describe('proxy bootstrap persistence', () => {
       await mkdir(path.dirname(bootstrapPath), {
         recursive: true
       });
-      await writeFile(
-        bootstrapPath,
-        '{"invalid":true}\n',
-        'utf8'
-      );
+      await writeFile(bootstrapPath, '{"invalid":true}\n', 'utf8');
 
       await expect(readRouteHandlerProxyBootstrap(rootDir)).resolves.toBeNull();
     });
@@ -164,35 +160,36 @@ describe('proxy bootstrap persistence', () => {
     const rootDir = '/repo/app';
     const manifest = createBootstrapManifest(rootDir);
 
-    expect(createRouteHandlerLazyResolvedTargetsFromProxyBootstrap(manifest)).toEqual(
-      [
-        {
-          routerKind: 'pages',
-          targetId: 'docs',
-          routeBasePath: '/docs',
-          contentLocaleMode: 'filename',
-          localeConfig: TEST_LOCALE_CONFIG,
-          emitFormat: 'ts',
-          handlerRouteParam: {
-            name: 'slug',
-            kind: 'catch-all'
-          },
-          paths: {
-            rootDir: '/repo/app',
-            contentPagesDir: '/repo/app/content/pages',
-            handlersDir: '/repo/app/pages/_handlers'
-          }
+    expect(
+      createRouteHandlerLazyResolvedTargetsFromProxyBootstrap(manifest)
+    ).toEqual([
+      {
+        routerKind: 'pages',
+        targetId: 'docs',
+        routeBasePath: '/docs',
+        contentLocaleMode: 'filename',
+        localeConfig: TEST_LOCALE_CONFIG,
+        emitFormat: 'ts',
+        handlerRouteParam: {
+          name: 'slug',
+          kind: 'catch-all'
+        },
+        paths: {
+          rootDir: '/repo/app',
+          contentPagesDir: '/repo/app/content/pages',
+          handlersDir: '/repo/app/pages/generated-handlers'
         }
-      ]
-    );
+      }
+    ]);
   });
 
   it('derives structural planner configs without runtime attachments', () => {
     const rootDir = '/repo/app';
     const manifest = createBootstrapManifest(rootDir);
-    const config = createRouteHandlerPlannerConfigsByIdFromProxyBootstrap(
-      manifest
-    ).get('docs');
+    const config =
+      createRouteHandlerPlannerConfigsByIdFromProxyBootstrap(manifest).get(
+        'docs'
+      );
 
     expect(config).toMatchObject({
       routerKind: 'pages',
@@ -212,7 +209,7 @@ describe('proxy bootstrap persistence', () => {
       paths: {
         rootDir: '/repo/app',
         contentPagesDir: '/repo/app/content/pages',
-        handlersDir: '/repo/app/pages/_handlers'
+        handlersDir: '/repo/app/pages/generated-handlers'
       }
     });
     expect(config).not.toHaveProperty('runtime');
@@ -223,9 +220,10 @@ describe('proxy bootstrap persistence', () => {
     const manifest = createBootstrapManifest(rootDir, [
       createResolvedAppConfigFixture(rootDir)
     ]);
-    const config = createRouteHandlerPlannerConfigsByIdFromProxyBootstrap(
-      manifest
-    ).get('docs');
+    const config =
+      createRouteHandlerPlannerConfigsByIdFromProxyBootstrap(manifest).get(
+        'docs'
+      );
 
     expect(manifest.targets).toEqual([
       {

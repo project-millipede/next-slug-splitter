@@ -97,7 +97,7 @@ const createPlannerConfig = (
     paths: {
       rootDir: '/app',
       contentPagesDir: '/app/content',
-      handlersDir: '/app/pages/docs/_handlers'
+      handlersDir: '/app/pages/docs/generated-handlers'
     }
   }) satisfies RouteHandlerLazyPagesPlannerConfig;
 
@@ -140,7 +140,9 @@ describe('lazy single-route cache manager', () => {
 
     expect(createFileEntryCacheMock).toHaveBeenCalledTimes(1);
     expect(firstTargetFileCache.cache.persistInterval).toBe(5000);
-    expect(firstTargetFileCache.cache.startAutoPersist).toHaveBeenCalledTimes(1);
+    expect(firstTargetFileCache.cache.startAutoPersist).toHaveBeenCalledTimes(
+      1
+    );
   });
 
   it('does not reconcile on write and flushes all retained caches on flushAll', () => {
@@ -194,7 +196,9 @@ describe('lazy single-route cache manager', () => {
     expect(firstTargetFileCache.reconcile).toHaveBeenCalledTimes(1);
     expect(secondTargetFileCache.reconcile).toHaveBeenCalledTimes(1);
     expect(firstTargetFileCache.cache.stopAutoPersist).toHaveBeenCalledTimes(1);
-    expect(secondTargetFileCache.cache.stopAutoPersist).toHaveBeenCalledTimes(1);
+    expect(secondTargetFileCache.cache.stopAutoPersist).toHaveBeenCalledTimes(
+      1
+    );
     expect(firstTargetFileCache.cache.destroy).not.toHaveBeenCalled();
     expect(secondTargetFileCache.cache.destroy).not.toHaveBeenCalled();
   });

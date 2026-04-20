@@ -2,9 +2,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  absoluteModule
-} from '../../../../module-reference';
+import { absoluteModule } from '../../../../module-reference';
 import { createAppCatchAllRouteHandlersPreset } from '../../../../next/config';
 import { resolveRouteHandlerRouterKind } from '../../../../next/shared/config/router-kind';
 import { resolveRouteHandlersAppConfig } from '../../../../next/shared/config/app';
@@ -23,7 +21,7 @@ const createRouteModuleSource = (): string =>
     "export const getStaticParams = async () => [{ slug: ['intro'] }];",
     'export const loadPageProps = async params => ({ params });',
     'export const generatePageMetadata = async params => ({',
-    '  title: params.slug.join(\'/\')',
+    "  title: params.slug.join('/')",
     '});',
     'export const revalidate = 60;',
     ''
@@ -79,7 +77,7 @@ describe('App Router config resolution', () => {
         routeModuleImport: absoluteModule(routeModulePath),
         paths: {
           contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', '_handlers')
+          handlersDir: path.join('app', 'docs', 'generated-handlers')
         }
       };
 
@@ -87,10 +85,11 @@ describe('App Router config resolution', () => {
         rootDir,
         routeHandlersConfig
       });
-      const [resolvedTarget] = await resolveRouteHandlersConfigBasesFromAppConfig(
-        appConfig,
-        routeHandlersConfig
-      );
+      const [resolvedTarget] =
+        await resolveRouteHandlersConfigBasesFromAppConfig(
+          appConfig,
+          routeHandlersConfig
+        );
 
       expect(resolvedTarget.routerKind).toBe('app');
       expect(resolvedTarget.targetId).toBe('docs');
@@ -140,7 +139,7 @@ describe('App Router config resolution', () => {
         routeModuleImport: absoluteModule(sourceRouteModulePath),
         paths: {
           contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', '_handlers')
+          handlersDir: path.join('app', 'docs', 'generated-handlers')
         }
       };
 
@@ -148,10 +147,11 @@ describe('App Router config resolution', () => {
         rootDir,
         routeHandlersConfig
       });
-      const [resolvedTarget] = await resolveRouteHandlersConfigBasesFromAppConfig(
-        appConfig,
-        routeHandlersConfig
-      );
+      const [resolvedTarget] =
+        await resolveRouteHandlersConfigBasesFromAppConfig(
+          appConfig,
+          routeHandlersConfig
+        );
 
       expect(resolvedTarget.handlerRouteSegment).toBe('generated-handlers');
       expect(resolvedTarget.routeModuleImport).toEqual(
@@ -196,22 +196,17 @@ describe('App Router config resolution', () => {
         rootDir,
         routeHandlersConfig
       });
-      const [resolvedTarget] = await resolveRouteHandlersConfigBasesFromAppConfig(
-        appConfig,
-        routeHandlersConfig
-      );
+      const [resolvedTarget] =
+        await resolveRouteHandlersConfigBasesFromAppConfig(
+          appConfig,
+          routeHandlersConfig
+        );
 
       expect(resolvedTarget.targetId).toBe('docs');
       expect(resolvedTarget.routeBasePath).toBe('/docs');
       expect(resolvedTarget.handlerRouteSegment).toBe('generated-handlers');
       expect(resolvedTarget.paths.handlersDir).toBe(
-        path.join(
-          rootDir,
-          'app',
-          'docs',
-          '(docs-shared)',
-          'generated-handlers'
-        )
+        path.join(rootDir, 'app', 'docs', '(docs-shared)', 'generated-handlers')
       );
     });
   });
@@ -236,7 +231,7 @@ describe('App Router config resolution', () => {
         routeBasePath: '/docs',
         paths: {
           contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', '_handlers')
+          handlersDir: path.join('app', 'docs', 'generated-handlers')
         }
       };
 
@@ -261,10 +256,9 @@ describe('App Router config resolution', () => {
       const routeModulePath = path.join(rootDir, 'dist', 'route-module.mjs');
       await writeTestModule(
         routeModulePath,
-        [
-          'export const loadPageProps = async params => ({ params });',
-          ''
-        ].join('\n')
+        ['export const loadPageProps = async params => ({ params });', ''].join(
+          '\n'
+        )
       );
 
       const routeHandlersConfig: AppRouteHandlersConfig = {
@@ -284,7 +278,7 @@ describe('App Router config resolution', () => {
         routeModuleImport: absoluteModule(routeModulePath),
         paths: {
           contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', '_handlers')
+          handlersDir: path.join('app', 'docs', 'generated-handlers')
         }
       };
 
@@ -333,7 +327,7 @@ describe('App Router config resolution', () => {
         routeModuleImport: absoluteModule(routeModulePath),
         paths: {
           contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', '_handlers')
+          handlersDir: path.join('app', 'docs', 'generated-handlers')
         }
       };
 
