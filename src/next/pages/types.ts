@@ -17,15 +17,29 @@ import type {
 /**
  * Pages Router target config.
  *
- * Extends the shared target contract with the `getStaticProps` delegation
- * module used by generated heavy handler pages.
+ * Extends the shared target contract with the route-owned Pages contract used
+ * by generated heavy handler pages.
  */
 export type RouteHandlersTargetConfig = RouteHandlersTargetConfigBase & {
   /**
-   * Import path for the catch-all page whose `getStaticProps` should be reused
-   * by generated handler pages.
+   * Import path for the Pages Router route contract reused by generated
+   * handler pages.
+   *
+   * @remarks
+   * Pages Router uses this field as the shared page-data contract seam.
+   *
+   * Key aspects:
+   * 1. This usually is the catch-all page module itself, for example
+   *    `pages/docs/[...slug].tsx`.
+   * 2. Generated heavy handler pages reuse that page module's `getStaticProps`
+   *    contract.
+   * 3. The light catch-all page and generated heavy pages therefore stay on
+   *    one shared page-data loading seam.
+   * 4. Route enumeration still stays on the catch-all page's
+   *    `getStaticPaths`; generated handlers do not own a separate
+   *    route-enumerator contract in the Pages path.
    */
-  baseStaticPropsImport?: RouteHandlerModuleReference;
+  routeContract?: RouteHandlerModuleReference;
 };
 
 /**
@@ -84,9 +98,9 @@ export type ResolvedRouteHandlersConfigBase =
      */
     app: ResolvedRouteHandlersAppConfig;
     /**
-     * Resolved import path for the base static props module.
+     * Resolved route-contract import reused by generated handler pages.
      */
-    baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
+    routeContract: ResolvedRouteHandlerModuleReference;
   };
 
 /**
@@ -105,7 +119,7 @@ export type RouteHandlerPlannerConfig = Pick<
   | 'emitFormat'
   | 'contentLocaleMode'
   | 'handlerRouteParam'
-  | 'baseStaticPropsImport'
+  | 'routeContract'
   | 'routeBasePath'
   | 'localeConfig'
   | 'processorConfig'

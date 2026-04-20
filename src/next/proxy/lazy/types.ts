@@ -157,7 +157,7 @@ export type RouteHandlerLazyPagesPlannerConfig =
      * Catch-all page module whose `getStaticProps` contract the generated
      * handler page should reuse.
      */
-    baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
+    routeContract: ResolvedRouteHandlerModuleReference;
   };
 
 /**
@@ -170,7 +170,7 @@ export type RouteHandlerLazyAppPlannerConfig =
      * Route-owned App contract shared by the public light page and generated
      * heavy handler pages.
      */
-    routeModuleImport: ResolvedRouteHandlerModuleReference;
+    routeContract: ResolvedRouteHandlerModuleReference;
     /**
      * Build-time inspection result for the page-safe route module.
      */

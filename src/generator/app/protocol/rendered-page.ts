@@ -47,7 +47,7 @@ export const renderAppRouteHandlerPage = ({
   paths,
   heavyRoute,
   emitFormat,
-  routeModuleImport,
+  routeContract,
   handlerRouteParam,
   routeBasePath,
   routeModuleContract
@@ -55,7 +55,7 @@ export const renderAppRouteHandlerPage = ({
   paths: RouteHandlerPaths;
   heavyRoute: PlannedHeavyRoute;
   emitFormat: EmitFormat;
-  routeModuleImport: ResolvedRouteHandlerModuleReference;
+  routeContract: ResolvedRouteHandlerModuleReference;
   handlerRouteParam: {
     name: string;
     kind: 'single' | 'catch-all' | 'optional-catch-all';
@@ -88,10 +88,7 @@ export const renderAppRouteHandlerPage = ({
         pageFilePath,
         heavyRoute.factoryImport
       ),
-      routeModuleImport: toEmittedImportSpecifier(
-        pageFilePath,
-        routeModuleImport
-      ),
+      routeContract: toEmittedImportSpecifier(pageFilePath, routeContract),
       handlerParams:
         fixedRouteParamValue === undefined
           ? {}

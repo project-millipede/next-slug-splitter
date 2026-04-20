@@ -44,7 +44,7 @@ const createResolvedConfig = ({
     name: 'slug',
     kind: 'catch-all'
   },
-  baseStaticPropsImport: {
+  routeContract: {
     kind: 'absolute-file',
     path: `${rootDir}/pages/content/[...slug].tsx`
   },

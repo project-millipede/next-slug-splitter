@@ -151,7 +151,7 @@ describe('next config helpers', () => {
         handlerBinding: createTestHandlerBinding()
       });
 
-      expect(routeHandlersConfig.baseStaticPropsImport).toEqual(
+      expect(routeHandlersConfig.routeContract).toEqual(
         relativeModule('pages/content/[...entry]')
       );
       expect(routeHandlersConfig.targetId).toBe(TEST_PRIMARY_ROUTE_SEGMENT);
@@ -177,7 +177,7 @@ describe('next config helpers', () => {
         })
       });
 
-      expect(routeHandlersConfig.baseStaticPropsImport).toEqual(
+      expect(routeHandlersConfig.routeContract).toEqual(
         relativeModule('pages/secondary/[item]')
       );
       expect(routeHandlersConfig.targetId).toBe(TEST_SECONDARY_ROUTE_SEGMENT);
@@ -197,11 +197,11 @@ describe('next config helpers', () => {
           kind: 'catch-all'
         },
         contentDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
-        routeModuleImport: relativeModule('lib/docs-route-module'),
+        routeContract: relativeModule('lib/docs-route-module'),
         handlerBinding: createTestHandlerBinding()
       });
 
-      expect(routeHandlersConfig.routeModuleImport).toEqual(
+      expect(routeHandlersConfig.routeContract).toEqual(
         relativeModule('lib/docs-route-module')
       );
       expect(routeHandlersConfig.targetId).toBe(TEST_PRIMARY_ROUTE_SEGMENT);
@@ -223,7 +223,7 @@ describe('next config helpers', () => {
           kind: 'catch-all'
         },
         contentDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
-        routeModuleImport: relativeModule('lib/docs-route-module'),
+        routeContract: relativeModule('lib/docs-route-module'),
         handlerBinding: createTestHandlerBinding()
       });
 

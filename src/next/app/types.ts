@@ -190,13 +190,27 @@ export type RouteHandlersTargetConfig = Omit<
    * Route-owned App page contract imported by the public page and generated
    * heavy pages.
    *
+   * @remarks
+   * App Router uses this field as one dedicated route-owned contract seam.
+   *
+   * Key aspects:
+   * 1. This is typically a dedicated sibling file such as
+   *    `app/docs/[...slug]/route-contract.ts`, not the public page module
+   *    itself.
+   * 2. The public light catch-all page and the generated heavy pages both call
+   *    into this same contract.
+   * 3. Unlike the Pages Router path, route enumeration also lives here through
+   *    `getStaticParams`.
+   * 4. The same contract therefore owns both route enumeration and page-data
+   *    loading for the App route surface.
+   *
    * Required/optional exports:
    * - `getStaticParams`
    * - `loadPageProps(params)`
    * - optional `generatePageMetadata(params)`
    * - optional `revalidate`
    */
-  routeModuleImport: RouteHandlerModuleReference;
+  routeContract: RouteHandlerModuleReference;
 };
 
 /**
@@ -226,7 +240,7 @@ export type CreateAppCatchAllRouteHandlersPresetOptions = Pick<
   | 'emitFormat'
   | 'handlerBinding'
   | 'mdxCompileOptions'
-  | 'routeModuleImport'
+  | 'routeContract'
 > & {
   /**
    * Public route segment for the catch-all target (e.g. `docs`).
@@ -273,7 +287,7 @@ export type ResolvedRouteHandlersConfigBase =
      * Resolved route-contract import used by App Router helpers and generated
      * heavy pages.
      */
-    routeModuleImport: ResolvedRouteHandlerModuleReference;
+    routeContract: ResolvedRouteHandlerModuleReference;
     /**
      * Internal App Router segment used for generated handler destinations.
      */

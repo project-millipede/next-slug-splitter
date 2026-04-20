@@ -63,7 +63,7 @@ export const routeHandlersConfig: RouteHandlersConfig = {
        * the route folder owns one authored `route-contract.ts`, and both the
        * public page and generated heavy handlers delegate to it directly.
        */
-      routeModuleImport: relativeModule('app/docs/[...slug]/route-contract'),
+      routeContract: relativeModule('app/docs/[...slug]/route-contract'),
       handlerBinding: {
         // `prepare` compiles the processor into the app-root `dist/` folder.
         // Runtime always loads prepared JavaScript artifacts, so both module

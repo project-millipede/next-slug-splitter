@@ -37,7 +37,7 @@ describe('App Router generator contract', () => {
         ]
       }),
       emitFormat: 'ts',
-      routeModuleImport: absoluteModule('/repo/app/content/route-contract.ts'),
+      routeContract: absoluteModule('/repo/app/content/route-contract.ts'),
       handlerRouteParam: {
         name: 'slug',
         kind: 'catch-all'
@@ -95,7 +95,7 @@ describe('App Router generator contract', () => {
         componentEntries: []
       }),
       emitFormat: 'ts',
-      routeModuleImport: absoluteModule('/repo/app/content/route-contract.ts'),
+      routeContract: absoluteModule('/repo/app/content/route-contract.ts'),
       handlerRouteParam: {
         name: 'slug',
         kind: 'catch-all'

@@ -8,6 +8,9 @@
  * - How the catch-all route parameter is shaped (`handlerRouteParam`).
  * - Where to find the handler processor that maps captured keys to
  *   component imports and a factory import (`handlerBinding`).
+ * - The preset also derives the Pages route contract from the catch-all page
+ *   module itself (`pages/docs/[...slug].tsx`), so generated heavy handlers
+ *   reuse that page's `getStaticProps` contract.
  * - The preset derives `generatedRootDir`, which later resolves to the
  *   canonical `generated-handlers/` output leaf.
  *

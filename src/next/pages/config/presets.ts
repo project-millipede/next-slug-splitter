@@ -44,7 +44,7 @@ export const createCatchAllRouteHandlersPreset = ({
     handlerRouteParam: resolvedPresetIdentity.handlerRouteParam,
     handlerBinding,
     mdxCompileOptions,
-    baseStaticPropsImport: createCatchAllBaseStaticPropsImport(
+    routeContract: createCatchAllBaseStaticPropsImport(
       resolvedPresetIdentity.routeSegment,
       resolvedPresetIdentity.handlerRouteParam
     ),

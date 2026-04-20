@@ -65,7 +65,7 @@ function createBootstrapTarget(): PersistedRouteHandlerProxyBootstrapPagesTarget
       kind: 'catch-all'
     },
     handlerRouteSegment: 'generated-handlers',
-    baseStaticPropsImport: {
+    routeContract: {
       kind: 'package',
       specifier: '@test/base-static-props'
     },
@@ -95,7 +95,7 @@ function createAppBootstrapTarget(): PersistedRouteHandlerProxyBootstrapAppTarge
       kind: 'catch-all'
     },
     handlerRouteSegment: 'generated-handlers',
-    routeModuleImport: {
+    routeContract: {
       kind: 'package',
       specifier: '@test/docs-route-module'
     },
@@ -194,7 +194,7 @@ describe('proxy worker bootstrap', () => {
         name: 'slug',
         kind: 'catch-all'
       },
-      baseStaticPropsImport: {
+      routeContract: {
         kind: 'package',
         specifier: '@test/base-static-props'
       },
@@ -327,7 +327,7 @@ describe('proxy worker bootstrap', () => {
     expect(resolvedConfig).toMatchObject({
       routerKind: 'app',
       handlerRouteSegment: 'generated-handlers',
-      routeModuleImport: {
+      routeContract: {
         kind: 'package',
         specifier: '@test/docs-route-module'
       },

@@ -51,7 +51,7 @@ const createResolvedConfigFixture = (
       name: 'slug',
       kind: 'catch-all'
     },
-    baseStaticPropsImport: packageModule('@test/base-static-props'),
+    routeContract: packageModule('@test/base-static-props'),
     processorConfig: {
       processorImport: packageModule('@test/processor')
     },
@@ -98,7 +98,7 @@ const createResolvedAppConfigFixture = (
     runtime: {
       mdxCompileOptions: {}
     },
-    routeModuleImport: packageModule('@test/docs-route-module'),
+    routeContract: packageModule('@test/docs-route-module'),
     handlerRouteSegment: 'generated-handlers',
     routeModule: {
       hasGeneratePageMetadata: true,
@@ -201,7 +201,7 @@ describe('proxy bootstrap persistence', () => {
         name: 'slug',
         kind: 'catch-all'
       },
-      baseStaticPropsImport: packageModule('@test/base-static-props'),
+      routeContract: packageModule('@test/base-static-props'),
       processorConfig: {
         processorImport: packageModule('@test/processor')
       },
@@ -237,7 +237,7 @@ describe('proxy bootstrap persistence', () => {
           kind: 'catch-all'
         },
         handlerRouteSegment: 'generated-handlers',
-        routeModuleImport: packageModule('@test/docs-route-module'),
+        routeContract: packageModule('@test/docs-route-module'),
         routeModule: {
           hasGeneratePageMetadata: true,
           revalidate: false
@@ -255,7 +255,7 @@ describe('proxy bootstrap persistence', () => {
     expect(config).toMatchObject({
       routerKind: 'app',
       handlerRouteSegment: 'generated-handlers',
-      routeModuleImport: packageModule('@test/docs-route-module'),
+      routeContract: packageModule('@test/docs-route-module'),
       routeModule: {
         hasGeneratePageMetadata: true,
         revalidate: false
@@ -279,7 +279,7 @@ describe('proxy bootstrap persistence', () => {
       const persistedManifest = await readRouteHandlerProxyBootstrap(rootDir);
 
       expect(persistedManifest).toEqual({
-        version: 5,
+        version: 6,
         bootstrapGenerationToken: 'bootstrap-token',
         localeConfig: {
           locales: ['en'],

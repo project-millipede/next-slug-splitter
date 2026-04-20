@@ -165,6 +165,13 @@ Each preset derives `generatedRootDir` from its `routeSegment`, then the
 library appends the canonical `generated-handlers/` leaf during target
 resolution.
 
+For Pages Router targets, the preset also derives the route contract for you.
+That contract usually points at the catch-all page module itself, for example
+`pages/docs/[...slug].tsx`, because generated heavy handler pages reuse that
+page's `getStaticProps` contract rather than introducing a second data-loading
+entrypoint. Route enumeration still stays on that catch-all page through
+`getStaticPaths`.
+
 No separate generation command is required for the standard integration path.
 `next build` runs route-handler generation automatically through the installed
 adapter.
@@ -206,7 +213,7 @@ export const routeHandlersConfig = {
       handlerRouteParam: docsRouteParam,
       contentDir: path.resolve(rootDir, 'content/pages'),
       contentLocaleMode: 'default-locale',
-      routeModuleImport: relativeModule('app/docs/[...slug]/route-contract'),
+      routeContract: relativeModule('app/docs/[...slug]/route-contract'),
       handlerBinding: {
         ...routeHandlerBindings.docs,
         pageDataCompilerImport: relativeModule(
@@ -222,10 +229,16 @@ This preset also derives `generatedRootDir` for you from `routeSegment`, and
 the library later resolves the final `generated-handlers/` directory under that
 root.
 
+Unlike the Pages Router path, App Router usually keeps the route contract in a
+dedicated sibling file such as `app/docs/[...slug]/route-contract.ts`. The
+public page and the generated heavy pages both call into that one contract
+module, and that same file also owns route enumeration through
+`getStaticParams`.
+
 The App-specific fields are:
 
-- `routeModuleImport` — the route-owned contract imported by the light App page
-  and generated heavy pages
+- `routeContract` — the dedicated App route-contract module imported by the
+  light page and generated heavy pages
 - `handlerBinding.pageDataCompilerImport` — the app-owned compiler module that
   the library executes in an isolated worker for page-data compilation
 - `app.localeConfig` — optional multi-locale semantics used for App-side
@@ -251,7 +264,7 @@ createAppCatchAllRouteHandlersPreset({
   routeTreeSegment: 'docs/(docs-shared)',
   handlerRouteParam: docsRouteParam,
   contentDir: path.resolve(rootDir, 'content/pages'),
-  routeModuleImport: relativeModule('app/docs/[...slug]/route-contract'),
+  routeContract: relativeModule('app/docs/[...slug]/route-contract'),
   handlerBinding: {
     ...routeHandlerBindings.docs,
     pageDataCompilerImport: relativeModule(
@@ -269,6 +282,17 @@ That shape produces:
 
 - public route base path: `/docs`
 - generated handler subtree: `app/docs/(docs-shared)/generated-handlers/...`
+
+Concrete comparison:
+
+| Aspect                           | Pages Router                                                               | App Router                                                                             |
+| -------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Public light route file          | `pages/docs/[...slug].tsx`                                                 | `app/docs/[...slug]/page.tsx`                                                          |
+| Route contract location          | Usually the catch-all page module itself                                   | Usually a dedicated sibling file such as `app/docs/[...slug]/route-contract.ts`        |
+| Route enumeration                | `getStaticPaths` stays on the catch-all page                               | `getStaticParams` lives on the dedicated route contract                                |
+| Shared page-data contract        | Generated heavy handlers reuse the catch-all page's `getStaticProps`       | The light page and generated heavy pages share `loadPageProps` from the route contract |
+| Optional metadata / revalidation | Follows normal Pages Router page exports around the catch-all page surface | `generatePageMetadata` and `revalidate` live on the dedicated route contract           |
+| Locale semantics                 | Uses normal Pages Router `i18n` when multi-locale                          | Uses `app.localeConfig` for multi-locale App routing semantics                         |
 
 ## Usage
 
@@ -332,7 +356,7 @@ The handler binding tells the library which processor module to load:
 ```ts
 {
   handlerBinding: {
-    processorImport: relativeModule('lib/handler-processor')
+    processorImport: relativeModule('lib/handler-processor');
   }
 }
 ```
@@ -366,8 +390,9 @@ export const routeHandlerProcessor = {
   resolve({ capturedComponentKeys }) {
     // Gather what you need — registry lookups, metadata, etc. — and return
     // the final generation plan directly.
-    const componentEntriesByKey =
-      resolveComponentsByCapturedKey(capturedComponentKeys);
+    const componentEntriesByKey = resolveComponentsByCapturedKey(
+      capturedComponentKeys
+    );
 
     return {
       factoryImport: relativeModule('lib/handler-factory/runtime'),
@@ -609,22 +634,22 @@ development routing resolves to `'proxy'`.
 
 Wrap one Next config export and register the route handlers config.
 
-| Option | Description |
-|--------|-------------|
-| `configPath` | Path to the app-owned `route-handlers-config` module |
-| `routeHandlersConfig` | Direct config object (alternative to `configPath`) |
+| Option                | Description                                          |
+| --------------------- | ---------------------------------------------------- |
+| `configPath`          | Path to the app-owned `route-handlers-config` module |
+| `routeHandlersConfig` | Direct config object (alternative to `configPath`)   |
 
 ### `RouteHandlersConfig`
 
 Top-level configuration shape.
 
-| Property | Description |
-|----------|-------------|
-| `app.rootDir` | Application root directory |
-| `app.routing.development` | Development routing mode: `'proxy'` (default) or `'rewrites'` |
+| Property                    | Description                                                                |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `app.rootDir`               | Application root directory                                                 |
+| `app.routing.development`   | Development routing mode: `'proxy'` (default) or `'rewrites'`              |
 | `app.routing.workerPrewarm` | Dev-only worker startup strategy: `'off'` (default) or `'instrumentation'` |
-| `app.prepare` | Optional TypeScript prepare step or steps run before route planning |
-| `targets` | Array of target configurations |
+| `app.prepare`               | Optional TypeScript prepare step or steps run before route planning        |
+| `targets`                   | Array of target configurations                                             |
 
 When a processor or registry needs a local TypeScript build before runtime
 loading, configure `app.prepare` as one object or an ordered array of objects:
@@ -653,31 +678,31 @@ are treated as conflicts and are never overwritten.
 
 Create one catch-all target with normalized route and path values.
 
-| Option | Description |
-|--------|-------------|
-| `routeSegment` | Public route segment (e.g. `'docs'`, `'blog'`) |
-| `handlerRouteParam` | Dynamic route parameter configuration |
-| `contentDir` | Directory containing content pages |
-| `generatedRootDir` | Derived generated-output root; presets resolve this from `routeSegment` |
-| `handlerBinding` | Binding with processor module for route planning |
-| `contentLocaleMode` | Locale detection mode (see below) |
+| Option              | Description                                                             |
+| ------------------- | ----------------------------------------------------------------------- |
+| `routeSegment`      | Public route segment (e.g. `'docs'`, `'blog'`)                          |
+| `handlerRouteParam` | Dynamic route parameter configuration                                   |
+| `contentDir`        | Directory containing content pages                                      |
+| `generatedRootDir`  | Derived generated-output root; presets resolve this from `routeSegment` |
+| `handlerBinding`    | Binding with processor module for route planning                        |
+| `contentLocaleMode` | Locale detection mode (see below)                                       |
 
 ### `createAppCatchAllRouteHandlersPreset(options)`
 
 Create one App Router catch-all target with normalized public route values and
 App-specific route-module inputs.
 
-| Option | Description |
-|--------|-------------|
-| `routeSegment` | Public route segment (e.g. `'docs'`) |
-| `routeTreeSegment` | Optional App Router filesystem subtree for emitted handlers; defaults to `routeSegment` |
-| `handlerRouteParam` | Dynamic route parameter configuration |
-| `contentDir` | Directory containing content pages |
-| `generatedRootDir` | Derived generated-output root; presets resolve this from `routeSegment` or `routeTreeSegment` |
-| `handlerBinding` | Binding with processor module for route planning |
-| `routeModuleImport` | Page-safe App route module imported by the light page and generated heavy pages |
-| `routeModuleRuntimeImport` | Optional worker-owned App route module loaded whenever the library executes the route contract outside Next's server graph; defaults to `routeModuleImport` |
-| `contentLocaleMode` | Locale detection mode (see below) |
+| Option                       | Description                                                                                                                                                                                                                                       |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `routeSegment`               | Public route segment (e.g. `'docs'`)                                                                                                                                                                                                              |
+| `routeTreeSegment`           | Optional App Router filesystem subtree for emitted handlers; defaults to `routeSegment`                                                                                                                                                           |
+| `handlerRouteParam`          | Dynamic route parameter configuration                                                                                                                                                                                                             |
+| `contentDir`                 | Directory containing content pages                                                                                                                                                                                                                |
+| `generatedRootDir`           | Derived generated-output root; presets resolve this from `routeSegment` or `routeTreeSegment`                                                                                                                                                     |
+| `handlerBinding`             | Binding with processor module for route planning                                                                                                                                                                                                  |
+| `routeContract`              | Shared router-specific route contract. In Pages this usually resolves to the catch-all page module and its `getStaticProps`, while in App this is typically a dedicated `route-contract.ts` file that owns `getStaticParams` and `loadPageProps`. |
+| `routeContractRuntimeImport` | Optional worker-owned App route module loaded whenever the library executes the route contract outside Next's server graph; defaults to `routeContract`                                                                                           |
+| `contentLocaleMode`          | Locale detection mode (see below)                                                                                                                                                                                                                 |
 
 ### `DynamicRouteParam`
 
@@ -691,11 +716,11 @@ Supported `kind` values:
 
 Several config fields use module-reference helpers instead of raw strings.
 
-| Helper | Use when |
-|--------|----------|
-| `relativeModule('lib/handler-processor')` | The file lives under the app root and should resolve relative to `app.rootDir` |
+| Helper                                                | Use when                                                                                              |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `relativeModule('lib/handler-processor')`             | The file lives under the app root and should resolve relative to `app.rootDir`                        |
 | `packageModule('site-route-handlers/docs/processor')` | The module is exposed through package exports in `node_modules`, including hoisted workspace packages |
-| `absoluteModule('/abs/path/to/module')` | The file lives outside the app root and outside reachable package exports |
+| `absoluteModule('/abs/path/to/module')`               | The file lives outside the app root and outside reachable package exports                             |
 
 See the Usage section above for a complete `packageModule(...)` example in both
 `handlerBinding.processorImport` and processor-side component imports.
@@ -706,7 +731,7 @@ The handler binding tells the library which processor module to load.
 
 ```ts
 {
-  processorImport: relativeModule('lib/handler-processor')
+  processorImport: relativeModule('lib/handler-processor');
 }
 ```
 
@@ -817,10 +842,10 @@ bootstrap generation, and returns lazy route classifications on demand.
 
 ## Next.js Integration Points
 
-| Next.js API | Purpose |
-|---|---|
-| `adapterPath` | Adapter entry point — hooks into Next.js config resolution |
-| `rewrites()` → `beforeFiles` | Routes heavy-page traffic to generated handlers in production |
-| `proxy.ts` (root file) | Intercepts and classifies requests on demand in development; existing `proxy.*` or `middleware.*` files at the root or under `src/` are treated as conflicts |
-| `instrumentation.ts` (root file) | Optional dev-only worker-session prewarm when `workerPrewarm: 'instrumentation'` is enabled |
-| Phase constants | Selects rewrite mode (build/serve) or proxy mode (dev) |
+| Next.js API                      | Purpose                                                                                                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `adapterPath`                    | Adapter entry point — hooks into Next.js config resolution                                                                                                   |
+| `rewrites()` → `beforeFiles`     | Routes heavy-page traffic to generated handlers in production                                                                                                |
+| `proxy.ts` (root file)           | Intercepts and classifies requests on demand in development; existing `proxy.*` or `middleware.*` files at the root or under `src/` are treated as conflicts |
+| `instrumentation.ts` (root file) | Optional dev-only worker-session prewarm when `workerPrewarm: 'instrumentation'` is enabled                                                                  |
+| Phase constants                  | Selects rewrite mode (build/serve) or proxy mode (dev)                                                                                                       |

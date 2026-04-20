@@ -9,7 +9,7 @@
  * - Where to find the handler processor that maps captured keys to
  *   component imports and a factory import (`handlerBinding`).
  * - Which route-owned contract the light page and generated heavy pages
- *   should both delegate to (`routeModuleImport`).
+ *   should both delegate to (`routeContract`).
  * - The preset derives `generatedRootDir`, which later resolves to the
  *   canonical `generated-handlers/` output leaf.
  *
@@ -63,7 +63,7 @@ export const routeHandlersConfig = {
       handlerRouteParam: docsHandlerRouteParam,
       contentDir: path.join(rootDir, 'content', 'pages'),
       contentLocaleMode: 'default-locale',
-      routeModuleImport: relativeModule('app/docs/[...slug]/route-contract'),
+      routeContract: relativeModule('app/docs/[...slug]/route-contract'),
       /**
        * Handler binding — connects generated handler pages to the app's
        * component resolution and rendering pipeline.

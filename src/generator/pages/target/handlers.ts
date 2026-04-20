@@ -41,7 +41,7 @@ export const emitRouteHandlerPages = async ({
   paths,
   heavyRoutes,
   emitFormat,
-  baseStaticPropsImport,
+  routeContract,
   handlerRouteParam,
   routeBasePath
 }: {
@@ -58,9 +58,9 @@ export const emitRouteHandlerPages = async ({
    */
   emitFormat: EmitFormat;
   /**
-   * Resolved base static props module reference.
+   * Resolved Pages route contract module reference.
    */
-  baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
+  routeContract: ResolvedRouteHandlerModuleReference;
   /**
    * Dynamic route parameter descriptor for the handler page.
    */
@@ -83,7 +83,7 @@ export const emitRouteHandlerPages = async ({
         paths,
         heavyRoute: entry,
         emitFormat,
-        baseStaticPropsImport,
+        routeContract,
         handlerRouteParam,
         routeBasePath
       })

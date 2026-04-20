@@ -17,7 +17,7 @@ export const emitAppRouteHandlerPages = async ({
   paths,
   heavyRoutes,
   emitFormat,
-  routeModuleImport,
+  routeContract,
   handlerRouteParam,
   routeBasePath,
   routeModuleContract
@@ -25,7 +25,7 @@ export const emitAppRouteHandlerPages = async ({
   paths: RouteHandlerPaths;
   heavyRoutes: Array<PlannedHeavyRoute>;
   emitFormat: EmitFormat;
-  routeModuleImport: ResolvedRouteHandlerModuleReference;
+  routeContract: ResolvedRouteHandlerModuleReference;
   handlerRouteParam: DynamicRouteParam;
   routeBasePath: string;
   routeModuleContract: ResolvedAppRouteModuleContract;
@@ -37,7 +37,7 @@ export const emitAppRouteHandlerPages = async ({
       paths,
       heavyRoute: entry,
       emitFormat,
-      routeModuleImport,
+      routeContract,
       handlerRouteParam,
       routeBasePath,
       routeModuleContract
