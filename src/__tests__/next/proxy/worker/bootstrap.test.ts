@@ -24,7 +24,10 @@ vi.mock(
 );
 
 import { bootstrapRouteHandlerProxyWorker } from '../../../../next/proxy/worker/runtime/bootstrap';
-import { TEST_SINGLE_LOCALE_CONFIG } from '../../../helpers/fixtures';
+import {
+  TEST_SINGLE_LOCALE_CONFIG,
+  TEST_SLUG_CATCH_ALL_ROUTE_PARAM
+} from '../../../helpers/fixtures';
 
 import type { LocaleConfig } from '../../../../core/types';
 import type {
@@ -56,10 +59,7 @@ function createBootstrapTarget(): PersistedRouteHandlerProxyBootstrapPagesTarget
     routeBasePath: '/docs',
     contentLocaleMode: 'filename',
     emitFormat: 'ts',
-    handlerRouteParam: {
-      name: 'slug',
-      kind: 'catch-all'
-    },
+    handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
     handlerRouteSegment: 'generated-handlers',
     routeContract: {
       kind: 'package',
@@ -86,10 +86,7 @@ function createAppBootstrapTarget(): PersistedRouteHandlerProxyBootstrapAppTarge
     routeBasePath: '/docs',
     contentLocaleMode: 'filename',
     emitFormat: 'ts',
-    handlerRouteParam: {
-      name: 'slug',
-      kind: 'catch-all'
-    },
+    handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
     handlerRouteSegment: 'generated-handlers',
     routeContract: {
       kind: 'package',
@@ -168,10 +165,7 @@ describe('proxy worker bootstrap', () => {
         contentLocaleMode: 'filename',
         localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         emitFormat: 'ts',
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         paths: {
           rootDir: '/repo/app',
           contentDir: '/repo/app/content/pages',
@@ -186,10 +180,7 @@ describe('proxy worker bootstrap', () => {
       routeBasePath: '/docs',
       contentLocaleMode: 'filename',
       emitFormat: 'ts',
-      handlerRouteParam: {
-        name: 'slug',
-        kind: 'catch-all'
-      },
+      handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
       routeContract: {
         kind: 'package',
         specifier: '@test/base-static-props'
@@ -309,10 +300,7 @@ describe('proxy worker bootstrap', () => {
         contentLocaleMode: 'filename',
         localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         emitFormat: 'ts',
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         paths: {
           rootDir: '/repo/app',
           contentDir: '/repo/app/content/pages',

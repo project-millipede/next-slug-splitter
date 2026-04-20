@@ -13,6 +13,7 @@ vi.mock(import('../../../next/pages/runtime/target/index'), () => ({
 import * as phaseArtifacts from '../../../next/shared/phase-artifacts';
 import * as runtimeTarget from '../../../next/pages/runtime/target/index';
 import { executeResolvedRouteHandlerNextPipeline } from '../../../next/pages/runtime';
+import { TEST_SLUG_CATCH_ALL_ROUTE_PARAM } from '../../helpers/fixtures';
 
 import type { ResolvedRouteHandlersConfig } from '../../../next/pages/types';
 
@@ -40,10 +41,7 @@ const createResolvedConfig = ({
   },
   emitFormat: 'ts',
   contentLocaleMode: 'filename',
-  handlerRouteParam: {
-    name: 'slug',
-    kind: 'catch-all'
-  },
+  handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
   routeContract: {
     kind: 'absolute-file',
     path: `${rootDir}/pages/content/[...slug].tsx`

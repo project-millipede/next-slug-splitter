@@ -10,7 +10,10 @@ import {
   clearRouteHandlerProxyBootstrapStateCache,
   getRouteHandlerProxyBootstrapState
 } from '../../../../next/proxy/runtime/bootstrap-state';
-import { TEST_MULTI_LOCALE_CONFIG } from '../../../helpers/fixtures';
+import {
+  TEST_MULTI_LOCALE_CONFIG,
+  TEST_SLUG_CATCH_ALL_ROUTE_PARAM
+} from '../../../helpers/fixtures';
 
 import type { LocaleConfig } from '../../../../core/types';
 import type {
@@ -39,10 +42,7 @@ const createBootstrapTarget =
     routeBasePath: '/docs',
     contentLocaleMode: 'filename',
     emitFormat: 'ts',
-    handlerRouteParam: {
-      name: 'slug',
-      kind: 'catch-all'
-    },
+    handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
     handlerRouteSegment: 'generated-handlers',
     routeContract: {
       kind: 'package',

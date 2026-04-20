@@ -12,7 +12,10 @@ import {
   resolveRouteHandlerProxyBootstrapPath,
   writeRouteHandlerProxyBootstrap
 } from '../../../next/proxy/bootstrap-persisted';
-import { TEST_MULTI_LOCALE_CONFIG } from '../../helpers/fixtures';
+import {
+  TEST_MULTI_LOCALE_CONFIG,
+  TEST_SLUG_CATCH_ALL_ROUTE_PARAM
+} from '../../helpers/fixtures';
 import { withTempDir } from '../../helpers/temp-dir';
 
 import type { ResolvedRouteHandlersConfig as AppResolvedRouteHandlersConfig } from '../../../next/app/types';
@@ -42,10 +45,7 @@ const createResolvedConfigFixture = (
     routeBasePath,
     contentLocaleMode: 'filename',
     emitFormat: 'ts',
-    handlerRouteParam: {
-      name: 'slug',
-      kind: 'catch-all'
-    },
+    handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
     routeContract: packageModule('@test/base-static-props'),
     processorConfig: {
       processorImport: packageModule('@test/processor')
@@ -77,10 +77,7 @@ const createResolvedAppConfigFixture = (
     routeBasePath: '/docs',
     contentLocaleMode: 'filename',
     emitFormat: 'ts',
-    handlerRouteParam: {
-      name: 'slug',
-      kind: 'catch-all'
-    },
+    handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
     processorConfig: {
       processorImport: packageModule('@test/processor')
     },
@@ -165,10 +162,7 @@ describe('proxy bootstrap persistence', () => {
         contentLocaleMode: 'filename',
         localeConfig: TEST_MULTI_LOCALE_CONFIG,
         emitFormat: 'ts',
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         paths: {
           rootDir: '/repo/app',
           contentDir: '/repo/app/content/pages',
@@ -192,10 +186,7 @@ describe('proxy bootstrap persistence', () => {
       routeBasePath: '/docs',
       contentLocaleMode: 'filename',
       emitFormat: 'ts',
-      handlerRouteParam: {
-        name: 'slug',
-        kind: 'catch-all'
-      },
+      handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
       routeContract: packageModule('@test/base-static-props'),
       processorConfig: {
         processorImport: packageModule('@test/processor')
@@ -227,10 +218,7 @@ describe('proxy bootstrap persistence', () => {
         routeBasePath: '/docs',
         contentLocaleMode: 'filename',
         emitFormat: 'ts',
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         handlerRouteSegment: 'generated-handlers',
         routeContract: packageModule('@test/docs-route-module'),
         routeModule: {

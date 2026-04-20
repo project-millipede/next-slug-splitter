@@ -125,6 +125,7 @@ vi.mock(import('../../next/proxy/bootstrap-persisted'), () => ({
 import routeHandlersAdapter from '../../next/adapter';
 import { createSingleLocaleConfig } from '../../core/locale-config';
 import { absoluteModule } from '../../module-reference';
+import { TEST_SLUG_CATCH_ALL_ROUTE_PARAM } from '../helpers/fixtures';
 
 const TEST_ROUTE_HANDLERS_CONFIG = {
   routerKind: 'pages' as const,
@@ -376,10 +377,7 @@ describe('route handlers adapter', () => {
         app: {
           rootDir: '/repo/app'
         },
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         routeContract: absoluteModule(runtimeRouteModulePath),
         pageDataCompilerConfig: {
           pageDataCompilerImport: absoluteModule(pageDataCompilerModulePath)
@@ -411,10 +409,7 @@ describe('route handlers adapter', () => {
         expect.objectContaining({
           targetId: 'docs',
           routerKind: 'app',
-          handlerRouteParam: {
-            name: 'slug',
-            kind: 'catch-all'
-          },
+          handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
           routeContract: absoluteModule(runtimeRouteModulePath)
         })
       ]
@@ -489,10 +484,7 @@ describe('route handlers adapter', () => {
         app: {
           rootDir: '/repo/app'
         },
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         pageDataCompilerConfig: {
           pageDataCompilerImport: absoluteModule(pageDataCompilerModulePath)
         },

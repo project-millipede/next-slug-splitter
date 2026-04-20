@@ -6,6 +6,7 @@ import {
   createLoadableComponentEntry,
   createPlannedHeavyRoute
 } from '../../helpers/builders';
+import { TEST_SLUG_CATCH_ALL_ROUTE_PARAM } from '../../helpers/fixtures';
 
 describe('App Router generator contract', () => {
   it('renders a generated App handler page that delegates to the route-owned page contract', () => {
@@ -38,10 +39,7 @@ describe('App Router generator contract', () => {
       }),
       emitFormat: 'ts',
       routeContract: absoluteModule('/repo/app/content/route-contract.ts'),
-      handlerRouteParam: {
-        name: 'slug',
-        kind: 'catch-all'
-      },
+      handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
       routeBasePath: '/content',
       routeModuleContract: {
         hasGeneratePageMetadata: true,
@@ -96,10 +94,7 @@ describe('App Router generator contract', () => {
       }),
       emitFormat: 'ts',
       routeContract: absoluteModule('/repo/app/content/route-contract.ts'),
-      handlerRouteParam: {
-        name: 'slug',
-        kind: 'catch-all'
-      },
+      handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
       routeBasePath: '/content',
       routeModuleContract: {
         hasGeneratePageMetadata: false,
