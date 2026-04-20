@@ -16,7 +16,7 @@ vi.mock(import('../../../../core/discovery'), async importOriginal => {
 
 import { resolveRouteHandlerLazyRequest } from '../../../../next/proxy/lazy/request-resolution';
 import {
-  TEST_LOCALE_CONFIG,
+  TEST_SINGLE_LOCALE_CONFIG,
   TEST_MULTI_LOCALE_CONFIG
 } from '../../../helpers/fixtures';
 
@@ -29,7 +29,7 @@ import type {
 
 const rootDir = '/repo/app';
 const localeConfig = TEST_MULTI_LOCALE_CONFIG;
-const singleLocaleConfig = TEST_LOCALE_CONFIG;
+const singleLocaleConfig = TEST_SINGLE_LOCALE_CONFIG;
 const docsConfig: RouteHandlerLazyResolvedTarget = {
   routerKind: 'pages' as const,
   targetId: 'docs',

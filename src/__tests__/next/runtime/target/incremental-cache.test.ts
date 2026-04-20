@@ -19,6 +19,7 @@ import { createCatchAllRouteHandlersPreset } from '../../../../next/config';
 import { executeRouteHandlerNextPipeline } from '../../../../next/pages/runtime';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+  TEST_SINGLE_LOCALE_CONFIG,
   TEST_PRIMARY_CONTENT_PAGES_DIR,
   TEST_PRIMARY_ROUTE_SEGMENT,
   createTestHandlerBinding,
@@ -28,16 +29,10 @@ import {
 } from '../../../helpers/fixtures';
 import { withTempDir } from '../../../helpers/temp-dir';
 
-import type { LocaleConfig } from '../../../../core/types';
 import type {
   RouteHandlersConfig,
   RouteHandlersTargetConfig
 } from '../../../../next/pages/types';
-
-const TEST_LOCALE_CONFIG: LocaleConfig = {
-  locales: ['en'],
-  defaultLocale: 'en'
-};
 
 const createCountedProcessorSource = (logPath: string): string =>
   [
@@ -169,13 +164,13 @@ describe('fresh target execution', () => {
 
       const firstResult = await executeRouteHandlerNextPipeline({
         routeHandlersConfig,
-        localeConfig: TEST_LOCALE_CONFIG,
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         mode: 'generate'
       });
 
       const secondResult = await executeRouteHandlerNextPipeline({
         routeHandlersConfig,
-        localeConfig: TEST_LOCALE_CONFIG,
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         mode: 'generate'
       });
 
@@ -204,7 +199,7 @@ describe('fresh target execution', () => {
 
       await executeRouteHandlerNextPipeline({
         routeHandlersConfig,
-        localeConfig: TEST_LOCALE_CONFIG,
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         mode: 'generate'
       });
 
@@ -216,7 +211,7 @@ describe('fresh target execution', () => {
 
       const secondResult = await executeRouteHandlerNextPipeline({
         routeHandlersConfig,
-        localeConfig: TEST_LOCALE_CONFIG,
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         mode: 'generate'
       });
 

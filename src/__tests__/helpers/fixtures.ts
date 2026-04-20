@@ -24,7 +24,7 @@ export const TEST_STATIC_PROPS_IMPORT = '@next-slug-splitter-test/static-props';
 export const TEST_COMPONENT_IMPORT_SOURCE =
   '@next-slug-splitter-test/components';
 export const TEST_COMPONENT_IMPORT_NAME = 'CustomComponent';
-export const TEST_LOCALE_CONFIG: LocaleConfig = {
+export const TEST_SINGLE_LOCALE_CONFIG: LocaleConfig = {
   locales: ['en'],
   defaultLocale: 'en'
 };
