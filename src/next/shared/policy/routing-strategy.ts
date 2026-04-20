@@ -44,24 +44,12 @@ export type RouteHandlerRoutingStrategy =
        * Stable routing path based on Next config rewrites.
        */
       kind: 'rewrites';
-      /**
-       * Human-readable explanation of why rewrites were selected.
-       */
-      reason:
-        | 'non-development-phase'
-        | 'development-policy-rewrites'
-        | 'environment-override-rewrites'
-        | 'proxy-disabled-in-production';
     }
   | {
       /**
        * Request-time proxy path.
        */
       kind: 'proxy';
-      /**
-       * Human-readable explanation of why proxy was selected.
-       */
-      reason: 'development-policy-proxy' | 'environment-override-proxy';
     };
 
 /**
@@ -114,11 +102,7 @@ export const resolveRouteHandlerRoutingStrategy = (
     // keep the stable rewrite-based behavior so shipped apps stay on the
     // already-hardened routing contract.
     return {
-      kind: 'rewrites',
-      reason:
-        process.env.NODE_ENV === 'production'
-          ? 'proxy-disabled-in-production'
-          : 'non-development-phase'
+      kind: 'rewrites'
     };
   }
 
@@ -126,28 +110,24 @@ export const resolveRouteHandlerRoutingStrategy = (
 
   if (environmentOverride === 'rewrites') {
     return {
-      kind: 'rewrites',
-      reason: 'environment-override-rewrites'
+      kind: 'rewrites'
     };
   }
 
   if (environmentOverride === 'proxy') {
     return {
-      kind: 'proxy',
-      reason: 'environment-override-proxy'
+      kind: 'proxy'
     };
   }
 
   if (routingPolicy.development === 'rewrites') {
     return {
-      kind: 'rewrites',
-      reason: 'development-policy-rewrites'
+      kind: 'rewrites'
     };
   }
 
   // Development defaults to proxy through the resolved app-level policy.
   return {
-    kind: 'proxy',
-    reason: 'development-policy-proxy'
+    kind: 'proxy'
   };
 };

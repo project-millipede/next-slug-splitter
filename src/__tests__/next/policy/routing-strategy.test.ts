@@ -21,8 +21,7 @@ describe('route handler routing strategy', () => {
         workerPrewarm: 'off'
       })
     ).toEqual({
-      kind: 'proxy',
-      reason: 'development-policy-proxy'
+      kind: 'proxy'
     });
   });
 
@@ -33,8 +32,7 @@ describe('route handler routing strategy', () => {
         workerPrewarm: 'off'
       })
     ).toEqual({
-      kind: 'rewrites',
-      reason: 'development-policy-rewrites'
+      kind: 'rewrites'
     });
   });
 
@@ -47,8 +45,7 @@ describe('route handler routing strategy', () => {
         workerPrewarm: 'off'
       })
     ).toEqual({
-      kind: 'rewrites',
-      reason: 'environment-override-rewrites'
+      kind: 'rewrites'
     });
   });
 
@@ -61,8 +58,7 @@ describe('route handler routing strategy', () => {
         workerPrewarm: 'off'
       })
     ).toEqual({
-      kind: 'proxy',
-      reason: 'environment-override-proxy'
+      kind: 'proxy'
     });
   });
 
@@ -75,8 +71,7 @@ describe('route handler routing strategy', () => {
         workerPrewarm: 'off'
       })
     ).toEqual({
-      kind: 'rewrites',
-      reason: 'non-development-phase'
+      kind: 'rewrites'
     });
   });
 
@@ -89,8 +84,7 @@ describe('route handler routing strategy', () => {
         workerPrewarm: 'off'
       })
     ).toEqual({
-      kind: 'rewrites',
-      reason: 'proxy-disabled-in-production'
+      kind: 'rewrites'
     });
   });
 });
