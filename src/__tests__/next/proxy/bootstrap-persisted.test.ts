@@ -12,17 +12,16 @@ import {
   resolveRouteHandlerProxyBootstrapPath,
   writeRouteHandlerProxyBootstrap
 } from '../../../next/proxy/bootstrap-persisted';
+import {
+  TEST_SINGLE_LOCALE_CONFIG,
+  TEST_MULTI_LOCALE_CONFIG,
+  TEST_SLUG_CATCH_ALL_ROUTE_PARAM
+} from '../../helpers/fixtures';
 import { withTempDir } from '../../helpers/temp-dir';
 
-import type { LocaleConfig } from '../../../core/types';
 import type { ResolvedRouteHandlersConfig as AppResolvedRouteHandlersConfig } from '../../../next/app/types';
 import type { ResolvedRouteHandlersConfig as PagesResolvedRouteHandlersConfig } from '../../../next/pages/types';
 import type { ResolvedRouteHandlersConfig } from '../../../next/types';
-
-const TEST_LOCALE_CONFIG: LocaleConfig = {
-  locales: ['en', 'de'],
-  defaultLocale: 'en'
-};
 
 const createResolvedConfigFixture = (
   rootDir: string,
@@ -47,10 +46,7 @@ const createResolvedConfigFixture = (
     routeBasePath,
     contentLocaleMode: 'filename',
     emitFormat: 'ts',
-    handlerRouteParam: {
-      name: 'slug',
-      kind: 'catch-all'
-    },
+    handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
     routeContract: packageModule('@test/base-static-props'),
     processorConfig: {
       processorImport: packageModule('@test/processor')
@@ -60,7 +56,7 @@ const createResolvedConfigFixture = (
       contentDir: `${rootDir}/content/pages`,
       generatedDir: `${rootDir}/pages/generated-handlers`
     },
-    localeConfig: TEST_LOCALE_CONFIG,
+    localeConfig: TEST_MULTI_LOCALE_CONFIG,
     runtime: {
       mdxCompileOptions: {}
     }
@@ -82,10 +78,7 @@ const createResolvedAppConfigFixture = (
     routeBasePath: '/docs',
     contentLocaleMode: 'filename',
     emitFormat: 'ts',
-    handlerRouteParam: {
-      name: 'slug',
-      kind: 'catch-all'
-    },
+    handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
     processorConfig: {
       processorImport: packageModule('@test/processor')
     },
@@ -94,7 +87,7 @@ const createResolvedAppConfigFixture = (
       contentDir: `${rootDir}/content/pages`,
       generatedDir: `${rootDir}/app/docs/generated-handlers`
     },
-    localeConfig: TEST_LOCALE_CONFIG,
+    localeConfig: TEST_MULTI_LOCALE_CONFIG,
     runtime: {
       mdxCompileOptions: {}
     },
@@ -114,7 +107,7 @@ const createBootstrapManifest = (
 ) =>
   createRouteHandlerProxyBootstrapManifest(
     'bootstrap-token',
-    TEST_LOCALE_CONFIG,
+    TEST_MULTI_LOCALE_CONFIG,
     resolvedConfigs
   );
 
@@ -168,12 +161,9 @@ describe('proxy bootstrap persistence', () => {
         targetId: 'docs',
         routeBasePath: '/docs',
         contentLocaleMode: 'filename',
-        localeConfig: TEST_LOCALE_CONFIG,
+        localeConfig: TEST_MULTI_LOCALE_CONFIG,
         emitFormat: 'ts',
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         paths: {
           rootDir: '/repo/app',
           contentDir: '/repo/app/content/pages',
@@ -197,15 +187,12 @@ describe('proxy bootstrap persistence', () => {
       routeBasePath: '/docs',
       contentLocaleMode: 'filename',
       emitFormat: 'ts',
-      handlerRouteParam: {
-        name: 'slug',
-        kind: 'catch-all'
-      },
+      handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
       routeContract: packageModule('@test/base-static-props'),
       processorConfig: {
         processorImport: packageModule('@test/processor')
       },
-      localeConfig: TEST_LOCALE_CONFIG,
+      localeConfig: TEST_MULTI_LOCALE_CONFIG,
       paths: {
         rootDir: '/repo/app',
         contentDir: '/repo/app/content/pages',
@@ -232,10 +219,7 @@ describe('proxy bootstrap persistence', () => {
         routeBasePath: '/docs',
         contentLocaleMode: 'filename',
         emitFormat: 'ts',
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         handlerRouteSegment: 'generated-handlers',
         routeContract: packageModule('@test/docs-route-module'),
         routeModule: {
@@ -267,10 +251,7 @@ describe('proxy bootstrap persistence', () => {
     await withTempDir('next-slug-splitter-proxy-bootstrap-', async rootDir => {
       const manifest = createRouteHandlerProxyBootstrapManifest(
         'bootstrap-token',
-        {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        TEST_SINGLE_LOCALE_CONFIG,
         []
       );
 
@@ -281,10 +262,7 @@ describe('proxy bootstrap persistence', () => {
       expect(persistedManifest).toEqual({
         version: 6,
         bootstrapGenerationToken: 'bootstrap-token',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         targets: []
       });
       expect(

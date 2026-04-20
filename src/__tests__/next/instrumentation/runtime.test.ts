@@ -20,6 +20,7 @@ vi.mock(import('../../../next/proxy/observability/debug-log'), () => ({
 }));
 
 import { prewarmRouteHandlerProxyWorker } from '../../../next/instrumentation';
+import { TEST_SINGLE_LOCALE_CONFIG } from '../../helpers/fixtures';
 
 describe('instrumentation worker prewarm', () => {
   beforeEach(() => {
@@ -35,10 +36,7 @@ describe('instrumentation worker prewarm', () => {
 
     await expect(
       prewarmRouteHandlerProxyWorker({
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        }
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG
       })
     ).resolves.toBeUndefined();
 
@@ -56,10 +54,7 @@ describe('instrumentation worker prewarm', () => {
     resolveRouteHandlerProxyWorkerClientSessionMock.mockResolvedValue({});
 
     await prewarmRouteHandlerProxyWorker({
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       configRegistration: {
         rootDir: '/repo/app',
         configPath: '/repo/app/route-handlers-config.ts'
@@ -67,10 +62,7 @@ describe('instrumentation worker prewarm', () => {
     });
 
     expect(getRouteHandlerProxyBootstrapStateMock).toHaveBeenCalledWith(
-      {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      TEST_SINGLE_LOCALE_CONFIG,
       {
         rootDir: '/repo/app',
         configPath: '/repo/app/route-handlers-config.ts'
@@ -78,10 +70,7 @@ describe('instrumentation worker prewarm', () => {
     );
     expect(resolveRouteHandlerProxyWorkerClientSessionMock).toHaveBeenCalledWith(
       {
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         bootstrapGenerationToken: 'bootstrap-1',
         configRegistration: {
           rootDir: '/repo/app',
@@ -103,10 +92,7 @@ describe('instrumentation worker prewarm', () => {
 
     await expect(
       prewarmRouteHandlerProxyWorker({
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        }
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG
       })
     ).resolves.toBeUndefined();
 

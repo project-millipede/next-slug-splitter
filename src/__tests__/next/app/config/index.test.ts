@@ -8,6 +8,7 @@ import { resolveRouteHandlerRouterKind } from '../../../../next/shared/config/ro
 import { resolveRouteHandlersAppConfig } from '../../../../next/shared/config/app';
 import { resolveRouteHandlersConfigBasesFromAppConfig } from '../../../../next/app/config/index';
 import {
+  TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
   createTestHandlerBinding,
   writeTestModule,
   writeTestRouteHandlerPackage
@@ -66,10 +67,7 @@ describe('App Router config resolution', () => {
         targetId: 'docs',
         emitFormat: 'ts',
         contentLocaleMode: 'filename',
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         handlerBinding: createTestHandlerBinding({
           pageDataCompilerImport: absoluteModule(pageDataCompilerPath)
         }),
@@ -128,10 +126,7 @@ describe('App Router config resolution', () => {
         targetId: 'docs',
         emitFormat: 'ts',
         contentLocaleMode: 'filename',
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
         routeContract: absoluteModule(sourceRouteModulePath),
@@ -175,10 +170,7 @@ describe('App Router config resolution', () => {
         targetId: 'docs',
         emitFormat: 'ts' as const,
         contentLocaleMode: 'filename' as const,
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all' as const
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
         generatedRootDir: path.join('app', 'docs'),
@@ -219,10 +211,7 @@ describe('App Router config resolution', () => {
         targetId: 'docs',
         emitFormat: 'ts',
         contentLocaleMode: 'filename',
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
         routeContract: absoluteModule(routeModulePath),
@@ -266,10 +255,7 @@ describe('App Router config resolution', () => {
         targetId: 'docs',
         emitFormat: 'ts',
         contentLocaleMode: 'filename',
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
         routeContract: absoluteModule(routeModulePath),

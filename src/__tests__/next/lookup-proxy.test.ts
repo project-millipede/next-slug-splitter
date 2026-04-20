@@ -9,7 +9,10 @@ vi.mock(import('../../next/shared/lookup-persisted'), () => ({
 }));
 
 import { withHeavyRouteFilter } from '../../next/pages/lookup';
-import { TEST_PRIMARY_ROUTE_SEGMENT } from '../helpers/fixtures';
+import {
+  TEST_MULTI_LOCALE_CONFIG,
+  TEST_PRIMARY_ROUTE_SEGMENT
+} from '../helpers/fixtures';
 
 const EMPTY_CONTEXT = {} as Parameters<
   ReturnType<typeof withHeavyRouteFilter>
@@ -44,10 +47,7 @@ describe('withHeavyRouteFilter snapshot integration', () => {
     readRouteHandlerLookupSnapshotMock.mockResolvedValue({
       version: 1,
       filterHeavyRoutesFromStaticRouteResult: true,
-      localeConfig: {
-        locales: ['en', 'de'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_MULTI_LOCALE_CONFIG,
       targets: [
         {
           targetId: TEST_PRIMARY_ROUTE_SEGMENT,

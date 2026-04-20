@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { createSingleLocaleConfig } from '../../../core/locale-config';
 import { resolveAppLocaleConfig } from '../../../next/app/config/locale';
+import {
+  TEST_MULTI_LOCALE_CONFIG,
+  TEST_SINGLE_LOCALE_CONFIG
+} from '../../helpers/fixtures';
 
 describe('App Router locale normalization', () => {
   it('treats omitted app.localeConfig as single-locale mode', () => {
@@ -21,16 +25,10 @@ describe('App Router locale normalization', () => {
         routerKind: 'app',
         app: {
           rootDir: '/repo/app',
-          localeConfig: {
-            locales: ['en', 'de'],
-            defaultLocale: 'en'
-          }
+          localeConfig: TEST_MULTI_LOCALE_CONFIG
         }
       })
-    ).toEqual({
-      locales: ['en', 'de'],
-      defaultLocale: 'en'
-    });
+    ).toEqual(TEST_MULTI_LOCALE_CONFIG);
   });
 
   it('rejects explicit single-locale App config', () => {
@@ -39,10 +37,7 @@ describe('App Router locale normalization', () => {
         routerKind: 'app',
         app: {
           rootDir: '/repo/app',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          }
+          localeConfig: TEST_SINGLE_LOCALE_CONFIG
         }
       })
     ).toThrow(

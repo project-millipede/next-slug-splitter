@@ -15,7 +15,11 @@ import {
   filterStaticParamsAgainstHeavyRoutes,
   withHeavyRouteFilter
 } from '../../../next/lookup';
-import { TEST_PRIMARY_ROUTE_SEGMENT } from '../../helpers/fixtures';
+import {
+  TEST_MULTI_LOCALE_CONFIG,
+  TEST_SINGLE_LOCALE_CONFIG,
+  TEST_PRIMARY_ROUTE_SEGMENT
+} from '../../helpers/fixtures';
 
 describe('filterStaticParamsAgainstHeavyRoutes', () => {
   test('filters heavy params using structural default-locale semantics', async () => {
@@ -29,10 +33,7 @@ describe('filterStaticParamsAgainstHeavyRoutes', () => {
         (locale, slugArray) =>
           ['en:heavy-page'].includes(`${locale}:${slugArray.join('/')}`),
         {
-          localeConfig: {
-            locales: ['en', 'de'],
-            defaultLocale: 'en'
-          }
+          localeConfig: TEST_MULTI_LOCALE_CONFIG
         }
       )
     ).resolves.toEqual([
@@ -47,12 +48,7 @@ describe('filterStaticParamsAgainstHeavyRoutes', () => {
         [{ slug: ['heavy-page'] }, { slug: ['light-page'] }],
         (locale, slugArray) =>
           ['en:heavy-page'].includes(`${locale}:${slugArray.join('/')}`),
-        {
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          }
-        }
+        { localeConfig: TEST_SINGLE_LOCALE_CONFIG }
       )
     ).resolves.toEqual([{ slug: ['light-page'] }]);
   });
@@ -68,10 +64,7 @@ describe('filterStaticParamsAgainstHeavyRoutes', () => {
           ['en:heavy-page'].includes(`${locale}:${slugArray.join('/')}`),
         {
           handlerRouteParamName: 'path',
-          localeConfig: {
-            locales: ['en', 'de'],
-            defaultLocale: 'en'
-          }
+          localeConfig: TEST_MULTI_LOCALE_CONFIG
         }
       )
     ).resolves.toEqual([{ path: 'light-page', lang: 'de' }]);
@@ -84,10 +77,7 @@ describe('withHeavyRouteFilter App Router path', () => {
     readRouteHandlerLookupSnapshotMock.mockResolvedValue({
       version: 5,
       filterHeavyRoutesFromStaticRouteResult: false,
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       targets: [
         {
           targetId: TEST_PRIMARY_ROUTE_SEGMENT,
@@ -125,10 +115,7 @@ describe('withHeavyRouteFilter App Router path', () => {
     readRouteHandlerLookupSnapshotMock.mockResolvedValue({
       version: 5,
       filterHeavyRoutesFromStaticRouteResult: true,
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       targets: [
         {
           targetId: TEST_PRIMARY_ROUTE_SEGMENT,
@@ -154,10 +141,7 @@ describe('withHeavyRouteFilter App Router path', () => {
     readRouteHandlerLookupSnapshotMock.mockResolvedValue({
       version: 5,
       filterHeavyRoutesFromStaticRouteResult: true,
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       targets: [
         {
           targetId: TEST_PRIMARY_ROUTE_SEGMENT,

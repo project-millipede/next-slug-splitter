@@ -21,6 +21,7 @@ import { createRouteHandlerLazySingleRouteCacheManager } from '../../../../next/
 import { analyzeRouteHandlerLazyMatchedRoute } from '../../../../next/proxy/lazy/single-route-analysis';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+  TEST_SINGLE_LOCALE_CONFIG,
   TEST_PRIMARY_CONTENT_PAGES_DIR,
   TEST_PRIMARY_ROUTE_SEGMENT,
   createTestHandlerBinding,
@@ -37,10 +38,6 @@ import type {
 } from '../../../../next/pages/types';
 import type { RouteHandlerLazyResolvedTarget } from '../../../../next/proxy/lazy/types';
 
-const TEST_LOCALE_CONFIG = {
-  locales: ['en'],
-  defaultLocale: 'en'
-};
 const TEST_BOOTSTRAP_GENERATION_TOKEN = 'bootstrap-1';
 const TEST_NEXT_BOOTSTRAP_GENERATION_TOKEN = 'bootstrap-2';
 
@@ -128,14 +125,14 @@ const createBootstrappedLazyAnalysisState = ({
   const bootstrappedRouteHandlersConfig = routeHandlersConfig;
   const resolvedConfigs = resolveRouteHandlersConfigsFromAppConfig(
     appContext.appConfig,
-    TEST_LOCALE_CONFIG,
+    TEST_SINGLE_LOCALE_CONFIG,
     bootstrappedRouteHandlersConfig
   );
 
   return {
     resolvedTargets: resolveRouteHandlerLazyResolvedTargetsFromAppConfig(
       appContext.appConfig,
-      TEST_LOCALE_CONFIG,
+      TEST_SINGLE_LOCALE_CONFIG,
       bootstrappedRouteHandlersConfig
     ),
     lazySingleRouteCacheManager:

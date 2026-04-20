@@ -19,6 +19,7 @@ import {
   resolveRouteHandlerProxyWorkerClientSession,
   resolveRouteHandlerProxyLazyMissWithWorker
 } from '../../../../next/proxy/worker/host/client';
+import { TEST_SINGLE_LOCALE_CONFIG } from '../../../helpers/fixtures';
 
 import type {
   RouteHandlerProxyWorkerRequest,
@@ -147,10 +148,7 @@ describe('proxy worker client', () => {
 
     await resolveRouteHandlerProxyLazyMissWithWorker({
       pathname: '/docs/getting-started',
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       bootstrapGenerationToken: 'bootstrap-1',
       configRegistration: {
         configPath: '/app/route-handlers-config.ts',
@@ -194,10 +192,7 @@ describe('proxy worker client', () => {
 
     await resolveRouteHandlerProxyLazyMissWithWorker({
       pathname: '/docs/getting-started',
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       bootstrapGenerationToken: 'bootstrap-1',
       configRegistration: {
         configPath: '/app/config/route-handlers-config.mjs'
@@ -243,19 +238,13 @@ describe('proxy worker client', () => {
 
     await resolveRouteHandlerProxyLazyMissWithWorker({
       pathname: '/en/docs/getting-started',
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       bootstrapGenerationToken: 'bootstrap-1'
     });
 
     const secondResult = await resolveRouteHandlerProxyLazyMissWithWorker({
       pathname: '/en/docs/getting-started',
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       bootstrapGenerationToken: 'bootstrap-1'
     });
 
@@ -275,18 +264,12 @@ describe('proxy worker client', () => {
     spawnMock.mockReturnValue(child);
 
     await resolveRouteHandlerProxyWorkerClientSession({
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       bootstrapGenerationToken: 'bootstrap-1'
     });
 
     await resolveRouteHandlerProxyWorkerClientSession({
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       bootstrapGenerationToken: 'bootstrap-1'
     });
 
@@ -310,19 +293,13 @@ describe('proxy worker client', () => {
     spawnMock.mockReturnValue(child);
 
     await resolveRouteHandlerProxyWorkerClientSession({
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       bootstrapGenerationToken: 'bootstrap-1'
     });
 
     await resolveRouteHandlerProxyLazyMissWithWorker({
       pathname: '/en/docs/getting-started',
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       bootstrapGenerationToken: 'bootstrap-1'
     });
 
@@ -361,10 +338,7 @@ describe('proxy worker client', () => {
     await expect(
       resolveRouteHandlerProxyLazyMissWithWorker({
         pathname: '/en/docs/getting-started',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         bootstrapGenerationToken: 'bootstrap-1'
       })
     ).resolves.toEqual({
@@ -402,19 +376,13 @@ describe('proxy worker client', () => {
 
     await resolveRouteHandlerProxyLazyMissWithWorker({
       pathname: '/en/docs/getting-started',
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       bootstrapGenerationToken: 'bootstrap-1'
     });
 
     await resolveRouteHandlerProxyLazyMissWithWorker({
       pathname: '/en/docs/getting-started',
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       bootstrapGenerationToken: 'bootstrap-2'
     });
 
@@ -440,10 +408,7 @@ describe('proxy worker client', () => {
 
     await resolveRouteHandlerProxyLazyMissWithWorker({
       pathname: '/docs/getting-started',
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       bootstrapGenerationToken: 'bootstrap-1'
     });
 
@@ -477,10 +442,7 @@ describe('proxy worker client', () => {
 
     await resolveRouteHandlerProxyLazyMissWithWorker({
       pathname: '/docs/getting-started',
-      localeConfig: {
-        locales: ['en'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       bootstrapGenerationToken: 'bootstrap-1'
     });
 

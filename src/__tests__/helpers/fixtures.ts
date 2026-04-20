@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { packageModule, type ModuleReference } from '../../module-reference';
 import type { RouteHandlerBinding } from '../../next/shared/types';
-import type { LocaleConfig } from '../../core/types';
+import type { DynamicRouteParam, LocaleConfig } from '../../core/types';
 
 export const TEST_PRIMARY_ROUTE_SEGMENT = 'content';
 export const TEST_SECONDARY_ROUTE_SEGMENT = 'secondary';
@@ -24,9 +24,19 @@ export const TEST_STATIC_PROPS_IMPORT = '@next-slug-splitter-test/static-props';
 export const TEST_COMPONENT_IMPORT_SOURCE =
   '@next-slug-splitter-test/components';
 export const TEST_COMPONENT_IMPORT_NAME = 'CustomComponent';
-export const TEST_LOCALE_CONFIG: LocaleConfig = {
+export const TEST_SINGLE_LOCALE_CONFIG: LocaleConfig = {
   locales: ['en'],
   defaultLocale: 'en'
+};
+
+export const TEST_MULTI_LOCALE_CONFIG: LocaleConfig = {
+  locales: ['en', 'de'],
+  defaultLocale: 'en'
+};
+
+export const TEST_SLUG_CATCH_ALL_ROUTE_PARAM: DynamicRouteParam = {
+  name: 'slug',
+  kind: 'catch-all'
 };
 
 const DEFAULT_TEST_FACTORY_VARIANTS = ['none', 'selection', 'wrapper'];

@@ -24,6 +24,10 @@ vi.mock(
 );
 
 import { bootstrapRouteHandlerProxyWorker } from '../../../../next/proxy/worker/runtime/bootstrap';
+import {
+  TEST_SINGLE_LOCALE_CONFIG,
+  TEST_SLUG_CATCH_ALL_ROUTE_PARAM
+} from '../../../helpers/fixtures';
 
 import type { LocaleConfig } from '../../../../core/types';
 import type {
@@ -33,14 +37,9 @@ import type {
   PersistedRouteHandlerProxyBootstrapTarget
 } from '../../../../next/proxy/bootstrap-persisted';
 
-const TEST_LOCALE_CONFIG: LocaleConfig = {
-  locales: ['en'],
-  defaultLocale: 'en'
-};
-
 const createBootstrapManifest = ({
   bootstrapGenerationToken = 'bootstrap-token',
-  localeConfig = TEST_LOCALE_CONFIG,
+  localeConfig = TEST_SINGLE_LOCALE_CONFIG,
   targets = [createBootstrapTarget()]
 }: {
   bootstrapGenerationToken?: string;
@@ -60,10 +59,7 @@ function createBootstrapTarget(): PersistedRouteHandlerProxyBootstrapPagesTarget
     routeBasePath: '/docs',
     contentLocaleMode: 'filename',
     emitFormat: 'ts',
-    handlerRouteParam: {
-      name: 'slug',
-      kind: 'catch-all'
-    },
+    handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
     handlerRouteSegment: 'generated-handlers',
     routeContract: {
       kind: 'package',
@@ -90,10 +86,7 @@ function createAppBootstrapTarget(): PersistedRouteHandlerProxyBootstrapAppTarge
     routeBasePath: '/docs',
     contentLocaleMode: 'filename',
     emitFormat: 'ts',
-    handlerRouteParam: {
-      name: 'slug',
-      kind: 'catch-all'
-    },
+    handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
     handlerRouteSegment: 'generated-handlers',
     routeContract: {
       kind: 'package',
@@ -152,7 +145,7 @@ describe('proxy worker bootstrap', () => {
   it('combines structural manifest data with runtime attachments', async () => {
     const state = await bootstrapRouteHandlerProxyWorker(
       'bootstrap-token',
-      TEST_LOCALE_CONFIG,
+      TEST_SINGLE_LOCALE_CONFIG,
       TEST_CONFIG_REGISTRATION
     );
     const resolvedConfig = state.resolvedConfigsByTargetId.get('docs');
@@ -170,12 +163,9 @@ describe('proxy worker bootstrap', () => {
         targetId: 'docs',
         routeBasePath: '/docs',
         contentLocaleMode: 'filename',
-        localeConfig: TEST_LOCALE_CONFIG,
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         emitFormat: 'ts',
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         paths: {
           rootDir: '/repo/app',
           contentDir: '/repo/app/content/pages',
@@ -190,10 +180,7 @@ describe('proxy worker bootstrap', () => {
       routeBasePath: '/docs',
       contentLocaleMode: 'filename',
       emitFormat: 'ts',
-      handlerRouteParam: {
-        name: 'slug',
-        kind: 'catch-all'
-      },
+      handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
       routeContract: {
         kind: 'package',
         specifier: '@test/base-static-props'
@@ -204,7 +191,7 @@ describe('proxy worker bootstrap', () => {
           specifier: '@test/processor'
         }
       },
-      localeConfig: TEST_LOCALE_CONFIG,
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       paths: {
         rootDir: '/repo/app',
         contentDir: '/repo/app/content/pages',
@@ -222,7 +209,7 @@ describe('proxy worker bootstrap', () => {
     await expect(
       bootstrapRouteHandlerProxyWorker(
         'bootstrap-token',
-        TEST_LOCALE_CONFIG,
+        TEST_SINGLE_LOCALE_CONFIG,
         TEST_CONFIG_REGISTRATION
       )
     ).rejects.toThrow('Missing route-handler proxy bootstrap manifest.');
@@ -233,7 +220,7 @@ describe('proxy worker bootstrap', () => {
     await expect(
       bootstrapRouteHandlerProxyWorker(
         'other-bootstrap-token',
-        TEST_LOCALE_CONFIG,
+        TEST_SINGLE_LOCALE_CONFIG,
         TEST_CONFIG_REGISTRATION
       )
     ).rejects.toThrow(
@@ -262,7 +249,7 @@ describe('proxy worker bootstrap', () => {
     await expect(
       bootstrapRouteHandlerProxyWorker(
         'bootstrap-token',
-        TEST_LOCALE_CONFIG,
+        TEST_SINGLE_LOCALE_CONFIG,
         TEST_CONFIG_REGISTRATION
       )
     ).rejects.toThrow(
@@ -283,7 +270,7 @@ describe('proxy worker bootstrap', () => {
     await expect(
       bootstrapRouteHandlerProxyWorker(
         'bootstrap-token',
-        TEST_LOCALE_CONFIG,
+        TEST_SINGLE_LOCALE_CONFIG,
         TEST_CONFIG_REGISTRATION
       )
     ).rejects.toThrow(
@@ -300,7 +287,7 @@ describe('proxy worker bootstrap', () => {
 
     const state = await bootstrapRouteHandlerProxyWorker(
       'bootstrap-token',
-      TEST_LOCALE_CONFIG,
+      TEST_SINGLE_LOCALE_CONFIG,
       TEST_CONFIG_REGISTRATION
     );
     const resolvedConfig = state.resolvedConfigsByTargetId.get('docs');
@@ -311,12 +298,9 @@ describe('proxy worker bootstrap', () => {
         targetId: 'docs',
         routeBasePath: '/docs',
         contentLocaleMode: 'filename',
-        localeConfig: TEST_LOCALE_CONFIG,
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         emitFormat: 'ts',
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         paths: {
           rootDir: '/repo/app',
           contentDir: '/repo/app/content/pages',

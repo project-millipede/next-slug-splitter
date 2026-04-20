@@ -10,17 +10,12 @@ import {
   writeRouteHandlerLookupSnapshot
 } from '../../next/shared/lookup-persisted';
 import { createHeavyRoute } from '../helpers/builders';
+import { TEST_SINGLE_LOCALE_CONFIG } from '../helpers/fixtures';
 import { withTempDir } from '../helpers/temp-dir';
-import type { LocaleConfig } from '../../core/types';
 
 const ORIGINAL_CWD = process.cwd();
 
 describe('route-handler lookup snapshot persistence', () => {
-  const TEST_LOCALE_CONFIG: LocaleConfig = {
-    locales: ['en'],
-    defaultLocale: 'en'
-  };
-
   afterEach(() => {
     process.chdir(ORIGINAL_CWD);
   });
@@ -51,7 +46,7 @@ describe('route-handler lookup snapshot persistence', () => {
         rewritesOfDefaultLocale: []
       }
     ], {
-      localeConfig: TEST_LOCALE_CONFIG
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG
     });
 
     const serialized = serializeRouteHandlerLookupSnapshot(snapshot);
@@ -61,7 +56,7 @@ describe('route-handler lookup snapshot persistence', () => {
     expect(parsed).toEqual({
       version: 6,
       filterHeavyRoutesFromStaticRouteResult: true,
-      localeConfig: TEST_LOCALE_CONFIG,
+      localeConfig: TEST_SINGLE_LOCALE_CONFIG,
       targets: [
         {
           targetId: 'blog',
@@ -81,7 +76,7 @@ describe('route-handler lookup snapshot persistence', () => {
         JSON.stringify({
           version: 6,
           filterHeavyRoutesFromStaticRouteResult: true,
-          localeConfig: TEST_LOCALE_CONFIG,
+          localeConfig: TEST_SINGLE_LOCALE_CONFIG,
           targets: [
             {
               targetId: '',
@@ -97,7 +92,7 @@ describe('route-handler lookup snapshot persistence', () => {
         JSON.stringify({
           version: 6,
           filterHeavyRoutesFromStaticRouteResult: true,
-          localeConfig: TEST_LOCALE_CONFIG,
+          localeConfig: TEST_SINGLE_LOCALE_CONFIG,
           targets: [
             {
               targetId: 'docs',
@@ -132,7 +127,7 @@ describe('route-handler lookup snapshot persistence', () => {
             rewritesOfDefaultLocale: []
           }
         ], {
-          localeConfig: TEST_LOCALE_CONFIG
+          localeConfig: TEST_SINGLE_LOCALE_CONFIG
         })
       );
 
@@ -140,7 +135,7 @@ describe('route-handler lookup snapshot persistence', () => {
 
       expect(snapshot).not.toBeNull();
       expect(snapshot!.filterHeavyRoutesFromStaticRouteResult).toBe(true);
-      expect(snapshot!.localeConfig).toEqual(TEST_LOCALE_CONFIG);
+      expect(snapshot!.localeConfig).toEqual(TEST_SINGLE_LOCALE_CONFIG);
       expect(snapshot!.targets).toEqual([
         { targetId: 'docs', heavyRoutePathKeys: ['en:recognition'] }
       ]);
@@ -156,7 +151,7 @@ describe('route-handler lookup snapshot persistence', () => {
       await writeRouteHandlerLookupSnapshot(
         rootDir,
         createRouteHandlerLookupSnapshot(false, [], {
-          localeConfig: TEST_LOCALE_CONFIG
+          localeConfig: TEST_SINGLE_LOCALE_CONFIG
         })
       );
 

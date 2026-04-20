@@ -10,6 +10,10 @@ vi.mock('file-entry-cache', () => ({
 }));
 
 import { createRouteHandlerLazySingleRouteCacheManager } from '../../../../next/proxy/lazy/single-route-cache-manager';
+import {
+  TEST_SINGLE_LOCALE_CONFIG,
+  TEST_SLUG_CATCH_ALL_ROUTE_PARAM
+} from '../../../helpers/fixtures';
 
 import type { RouteHandlerLazyPagesPlannerConfig } from '../../../../next/proxy/lazy/types';
 
@@ -72,10 +76,7 @@ const createPlannerConfig = (
     targetId,
     emitFormat: 'ts',
     contentLocaleMode: 'filename',
-    handlerRouteParam: {
-      name: 'slug',
-      kind: 'catch-all'
-    },
+    handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
     routeBasePath: '/docs',
     processorConfig: {
       processorImport: {
@@ -90,10 +91,7 @@ const createPlannerConfig = (
     runtime: {
       mdxCompileOptions: {}
     },
-    localeConfig: {
-      locales: ['en'],
-      defaultLocale: 'en'
-    },
+    localeConfig: TEST_SINGLE_LOCALE_CONFIG,
     paths: {
       rootDir: '/app',
       contentDir: '/app/content',
