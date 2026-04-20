@@ -8,7 +8,7 @@ import {
 } from '../../../module-reference';
 import { createConfigError } from '../../../utils/errors';
 import { readObjectProperty } from '../../shared/config/shared';
-import { resolveRouteHandlerBinding } from '../../shared/config/handler-binding';
+import { resolveRouteHandlerProcessorImport } from '../../shared/config/handler-binding';
 import type {
   ModuleReference,
   ResolvedRouteHandlersAppConfig
@@ -174,7 +174,7 @@ export const resolveRouteHandlersConfigBase = async (
     appConfig,
     typedConfiguredRouteHandlers
   );
-  const resolvedHandlerBinding = resolveRouteHandlerBinding({
+  const processorImport = resolveRouteHandlerProcessorImport({
     rootDir: resolvedRootDir,
     handlerBinding: typedConfiguredRouteHandlers.handlerBinding
   });
@@ -215,7 +215,9 @@ export const resolveRouteHandlersConfigBase = async (
       rootDir: resolvedRootDir,
       routeContract: resolvedRouteContract
     }),
-    processorConfig: resolvedHandlerBinding.processorConfig,
+    processorConfig: {
+      processorImport
+    },
     ...(resolvedPageDataCompilerConfig == null
       ? {}
       : {
