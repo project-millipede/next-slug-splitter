@@ -75,10 +75,8 @@ describe('App Router config resolution', () => {
         }),
         routeBasePath: '/docs',
         routeModuleImport: absoluteModule(routeModulePath),
-        paths: {
-          contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', 'generated-handlers')
-        }
+        generatedRootDir: path.join('app', 'docs'),
+        contentDir: 'content'
       };
 
       const appConfig = resolveRouteHandlersAppConfig({
@@ -94,7 +92,7 @@ describe('App Router config resolution', () => {
       expect(resolvedTarget.routerKind).toBe('app');
       expect(resolvedTarget.targetId).toBe('docs');
       expect(resolvedTarget.handlerRouteSegment).toBe('generated-handlers');
-      expect(resolvedTarget.paths.handlersDir).toBe(
+      expect(resolvedTarget.paths.generatedDir).toBe(
         path.join(rootDir, 'app', 'docs', 'generated-handlers')
       );
       expect(resolvedTarget.routeModuleImport).toEqual(
@@ -137,10 +135,8 @@ describe('App Router config resolution', () => {
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
         routeModuleImport: absoluteModule(sourceRouteModulePath),
-        paths: {
-          contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', 'generated-handlers')
-        }
+        generatedRootDir: path.join('app', 'docs'),
+        contentDir: 'content'
       };
 
       const appConfig = resolveRouteHandlersAppConfig({
@@ -157,7 +153,7 @@ describe('App Router config resolution', () => {
       expect(resolvedTarget.routeModuleImport).toEqual(
         absoluteModule(sourceRouteModulePath)
       );
-      expect(resolvedTarget.paths.handlersDir).toBe(
+      expect(resolvedTarget.paths.generatedDir).toBe(
         path.join(rootDir, 'app', 'docs', 'generated-handlers')
       );
       expect(resolvedTarget.routeModule).toEqual({
@@ -186,7 +182,7 @@ describe('App Router config resolution', () => {
             name: 'slug',
             kind: 'catch-all'
           },
-          contentPagesDir: 'content',
+          contentDir: 'content',
           routeModuleImport: absoluteModule(routeModulePath),
           handlerBinding: createTestHandlerBinding()
         })
@@ -205,7 +201,7 @@ describe('App Router config resolution', () => {
       expect(resolvedTarget.targetId).toBe('docs');
       expect(resolvedTarget.routeBasePath).toBe('/docs');
       expect(resolvedTarget.handlerRouteSegment).toBe('generated-handlers');
-      expect(resolvedTarget.paths.handlersDir).toBe(
+      expect(resolvedTarget.paths.generatedDir).toBe(
         path.join(rootDir, 'app', 'docs', '(docs-shared)', 'generated-handlers')
       );
     });
@@ -229,10 +225,8 @@ describe('App Router config resolution', () => {
         },
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
-        paths: {
-          contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', 'generated-handlers')
-        }
+        generatedRootDir: path.join('app', 'docs'),
+        contentDir: 'content'
       };
 
       const appConfig = resolveRouteHandlersAppConfig({
@@ -276,10 +270,8 @@ describe('App Router config resolution', () => {
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
         routeModuleImport: absoluteModule(routeModulePath),
-        paths: {
-          contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', 'generated-handlers')
-        }
+        generatedRootDir: path.join('app', 'docs'),
+        contentDir: 'content'
       };
 
       const appConfig = resolveRouteHandlersAppConfig({
@@ -325,10 +317,8 @@ describe('App Router config resolution', () => {
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
         routeModuleImport: absoluteModule(routeModulePath),
-        paths: {
-          contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', 'generated-handlers')
-        }
+        generatedRootDir: path.join('app', 'docs'),
+        contentDir: 'content'
       };
 
       const appConfig = resolveRouteHandlersAppConfig({

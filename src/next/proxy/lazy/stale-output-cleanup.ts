@@ -14,11 +14,6 @@ import type {
 /**
  * Remove one lazily emitted handler file by explicit known output location.
  *
- * @param input - Removal input.
- * @param input.handlersDir - Target handlers-directory boundary.
- * @param input.pageFilePath - Absolute emitted page path to remove.
- * @returns Removal status for the file path.
- *
  * @remarks
  * This is the narrowest cleanup primitive.
  *
@@ -26,15 +21,16 @@ import type {
  * 1. a caller already knows the exact emitted file path
  * 2. cleanup should target that one file directly, even if the owning target
  *    later disappears
+ *
+ * @param generatedDir - Target generated-directory boundary.
+ * @param pageFilePath - Absolute emitted page path to remove.
+ * @returns Removal status for the file path.
  */
-export const removeRouteHandlerLazyOutputAtKnownLocation = ({
-  handlersDir,
-  pageFilePath
-}: {
-  handlersDir: string;
-  pageFilePath: string;
-}): Promise<EmittedHandlerPageRemovalStatus> =>
-  removeRenderedRouteHandlerPageIfPresent(pageFilePath, handlersDir);
+export const removeRouteHandlerLazyOutputAtKnownLocation = (
+  generatedDir: string,
+  pageFilePath: string
+): Promise<EmittedHandlerPageRemovalStatus> =>
+  removeRenderedRouteHandlerPageIfPresent(pageFilePath, generatedDir);
 
 /**
  * Remove the deterministic emitted handler file for one route identity.
@@ -54,7 +50,7 @@ export const removeRouteHandlerLazyOutputAtKnownLocation = ({
  * emission:
  * - locale + slug array determine the handler-relative path
  * - emit format determines the final extension
- * - handlersDir determines the directory root
+ * - generatedDir determines the directory root
  *
  * That means stale-output cleanup does not need a previous manifest and does
  * not need the route to still be heavy. As long as we know which route
@@ -90,6 +86,6 @@ export const removeRouteHandlerLazyOutputForIdentity = ({
 
   return removeRenderedRouteHandlerPageIfPresent(
     pageFilePath,
-    config.paths.handlersDir
+    config.paths.generatedDir
   );
 };

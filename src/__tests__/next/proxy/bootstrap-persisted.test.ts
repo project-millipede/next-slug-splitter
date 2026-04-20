@@ -57,8 +57,8 @@ const createResolvedConfigFixture = (
     },
     paths: {
       rootDir,
-      contentPagesDir: `${rootDir}/content/pages`,
-      handlersDir: `${rootDir}/pages/generated-handlers`
+      contentDir: `${rootDir}/content/pages`,
+      generatedDir: `${rootDir}/pages/generated-handlers`
     },
     localeConfig: TEST_LOCALE_CONFIG,
     runtime: {
@@ -91,8 +91,8 @@ const createResolvedAppConfigFixture = (
     },
     paths: {
       rootDir,
-      contentPagesDir: `${rootDir}/content/pages`,
-      handlersDir: `${rootDir}/app/docs/generated-handlers`
+      contentDir: `${rootDir}/content/pages`,
+      generatedDir: `${rootDir}/app/docs/generated-handlers`
     },
     localeConfig: TEST_LOCALE_CONFIG,
     runtime: {
@@ -176,8 +176,8 @@ describe('proxy bootstrap persistence', () => {
         },
         paths: {
           rootDir: '/repo/app',
-          contentPagesDir: '/repo/app/content/pages',
-          handlersDir: '/repo/app/pages/generated-handlers'
+          contentDir: '/repo/app/content/pages',
+          generatedDir: '/repo/app/pages/generated-handlers'
         }
       }
     ]);
@@ -208,8 +208,8 @@ describe('proxy bootstrap persistence', () => {
       localeConfig: TEST_LOCALE_CONFIG,
       paths: {
         rootDir: '/repo/app',
-        contentPagesDir: '/repo/app/content/pages',
-        handlersDir: '/repo/app/pages/generated-handlers'
+        contentDir: '/repo/app/content/pages',
+        generatedDir: '/repo/app/pages/generated-handlers'
       }
     });
     expect(config).not.toHaveProperty('runtime');
@@ -247,8 +247,8 @@ describe('proxy bootstrap persistence', () => {
         },
         paths: {
           rootDir: '/repo/app',
-          contentPagesDir: '/repo/app/content/pages',
-          handlersDir: '/repo/app/app/docs/generated-handlers'
+          contentDir: '/repo/app/content/pages',
+          generatedDir: '/repo/app/app/docs/generated-handlers'
         }
       }
     ]);
@@ -279,7 +279,7 @@ describe('proxy bootstrap persistence', () => {
       const persistedManifest = await readRouteHandlerProxyBootstrap(rootDir);
 
       expect(persistedManifest).toEqual({
-        version: 4,
+        version: 5,
         bootstrapGenerationToken: 'bootstrap-token',
         localeConfig: {
           locales: ['en'],

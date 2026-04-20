@@ -198,24 +198,26 @@ export const resolveRouteHandlerLazyResolvedTargetsFromAppConfig = (
           )
         );
 
-  return normalizedTargets.map(({ options, routeHandlersConfig: targetConfig }) => ({
-    // This is intentionally the smallest resolved shape that can support
-    // request-to-file matching plus deterministic stale-output cleanup. No
-    // processor imports, runtime factory imports, or other planner-only data
-    // are pulled into this seam.
-    routerKind,
-    targetId: options.targetId,
-    routeBasePath: options.routeBasePath,
-    contentLocaleMode: options.contentLocaleMode,
-    localeConfig,
-    emitFormat: options.emitFormat,
-    handlerRouteParam: options.handlerRouteParam,
-    paths: {
-      rootDir: appConfig.rootDir,
-      contentPagesDir: options.paths.contentPagesDir,
-      handlersDir: options.paths.handlersDir
-    }
-  }));
+  return normalizedTargets.map(
+    ({ options, routeHandlersConfig: targetConfig }) => ({
+      // This is intentionally the smallest resolved shape that can support
+      // request-to-file matching plus deterministic stale-output cleanup. No
+      // processor imports, runtime factory imports, or other planner-only data
+      // are pulled into this seam.
+      routerKind,
+      targetId: options.targetId,
+      routeBasePath: options.routeBasePath,
+      contentLocaleMode: options.contentLocaleMode,
+      localeConfig,
+      emitFormat: options.emitFormat,
+      handlerRouteParam: options.handlerRouteParam,
+      paths: {
+        rootDir: appConfig.rootDir,
+        contentDir: options.paths.contentDir,
+        generatedDir: options.paths.generatedDir
+      }
+    })
+  );
 };
 
 /**
@@ -247,7 +249,7 @@ export const resolveRouteHandlerLazyRequest = async (
 
   const { config, identity } = matchedTargetRequest;
   const matchedRoutePath = await resolveLocalizedContentRoute({
-    contentPagesDir: config.paths.contentPagesDir,
+    contentDir: config.paths.contentDir,
     localeConfig: config.localeConfig,
     contentLocaleMode: config.contentLocaleMode,
     identity

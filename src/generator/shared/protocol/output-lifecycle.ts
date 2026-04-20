@@ -58,12 +58,12 @@ export type RouteHandlerOutputSynchronizationStatus =
 /**
  * Ensure the generated handlers directory exists.
  *
- * @param handlersDir - Absolute handlers directory path.
+ * @param generatedDir - Absolute generated-handler directory path.
  */
 export const ensureRouteHandlerOutputDirectory = async (
-  handlersDir: string
+  generatedDir: string
 ): Promise<void> => {
-  await mkdir(handlersDir, { recursive: true });
+  await mkdir(generatedDir, { recursive: true });
 };
 
 /**
@@ -75,13 +75,13 @@ export const ensureRouteHandlerOutputDirectory = async (
  * lazy one-route path should not normally call this because it only owns
  * narrow route-local reconciliation.
  *
- * @param handlersDir - Absolute handlers directory path.
+ * @param generatedDir - Absolute generated-handler directory path.
  */
 export const clearRouteHandlerOutputDirectory = async (
-  handlersDir: string
+  generatedDir: string
 ): Promise<void> => {
-  await rm(handlersDir, { recursive: true, force: true });
-  await ensureRouteHandlerOutputDirectory(handlersDir);
+  await rm(generatedDir, { recursive: true, force: true });
+  await ensureRouteHandlerOutputDirectory(generatedDir);
 };
 
 /**
@@ -200,13 +200,13 @@ export const synchronizeRenderedRouteHandlerPage = async (
  *   or disappears
  *
  * @param pageFilePath - Absolute emitted page path.
- * @param handlersDir - Handlers-directory boundary for empty-directory
+ * @param generatedDir - Generated-directory boundary for empty-directory
  * pruning.
  * @returns Whether a file was removed or nothing existed to remove.
  */
 export const removeRenderedRouteHandlerPageIfPresent = async (
   pageFilePath: string,
-  handlersDir: string
+  generatedDir: string
 ): Promise<EmittedHandlerPageRemovalStatus> => {
   try {
     await unlink(pageFilePath);
@@ -216,7 +216,7 @@ export const removeRenderedRouteHandlerPageIfPresent = async (
 
   await removeEmptyRouteHandlerDirectoriesUpTo(
     path.dirname(pageFilePath),
-    handlersDir
+    generatedDir
   );
   return 'removed';
 };

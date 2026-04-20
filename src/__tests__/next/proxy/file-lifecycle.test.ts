@@ -34,7 +34,7 @@ const createMultiTargetConfig = (rootDir: string): RouteHandlersConfig => ({
         name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
         kind: 'catch-all'
       },
-      contentPagesDir: path.join(rootDir, 'docs', 'src', 'pages'),
+      contentDir: path.join(rootDir, 'docs', 'src', 'pages'),
       handlerBinding: createTestHandlerBinding()
     }),
     createCatchAllRouteHandlersPreset({
@@ -43,7 +43,7 @@ const createMultiTargetConfig = (rootDir: string): RouteHandlersConfig => ({
         name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
         kind: 'catch-all'
       },
-      contentPagesDir: path.join(rootDir, 'blog', 'src', 'pages'),
+      contentDir: path.join(rootDir, 'blog', 'src', 'pages'),
       handlerBinding: createTestHandlerBinding()
     })
   ]

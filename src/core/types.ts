@@ -192,12 +192,12 @@ export type RouteHandlerPaths = {
   /**
    * Directory containing content page files to scan.
    */
-  contentPagesDir: string;
+  contentDir: string;
 
   /**
    * Output directory for generated handler files.
    */
-  handlersDir: string;
+  generatedDir: string;
 };
 
 /**

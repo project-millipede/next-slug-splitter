@@ -85,8 +85,11 @@ app/docs/generated-handlers/
 
 These files are auto-generated and gitignored. Each one imports exactly the components that its page needs — nothing more.
 
-The demo config now uses the same canonical generated handler segment directly:
-`handlersDir: app/docs/generated-handlers`.
+The preset keeps source discovery and generated output explicit:
+- `contentDir: content/pages`
+- derived `generatedRootDir: app/docs`
+
+The library then derives `app/docs/generated-handlers/` internally.
 
 ### The demo target config
 
@@ -100,7 +103,7 @@ Conceptually, the target looks like this:
 createAppCatchAllRouteHandlersPreset({
   routeSegment: 'docs',
   handlerRouteParam: { name: 'slug', kind: 'catch-all' },
-  contentPagesDir: path.join(rootDir, 'content', 'pages'),
+  contentDir: path.join(rootDir, 'content', 'pages'),
   contentLocaleMode: 'default-locale',
   routeModuleImport: relativeModule('app/docs/[...slug]/route-contract'),
   handlerBinding: {
@@ -117,7 +120,8 @@ The preset derives the repetitive App target plumbing for the demo:
 - `targetId`
 - `routeBasePath`
 - generated App handler params always use `handlerRouteParam.name`
-- `paths.handlersDir` as `app/docs/generated-handlers`
+- `contentDir` as the source MDX/content root
+- `generatedRootDir` as `app/docs`
 
 The App-specific route contract stays explicit:
 

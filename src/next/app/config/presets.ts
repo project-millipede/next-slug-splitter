@@ -3,9 +3,11 @@ import type {
   RouteHandlersTargetConfig
 } from '../types';
 
+import { createConfigError } from '../../../utils/errors';
 import { resolveCatchAllRoutePresetIdentity } from '../../shared/config/catch-all-preset';
 import { normalizeRouteSegment } from '../../shared/config/options';
-import { createCatchAllAppRouteHandlerNextPaths } from './paths';
+import { isNonEmptyString } from '../../shared/config/shared';
+import { createCatchAllAppRouteHandlerGeneratedRootDir } from './paths';
 
 /**
  * Create a catch-all App Router target preset for next-slug-splitter.
@@ -23,12 +25,16 @@ export const createAppCatchAllRouteHandlersPreset = ({
   routeTreeSegment,
   handlerRouteParam,
   contentLocaleMode,
-  contentPagesDir,
+  contentDir,
   emitFormat,
   handlerBinding,
   mdxCompileOptions,
   routeModuleImport
 }: CreateAppCatchAllRouteHandlersPresetOptions): RouteHandlersTargetConfig => {
+  if (!isNonEmptyString(contentDir)) {
+    throw createConfigError('contentDir must be a non-empty string path.');
+  }
+
   const resolvedPresetIdentity = resolveCatchAllRoutePresetIdentity({
     targetId,
     routeSegment,
@@ -48,9 +54,9 @@ export const createAppCatchAllRouteHandlersPreset = ({
     mdxCompileOptions,
     routeBasePath: resolvedPresetIdentity.routeBasePath,
     routeModuleImport,
-    paths: createCatchAllAppRouteHandlerNextPaths({
-      routeTreeSegment: normalizedRouteTreeSegment,
-      contentPagesDir
-    })
+    contentDir,
+    generatedRootDir: createCatchAllAppRouteHandlerGeneratedRootDir(
+      normalizedRouteTreeSegment
+    )
   };
 };

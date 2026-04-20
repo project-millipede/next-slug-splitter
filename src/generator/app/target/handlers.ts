@@ -30,7 +30,7 @@ export const emitAppRouteHandlerPages = async ({
   routeBasePath: string;
   routeModuleContract: ResolvedAppRouteModuleContract;
 }): Promise<void> => {
-  await clearRouteHandlerOutputDirectory(paths.handlersDir);
+  await clearRouteHandlerOutputDirectory(paths.generatedDir);
 
   const renderedPages = heavyRoutes.map(entry =>
     renderAppRouteHandlerPage({

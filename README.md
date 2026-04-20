@@ -147,19 +147,23 @@ export const routeHandlersConfig = {
     createCatchAllRouteHandlersPreset({
       routeSegment: 'docs',
       handlerRouteParam: docsRouteParam,
-      contentPagesDir: path.resolve(rootDir, 'docs/src/pages'),
+      contentDir: path.resolve(rootDir, 'docs/src/pages'),
       handlerBinding: routeHandlerBindings.docs
     }),
     createCatchAllRouteHandlersPreset({
       routeSegment: 'blog',
       handlerRouteParam: blogRouteParam,
-      contentPagesDir: path.resolve(rootDir, 'blog/src/pages'),
+      contentDir: path.resolve(rootDir, 'blog/src/pages'),
       contentLocaleMode: 'default-locale',
       handlerBinding: routeHandlerBindings.blog
     })
   ]
 };
 ```
+
+Each preset derives `generatedRootDir` from its `routeSegment`, then the
+library appends the canonical `generated-handlers/` leaf during target
+resolution.
 
 No separate generation command is required for the standard integration path.
 `next build` runs route-handler generation automatically through the installed
@@ -200,7 +204,7 @@ export const routeHandlersConfig = {
     createAppCatchAllRouteHandlersPreset({
       routeSegment: 'docs',
       handlerRouteParam: docsRouteParam,
-      contentPagesDir: path.resolve(rootDir, 'content/pages'),
+      contentDir: path.resolve(rootDir, 'content/pages'),
       contentLocaleMode: 'default-locale',
       routeModuleImport: relativeModule('app/docs/[...slug]/route-contract'),
       handlerBinding: {
@@ -213,6 +217,10 @@ export const routeHandlersConfig = {
   ]
 };
 ```
+
+This preset also derives `generatedRootDir` for you from `routeSegment`, and
+the library later resolves the final `generated-handlers/` directory under that
+root.
 
 The App-specific fields are:
 
@@ -242,7 +250,7 @@ createAppCatchAllRouteHandlersPreset({
   routeSegment: 'docs',
   routeTreeSegment: 'docs/(docs-shared)',
   handlerRouteParam: docsRouteParam,
-  contentPagesDir: path.resolve(rootDir, 'content/pages'),
+  contentDir: path.resolve(rootDir, 'content/pages'),
   routeModuleImport: relativeModule('app/docs/[...slug]/route-contract'),
   handlerBinding: {
     ...routeHandlerBindings.docs,
@@ -252,6 +260,10 @@ createAppCatchAllRouteHandlersPreset({
   }
 });
 ```
+
+In this route-group variant, the preset derives `generatedRootDir` from
+`routeTreeSegment`, so the final generated output lands under the shared App
+subtree automatically.
 
 That shape produces:
 
@@ -645,7 +657,8 @@ Create one catch-all target with normalized route and path values.
 |--------|-------------|
 | `routeSegment` | Public route segment (e.g. `'docs'`, `'blog'`) |
 | `handlerRouteParam` | Dynamic route parameter configuration |
-| `contentPagesDir` | Directory containing content pages |
+| `contentDir` | Directory containing content pages |
+| `generatedRootDir` | Derived generated-output root; presets resolve this from `routeSegment` |
 | `handlerBinding` | Binding with processor module for route planning |
 | `contentLocaleMode` | Locale detection mode (see below) |
 
@@ -659,7 +672,8 @@ App-specific route-module inputs.
 | `routeSegment` | Public route segment (e.g. `'docs'`) |
 | `routeTreeSegment` | Optional App Router filesystem subtree for emitted handlers; defaults to `routeSegment` |
 | `handlerRouteParam` | Dynamic route parameter configuration |
-| `contentPagesDir` | Directory containing content pages |
+| `contentDir` | Directory containing content pages |
+| `generatedRootDir` | Derived generated-output root; presets resolve this from `routeSegment` or `routeTreeSegment` |
 | `handlerBinding` | Binding with processor module for route planning |
 | `routeModuleImport` | Page-safe App route module imported by the light page and generated heavy pages |
 | `routeModuleRuntimeImport` | Optional worker-owned App route module loaded whenever the library executes the route contract outside Next's server graph; defaults to `routeModuleImport` |

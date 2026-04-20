@@ -403,7 +403,7 @@ describe('generator handlers', () => {
       });
 
       const pageSource = await readFile(
-        path.join(paths.handlersDir, 'nested', 'example', 'de.tsx'),
+        path.join(paths.generatedDir, 'nested', 'example', 'de.tsx'),
         'utf8'
       );
 
@@ -487,9 +487,9 @@ describe('generator handlers', () => {
         routeBasePath: contentHandlerModuleInput.routeBasePath
       });
 
-      const unchangedPath = path.join(paths.handlersDir, 'stable', 'en.tsx');
-      const changedPath = path.join(paths.handlersDir, 'changed', 'en.tsx');
-      const stalePath = path.join(paths.handlersDir, 'stale', 'en.tsx');
+      const unchangedPath = path.join(paths.generatedDir, 'stable', 'en.tsx');
+      const changedPath = path.join(paths.generatedDir, 'changed', 'en.tsx');
+      const stalePath = path.join(paths.generatedDir, 'stale', 'en.tsx');
       const unchangedSourceBefore = await readFile(unchangedPath, 'utf8');
       const changedSourceBefore = await readFile(changedPath, 'utf8');
 

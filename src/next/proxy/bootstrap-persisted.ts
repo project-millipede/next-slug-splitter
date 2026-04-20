@@ -21,12 +21,8 @@ import type {
   ResolvedRouteHandlerProcessorConfig
 } from '../../core/types';
 import type { BootstrapGenerationToken } from './runtime/types';
-import type {
-  RouteHandlerNextPaths
-} from '../shared/types';
-import type {
-  ResolvedAppRouteModuleContract
-} from '../app/types';
+import type { RouteHandlerNextPaths } from '../shared/types';
+import type { ResolvedAppRouteModuleContract } from '../app/types';
 import type { ResolvedRouteHandlersConfig } from '../types';
 import type {
   RouteHandlerLazyAppPlannerConfig,
@@ -34,7 +30,7 @@ import type {
   RouteHandlerLazyResolvedTarget
 } from './lazy/types';
 
-const ROUTE_HANDLER_PROXY_BOOTSTRAP_VERSION = 4;
+const ROUTE_HANDLER_PROXY_BOOTSTRAP_VERSION = 5;
 const ROUTE_HANDLER_PROXY_BOOTSTRAP_PATH = path.join(
   '.next',
   'cache',
@@ -43,7 +39,7 @@ const ROUTE_HANDLER_PROXY_BOOTSTRAP_PATH = path.join(
 
 type PersistedRouteHandlerProxyBootstrapPaths = Pick<
   RouteHandlerNextPaths,
-  'rootDir' | 'contentPagesDir' | 'handlersDir'
+  'rootDir' | 'contentDir' | 'generatedDir'
 >;
 
 /**
@@ -236,8 +232,8 @@ const isPersistedRouteHandlerProxyBootstrapPaths = (
 
   return (
     isString(readObjectProperty(value, 'rootDir')) &&
-    isString(readObjectProperty(value, 'contentPagesDir')) &&
-    isString(readObjectProperty(value, 'handlersDir'))
+    isString(readObjectProperty(value, 'contentDir')) &&
+    isString(readObjectProperty(value, 'generatedDir'))
   );
 };
 
@@ -341,12 +337,12 @@ export const createRouteHandlerProxyBootstrapManifest = (
       contentLocaleMode: config.contentLocaleMode,
       emitFormat: config.emitFormat,
       handlerRouteParam: config.handlerRouteParam,
-      handlerRouteSegment: path.basename(config.paths.handlersDir),
+      handlerRouteSegment: path.basename(config.paths.generatedDir),
       processorConfig: config.processorConfig,
       paths: {
         rootDir: config.paths.rootDir,
-        contentPagesDir: config.paths.contentPagesDir,
-        handlersDir: config.paths.handlersDir
+        contentDir: config.paths.contentDir,
+        generatedDir: config.paths.generatedDir
       }
     };
 
@@ -432,8 +428,8 @@ export const createRouteHandlerLazyResolvedTargetsFromProxyBootstrap = (
     handlerRouteParam: target.handlerRouteParam,
     paths: {
       rootDir: target.paths.rootDir,
-      contentPagesDir: target.paths.contentPagesDir,
-      handlersDir: target.paths.handlersDir
+      contentDir: target.paths.contentDir,
+      generatedDir: target.paths.generatedDir
     }
   }));
 
@@ -464,8 +460,8 @@ export const createRouteHandlerPlannerConfigsByIdFromProxyBootstrap = (
             localeConfig: cloneLocaleConfig(manifest.localeConfig),
             paths: {
               rootDir: target.paths.rootDir,
-              contentPagesDir: target.paths.contentPagesDir,
-              handlersDir: target.paths.handlersDir
+              contentDir: target.paths.contentDir,
+              generatedDir: target.paths.generatedDir
             }
           }
         : {
@@ -481,8 +477,8 @@ export const createRouteHandlerPlannerConfigsByIdFromProxyBootstrap = (
             localeConfig: cloneLocaleConfig(manifest.localeConfig),
             paths: {
               rootDir: target.paths.rootDir,
-              contentPagesDir: target.paths.contentPagesDir,
-              handlersDir: target.paths.handlersDir
+              contentDir: target.paths.contentDir,
+              generatedDir: target.paths.generatedDir
             }
           }
     ])

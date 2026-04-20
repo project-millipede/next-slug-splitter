@@ -154,51 +154,27 @@ export const normalizeRouteHandlersTargetOptions = (
 ): NormalizedRouteHandlersTargetOptions => {
   const configuredRouteHandlers =
     requireSingleRouteHandlersConfigBase(routeHandlersConfig);
-
-  if (
-    configuredRouteHandlers.paths !== undefined &&
-    !isObjectRecord(configuredRouteHandlers.paths)
-  ) {
-    throw createConfigError('paths must be an object.');
-  }
-
-  const configuredPaths = isObjectRecord(configuredRouteHandlers.paths)
-    ? configuredRouteHandlers.paths
-    : {};
   const resolvedRootDir = appConfig.rootDir;
+  const generatedRootDir = readRequiredStringOption(
+    resolveConfiguredPathOption({
+      rootDir: resolvedRootDir,
+      value: configuredRouteHandlers.generatedRootDir,
+      label: 'generatedRootDir'
+    }),
+    'generatedRootDir'
+  );
   const resolvedPaths: RouteHandlerNextPaths = {
     rootDir: resolvedRootDir,
-    contentPagesDir: readRequiredStringOption(
+    contentDir: readRequiredStringOption(
       resolveConfiguredPathOption({
         rootDir: resolvedRootDir,
-        value: configuredPaths.contentPagesDir,
-        label: 'paths.contentPagesDir'
+        value: configuredRouteHandlers.contentDir,
+        label: 'contentDir'
       }),
-      'paths.contentPagesDir'
+      'contentDir'
     ),
-    handlersDir: readRequiredStringOption(
-      resolveConfiguredPathOption({
-        rootDir: resolvedRootDir,
-        value: configuredPaths.handlersDir,
-        label: 'paths.handlersDir'
-      }),
-      'paths.handlersDir'
-    )
+    generatedDir: path.join(generatedRootDir, GENERATED_HANDLER_SEGMENT)
   };
-
-  // Current contract:
-  // 1. Catch-all presets already derive `.../generated-handlers`.
-  // 2. Manual target configs can still provide paths.handlersDir directly.
-  // 3. Those direct values must already include the canonical final segment.
-  //
-  // If target config later switches to generatedRootDir and central
-  // path.join(generatedRootDir, 'generated-handlers') derivation, this
-  // validation can be removed because the leaf will be appended centrally.
-  if (path.basename(resolvedPaths.handlersDir) !== GENERATED_HANDLER_SEGMENT) {
-    throw createConfigError(
-      `paths.handlersDir must end with "${GENERATED_HANDLER_SEGMENT}".`
-    );
-  }
 
   const routeBasePath = normalizeRouteBasePath(
     readRequiredStringOption(

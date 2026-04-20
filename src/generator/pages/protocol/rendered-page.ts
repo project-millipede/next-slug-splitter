@@ -77,18 +77,18 @@ export type RenderedHandlerPageLocation = {
  * @returns Output location for the emitted page.
  */
 export const resolveRenderedHandlerPageLocation = (
-  paths: Pick<RouteHandlerPaths, 'handlersDir'>,
+  paths: Pick<RouteHandlerPaths, 'generatedDir'>,
   emitFormat: EmitFormat,
   handlerRelativePath: string
 ): RenderedHandlerPageLocation => {
   const pageExtension = emitFormat === 'ts' ? 'tsx' : 'js';
   const pageFilePath = path.join(
-    paths.handlersDir,
+    paths.generatedDir,
     `${handlerRelativePath}.${pageExtension}`
   );
 
   return {
-    relativePath: path.relative(paths.handlersDir, pageFilePath),
+    relativePath: path.relative(paths.generatedDir, pageFilePath),
     pageFilePath
   };
 };

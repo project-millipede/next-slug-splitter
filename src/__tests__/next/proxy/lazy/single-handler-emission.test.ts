@@ -76,7 +76,7 @@ const createSingleTargetConfig = ({
       name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
       kind: 'catch-all'
     },
-    contentPagesDir: path.join(rootDir, TEST_PRIMARY_CONTENT_PAGES_DIR),
+    contentDir: path.join(rootDir, TEST_PRIMARY_CONTENT_PAGES_DIR),
     handlerBinding: createTestHandlerBinding()
   })
 });

@@ -1,38 +1,16 @@
 import path from 'node:path';
 
-import type { RouteHandlerTargetPaths } from '../../shared/types';
-
-import { isNonEmptyString } from '../../shared/config/shared';
-import { createConfigError } from '../../../utils/errors';
-
 /**
- * Build the target-local App Router path values implied by a catch-all preset.
+ * Build the generated-output root directory implied by one App catch-all preset.
  *
- * @param input - Preset path input.
- * @returns Target-local path values that still need app-level root resolution.
+ * @param routeTreeSegment - Normalized App Router subtree segment whose parent
+ * directory should own the generated handlers. This may include route groups.
+ * @returns Directory that should own the canonical generated-handler leaf.
  */
-export const createCatchAllAppRouteHandlerNextPaths = ({
-  routeTreeSegment,
-  contentPagesDir
-}: {
-  /**
-   * Normalized App Router subtree segment for the catch-all route and
-   * generated handlers. This may include route groups.
-   */
-  routeTreeSegment: string;
-  /**
-   * Source content pages directory or import path.
-   */
-  contentPagesDir: string;
-}): Partial<RouteHandlerTargetPaths> => {
-  if (!isNonEmptyString(contentPagesDir)) {
-    throw createConfigError('contentPagesDir must be a non-empty string path.');
-  }
-
+export const createCatchAllAppRouteHandlerGeneratedRootDir = (
+  routeTreeSegment: string
+): string => {
   const routeTreeSegments = routeTreeSegment.split('/');
 
-  return {
-    contentPagesDir,
-    handlersDir: path.join('app', ...routeTreeSegments, 'generated-handlers')
-  };
+  return path.join('app', ...routeTreeSegments);
 };

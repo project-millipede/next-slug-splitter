@@ -131,19 +131,6 @@ export type RouteHandlerRewritePhaseConfig<
 export type RouteHandlerNextPaths = RouteHandlerPaths;
 
 /**
- * Target-local filesystem path overrides.
- *
- * Excludes `rootDir` as that is resolved at the app level.
- *
- * Current contract:
- * 1. Catch-all preset helpers derive the canonical `generated-handlers` leaf.
- * 2. Manual target configs may still set `paths.handlersDir` directly.
- * 3. Direct `paths.handlersDir` values must already include that final
- *    segment themselves.
- */
-export type RouteHandlerTargetPaths = Omit<RouteHandlerNextPaths, 'rootDir'>;
-
-/**
  * App-level inputs shared by all configured targets.
  */
 export type AppConfigBase = {
@@ -417,9 +404,13 @@ export type RouteHandlersTargetConfigBase = {
    */
   routeBasePath?: string;
   /**
-   * Target-local path overrides.
+   * Directory containing source MDX/content files for this target.
    */
-  paths?: Partial<RouteHandlerTargetPaths>;
+  contentDir?: string;
+  /**
+   * Directory under which the canonical generated-handler leaf is emitted.
+   */
+  generatedRootDir?: string;
 };
 
 /**
@@ -478,7 +469,7 @@ export type ResolvedRouteHandlersRuntimeAttachments = {
  */
 type ResolvedTargetStructuralConfigBase = Omit<
   Required<RouteHandlersTargetConfigBase>,
-  'handlerBinding' | 'paths' | 'mdxCompileOptions'
+  'handlerBinding' | 'contentDir' | 'generatedRootDir' | 'mdxCompileOptions'
 > & {
   /**
    * Resolved router family for the owning config.

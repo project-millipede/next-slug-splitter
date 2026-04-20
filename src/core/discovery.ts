@@ -169,19 +169,19 @@ export const sortStringArray = (values: Array<string>): Array<string> =>
  * Discover localized content routes below the configured content pages
  * directory.
  *
- * @param contentPagesDir - Content pages directory to scan.
+ * @param contentDir - Content pages directory to scan.
  * @param localeConfig - Locale configuration used to interpret localized routes.
  * @param contentLocaleMode - Mode describing how locale participation is encoded
  * in content files.
  * @returns Localized route paths discovered below the content root.
  */
 export const discoverLocalizedContentRoutes = async (
-  contentPagesDir: string,
+  contentDir: string,
   localeConfig: LocaleConfig,
   contentLocaleMode: ContentLocaleMode = 'filename'
 ): Promise<Array<LocalizedRoutePath>> => {
   const locales = localeConfig.locales;
-  const files = await globFiles(['**/*.{md,mdx}'], { cwd: contentPagesDir });
+  const files = await globFiles(['**/*.{md,mdx}'], { cwd: contentDir });
 
   const tuples: Array<LocalizedRoutePath> = [];
   for (const file of files) {
@@ -201,7 +201,7 @@ export const discoverLocalizedContentRoutes = async (
       tuples.push({
         locale,
         slugArray: parts,
-        filePath: path.resolve(contentPagesDir, normalized)
+        filePath: path.resolve(contentDir, normalized)
       });
       continue;
     }
@@ -216,7 +216,7 @@ export const discoverLocalizedContentRoutes = async (
     tuples.push({
       locale: localeConfig.defaultLocale,
       slugArray: [...parts, baseName],
-      filePath: path.resolve(contentPagesDir, normalized)
+      filePath: path.resolve(contentDir, normalized)
     });
   }
 
@@ -244,7 +244,7 @@ export type ResolveLocalizedContentRouteInput = {
   /**
    * Content pages directory to resolve from.
    */
-  contentPagesDir: string;
+  contentDir: string;
   /**
    * Locale configuration used to interpret localized routes.
    */
@@ -324,7 +324,7 @@ const isFilenameModeLocalizedRouteCandidate = (
  * path-local lookup instead of a full-tree content scan.
  *
  * @param input - Resolution input.
- * @param input.contentPagesDir - Content pages directory to resolve from.
+ * @param input.contentDir - Content pages directory to resolve from.
  * @param input.localeConfig - Locale configuration used to interpret routes.
  * @param input.contentLocaleMode - Mode describing how locale participation is
  * encoded in content files.
@@ -343,16 +343,13 @@ const isFilenameModeLocalizedRouteCandidate = (
  *   slug segment to the markdown filename
  */
 export const resolveLocalizedContentRoute = async ({
-  contentPagesDir,
+  contentDir,
   localeConfig,
   contentLocaleMode = 'filename',
   identity
 }: ResolveLocalizedContentRouteInput): Promise<LocalizedRoutePath | null> => {
   if (contentLocaleMode === 'filename') {
-    const routeDirectoryPath = path.resolve(
-      contentPagesDir,
-      ...identity.slugArray
-    );
+    const routeDirectoryPath = path.resolve(contentDir, ...identity.slugArray);
     const matchedFileName = (
       await readDirectoryEntriesIfPresent(routeDirectoryPath)
     )
@@ -384,7 +381,7 @@ export const resolveLocalizedContentRoute = async ({
     return null;
   }
 
-  const baseFilePath = path.resolve(contentPagesDir, ...identity.slugArray);
+  const baseFilePath = path.resolve(contentDir, ...identity.slugArray);
   const candidateFilePaths = [`${baseFilePath}.mdx`, `${baseFilePath}.md`];
 
   for (const candidateFilePath of candidateFilePaths) {
