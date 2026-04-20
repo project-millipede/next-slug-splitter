@@ -22,7 +22,7 @@ import {
 
 type ContentHandlerModuleInput = {
   routeBasePath: string;
-  baseStaticPropsImport: ResolvedModuleReference;
+  routeContract: ResolvedModuleReference;
   handlerRouteParam: DynamicRouteParam;
 };
 
@@ -138,7 +138,7 @@ export const createContentHandlerModuleInput = (
   rootDir: string
 ): ContentHandlerModuleInput => ({
   routeBasePath: '/content',
-  baseStaticPropsImport: absoluteModule(
+  routeContract: absoluteModule(
     path.join(rootDir, 'pages', 'content', '[...entry]')
   ),
   handlerRouteParam: { name: 'entry', kind: 'catch-all' }

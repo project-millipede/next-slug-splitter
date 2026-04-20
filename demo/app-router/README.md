@@ -86,6 +86,7 @@ app/docs/generated-handlers/
 These files are auto-generated and gitignored. Each one imports exactly the components that its page needs — nothing more.
 
 The preset keeps source discovery and generated output explicit:
+
 - `contentDir: content/pages`
 - derived `generatedRootDir: app/docs`
 
@@ -105,7 +106,7 @@ createAppCatchAllRouteHandlersPreset({
   handlerRouteParam: { name: 'slug', kind: 'catch-all' },
   contentDir: path.join(rootDir, 'content', 'pages'),
   contentLocaleMode: 'default-locale',
-  routeModuleImport: relativeModule('app/docs/[...slug]/route-contract'),
+  routeContract: relativeModule('app/docs/[...slug]/route-contract'),
   handlerBinding: {
     processorImport: relativeModule('dist/handler-processor'),
     pageDataCompilerImport: relativeModule(
@@ -125,12 +126,18 @@ The preset derives the repetitive App target plumbing for the demo:
 
 The App-specific route contract stays explicit:
 
-- `routeModuleImport` is the route-owned contract imported by the light page
-  and generated heavy pages
+- `routeContract` is the dedicated `app/docs/[...slug]/route-contract.ts`
+  module imported by the light page and generated heavy pages
+- that same file also owns route enumeration through `getStaticParams`, unlike
+  the Pages Router path where enumeration stays on the catch-all page's
+  `getStaticPaths`
 - `handlerBinding.pageDataCompilerImport` points at the app-owned compiler
   module that the library executes in an isolated worker
 - omitting `routeHandlersConfig.app.localeConfig` keeps the demo in
   single-locale mode
+
+For the full Pages-vs-App route-contract comparison, see the comparison table
+in the top-level [README](../../README.md).
 
 The demo uses:
 

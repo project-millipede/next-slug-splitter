@@ -40,7 +40,7 @@ export const emitRouteHandlerLazySingleHandler = async (
           paths: analysisResult.config.paths,
           heavyRoute: analysisResult.plannedHeavyRoute,
           emitFormat: analysisResult.config.emitFormat,
-          routeModuleImport: analysisResult.config.routeModuleImport,
+          routeContract: analysisResult.config.routeContract,
           handlerRouteParam: analysisResult.config.handlerRouteParam,
           routeBasePath: analysisResult.config.routeBasePath,
           routeModuleContract: analysisResult.config.routeModule
@@ -49,7 +49,7 @@ export const emitRouteHandlerLazySingleHandler = async (
           paths: analysisResult.config.paths,
           heavyRoute: analysisResult.plannedHeavyRoute,
           emitFormat: analysisResult.config.emitFormat,
-          baseStaticPropsImport: analysisResult.config.baseStaticPropsImport,
+          routeContract: analysisResult.config.routeContract,
           handlerRouteParam: analysisResult.config.handlerRouteParam,
           routeBasePath: analysisResult.config.routeBasePath
         });

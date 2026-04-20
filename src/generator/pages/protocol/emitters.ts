@@ -60,9 +60,9 @@ type HandlerPageEmitInput = {
    */
   runtimeHandlerFactoryImport: string;
   /**
-   * Import path for the base static props module.
+   * Import path for the Pages route contract module.
    */
-  baseStaticPropsImport: string;
+  routeContract: string;
   /**
    * Dynamic route parameter descriptor for the handler page.
    */
@@ -97,12 +97,12 @@ type HandlerPageEmitInput = {
  * fixed slug, and a lazy import of the catch-all page's static props.
  *
  * @param handlerRouteParam - Route parameter descriptor from the target config.
- * @param baseStaticPropsImport - Import specifier of the source page module.
+ * @param routeContract - Import specifier of the source route contract module.
  * @returns A writer function that emits the `createHandlerGetStaticProps(...)` call.
  */
 const createHandlerGetStaticPropsInitializer = (
   handlerRouteParam: DynamicRouteParam,
-  baseStaticPropsImport: string
+  routeContract: string
 ): WriterFunction => {
   return writer => {
     writer.write('createHandlerGetStaticProps(');
@@ -117,7 +117,7 @@ const createHandlerGetStaticPropsInitializer = (
       writer.write('handlerSlug,');
       writer.newLine();
       writer.write('() => import(');
-      writeStringLiteral(writer, baseStaticPropsImport);
+      writeStringLiteral(writer, routeContract);
       writer.write(')');
       writer.newLine();
     });
@@ -137,7 +137,7 @@ export const renderHandlerPageSource = ({
   handlerId,
   usedLoadableComponentKeys,
   runtimeHandlerFactoryImport,
-  baseStaticPropsImport,
+  routeContract,
   handlerRouteParam,
   routeBasePath,
   componentImports,
@@ -206,7 +206,7 @@ export const renderHandlerPageSource = ({
         name: 'getStaticProps',
         initializer: createHandlerGetStaticPropsInitializer(
           handlerRouteParam,
-          baseStaticPropsImport
+          routeContract
         )
       }
     ]

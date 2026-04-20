@@ -29,7 +29,7 @@ export const createAppCatchAllRouteHandlersPreset = ({
   emitFormat,
   handlerBinding,
   mdxCompileOptions,
-  routeModuleImport
+  routeContract
 }: CreateAppCatchAllRouteHandlersPresetOptions): RouteHandlersTargetConfig => {
   if (!isNonEmptyString(contentDir)) {
     throw createConfigError('contentDir must be a non-empty string path.');
@@ -53,7 +53,7 @@ export const createAppCatchAllRouteHandlersPreset = ({
     handlerBinding,
     mdxCompileOptions,
     routeBasePath: resolvedPresetIdentity.routeBasePath,
-    routeModuleImport,
+    routeContract,
     contentDir,
     generatedRootDir: createCatchAllAppRouteHandlerGeneratedRootDir(
       normalizedRouteTreeSegment

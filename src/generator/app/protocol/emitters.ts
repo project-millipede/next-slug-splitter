@@ -25,7 +25,7 @@ type AppHandlerPageEmitInput = {
   handlerId: string;
   usedLoadableComponentKeys: Array<string>;
   runtimeHandlerFactoryImport: string;
-  routeModuleImport: string;
+  routeContract: string;
   routeBasePath: string;
   componentImports: Array<HandlerComponentImportRecord>;
   componentEntries: Array<HandlerLoadableComponentEmitEntry>;
@@ -62,7 +62,7 @@ export const renderAppHandlerPageSource = ({
   handlerId,
   usedLoadableComponentKeys,
   runtimeHandlerFactoryImport,
-  routeModuleImport,
+  routeContract,
   routeBasePath,
   componentImports,
   componentEntries,
@@ -83,7 +83,7 @@ export const renderAppHandlerPageSource = ({
       namedImports: ['createHandlerPage']
     },
     {
-      source: routeModuleImport,
+      source: routeContract,
       namedImports: [
         ...(hasGeneratePageMetadata ? ['generatePageMetadata'] : []),
         'loadPageProps'
@@ -169,7 +169,9 @@ export const renderAppHandlerPageSource = ({
     ...headerLines,
     '',
     importBlock,
-    revalidateExportBlock.length > 0 ? `\n${revalidateExportBlock.trimEnd()}` : '',
+    revalidateExportBlock.length > 0
+      ? `\n${revalidateExportBlock.trimEnd()}`
+      : '',
     '',
     sourceFile.getFullText().trimEnd(),
     ''

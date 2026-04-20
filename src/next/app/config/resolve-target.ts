@@ -182,19 +182,19 @@ export const resolveRouteHandlersConfigBase = async (
     resolvedRootDir,
     typedConfiguredRouteHandlers.handlerBinding
   );
-  const resolvedRouteModuleImport = normalizeModuleReference(
+  const resolvedRouteContract = normalizeModuleReference(
     resolvedRootDir,
     readRequiredModuleReferenceOption(
-      typedConfiguredRouteHandlers.routeModuleImport,
-      'routeModuleImport'
+      typedConfiguredRouteHandlers.routeContract,
+      'routeContract'
     )
   );
 
   try {
-    resolveModuleReferenceToPath(resolvedRootDir, resolvedRouteModuleImport);
+    resolveModuleReferenceToPath(resolvedRootDir, resolvedRouteContract);
   } catch {
     throw createConfigError(
-      `routeModuleImport could not be resolved from "${resolvedRootDir}".`
+      `routeContract could not be resolved from "${resolvedRootDir}".`
     );
   }
 
@@ -207,13 +207,13 @@ export const resolveRouteHandlersConfigBase = async (
     runtime: normalizeRouteHandlersTargetRuntimeAttachments(
       typedConfiguredRouteHandlers
     ),
-    routeModuleImport: resolvedRouteModuleImport,
+    routeContract: resolvedRouteContract,
     handlerRouteSegment: path.basename(
       normalizedTargetOptions.paths.generatedDir
     ),
     routeModule: await inspectAppRouteModuleContract({
       rootDir: resolvedRootDir,
-      routeModuleImport: resolvedRouteModuleImport
+      routeContract: resolvedRouteContract
     }),
     processorConfig: resolvedHandlerBinding.processorConfig,
     ...(resolvedPageDataCompilerConfig == null

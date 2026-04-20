@@ -48,7 +48,7 @@ const createBootstrapTarget =
       kind: 'catch-all'
     },
     handlerRouteSegment: 'generated-handlers',
-    baseStaticPropsImport: {
+    routeContract: {
       kind: 'package',
       specifier: '@test/base-static-props'
     },

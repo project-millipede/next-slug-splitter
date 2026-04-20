@@ -121,19 +121,19 @@ const readInspectedRouteModuleRevalidate = async (
  * 4. `revalidate` is optional.
  *
  * @param rootDir Application root directory.
- * @param routeModuleImport Resolved or unresolved module reference.
+ * @param routeContract Resolved or unresolved module reference.
  * @returns Inspected contract metadata used by generation and bootstrap.
  */
 const inspectAppRouteContractExports = async ({
   rootDir,
-  routeModuleImport
+  routeContract
 }: {
   rootDir: string;
-  routeModuleImport:
+  routeContract:
     | RouteHandlerModuleReference
     | ResolvedRouteHandlerModuleReference;
 }): Promise<ResolvedAppRouteModuleContract> => {
-  const routeModulePath = resolveModuleReferenceToPath(rootDir, routeModuleImport);
+  const routeModulePath = resolveModuleReferenceToPath(rootDir, routeContract);
   const sourceFile = await createInspectionSourceFile(routeModulePath);
   const exportedDeclarations = sourceFile.getExportedDeclarations();
 
@@ -162,20 +162,20 @@ const inspectAppRouteContractExports = async ({
  * Inspect one App route contract after config normalization.
  *
  * @param rootDir Application root directory.
- * @param routeModuleImport Resolved or unresolved route-contract reference.
+ * @param routeContract Resolved or unresolved route-contract reference.
  * @returns Structural contract metadata used by the App pipeline.
  */
 export const inspectAppRouteModuleContract = async ({
   rootDir,
-  routeModuleImport
+  routeContract
 }: {
   rootDir: string;
-  routeModuleImport:
+  routeContract:
     | RouteHandlerModuleReference
     | ResolvedRouteHandlerModuleReference;
 }): Promise<ResolvedAppRouteModuleContract> => {
   return inspectAppRouteContractExports({
     rootDir,
-    routeModuleImport
+    routeContract
   });
 };

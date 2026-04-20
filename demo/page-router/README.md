@@ -123,6 +123,14 @@ These files are auto-generated and gitignored. Each one imports exactly the comp
 
 `pages/docs/[...slug].tsx` uses `withHeavyRouteFilter` to exclude slugs that are already served by generated handlers, preventing duplicate routes. Its `loadableRegistrySubset` is empty, so no component code is bundled.
 
+In the Pages Router path, that same catch-all page module is also the route
+contract. Generated heavy handlers reuse its `getStaticProps` contract instead
+of importing a separate dedicated `route-contract` file. Route enumeration
+still stays on that catch-all page through `getStaticPaths`.
+
+For the full Pages-vs-App route-contract comparison, see the comparison table
+in the top-level [README](../../README.md).
+
 ## Advanced Scope
 
 Nested MDX imports are supported by default, including cases where a parent

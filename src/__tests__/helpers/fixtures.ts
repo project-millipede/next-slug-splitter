@@ -221,7 +221,7 @@ export const writeTestRouteHandlerPackage = async (
 };
 
 /**
- * Materialize the source page referenced by `baseStaticPropsImport`.
+ * Materialize the source page referenced by `routeContract`.
  *
  * Key aspects:
  * 1. Config resolution validates that the module reference points to a real

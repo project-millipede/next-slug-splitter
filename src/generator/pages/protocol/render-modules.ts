@@ -33,10 +33,9 @@ export type PreparedHandlerRenderConfig = {
    */
   runtimeHandlerFactoryImport: string;
   /**
-   * Final base static props import specifier written into the generated
-   * module.
+   * Final route-contract import specifier written into the generated module.
    */
-  baseStaticPropsImport: string;
+  routeContract: string;
   /**
    * Dynamic route parameter descriptor for the handler page.
    */
@@ -101,15 +100,12 @@ export const renderRouteHandlerModules = ({
   selectedComponentEntries,
   renderConfig
 }: HandlerSourceInput): string => {
-  const {
-    componentImports,
-    componentEntries,
-    factoryBindingValues
-  } = prepareHandlerEmitInput({
-    selectedComponentEntries,
-    pageFilePath: renderConfig.pageFilePath,
-    factoryBindings
-  });
+  const { componentImports, componentEntries, factoryBindingValues } =
+    prepareHandlerEmitInput({
+      selectedComponentEntries,
+      pageFilePath: renderConfig.pageFilePath,
+      factoryBindings
+    });
 
   return renderHandlerPageSource({
     sourceLocale: locale,
@@ -117,7 +113,7 @@ export const renderRouteHandlerModules = ({
     handlerId,
     usedLoadableComponentKeys,
     runtimeHandlerFactoryImport: renderConfig.runtimeHandlerFactoryImport,
-    baseStaticPropsImport: renderConfig.baseStaticPropsImport,
+    routeContract: renderConfig.routeContract,
     handlerRouteParam: renderConfig.handlerRouteParam,
     routeBasePath: renderConfig.routeBasePath,
     componentImports,
@@ -125,5 +121,4 @@ export const renderRouteHandlerModules = ({
     factoryBindingValues,
     emitFormat: renderConfig.emitFormat
   });
-
 };

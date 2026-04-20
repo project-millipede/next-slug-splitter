@@ -83,7 +83,7 @@ const createPlannerConfig = (
         specifier: '@test/processor'
       }
     },
-    baseStaticPropsImport: {
+    routeContract: {
       kind: 'package',
       specifier: '@test/base-static-props'
     },

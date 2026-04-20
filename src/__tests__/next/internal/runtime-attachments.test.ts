@@ -49,7 +49,7 @@ const writeAppRuntimeAttachmentsConfig = async (
     "  generatedRootDir: 'app/docs',",
     "  contentDir: 'content/pages',",
     "  handlerRouteParam: { name: 'slug', kind: 'catch-all' },",
-    "  routeModuleImport: { kind: 'package', specifier: '@test/docs-route-module' },",
+    "  routeContract: { kind: 'package', specifier: '@test/docs-route-module' },",
     '  mdxCompileOptions: {',
     '    remarkPlugins: [remarkPlugin]',
     '  }',

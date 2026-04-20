@@ -73,7 +73,7 @@ describe('generator handlers', () => {
         pageFilePath: '/repo/pages/generated-handlers/de/nested/example.tsx',
         runtimeHandlerFactoryImport:
           '../../../../../../test-runtime/factory/selection',
-        baseStaticPropsImport: '../../../../[...entry]',
+        routeContract: '../../../../[...entry]',
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' }
@@ -112,7 +112,7 @@ describe('generator handlers', () => {
       renderConfig: {
         pageFilePath: '/repo/pages/generated-handlers/en/demo.tsx',
         runtimeHandlerFactoryImport: '@next-slug-splitter-test/factory/none',
-        baseStaticPropsImport: TEST_STATIC_PROPS_IMPORT,
+        routeContract: TEST_STATIC_PROPS_IMPORT,
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' }
@@ -140,7 +140,7 @@ describe('generator handlers', () => {
       renderConfig: {
         pageFilePath: '/repo/pages/generated-handlers/en/demo.tsx',
         runtimeHandlerFactoryImport: `${TEST_PRIMARY_FACTORY_IMPORT}/selection`,
-        baseStaticPropsImport: TEST_STATIC_PROPS_IMPORT,
+        routeContract: TEST_STATIC_PROPS_IMPORT,
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' }
@@ -206,7 +206,7 @@ describe('generator handlers', () => {
       renderConfig: {
         pageFilePath: '/repo/pages/generated-handlers/en/content/concepts.tsx',
         runtimeHandlerFactoryImport: '../../../../../test-runtime/factory/none',
-        baseStaticPropsImport: '../../../[...entry]',
+        routeContract: '../../../[...entry]',
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' }
@@ -248,7 +248,7 @@ describe('generator handlers', () => {
         pageFilePath: '/repo/pages/generated-handlers/en/content/selection.tsx',
         runtimeHandlerFactoryImport:
           '../../../../../test-runtime/factory/selection',
-        baseStaticPropsImport: '../../../[...entry]',
+        routeContract: '../../../[...entry]',
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' }
@@ -310,7 +310,7 @@ describe('generator handlers', () => {
         pageFilePath: '/repo/pages/generated-handlers/en/content/selection.tsx',
         runtimeHandlerFactoryImport:
           '../../../../../test-runtime/factory/selection',
-        baseStaticPropsImport: '../../../[...entry]',
+        routeContract: '../../../[...entry]',
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' }
@@ -357,7 +357,7 @@ describe('generator handlers', () => {
         pageFilePath:
           '/repo/pages/docs/generated-handlers/content/concepts/en.tsx',
         runtimeHandlerFactoryImport: '../../../../../test-runtime/factory/none',
-        baseStaticPropsImport: '../../../[...entry]',
+        routeContract: '../../../[...entry]',
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' }
@@ -397,7 +397,7 @@ describe('generator handlers', () => {
           })
         ],
         emitFormat: 'ts',
-        baseStaticPropsImport: contentHandlerModuleInput.baseStaticPropsImport,
+        routeContract: contentHandlerModuleInput.routeContract,
         handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
         routeBasePath: contentHandlerModuleInput.routeBasePath
       });
@@ -482,7 +482,7 @@ describe('generator handlers', () => {
         paths,
         heavyRoutes: [unchangedRoute, changedRouteInitial, staleRoute],
         emitFormat: 'ts',
-        baseStaticPropsImport: contentHandlerModuleInput.baseStaticPropsImport,
+        routeContract: contentHandlerModuleInput.routeContract,
         handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
         routeBasePath: contentHandlerModuleInput.routeBasePath
       });
@@ -519,7 +519,7 @@ describe('generator handlers', () => {
         paths,
         heavyRoutes: [unchangedRoute, changedRouteUpdated],
         emitFormat: 'ts',
-        baseStaticPropsImport: contentHandlerModuleInput.baseStaticPropsImport,
+        routeContract: contentHandlerModuleInput.routeContract,
         handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
         routeBasePath: contentHandlerModuleInput.routeBasePath
       });

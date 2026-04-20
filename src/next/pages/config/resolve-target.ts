@@ -48,7 +48,10 @@ export type ResolveRouteHandlersConfigBaseInput = {
  * @returns The single target config expected by the Pages resolver.
  */
 const requireSingleRouteHandlersConfig = (
-  routeHandlersConfig: RouteHandlersConfig | RouteHandlersTargetConfig | undefined
+  routeHandlersConfig:
+    | RouteHandlersConfig
+    | RouteHandlersTargetConfig
+    | undefined
 ): RouteHandlersConfig | RouteHandlersTargetConfig => {
   return requireSingleRouteHandlersConfigBase<RouteHandlersTargetConfig>(
     routeHandlersConfig
@@ -91,22 +94,19 @@ export const resolveRouteHandlersConfigBase = (
     rootDir: resolvedRootDir,
     handlerBinding: configuredRouteHandlers.handlerBinding
   });
-  const resolvedBaseStaticPropsImport = normalizeModuleReference(
+  const resolvedRouteContract = normalizeModuleReference(
     resolvedRootDir,
     readRequiredModuleReferenceOption(
-      configuredRouteHandlers.baseStaticPropsImport,
-      'baseStaticPropsImport'
+      configuredRouteHandlers.routeContract,
+      'routeContract'
     )
   );
 
   try {
-    resolveModuleReferenceToPath(
-      resolvedRootDir,
-      resolvedBaseStaticPropsImport
-    );
+    resolveModuleReferenceToPath(resolvedRootDir, resolvedRouteContract);
   } catch {
     throw createConfigError(
-      `baseStaticPropsImport could not be resolved from "${resolvedRootDir}".`
+      `routeContract could not be resolved from "${resolvedRootDir}".`
     );
   }
 
@@ -117,7 +117,7 @@ export const resolveRouteHandlersConfigBase = (
     runtime: normalizeRouteHandlersTargetRuntimeAttachments(
       configuredRouteHandlers
     ),
-    baseStaticPropsImport: resolvedBaseStaticPropsImport,
+    routeContract: resolvedRouteContract,
     processorConfig: resolvedHandlerBinding.processorConfig
   };
 };

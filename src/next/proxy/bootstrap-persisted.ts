@@ -30,7 +30,7 @@ import type {
   RouteHandlerLazyResolvedTarget
 } from './lazy/types';
 
-const ROUTE_HANDLER_PROXY_BOOTSTRAP_VERSION = 5;
+const ROUTE_HANDLER_PROXY_BOOTSTRAP_VERSION = 6;
 const ROUTE_HANDLER_PROXY_BOOTSTRAP_PATH = path.join(
   '.next',
   'cache',
@@ -94,9 +94,9 @@ export type PersistedRouteHandlerProxyBootstrapPagesTarget =
      */
     routerKind: 'pages';
     /**
-     * Resolved base static-props module import used by Pages generation.
+     * Resolved route contract used by Pages generation.
      */
-    baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
+    routeContract: ResolvedRouteHandlerModuleReference;
   };
 
 /**
@@ -112,7 +112,7 @@ export type PersistedRouteHandlerProxyBootstrapAppTarget =
      * Resolved route-contract import shared by the public page and generated
      * heavy pages.
      */
-    routeModuleImport: ResolvedRouteHandlerModuleReference;
+    routeContract: ResolvedRouteHandlerModuleReference;
     /**
      * Build-time inspection result for the App route contract.
      */
@@ -267,12 +267,12 @@ const isPersistedRouteHandlerProxyBootstrapTarget = (
 
   if (routerKind === 'app') {
     return (
-      isModuleReference(readObjectProperty(value, 'routeModuleImport')) &&
+      isModuleReference(readObjectProperty(value, 'routeContract')) &&
       isResolvedAppRouteModuleContract(readObjectProperty(value, 'routeModule'))
     );
   }
 
-  return isModuleReference(readObjectProperty(value, 'baseStaticPropsImport'));
+  return isModuleReference(readObjectProperty(value, 'routeContract'));
 };
 
 const isPersistedRouteHandlerProxyBootstrap = (
@@ -350,7 +350,7 @@ export const createRouteHandlerProxyBootstrapManifest = (
       return {
         ...sharedTarget,
         routerKind: 'app' as const,
-        routeModuleImport: config.routeModuleImport,
+        routeContract: config.routeContract,
         routeModule: config.routeModule
       };
     }
@@ -358,7 +358,7 @@ export const createRouteHandlerProxyBootstrapManifest = (
     return {
       ...sharedTarget,
       routerKind: 'pages' as const,
-      baseStaticPropsImport: config.baseStaticPropsImport
+      routeContract: config.routeContract
     };
   })
 });
@@ -454,7 +454,7 @@ export const createRouteHandlerPlannerConfigsByIdFromProxyBootstrap = (
             emitFormat: target.emitFormat,
             handlerRouteParam: target.handlerRouteParam,
             handlerRouteSegment: target.handlerRouteSegment,
-            routeModuleImport: target.routeModuleImport,
+            routeContract: target.routeContract,
             routeModule: target.routeModule,
             processorConfig: target.processorConfig,
             localeConfig: cloneLocaleConfig(manifest.localeConfig),
@@ -472,7 +472,7 @@ export const createRouteHandlerPlannerConfigsByIdFromProxyBootstrap = (
             emitFormat: target.emitFormat,
             handlerRouteParam: target.handlerRouteParam,
             handlerRouteSegment: target.handlerRouteSegment,
-            baseStaticPropsImport: target.baseStaticPropsImport,
+            routeContract: target.routeContract,
             processorConfig: target.processorConfig,
             localeConfig: cloneLocaleConfig(manifest.localeConfig),
             paths: {

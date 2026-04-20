@@ -380,7 +380,7 @@ describe('route handlers adapter', () => {
           name: 'slug',
           kind: 'catch-all'
         },
-        routeModuleImport: absoluteModule(runtimeRouteModulePath),
+        routeContract: absoluteModule(runtimeRouteModulePath),
         pageDataCompilerConfig: {
           pageDataCompilerImport: absoluteModule(pageDataCompilerModulePath)
         },
@@ -415,7 +415,7 @@ describe('route handlers adapter', () => {
             name: 'slug',
             kind: 'catch-all'
           },
-          routeModuleImport: absoluteModule(runtimeRouteModulePath)
+          routeContract: absoluteModule(runtimeRouteModulePath)
         })
       ]
     );
@@ -496,7 +496,7 @@ describe('route handlers adapter', () => {
         pageDataCompilerConfig: {
           pageDataCompilerImport: absoluteModule(pageDataCompilerModulePath)
         },
-        routeModuleImport: absoluteModule(runtimeRouteModulePath),
+        routeContract: absoluteModule(runtimeRouteModulePath),
         routeModule: {
           hasGeneratePageMetadata: false
         }

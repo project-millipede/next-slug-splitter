@@ -11,7 +11,7 @@ import { renderAppHandlerPageSource } from './emitters';
 export type PreparedAppHandlerRenderConfig = {
   pageFilePath: string;
   runtimeHandlerFactoryImport: string;
-  routeModuleImport: string;
+  routeContract: string;
   routeBasePath: string;
   emitFormat: EmitFormat;
   handlerParams: JsonObject;
@@ -36,15 +36,12 @@ export const renderAppRouteHandlerModules = ({
   selectedComponentEntries,
   renderConfig
 }: AppHandlerSourceInput): string => {
-  const {
-    componentImports,
-    componentEntries,
-    factoryBindingValues
-  } = prepareHandlerEmitInput({
-    selectedComponentEntries,
-    pageFilePath: renderConfig.pageFilePath,
-    factoryBindings
-  });
+  const { componentImports, componentEntries, factoryBindingValues } =
+    prepareHandlerEmitInput({
+      selectedComponentEntries,
+      pageFilePath: renderConfig.pageFilePath,
+      factoryBindings
+    });
 
   return renderAppHandlerPageSource({
     sourceLocale: locale,
@@ -52,7 +49,7 @@ export const renderAppRouteHandlerModules = ({
     handlerId,
     usedLoadableComponentKeys,
     runtimeHandlerFactoryImport: renderConfig.runtimeHandlerFactoryImport,
-    routeModuleImport: renderConfig.routeModuleImport,
+    routeContract: renderConfig.routeContract,
     routeBasePath: renderConfig.routeBasePath,
     componentImports,
     componentEntries,

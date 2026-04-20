@@ -2,9 +2,7 @@ import { emitRouteHandlerPages } from '../../../../generator/pages/target/handle
 import { buildRouteHandlerNextResult } from '../results';
 import { executeRouteHandlerTargetWithRuntimeHarness } from '../../../shared/runtime/target';
 
-import type {
-  PipelineMode,
-} from '../../../../core/types';
+import type { PipelineMode } from '../../../../core/types';
 import type { RouteHandlerNextResult } from '../../../shared/types';
 import type { ResolvedRouteHandlersConfig } from '../../types';
 
@@ -26,7 +24,7 @@ export const executeRouteHandlerTarget = async (
         paths,
         heavyRoutes,
         emitFormat,
-        baseStaticPropsImport: config.baseStaticPropsImport,
+        routeContract: config.routeContract,
         handlerRouteParam,
         routeBasePath
       }),

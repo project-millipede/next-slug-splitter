@@ -108,14 +108,14 @@ const createPreparedHandlerRenderConfig = ({
   pageFilePath,
   emitFormat,
   routeBasePath,
-  baseStaticPropsImport,
+  routeContract,
   factoryImport,
   handlerRouteParam
 }: {
   pageFilePath: string;
   emitFormat: EmitFormat;
   routeBasePath: string;
-  baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
+  routeContract: ResolvedRouteHandlerModuleReference;
   factoryImport: ResolvedRouteHandlerModuleReference;
   handlerRouteParam: DynamicRouteParam;
 }): PreparedHandlerRenderConfig => {
@@ -125,10 +125,7 @@ const createPreparedHandlerRenderConfig = ({
       pageFilePath,
       factoryImport
     ),
-    baseStaticPropsImport: toEmittedImportSpecifier(
-      pageFilePath,
-      baseStaticPropsImport
-    ),
+    routeContract: toEmittedImportSpecifier(pageFilePath, routeContract),
     handlerRouteParam,
     routeBasePath,
     emitFormat
@@ -143,7 +140,7 @@ const createPreparedHandlerRenderConfig = ({
  * @param input.paths - Target filesystem paths.
  * @param input.heavyRoute - Planned heavy route to render.
  * @param input.emitFormat - Output format for generated files.
- * @param input.baseStaticPropsImport - Resolved base static props import.
+ * @param input.routeContract - Resolved Pages route contract import.
  * @param input.routeBasePath - Public route base path for the target.
  * @returns Fully rendered handler page artifact.
  */
@@ -151,14 +148,14 @@ export const renderRouteHandlerPage = ({
   paths,
   heavyRoute,
   emitFormat,
-  baseStaticPropsImport,
+  routeContract,
   handlerRouteParam,
   routeBasePath
 }: {
   paths: RouteHandlerPaths;
   heavyRoute: PlannedHeavyRoute;
   emitFormat: EmitFormat;
-  baseStaticPropsImport: ResolvedRouteHandlerModuleReference;
+  routeContract: ResolvedRouteHandlerModuleReference;
   handlerRouteParam: DynamicRouteParam;
   routeBasePath: string;
 }): RenderedHandlerPage => {
@@ -171,7 +168,7 @@ export const renderRouteHandlerPage = ({
     pageFilePath,
     emitFormat,
     routeBasePath,
-    baseStaticPropsImport,
+    routeContract,
     factoryImport: heavyRoute.factoryImport,
     handlerRouteParam
   });

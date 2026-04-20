@@ -42,7 +42,7 @@ describe('App Router config resolution', () => {
     );
   });
 
-  it('resolves App targets with routeModuleImport and build-time contract inspection', async () => {
+  it('resolves App targets with routeContract and build-time contract inspection', async () => {
     await withTempDir('next-slug-splitter-app-config-', async rootDir => {
       await writeTestRouteHandlerPackage(rootDir);
 
@@ -74,7 +74,7 @@ describe('App Router config resolution', () => {
           pageDataCompilerImport: absoluteModule(pageDataCompilerPath)
         }),
         routeBasePath: '/docs',
-        routeModuleImport: absoluteModule(routeModulePath),
+        routeContract: absoluteModule(routeModulePath),
         generatedRootDir: path.join('app', 'docs'),
         contentDir: 'content'
       };
@@ -95,7 +95,7 @@ describe('App Router config resolution', () => {
       expect(resolvedTarget.paths.generatedDir).toBe(
         path.join(rootDir, 'app', 'docs', 'generated-handlers')
       );
-      expect(resolvedTarget.routeModuleImport).toEqual(
+      expect(resolvedTarget.routeContract).toEqual(
         absoluteModule(routeModulePath)
       );
       expect(resolvedTarget.routeModule).toEqual({
@@ -108,7 +108,7 @@ describe('App Router config resolution', () => {
     });
   });
 
-  it('supports a source TypeScript routeModuleImport without a separate runtime artifact', async () => {
+  it('supports a source TypeScript routeContract without a separate runtime artifact', async () => {
     await withTempDir('next-slug-splitter-app-config-', async rootDir => {
       await writeTestRouteHandlerPackage(rootDir);
 
@@ -134,7 +134,7 @@ describe('App Router config resolution', () => {
         },
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
-        routeModuleImport: absoluteModule(sourceRouteModulePath),
+        routeContract: absoluteModule(sourceRouteModulePath),
         generatedRootDir: path.join('app', 'docs'),
         contentDir: 'content'
       };
@@ -150,7 +150,7 @@ describe('App Router config resolution', () => {
         );
 
       expect(resolvedTarget.handlerRouteSegment).toBe('generated-handlers');
-      expect(resolvedTarget.routeModuleImport).toEqual(
+      expect(resolvedTarget.routeContract).toEqual(
         absoluteModule(sourceRouteModulePath)
       );
       expect(resolvedTarget.paths.generatedDir).toBe(
@@ -183,7 +183,7 @@ describe('App Router config resolution', () => {
             kind: 'catch-all'
           },
           contentDir: 'content',
-          routeModuleImport: absoluteModule(routeModulePath),
+          routeContract: absoluteModule(routeModulePath),
           handlerBinding: createTestHandlerBinding()
         })
       };
@@ -207,7 +207,7 @@ describe('App Router config resolution', () => {
     });
   });
 
-  it('fails validation when routeModuleImport is missing', async () => {
+  it('fails validation when routeContract is missing', async () => {
     await withTempDir('next-slug-splitter-app-config-', async rootDir => {
       await writeTestRouteHandlerPackage(rootDir);
 
@@ -239,7 +239,7 @@ describe('App Router config resolution', () => {
           appConfig,
           routeHandlersConfig as never
         )
-      ).rejects.toThrow('routeModuleImport must be a module reference object');
+      ).rejects.toThrow('routeContract must be a module reference object');
     });
   });
 
@@ -269,7 +269,7 @@ describe('App Router config resolution', () => {
         },
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
-        routeModuleImport: absoluteModule(routeModulePath),
+        routeContract: absoluteModule(routeModulePath),
         generatedRootDir: path.join('app', 'docs'),
         contentDir: 'content'
       };
@@ -316,7 +316,7 @@ describe('App Router config resolution', () => {
         },
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
-        routeModuleImport: absoluteModule(routeModulePath),
+        routeContract: absoluteModule(routeModulePath),
         generatedRootDir: path.join('app', 'docs'),
         contentDir: 'content'
       };
