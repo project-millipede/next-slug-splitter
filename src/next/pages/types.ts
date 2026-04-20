@@ -1,9 +1,9 @@
 import type {
-  DynamicRouteParam,
   ResolvedRouteHandlerModuleReference,
   RouteHandlerModuleReference
 } from '../../core/types';
 import type {
+  CreateCatchAllRouteHandlersPresetBaseOptions,
   RouteHandlersEntrypointInput as SharedRouteHandlersEntrypointInput,
   ResolvedRouteHandlersConfigWithLocale,
   ResolvedRouteHandlersAppConfig,
@@ -62,28 +62,8 @@ export type RouteHandlersEntrypointInput =
 /**
  * Options for creating a catch-all Pages Router preset.
  */
-export type CreateCatchAllRouteHandlersPresetOptions = Pick<
-  RouteHandlersTargetConfig,
-  | 'targetId'
-  | 'contentLocaleMode'
-  | 'emitFormat'
-  | 'handlerBinding'
-  | 'routeContract'
-  | 'mdxCompileOptions'
-> & {
-  /**
-   * Route segment for the catch-all target (e.g. `docs`).
-   */
-  routeSegment: string;
-  /**
-   * Dynamic route parameter for the handler page.
-   */
-  handlerRouteParam: DynamicRouteParam;
-  /**
-   * Directory containing content page files.
-   */
-  contentDir: string;
-};
+export type CreateCatchAllRouteHandlersPresetOptions =
+  CreateCatchAllRouteHandlersPresetBaseOptions<RouteHandlerBinding>;
 
 /**
  * Resolved Pages Router target config shared by target-wide and lazy analysis.
