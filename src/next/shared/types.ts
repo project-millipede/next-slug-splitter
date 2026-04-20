@@ -436,6 +436,57 @@ export type RouteHandlersConfigBase<
 };
 
 /**
+ * Shared public preset shape for one catch-all route-handler target.
+ *
+ * Router-specific preset types can specialize the handler binding while
+ * keeping one common set of public route, source-content, and route-contract
+ * inputs.
+ */
+export type CreateCatchAllRouteHandlersPresetBaseOptions<
+  TBinding extends RouteHandlerBinding = RouteHandlerBinding
+> = {
+  /**
+   * Stable identifier for cache separation and lookup scoping.
+   *
+   * When omitted, the preset derives this from the normalized route base path.
+   */
+  targetId?: string;
+  /**
+   * Public route segment owned by the catch-all target (for example `docs`).
+   */
+  routeSegment: string;
+  /**
+   * Dynamic route parameter descriptor used by the catch-all page.
+   */
+  handlerRouteParam: DynamicRouteParam;
+  /**
+   * Directory containing source MDX/content files for this target.
+   */
+  contentDir: string;
+  /**
+   * Locale detection strategy for content files.
+   */
+  contentLocaleMode?: ContentLocaleMode;
+  /**
+   * Output format for generated handlers.
+   */
+  emitFormat?: EmitFormat;
+  /**
+   * Binding that provides the processor module for route planning.
+   */
+  handlerBinding: TBinding;
+  /**
+   * Route-owned contract module imported by the public light route and by
+   * generated heavy pages.
+   */
+  routeContract: RouteHandlerModuleReference;
+  /**
+   * MDX compile plugins forwarded into analysis builds for this target.
+   */
+  mdxCompileOptions?: RouteHandlerMdxCompileOptions;
+};
+
+/**
  * Input for the route handlers entrypoint.
  */
 export type RouteHandlersEntrypointInput<TConfig = unknown> = {

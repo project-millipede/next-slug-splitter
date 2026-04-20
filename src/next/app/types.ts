@@ -1,5 +1,6 @@
 import type {
   ProcessorRouteHandlerBinding,
+  CreateCatchAllRouteHandlersPresetBaseOptions,
   RouteHandlersAppConfig as SharedRouteHandlersAppConfig,
   RouteHandlersEntrypointInput as SharedRouteHandlersEntrypointInput,
   ResolvedRouteHandlersConfigWithLocale,
@@ -9,7 +10,6 @@ import type {
   RouteHandlersTargetConfigBase
 } from '../shared/types';
 import type {
-  DynamicRouteParam,
   LocaleConfig,
   ResolvedRouteHandlerModuleReference,
   RouteHandlerModuleReference
@@ -233,28 +233,8 @@ export type RouteHandlersConfig = Omit<
 /**
  * Options for creating a catch-all App Router preset.
  */
-export type CreateAppCatchAllRouteHandlersPresetOptions = Pick<
-  RouteHandlersTargetConfig,
-  | 'targetId'
-  | 'contentLocaleMode'
-  | 'emitFormat'
-  | 'handlerBinding'
-  | 'mdxCompileOptions'
-  | 'routeContract'
-> & {
-  /**
-   * Public route segment for the catch-all target (e.g. `docs`).
-   */
-  routeSegment: string;
-  /**
-   * Dynamic route parameter for the handler page.
-   */
-  handlerRouteParam: DynamicRouteParam;
-  /**
-   * Directory containing content page files.
-   */
-  contentDir: string;
-};
+export type CreateAppCatchAllRouteHandlersPresetOptions =
+  CreateCatchAllRouteHandlersPresetBaseOptions<AppRouteHandlerBinding>;
 
 /**
  * App Router entrypoint input.
