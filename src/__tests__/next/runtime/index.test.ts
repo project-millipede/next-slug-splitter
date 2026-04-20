@@ -60,7 +60,7 @@ const createResolvedConfig = ({
   routeBasePath: '/content',
   paths: {
     rootDir,
-    contentPagesDir: `${rootDir}/content`,
+    contentDir: `${rootDir}/content`,
     generatedDir: `${rootDir}/pages/content/generated-handlers`
   }
 });

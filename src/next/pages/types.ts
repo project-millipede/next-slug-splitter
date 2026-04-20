@@ -67,7 +67,7 @@ export type CreateCatchAllRouteHandlersPresetOptions = Pick<
   /**
    * Directory containing content page files.
    */
-  contentPagesDir: string;
+  contentDir: string;
 };
 
 /**

@@ -94,7 +94,7 @@ export type RouteHandlerLazyResolvedTarget = {
     /**
      * Directory containing localized content files.
      */
-    contentPagesDir: string;
+    contentDir: string;
     /**
      * Directory containing generated handler pages for this target.
      *

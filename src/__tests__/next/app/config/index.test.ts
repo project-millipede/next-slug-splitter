@@ -76,9 +76,7 @@ describe('App Router config resolution', () => {
         routeBasePath: '/docs',
         routeModuleImport: absoluteModule(routeModulePath),
         generatedRootDir: path.join('app', 'docs'),
-        paths: {
-          contentPagesDir: 'content'
-        }
+        contentDir: 'content'
       };
 
       const appConfig = resolveRouteHandlersAppConfig({
@@ -138,9 +136,7 @@ describe('App Router config resolution', () => {
         routeBasePath: '/docs',
         routeModuleImport: absoluteModule(sourceRouteModulePath),
         generatedRootDir: path.join('app', 'docs'),
-        paths: {
-          contentPagesDir: 'content'
-        }
+        contentDir: 'content'
       };
 
       const appConfig = resolveRouteHandlersAppConfig({
@@ -186,7 +182,7 @@ describe('App Router config resolution', () => {
             name: 'slug',
             kind: 'catch-all'
           },
-          contentPagesDir: 'content',
+          contentDir: 'content',
           routeModuleImport: absoluteModule(routeModulePath),
           handlerBinding: createTestHandlerBinding()
         })
@@ -230,9 +226,7 @@ describe('App Router config resolution', () => {
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
         generatedRootDir: path.join('app', 'docs'),
-        paths: {
-          contentPagesDir: 'content'
-        }
+        contentDir: 'content'
       };
 
       const appConfig = resolveRouteHandlersAppConfig({
@@ -277,9 +271,7 @@ describe('App Router config resolution', () => {
         routeBasePath: '/docs',
         routeModuleImport: absoluteModule(routeModulePath),
         generatedRootDir: path.join('app', 'docs'),
-        paths: {
-          contentPagesDir: 'content'
-        }
+        contentDir: 'content'
       };
 
       const appConfig = resolveRouteHandlersAppConfig({
@@ -326,9 +318,7 @@ describe('App Router config resolution', () => {
         routeBasePath: '/docs',
         routeModuleImport: absoluteModule(routeModulePath),
         generatedRootDir: path.join('app', 'docs'),
-        paths: {
-          contentPagesDir: 'content'
-        }
+        contentDir: 'content'
       };
 
       const appConfig = resolveRouteHandlersAppConfig({

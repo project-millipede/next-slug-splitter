@@ -22,13 +22,13 @@ export const createCatchAllRouteHandlersPreset = ({
   routeSegment,
   handlerRouteParam,
   contentLocaleMode,
-  contentPagesDir,
+  contentDir,
   emitFormat,
   handlerBinding,
   mdxCompileOptions
 }: CreateCatchAllRouteHandlersPresetOptions): RouteHandlersTargetConfig => {
-  if (!isNonEmptyString(contentPagesDir)) {
-    throw createConfigError('contentPagesDir must be a non-empty string path.');
+  if (!isNonEmptyString(contentDir)) {
+    throw createConfigError('contentDir must be a non-empty string path.');
   }
 
   const resolvedPresetIdentity = resolveCatchAllRoutePresetIdentity({
@@ -49,11 +49,9 @@ export const createCatchAllRouteHandlersPreset = ({
       resolvedPresetIdentity.handlerRouteParam
     ),
     routeBasePath: resolvedPresetIdentity.routeBasePath,
+    contentDir,
     generatedRootDir: createCatchAllRouteHandlerGeneratedRootDir(
       resolvedPresetIdentity.routeSegment
-    ),
-    paths: {
-      contentPagesDir
-    }
+    )
   };
 };

@@ -71,7 +71,7 @@ const createCountedProcessorSource = (logPath: string): string =>
     `const logPath = ${JSON.stringify(logPath)};`,
     'export const routeHandlerProcessor = {',
     '  resolve({ route, capturedComponentKeys }) {',
-    "    appendFileSync(logPath, `${route.filePath}\\n`);",
+    '    appendFileSync(logPath, `${route.filePath}\\n`);',
     '    return {',
     "      factoryImport: { kind: 'package', specifier: 'none' },",
     "      components: capturedComponentKeys.map(key => ({ key, componentImport: { source: { kind: 'package', specifier: './components' }, kind: 'named', importedName: key } }))",
@@ -98,7 +98,7 @@ const createSingleTargetConfig = ({
       name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
       kind: 'catch-all'
     },
-    contentPagesDir: path.join(rootDir, TEST_PRIMARY_CONTENT_PAGES_DIR),
+    contentDir: path.join(rootDir, TEST_PRIMARY_CONTENT_PAGES_DIR),
     handlerBinding: createTestHandlerBinding(),
     ...targetOverrides
   })
@@ -236,13 +236,15 @@ describe('proxy lazy single-route analysis', () => {
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
-          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
+          lazySingleRouteCacheManager:
+            bootstrapState.lazySingleRouteCacheManager
         });
         const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
-          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
+          lazySingleRouteCacheManager:
+            bootstrapState.lazySingleRouteCacheManager
         });
 
         expect(firstResult?.kind).toBe('heavy');
@@ -316,13 +318,15 @@ describe('proxy lazy single-route analysis', () => {
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
-          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
+          lazySingleRouteCacheManager:
+            bootstrapState.lazySingleRouteCacheManager
         });
         const secondResult = await analyzeRouteHandlerLazyMatchedRoute({
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
-          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
+          lazySingleRouteCacheManager:
+            bootstrapState.lazySingleRouteCacheManager
         });
 
         expect(firstResult?.kind).toBe('light');
@@ -486,7 +490,8 @@ describe('proxy lazy single-route analysis', () => {
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
-          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
+          lazySingleRouteCacheManager:
+            bootstrapState.lazySingleRouteCacheManager
         });
 
         await writeTestModule(routeFilePath, '# Guides updated\n');
@@ -495,7 +500,8 @@ describe('proxy lazy single-route analysis', () => {
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
-          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
+          lazySingleRouteCacheManager:
+            bootstrapState.lazySingleRouteCacheManager
         });
 
         expect(firstResult?.kind).toBe('heavy');
@@ -575,7 +581,8 @@ describe('proxy lazy single-route analysis', () => {
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
-          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
+          lazySingleRouteCacheManager:
+            bootstrapState.lazySingleRouteCacheManager
         });
 
         await writeTestModule(fragmentFilePath, '# Fragment updated\n');
@@ -584,7 +591,8 @@ describe('proxy lazy single-route analysis', () => {
           targetId: resolution.config.targetId,
           routePath: resolution.routePath,
           resolvedConfigsByTargetId: bootstrapState.resolvedConfigsByTargetId,
-          lazySingleRouteCacheManager: bootstrapState.lazySingleRouteCacheManager
+          lazySingleRouteCacheManager:
+            bootstrapState.lazySingleRouteCacheManager
         });
 
         expect(firstResult?.kind).toBe('heavy');

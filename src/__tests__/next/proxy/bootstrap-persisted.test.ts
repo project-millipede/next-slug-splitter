@@ -57,7 +57,7 @@ const createResolvedConfigFixture = (
     },
     paths: {
       rootDir,
-      contentPagesDir: `${rootDir}/content/pages`,
+      contentDir: `${rootDir}/content/pages`,
       generatedDir: `${rootDir}/pages/generated-handlers`
     },
     localeConfig: TEST_LOCALE_CONFIG,
@@ -91,7 +91,7 @@ const createResolvedAppConfigFixture = (
     },
     paths: {
       rootDir,
-      contentPagesDir: `${rootDir}/content/pages`,
+      contentDir: `${rootDir}/content/pages`,
       generatedDir: `${rootDir}/app/docs/generated-handlers`
     },
     localeConfig: TEST_LOCALE_CONFIG,
@@ -176,7 +176,7 @@ describe('proxy bootstrap persistence', () => {
         },
         paths: {
           rootDir: '/repo/app',
-          contentPagesDir: '/repo/app/content/pages',
+          contentDir: '/repo/app/content/pages',
           generatedDir: '/repo/app/pages/generated-handlers'
         }
       }
@@ -208,7 +208,7 @@ describe('proxy bootstrap persistence', () => {
       localeConfig: TEST_LOCALE_CONFIG,
       paths: {
         rootDir: '/repo/app',
-        contentPagesDir: '/repo/app/content/pages',
+        contentDir: '/repo/app/content/pages',
         generatedDir: '/repo/app/pages/generated-handlers'
       }
     });
@@ -247,7 +247,7 @@ describe('proxy bootstrap persistence', () => {
         },
         paths: {
           rootDir: '/repo/app',
-          contentPagesDir: '/repo/app/content/pages',
+          contentDir: '/repo/app/content/pages',
           generatedDir: '/repo/app/app/docs/generated-handlers'
         }
       }
@@ -279,7 +279,7 @@ describe('proxy bootstrap persistence', () => {
       const persistedManifest = await readRouteHandlerProxyBootstrap(rootDir);
 
       expect(persistedManifest).toEqual({
-        version: 4,
+        version: 5,
         bootstrapGenerationToken: 'bootstrap-token',
         localeConfig: {
           locales: ['en'],

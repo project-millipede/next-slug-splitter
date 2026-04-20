@@ -56,7 +56,7 @@ export const routeHandlersConfig: RouteHandlersConfig = {
     createCatchAllRouteHandlersPreset({
       routeSegment: 'docs',
       handlerRouteParam: docsHandlerRouteParam,
-      contentPagesDir: path.join(rootDir, 'content', 'pages'),
+      contentDir: path.join(rootDir, 'content', 'pages'),
       contentLocaleMode: 'default-locale',
 
       handlerBinding: {

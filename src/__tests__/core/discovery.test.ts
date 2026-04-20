@@ -27,9 +27,7 @@ describe('discovery helpers', () => {
   });
 
   it('builds stable handler id', () => {
-    expect(toHandlerId('de', ['nested', 'example'])).toBe(
-      'de-nested-example'
-    );
+    expect(toHandlerId('de', ['nested', 'example'])).toBe('de-nested-example');
     expect(toHandlerId('en', [])).toBe('en-index');
   });
 
@@ -57,13 +55,10 @@ describe('discovery helpers', () => {
 
   it('discovers locale-file routes in filename mode', async () => {
     await withTempDir('route-handler-discovery-', async rootDir => {
-      const contentPagesDir = path.join(
-        rootDir,
-        'content/src/pages/nested/example'
-      );
-      await mkdir(contentPagesDir, { recursive: true });
-      await writeFile(path.join(contentPagesDir, 'en.mdx'), '# EN', 'utf8');
-      await writeFile(path.join(contentPagesDir, 'de.mdx'), '# DE', 'utf8');
+      const contentDir = path.join(rootDir, 'content/src/pages/nested/example');
+      await mkdir(contentDir, { recursive: true });
+      await writeFile(path.join(contentDir, 'en.mdx'), '# EN', 'utf8');
+      await writeFile(path.join(contentDir, 'de.mdx'), '# DE', 'utf8');
 
       const discovered = await discoverLocalizedContentRoutes(
         path.join(rootDir, 'content/src/pages'),
@@ -89,16 +84,16 @@ describe('discovery helpers', () => {
 
   it('discovers non-localized routes in default-locale mode', async () => {
     await withTempDir('route-handler-discovery-', async rootDir => {
-      const contentPagesDir = path.join(rootDir, 'content/src/pages');
-      await mkdir(contentPagesDir, { recursive: true });
+      const contentDir = path.join(rootDir, 'content/src/pages');
+      await mkdir(contentDir, { recursive: true });
       await writeFile(
-        path.join(contentPagesDir, 'feature-summary.mdx'),
+        path.join(contentDir, 'feature-summary.mdx'),
         '# Content',
         'utf8'
       );
 
       const discovered = await discoverLocalizedContentRoutes(
-        contentPagesDir,
+        contentDir,
         {
           locales: ['en', 'de'],
           defaultLocale: 'en'
@@ -117,20 +112,17 @@ describe('discovery helpers', () => {
 
   it('resolves one filename-mode localized route by path-local lookup and preserves locale-prefixed variants', async () => {
     await withTempDir('route-handler-discovery-', async rootDir => {
-      const contentPagesDir = path.join(
-        rootDir,
-        'content/src/pages/nested/example'
-      );
-      await mkdir(contentPagesDir, { recursive: true });
-      await writeFile(path.join(contentPagesDir, 'en.mdx'), '# EN', 'utf8');
+      const contentDir = path.join(rootDir, 'content/src/pages/nested/example');
+      await mkdir(contentDir, { recursive: true });
+      await writeFile(path.join(contentDir, 'en.mdx'), '# EN', 'utf8');
       await writeFile(
-        path.join(contentPagesDir, 'en.page.mdx'),
+        path.join(contentDir, 'en.page.mdx'),
         '# EN PAGE',
         'utf8'
       );
 
       const resolved = await resolveLocalizedContentRoute({
-        contentPagesDir: path.join(rootDir, 'content/src/pages'),
+        contentDir: path.join(rootDir, 'content/src/pages'),
         localeConfig: {
           locales: ['en', 'de'],
           defaultLocale: 'en'
@@ -145,23 +137,23 @@ describe('discovery helpers', () => {
       expect(resolved).toEqual({
         locale: 'en',
         slugArray: ['nested', 'example'],
-        filePath: path.join(contentPagesDir, 'en.page.mdx')
+        filePath: path.join(contentDir, 'en.page.mdx')
       });
     });
   });
 
   it('resolves one default-locale route by deterministic file candidates', async () => {
     await withTempDir('route-handler-discovery-', async rootDir => {
-      const contentPagesDir = path.join(rootDir, 'content/src/pages');
-      await mkdir(path.join(contentPagesDir, 'guides'), { recursive: true });
+      const contentDir = path.join(rootDir, 'content/src/pages');
+      await mkdir(path.join(contentDir, 'guides'), { recursive: true });
       await writeFile(
-        path.join(contentPagesDir, 'guides', 'getting-started.mdx'),
+        path.join(contentDir, 'guides', 'getting-started.mdx'),
         '# Content',
         'utf8'
       );
 
       const resolved = await resolveLocalizedContentRoute({
-        contentPagesDir,
+        contentDir,
         localeConfig: {
           locales: ['en', 'de'],
           defaultLocale: 'en'
@@ -176,7 +168,7 @@ describe('discovery helpers', () => {
       expect(resolved).toEqual({
         locale: 'en',
         slugArray: ['guides', 'getting-started'],
-        filePath: path.join(contentPagesDir, 'guides', 'getting-started.mdx')
+        filePath: path.join(contentDir, 'guides', 'getting-started.mdx')
       });
     });
   });

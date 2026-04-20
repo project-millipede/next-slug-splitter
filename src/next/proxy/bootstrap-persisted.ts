@@ -30,7 +30,7 @@ import type {
   RouteHandlerLazyResolvedTarget
 } from './lazy/types';
 
-const ROUTE_HANDLER_PROXY_BOOTSTRAP_VERSION = 4;
+const ROUTE_HANDLER_PROXY_BOOTSTRAP_VERSION = 5;
 const ROUTE_HANDLER_PROXY_BOOTSTRAP_PATH = path.join(
   '.next',
   'cache',
@@ -39,7 +39,7 @@ const ROUTE_HANDLER_PROXY_BOOTSTRAP_PATH = path.join(
 
 type PersistedRouteHandlerProxyBootstrapPaths = Pick<
   RouteHandlerNextPaths,
-  'rootDir' | 'contentPagesDir' | 'generatedDir'
+  'rootDir' | 'contentDir' | 'generatedDir'
 >;
 
 /**
@@ -232,7 +232,7 @@ const isPersistedRouteHandlerProxyBootstrapPaths = (
 
   return (
     isString(readObjectProperty(value, 'rootDir')) &&
-    isString(readObjectProperty(value, 'contentPagesDir')) &&
+    isString(readObjectProperty(value, 'contentDir')) &&
     isString(readObjectProperty(value, 'generatedDir'))
   );
 };
@@ -341,7 +341,7 @@ export const createRouteHandlerProxyBootstrapManifest = (
       processorConfig: config.processorConfig,
       paths: {
         rootDir: config.paths.rootDir,
-        contentPagesDir: config.paths.contentPagesDir,
+        contentDir: config.paths.contentDir,
         generatedDir: config.paths.generatedDir
       }
     };
@@ -428,7 +428,7 @@ export const createRouteHandlerLazyResolvedTargetsFromProxyBootstrap = (
     handlerRouteParam: target.handlerRouteParam,
     paths: {
       rootDir: target.paths.rootDir,
-      contentPagesDir: target.paths.contentPagesDir,
+      contentDir: target.paths.contentDir,
       generatedDir: target.paths.generatedDir
     }
   }));
@@ -460,7 +460,7 @@ export const createRouteHandlerPlannerConfigsByIdFromProxyBootstrap = (
             localeConfig: cloneLocaleConfig(manifest.localeConfig),
             paths: {
               rootDir: target.paths.rootDir,
-              contentPagesDir: target.paths.contentPagesDir,
+              contentDir: target.paths.contentDir,
               generatedDir: target.paths.generatedDir
             }
           }
@@ -477,7 +477,7 @@ export const createRouteHandlerPlannerConfigsByIdFromProxyBootstrap = (
             localeConfig: cloneLocaleConfig(manifest.localeConfig),
             paths: {
               rootDir: target.paths.rootDir,
-              contentPagesDir: target.paths.contentPagesDir,
+              contentDir: target.paths.contentDir,
               generatedDir: target.paths.generatedDir
             }
           }

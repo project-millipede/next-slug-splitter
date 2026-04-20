@@ -147,7 +147,7 @@ describe('next config helpers', () => {
           name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
           kind: 'catch-all'
         },
-        contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+        contentDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
         handlerBinding: createTestHandlerBinding()
       });
 
@@ -156,7 +156,7 @@ describe('next config helpers', () => {
       );
       expect(routeHandlersConfig.targetId).toBe(TEST_PRIMARY_ROUTE_SEGMENT);
       expect(routeHandlersConfig.routeBasePath).toBe('/content');
-      expect(routeHandlersConfig.paths?.contentPagesDir).toBe(
+      expect(routeHandlersConfig.contentDir).toBe(
         TEST_PRIMARY_CONTENT_PAGES_DIR
       );
       expect(routeHandlersConfig.generatedRootDir).toBe(
@@ -171,7 +171,7 @@ describe('next config helpers', () => {
           name: TEST_SINGLE_ROUTE_PARAM_NAME,
           kind: 'single'
         },
-        contentPagesDir: TEST_SECONDARY_CONTENT_PAGES_DIR,
+        contentDir: TEST_SECONDARY_CONTENT_PAGES_DIR,
         handlerBinding: createTestHandlerBinding({
           processorImport: packageModule(TEST_SECONDARY_PROCESSOR_IMPORT)
         })
@@ -196,7 +196,7 @@ describe('next config helpers', () => {
           name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
           kind: 'catch-all'
         },
-        contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+        contentDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
         routeModuleImport: relativeModule('lib/docs-route-module'),
         handlerBinding: createTestHandlerBinding()
       });
@@ -206,7 +206,7 @@ describe('next config helpers', () => {
       );
       expect(routeHandlersConfig.targetId).toBe(TEST_PRIMARY_ROUTE_SEGMENT);
       expect(routeHandlersConfig.routeBasePath).toBe('/content');
-      expect(routeHandlersConfig.paths?.contentPagesDir).toBe(
+      expect(routeHandlersConfig.contentDir).toBe(
         TEST_PRIMARY_CONTENT_PAGES_DIR
       );
       expect(routeHandlersConfig.generatedRootDir).toBe(
@@ -222,7 +222,7 @@ describe('next config helpers', () => {
           name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
           kind: 'catch-all'
         },
-        contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+        contentDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
         routeModuleImport: relativeModule('lib/docs-route-module'),
         handlerBinding: createTestHandlerBinding()
       });
@@ -404,7 +404,7 @@ describe('next config helpers', () => {
           kind: 'single'
         },
         contentLocaleMode: 'default-locale',
-        contentPagesDir: TEST_SECONDARY_CONTENT_PAGES_DIR,
+        contentDir: TEST_SECONDARY_CONTENT_PAGES_DIR,
         handlerBinding: createTestHandlerBinding({
           processorImport: packageModule(TEST_SECONDARY_PROCESSOR_IMPORT)
         })
@@ -427,7 +427,7 @@ describe('next config helpers', () => {
           name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
           kind: 'catch-all'
         },
-        contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+        contentDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
         handlerBinding: createTestHandlerBinding(),
         mdxCompileOptions: {
           remarkPlugins: [testRemarkPlugin],
@@ -459,7 +459,7 @@ describe('next config helpers', () => {
               name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
               kind: 'catch-all'
             },
-            contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+            contentDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
             handlerBinding: createTestHandlerBinding()
           }),
           mdxCompileOptions: {
@@ -488,7 +488,7 @@ describe('next config helpers', () => {
               name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
               kind: 'catch-all'
             },
-            contentPagesDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
+            contentDir: TEST_PRIMARY_CONTENT_PAGES_DIR,
             handlerBinding: createTestHandlerBinding()
           }),
           createCatchAllRouteHandlersPreset({
@@ -497,7 +497,7 @@ describe('next config helpers', () => {
               name: TEST_SINGLE_ROUTE_PARAM_NAME,
               kind: 'single'
             },
-            contentPagesDir: TEST_SECONDARY_CONTENT_PAGES_DIR,
+            contentDir: TEST_SECONDARY_CONTENT_PAGES_DIR,
             handlerBinding: createTestHandlerBinding({
               processorImport: packageModule(TEST_SECONDARY_PROCESSOR_IMPORT)
             })
@@ -537,7 +537,7 @@ describe('next config helpers', () => {
                   name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
                   kind: 'catch-all'
                 },
-                contentPagesDir: 'content-a',
+                contentDir: 'content-a',
                 handlerBinding: createTestHandlerBinding()
               }),
               createCatchAllRouteHandlersPreset({
@@ -546,7 +546,7 @@ describe('next config helpers', () => {
                   name: TEST_CATCH_ALL_ROUTE_PARAM_NAME,
                   kind: 'catch-all'
                 },
-                contentPagesDir: 'content-b',
+                contentDir: 'content-b',
                 handlerBinding: createTestHandlerBinding()
               })
             ]

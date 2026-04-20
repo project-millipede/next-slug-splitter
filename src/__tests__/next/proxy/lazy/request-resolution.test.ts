@@ -40,7 +40,7 @@ const docsConfig: RouteHandlerLazyResolvedTarget = {
   emitFormat: 'ts' as const,
   localeConfig,
   paths: {
-    contentPagesDir: path.join(rootDir, 'docs', 'src', 'pages'),
+    contentDir: path.join(rootDir, 'docs', 'src', 'pages'),
     generatedDir: path.join(rootDir, 'pages', 'docs', 'generated-handlers')
   }
 };
@@ -52,7 +52,7 @@ const blogConfig: RouteHandlerLazyResolvedTarget = {
   emitFormat: 'ts' as const,
   localeConfig,
   paths: {
-    contentPagesDir: path.join(rootDir, 'blog', 'src', 'pages'),
+    contentDir: path.join(rootDir, 'blog', 'src', 'pages'),
     generatedDir: path.join(rootDir, 'pages', 'blog', 'generated-handlers')
   }
 };

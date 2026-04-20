@@ -247,7 +247,7 @@ export type CreateAppCatchAllRouteHandlersPresetOptions = Pick<
   /**
    * Directory containing content page files.
    */
-  contentPagesDir: string;
+  contentDir: string;
 };
 
 /**

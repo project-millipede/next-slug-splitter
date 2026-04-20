@@ -154,17 +154,6 @@ export const normalizeRouteHandlersTargetOptions = (
 ): NormalizedRouteHandlersTargetOptions => {
   const configuredRouteHandlers =
     requireSingleRouteHandlersConfigBase(routeHandlersConfig);
-
-  if (
-    configuredRouteHandlers.paths !== undefined &&
-    !isObjectRecord(configuredRouteHandlers.paths)
-  ) {
-    throw createConfigError('paths must be an object.');
-  }
-
-  const configuredPaths = isObjectRecord(configuredRouteHandlers.paths)
-    ? configuredRouteHandlers.paths
-    : {};
   const resolvedRootDir = appConfig.rootDir;
   const generatedRootDir = readRequiredStringOption(
     resolveConfiguredPathOption({
@@ -176,13 +165,13 @@ export const normalizeRouteHandlersTargetOptions = (
   );
   const resolvedPaths: RouteHandlerNextPaths = {
     rootDir: resolvedRootDir,
-    contentPagesDir: readRequiredStringOption(
+    contentDir: readRequiredStringOption(
       resolveConfiguredPathOption({
         rootDir: resolvedRootDir,
-        value: configuredPaths.contentPagesDir,
-        label: 'paths.contentPagesDir'
+        value: configuredRouteHandlers.contentDir,
+        label: 'contentDir'
       }),
-      'paths.contentPagesDir'
+      'contentDir'
     ),
     generatedDir: path.join(generatedRootDir, GENERATED_HANDLER_SEGMENT)
   };

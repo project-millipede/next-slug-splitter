@@ -12,7 +12,7 @@ describe('App Router generator contract', () => {
     const renderedPage = renderAppRouteHandlerPage({
       paths: {
         rootDir: '/repo',
-        contentPagesDir: '/repo/content',
+        contentDir: '/repo/content',
         generatedDir: '/repo/app/content/generated-handlers'
       },
       heavyRoute: createPlannedHeavyRoute({
@@ -82,7 +82,7 @@ describe('App Router generator contract', () => {
     const renderedPage = renderAppRouteHandlerPage({
       paths: {
         rootDir: '/repo',
-        contentPagesDir: '/repo/content',
+        contentDir: '/repo/content',
         generatedDir: '/repo/app/content/generated-handlers'
       },
       heavyRoute: createPlannedHeavyRoute({

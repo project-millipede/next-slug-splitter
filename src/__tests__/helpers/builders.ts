@@ -40,12 +40,7 @@ const DEFAULT_COMPONENT_IMPORT: ResolvedComponentImportSpec = {
  */
 export const createTestPaths = (rootDir: string): RouteHandlerNextPaths => ({
   rootDir,
-  contentPagesDir: path.join(
-    rootDir,
-    TEST_PRIMARY_ROUTE_SEGMENT,
-    'src',
-    'pages'
-  ),
+  contentDir: path.join(rootDir, TEST_PRIMARY_ROUTE_SEGMENT, 'src', 'pages'),
   generatedDir: path.join(
     rootDir,
     'pages',

@@ -390,7 +390,7 @@ describe('route handlers adapter', () => {
         },
         paths: {
           rootDir: '/repo/app',
-          contentPagesDir: '/repo/app/content/pages',
+          contentDir: '/repo/app/content/pages',
           generatedDir: '/repo/app/app/docs/generated-handlers'
         }
       }

@@ -213,7 +213,7 @@ export const resolveRouteHandlerLazyResolvedTargetsFromAppConfig = (
       handlerRouteParam: options.handlerRouteParam,
       paths: {
         rootDir: appConfig.rootDir,
-        contentPagesDir: options.paths.contentPagesDir,
+        contentDir: options.paths.contentDir,
         generatedDir: options.paths.generatedDir
       }
     })
@@ -249,7 +249,7 @@ export const resolveRouteHandlerLazyRequest = async (
 
   const { config, identity } = matchedTargetRequest;
   const matchedRoutePath = await resolveLocalizedContentRoute({
-    contentPagesDir: config.paths.contentPagesDir,
+    contentDir: config.paths.contentDir,
     localeConfig: config.localeConfig,
     contentLocaleMode: config.contentLocaleMode,
     identity

@@ -95,7 +95,7 @@ export const executeRouteHandlerPipeline = async (
 ): Promise<RouteHandlerPipelineResult> => {
   const localeConfig = assertLocaleConfig(config);
   const routePaths = await discoverLocalizedContentRoutes(
-    config.paths.contentPagesDir,
+    config.paths.contentDir,
     localeConfig,
     config.contentLocaleMode
   );
@@ -133,14 +133,11 @@ export const executeRouteHandlerPipeline = async (
       slugArray: routePath.slugArray,
       targetId: config.targetId
     });
-    const {
-      factoryImport,
-      factoryBindings,
-      componentEntries
-    } = await planRoute({
-      route,
-      capturedComponentKeys: usedLoadableComponentKeys
-    });
+    const { factoryImport, factoryBindings, componentEntries } =
+      await planRoute({
+        route,
+        capturedComponentKeys: usedLoadableComponentKeys
+      });
 
     plannedHeavyRoutes.push({
       locale: routePath.locale,

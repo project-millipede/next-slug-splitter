@@ -4,7 +4,7 @@
  * Defines a single catch-all target under the `/docs/` route segment.
  * The configuration tells next-slug-splitter:
  *
- * - Where source MDX/content pages live on disk (`contentPagesDir`).
+ * - Where source MDX/content pages live on disk (`contentDir`).
  * - How the catch-all route parameter is shaped (`handlerRouteParam`).
  * - Where to find the handler processor that maps captured keys to
  *   component imports and a factory import (`handlerBinding`).
@@ -59,14 +59,14 @@ export const routeHandlersConfig = {
     createCatchAllRouteHandlersPreset({
       routeSegment: 'docs',
       handlerRouteParam: docsHandlerRouteParam,
-      contentPagesDir: path.join(rootDir, 'content', 'pages'),
+      contentDir: path.join(rootDir, 'content', 'pages'),
       contentLocaleMode: 'default-locale',
 
       /**
        * Handler binding — connects generated handler pages to the app's
        * component resolution and rendering pipeline.
        *
-        * `processorImport` — module exporting the route handler processor
+       * `processorImport` — module exporting the route handler processor
        * that maps captured keys to component imports and a factory import.
        */
       handlerBinding: {
