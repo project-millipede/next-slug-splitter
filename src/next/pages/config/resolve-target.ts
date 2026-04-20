@@ -25,7 +25,7 @@ export type {
   NormalizedRouteHandlersTargetRuntimeAttachments
 } from '../../shared/config/resolve-target';
 
-import { resolveRouteHandlerBinding } from '../../shared/config/handler-binding';
+import { resolveRouteHandlerProcessorImport } from '../../shared/config/handler-binding';
 
 /**
  * Input for resolving the target-local config.
@@ -90,7 +90,7 @@ export const resolveRouteHandlersConfigBase = (
     configuredRouteHandlers,
     'pages'
   );
-  const resolvedHandlerBinding = resolveRouteHandlerBinding({
+  const processorImport = resolveRouteHandlerProcessorImport({
     rootDir: resolvedRootDir,
     handlerBinding: configuredRouteHandlers.handlerBinding
   });
@@ -118,6 +118,8 @@ export const resolveRouteHandlersConfigBase = (
       configuredRouteHandlers
     ),
     routeContract: resolvedRouteContract,
-    processorConfig: resolvedHandlerBinding.processorConfig
+    processorConfig: {
+      processorImport
+    }
   };
 };

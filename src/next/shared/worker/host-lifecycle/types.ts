@@ -24,13 +24,6 @@ export type WorkerHostLifecyclePhase =
   | 'closed';
 
 /**
- * Backwards-compatible alias for the shared host lifecycle phase type.
- *
- * @deprecated Use {@link WorkerHostLifecyclePhase} instead.
- */
-export type WorkerHostSessionPhase = WorkerHostLifecyclePhase;
-
-/**
  * Strategy A for host lifecycle events: omit the payload property entirely.
  */
 type HostLifecycleEventWithoutPayloadProps = {};

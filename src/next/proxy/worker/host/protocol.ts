@@ -1,30 +1,10 @@
-import {
-  sendWorkerRequest,
-  type WorkerPendingRequest
-} from '../../../shared/worker/host/protocol';
+import { sendWorkerRequest } from '../../../shared/worker/host/protocol';
 
 import type {
-  RouteHandlerProxyWorkerBootstrapResponse,
   RouteHandlerProxyWorkerRequest,
-  RouteHandlerProxyWorkerResponse,
-  RouteHandlerProxyWorkerExchangeResponse,
-  RouteHandlerProxyWorkerShutdownResponse
+  RouteHandlerProxyWorkerExchangeResponse
 } from '../types';
 import type { RouteHandlerProxyWorkerSession } from './session-lifecycle';
-
-/**
- * Host-side IPC protocol helpers for the dedicated proxy worker.
- *
- * @remarks
- * This wrapper keeps the proxy worker's public request/response types and
- * worker-family-specific error messages while delegating the shared transport
- * mechanics to `src/next/shared/worker/host/protocol.ts`.
- */
-export type RouteHandlerProxyWorkerPendingRequest = WorkerPendingRequest<
-  | RouteHandlerProxyWorkerBootstrapResponse
-  | RouteHandlerProxyWorkerShutdownResponse
-  | RouteHandlerProxyWorkerResponse
->;
 
 /**
  * Write one request into the persistent worker session.

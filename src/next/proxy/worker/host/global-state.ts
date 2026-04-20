@@ -1,7 +1,6 @@
 import {
   getWorkerHostGlobalState,
   type WorkerHostGlobalState,
-  type WorkerHostProcessShutdownState,
   type WorkerHostProtocolState
 } from '../../../shared/worker/host/global-state';
 
@@ -33,17 +32,6 @@ export type RouteHandlerProxyWorkerClientState = {
    */
   workerSessions: Map<string, RouteHandlerProxyWorkerSession>;
 };
-
-/**
- * Shared host-side IPC protocol state.
- */
-export type RouteHandlerProxyWorkerProtocolState = WorkerHostProtocolState;
-
-/**
- * Shared process-shutdown state for graceful worker cleanup.
- */
-export type RouteHandlerProxyWorkerProcessShutdownState =
-  WorkerHostProcessShutdownState;
 
 /**
  * Full process-global host state shared by every public worker host entry.
