@@ -54,25 +54,6 @@ export type WorkerDispatchResult<TResponse, TExtensionState> = {
 };
 
 /**
- * One typed worker-family domain handler keyed by request `subject`.
- *
- * @template TAction Narrowed request action handled by this function.
- * @template TResponse Successful domain response action.
- * @template TExtensionState Retained worker-family state.
- */
-export type WorkerSubjectHandler<
-  TAction extends WorkerAnyRequestAction,
-  TResponse,
-  TExtensionState
-> = SubjectDispatchHandler<
-  'action',
-  'state',
-  TAction,
-  TExtensionState,
-  WorkerDispatchResult<TResponse, TExtensionState>
->;
-
-/**
  * Typed handler map used by the shared worker dispatcher.
  *
  * @template TRequest Full request union for one worker family.

@@ -27,19 +27,6 @@ const MISSING_HANDLER_ERROR_PREFIX =
   'next-slug-splitter host lifecycle has no handler for subject';
 
 /**
- * One typed host lifecycle event handler keyed by `subject`.
- *
- * @template TEvent Narrowed lifecycle event handled by this function.
- * @template TContext Dynamic dispatch context passed into each handler.
- * @template TResult Result returned by the handler.
- */
-export type WorkerHostLifecycleEventHandler<
-  TEvent extends WorkerAnyHostLifecycleEvent,
-  TContext,
-  TResult
-> = SubjectDispatchHandler<'event', 'context', TEvent, TContext, TResult>;
-
-/**
  * Typed handler map used by the shared host lifecycle dispatcher.
  *
  * @template TEvent Full lifecycle-event union handled by the dispatcher.

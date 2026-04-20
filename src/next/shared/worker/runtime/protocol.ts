@@ -19,9 +19,6 @@ import type { WorkerAnyRequestAction, WorkerResponseEnvelope } from '../types';
  * - business data travels under `payload`
  */
 
-export type WorkerRuntimeResponseEnvelope<TResponse> =
-  WorkerResponseEnvelope<TResponse>;
-
 /**
  * Validate that the current worker process was spawned with an IPC channel.
  *
