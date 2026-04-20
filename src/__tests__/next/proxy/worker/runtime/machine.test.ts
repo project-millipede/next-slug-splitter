@@ -33,6 +33,7 @@ vi.mock(import('../../../../../next/shared/worker/runtime/entry'), () => ({
 }));
 
 import { createRouteHandlerProxyWorkerRuntimeMachine } from '../../../../../next/proxy/worker/runtime/machine';
+import { TEST_SINGLE_LOCALE_CONFIG } from '../../../../helpers/fixtures';
 
 const originalProcessSendDescriptor = Object.getOwnPropertyDescriptor(
   process,
@@ -89,10 +90,7 @@ describe('proxy worker runtime machine', () => {
       subject: 'bootstrap',
       payload: {
         bootstrapGenerationToken: 'bootstrap-1',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         configRegistration: {}
       }
     });
@@ -101,10 +99,7 @@ describe('proxy worker runtime machine', () => {
       subject: 'bootstrap',
       payload: {
         bootstrapGenerationToken: 'bootstrap-2',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         configRegistration: {}
       }
     });
@@ -179,10 +174,7 @@ describe('proxy worker runtime machine', () => {
       subject: 'bootstrap',
       payload: {
         bootstrapGenerationToken: 'bootstrap-1',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         configRegistration: {}
       }
     });

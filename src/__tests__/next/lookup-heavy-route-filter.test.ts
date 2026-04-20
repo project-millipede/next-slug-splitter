@@ -12,7 +12,10 @@ import {
   filterStaticPathsAgainstHeavyRoutes,
   withHeavyRouteFilter
 } from '../../next/lookup';
-import { TEST_PRIMARY_ROUTE_SEGMENT } from '../helpers/fixtures';
+import {
+  TEST_MULTI_LOCALE_CONFIG,
+  TEST_PRIMARY_ROUTE_SEGMENT
+} from '../helpers/fixtures';
 
 type StaticPathEntry = {
   params: Record<string, string | Array<string>>;
@@ -162,10 +165,7 @@ describe('withHeavyRouteFilter', () => {
     readRouteHandlerLookupSnapshotMock.mockResolvedValue({
       version: 1,
       filterHeavyRoutesFromStaticRouteResult: true,
-      localeConfig: {
-        locales: ['en', 'de'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_MULTI_LOCALE_CONFIG,
       targets: [
         {
           targetId: TEST_PRIMARY_ROUTE_SEGMENT,

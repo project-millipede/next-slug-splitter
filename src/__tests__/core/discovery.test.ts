@@ -12,6 +12,7 @@ import {
   toRoutePath,
   toSlugPath
 } from '../../core/discovery';
+import { TEST_MULTI_LOCALE_CONFIG } from '../helpers/fixtures';
 import { withTempDir } from '../helpers/temp-dir';
 
 describe('discovery helpers', () => {
@@ -123,10 +124,7 @@ describe('discovery helpers', () => {
 
       const resolved = await resolveLocalizedContentRoute({
         contentDir: path.join(rootDir, 'content/src/pages'),
-        localeConfig: {
-          locales: ['en', 'de'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_MULTI_LOCALE_CONFIG,
         contentLocaleMode: 'filename',
         identity: {
           locale: 'en',
@@ -154,10 +152,7 @@ describe('discovery helpers', () => {
 
       const resolved = await resolveLocalizedContentRoute({
         contentDir,
-        localeConfig: {
-          locales: ['en', 'de'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_MULTI_LOCALE_CONFIG,
         contentLocaleMode: 'default-locale',
         identity: {
           locale: 'en',

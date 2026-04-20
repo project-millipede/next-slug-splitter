@@ -12,6 +12,10 @@ vi.mock(import('../../../../next/proxy/worker/host/client'), () => ({
 import * as proxyRoutingState from '../../../../next/proxy/runtime/routing-state';
 import * as proxyWorkerClient from '../../../../next/proxy/worker/host/client';
 import { handleRouteHandlerProxyRequest } from '../../../../next/proxy/runtime/request-routing';
+import {
+  TEST_MULTI_LOCALE_CONFIG,
+  TEST_SINGLE_LOCALE_CONFIG
+} from '../../../helpers/fixtures';
 
 import type { LocaleConfig } from '../../../../core/types';
 import type {
@@ -95,10 +99,7 @@ describe('proxy request routing', () => {
     const response = await handleRouteHandlerProxyRequest({
       request: createProxyRequest('https://example.com/docs/getting-started'),
       options: {
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        }
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG
       }
     });
 
@@ -112,10 +113,7 @@ describe('proxy request routing', () => {
     expect(resolveRouteHandlerProxyLazyMissWithWorkerMock).toHaveBeenCalledWith(
       {
         pathname: '/docs/getting-started',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         bootstrapGenerationToken: 'bootstrap-1',
         configRegistration: {}
       }
@@ -138,20 +136,14 @@ describe('proxy request routing', () => {
     const response = await handleRouteHandlerProxyRequest({
       request: createProxyRequest('https://example.com/docs/getting-started'),
       options: {
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        }
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG
       }
     });
 
     expect(resolveRouteHandlerProxyLazyMissWithWorkerMock).toHaveBeenCalledWith(
       {
         pathname: '/docs/getting-started',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         bootstrapGenerationToken: 'route-handler-proxy-worker-only-fallback',
         configRegistration: {}
       }
@@ -187,10 +179,7 @@ describe('proxy request routing', () => {
           'rewrites when the routing state marks the pathname as heavy',
         requestUrl:
           'https://example.com/blog/application-extensibility?view=full',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         rewrites: [
           [
             '/blog/application-extensibility',
@@ -211,10 +200,7 @@ describe('proxy request routing', () => {
         headers: {
           'x-nextjs-data': '1'
         },
-        localeConfig: {
-          locales: ['en', 'de'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_MULTI_LOCALE_CONFIG,
         rewrites: [
           ['/de/docs/ai/reverse', '/de/docs/generated-handlers/ai/reverse/de']
         ],
@@ -296,10 +282,7 @@ describe('proxy request routing', () => {
           'rewrites immediately when a cold heavy request created a brand-new handler file',
         requestUrl:
           'https://example.com/blog/application-extensibility?view=full',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         targetRouteBasePaths: ['/blog'],
         workerResult: {
           subject: 'heavy',
@@ -317,10 +300,7 @@ describe('proxy request routing', () => {
         expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/blog/application-extensibility',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          },
+          localeConfig: TEST_SINGLE_LOCALE_CONFIG,
           bootstrapGenerationToken: 'bootstrap-1',
           configRegistration: {}
         }
@@ -331,10 +311,7 @@ describe('proxy request routing', () => {
           'still rewrites immediately when the heavy handler was already present before the request',
         requestUrl:
           'https://example.com/blog/application-extensibility?view=full',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         targetRouteBasePaths: ['/blog'],
         workerResult: {
           subject: 'heavy',
@@ -352,10 +329,7 @@ describe('proxy request routing', () => {
         expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/blog/application-extensibility',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          },
+          localeConfig: TEST_SINGLE_LOCALE_CONFIG,
           bootstrapGenerationToken: 'bootstrap-1',
           configRegistration: {}
         }
@@ -366,10 +340,7 @@ describe('proxy request routing', () => {
           'redirects the primary HTML navigation request when a heavy handler file was overwritten in place',
         requestUrl:
           'https://example.com/blog/application-extensibility?view=full',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         targetRouteBasePaths: ['/blog'],
         workerResult: {
           subject: 'heavy',
@@ -387,10 +358,7 @@ describe('proxy request routing', () => {
           'https://example.com/blog/application-extensibility?view=full',
         expectedWorkerArgs: {
           pathname: '/blog/application-extensibility',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          },
+          localeConfig: TEST_SINGLE_LOCALE_CONFIG,
           bootstrapGenerationToken: 'bootstrap-1',
           configRegistration: {}
         }
@@ -405,10 +373,7 @@ describe('proxy request routing', () => {
           accept: '*/*',
           'x-nextjs-data': '1'
         },
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         targetRouteBasePaths: ['/blog'],
         workerResult: {
           subject: 'heavy',
@@ -426,10 +391,7 @@ describe('proxy request routing', () => {
         expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/blog/application-extensibility',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          },
+          localeConfig: TEST_SINGLE_LOCALE_CONFIG,
           bootstrapGenerationToken: 'bootstrap-1',
           configRegistration: {}
         }
@@ -439,10 +401,7 @@ describe('proxy request routing', () => {
         description:
           'removes stale lazy output when a matched route is now light',
         requestUrl: 'https://example.com/blog/application-extensibility',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         targetRouteBasePaths: ['/blog'],
         workerResult: {
           subject: 'pass-through',
@@ -456,10 +415,7 @@ describe('proxy request routing', () => {
         expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/blog/application-extensibility',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          },
+          localeConfig: TEST_SINGLE_LOCALE_CONFIG,
           bootstrapGenerationToken: 'bootstrap-1',
           configRegistration: {}
         }
@@ -469,10 +425,7 @@ describe('proxy request routing', () => {
         description:
           'removes stale lazy output when the pathname still belongs to a target but the route file is missing',
         requestUrl: 'https://example.com/docs/missing-page',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         targetRouteBasePaths: ['/docs'],
         workerResult: {
           subject: 'pass-through',
@@ -486,10 +439,7 @@ describe('proxy request routing', () => {
         expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/docs/missing-page',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          },
+          localeConfig: TEST_SINGLE_LOCALE_CONFIG,
           bootstrapGenerationToken: 'bootstrap-1',
           configRegistration: {}
         }
@@ -499,10 +449,7 @@ describe('proxy request routing', () => {
         description:
           'falls through without publishing a lazy discovery when one-file heavy analysis cannot resolve a rewrite destination',
         requestUrl: 'https://example.com/blog/application-extensibility',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         targetRouteBasePaths: ['/blog'],
         workerResult: {
           subject: 'pass-through',
@@ -516,10 +463,7 @@ describe('proxy request routing', () => {
         expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/blog/application-extensibility',
-          localeConfig: {
-            locales: ['en'],
-            defaultLocale: 'en'
-          },
+          localeConfig: TEST_SINGLE_LOCALE_CONFIG,
           bootstrapGenerationToken: 'bootstrap-1',
           configRegistration: {}
         }
@@ -529,10 +473,7 @@ describe('proxy request routing', () => {
         description: 'rewrites immediately for a cold heavy page request',
         requestUrl:
           'https://example.com/en/docs/ai/reverse/hooks?slug=ai&slug=reverse&slug=hooks',
-        localeConfig: {
-          locales: ['en', 'de'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_MULTI_LOCALE_CONFIG,
         targetRouteBasePaths: ['/docs'],
         workerResult: {
           subject: 'heavy',
@@ -550,10 +491,7 @@ describe('proxy request routing', () => {
         expectedLocation: null,
         expectedWorkerArgs: {
           pathname: '/en/docs/ai/reverse/hooks',
-          localeConfig: {
-            locales: ['en', 'de'],
-            defaultLocale: 'en'
-          },
+          localeConfig: TEST_MULTI_LOCALE_CONFIG,
           bootstrapGenerationToken: 'bootstrap-1',
           configRegistration: {}
         }
@@ -626,10 +564,7 @@ describe('proxy request routing', () => {
     await handleRouteHandlerProxyRequest({
       request: createProxyRequest('https://example.com/docs/getting-started'),
       options: {
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        }
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG
       }
     });
 
@@ -658,10 +593,7 @@ describe('proxy request routing', () => {
         'https://example.com/blog/application-extensibility?view=full'
       ),
       options: {
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        }
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG
       }
     });
 
@@ -693,10 +625,7 @@ describe('proxy request routing', () => {
         'https://example.com/blog/application-extensibility?view=full'
       ),
       options: {
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        }
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG
       }
     });
 

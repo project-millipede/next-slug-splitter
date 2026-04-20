@@ -10,6 +10,7 @@ import { synchronizeRouteHandlerProxyFile } from '../../../next/proxy/file-lifec
 import { resolveRouteHandlerRoutingStrategy } from '../../../next/shared/policy/routing-strategy';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+  TEST_SINGLE_LOCALE_CONFIG,
   TEST_MULTI_LOCALE_CONFIG,
   createTestHandlerBinding
 } from '../../helpers/fixtures';
@@ -132,10 +133,7 @@ describe('generated proxy file lifecycle', () => {
       const resolvedConfigs = createResolvedConfigs({
         rootDir,
         routeHandlersConfig,
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        }
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG
       });
 
       vi.stubEnv('NODE_ENV', 'development');

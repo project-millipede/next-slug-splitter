@@ -13,7 +13,10 @@ vi.mock(import('../../../next/pages/runtime/target/index'), () => ({
 import * as phaseArtifacts from '../../../next/shared/phase-artifacts';
 import * as runtimeTarget from '../../../next/pages/runtime/target/index';
 import { executeResolvedRouteHandlerNextPipeline } from '../../../next/pages/runtime';
-import { TEST_SLUG_CATCH_ALL_ROUTE_PARAM } from '../../helpers/fixtures';
+import {
+  TEST_SINGLE_LOCALE_CONFIG,
+  TEST_SLUG_CATCH_ALL_ROUTE_PARAM
+} from '../../helpers/fixtures';
 
 import type { ResolvedRouteHandlersConfig } from '../../../next/pages/types';
 
@@ -35,10 +38,7 @@ const createResolvedConfig = ({
       workerPrewarm: 'off'
     }
   },
-  localeConfig: {
-    locales: ['en'],
-    defaultLocale: 'en'
-  },
+  localeConfig: TEST_SINGLE_LOCALE_CONFIG,
   emitFormat: 'ts',
   contentLocaleMode: 'filename',
   handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,

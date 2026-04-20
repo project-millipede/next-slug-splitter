@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { createSingleLocaleConfig } from '../../../core/locale-config';
 import { buildRouteRewriteEntries } from '../../../next/shared/rewrites/index';
 import { createHeavyRoute } from '../../helpers/builders';
+import { TEST_MULTI_LOCALE_CONFIG } from '../../helpers/fixtures';
 
 import type { LocaleConfig } from '../../../core/types';
 import type { RouteHandlerRewrite } from '../../../next/shared/types';
@@ -57,10 +58,7 @@ describe('rewrite generation', () => {
       description:
         'keeps the locale-aware default-locale alias in multi-locale apps',
       heavyRoutes: multiLocaleHeavyRoutes,
-      localeConfig: {
-        locales: ['en', 'de'],
-        defaultLocale: 'en'
-      },
+      localeConfig: TEST_MULTI_LOCALE_CONFIG,
       expectedRewrites: [
         {
           source: '/content/nested/example',

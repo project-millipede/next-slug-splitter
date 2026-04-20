@@ -13,6 +13,7 @@ import {
   writeRouteHandlerProxyBootstrap
 } from '../../../next/proxy/bootstrap-persisted';
 import {
+  TEST_SINGLE_LOCALE_CONFIG,
   TEST_MULTI_LOCALE_CONFIG,
   TEST_SLUG_CATCH_ALL_ROUTE_PARAM
 } from '../../helpers/fixtures';
@@ -250,10 +251,7 @@ describe('proxy bootstrap persistence', () => {
     await withTempDir('next-slug-splitter-proxy-bootstrap-', async rootDir => {
       const manifest = createRouteHandlerProxyBootstrapManifest(
         'bootstrap-token',
-        {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        TEST_SINGLE_LOCALE_CONFIG,
         []
       );
 
@@ -264,10 +262,7 @@ describe('proxy bootstrap persistence', () => {
       expect(persistedManifest).toEqual({
         version: 6,
         bootstrapGenerationToken: 'bootstrap-token',
-        localeConfig: {
-          locales: ['en'],
-          defaultLocale: 'en'
-        },
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         targets: []
       });
       expect(
