@@ -12,17 +12,12 @@ import {
   resolveRouteHandlerProxyBootstrapPath,
   writeRouteHandlerProxyBootstrap
 } from '../../../next/proxy/bootstrap-persisted';
+import { TEST_MULTI_LOCALE_CONFIG } from '../../helpers/fixtures';
 import { withTempDir } from '../../helpers/temp-dir';
 
-import type { LocaleConfig } from '../../../core/types';
 import type { ResolvedRouteHandlersConfig as AppResolvedRouteHandlersConfig } from '../../../next/app/types';
 import type { ResolvedRouteHandlersConfig as PagesResolvedRouteHandlersConfig } from '../../../next/pages/types';
 import type { ResolvedRouteHandlersConfig } from '../../../next/types';
-
-const TEST_LOCALE_CONFIG: LocaleConfig = {
-  locales: ['en', 'de'],
-  defaultLocale: 'en'
-};
 
 const createResolvedConfigFixture = (
   rootDir: string,
@@ -60,7 +55,7 @@ const createResolvedConfigFixture = (
       contentDir: `${rootDir}/content/pages`,
       generatedDir: `${rootDir}/pages/generated-handlers`
     },
-    localeConfig: TEST_LOCALE_CONFIG,
+    localeConfig: TEST_MULTI_LOCALE_CONFIG,
     runtime: {
       mdxCompileOptions: {}
     }
@@ -94,7 +89,7 @@ const createResolvedAppConfigFixture = (
       contentDir: `${rootDir}/content/pages`,
       generatedDir: `${rootDir}/app/docs/generated-handlers`
     },
-    localeConfig: TEST_LOCALE_CONFIG,
+    localeConfig: TEST_MULTI_LOCALE_CONFIG,
     runtime: {
       mdxCompileOptions: {}
     },
@@ -114,7 +109,7 @@ const createBootstrapManifest = (
 ) =>
   createRouteHandlerProxyBootstrapManifest(
     'bootstrap-token',
-    TEST_LOCALE_CONFIG,
+    TEST_MULTI_LOCALE_CONFIG,
     resolvedConfigs
   );
 
@@ -168,7 +163,7 @@ describe('proxy bootstrap persistence', () => {
         targetId: 'docs',
         routeBasePath: '/docs',
         contentLocaleMode: 'filename',
-        localeConfig: TEST_LOCALE_CONFIG,
+        localeConfig: TEST_MULTI_LOCALE_CONFIG,
         emitFormat: 'ts',
         handlerRouteParam: {
           name: 'slug',
@@ -205,7 +200,7 @@ describe('proxy bootstrap persistence', () => {
       processorConfig: {
         processorImport: packageModule('@test/processor')
       },
-      localeConfig: TEST_LOCALE_CONFIG,
+      localeConfig: TEST_MULTI_LOCALE_CONFIG,
       paths: {
         rootDir: '/repo/app',
         contentDir: '/repo/app/content/pages',

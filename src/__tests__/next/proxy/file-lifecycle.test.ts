@@ -10,6 +10,7 @@ import { synchronizeRouteHandlerProxyFile } from '../../../next/proxy/file-lifec
 import { resolveRouteHandlerRoutingStrategy } from '../../../next/shared/policy/routing-strategy';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+  TEST_MULTI_LOCALE_CONFIG,
   createTestHandlerBinding
 } from '../../helpers/fixtures';
 import { withTempDir } from '../../helpers/temp-dir';
@@ -55,10 +56,7 @@ const createMultiTargetConfig = (rootDir: string): RouteHandlersConfig => ({
 const createResolvedConfigs = ({
   rootDir,
   routeHandlersConfig,
-  localeConfig = {
-    locales: ['en', 'de'],
-    defaultLocale: 'en'
-  }
+  localeConfig = TEST_MULTI_LOCALE_CONFIG
 }: {
   rootDir: string;
   routeHandlersConfig: RouteHandlersConfig;

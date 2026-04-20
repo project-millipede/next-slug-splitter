@@ -10,6 +10,7 @@ import { synchronizeRouteHandlerInstrumentationFile } from '../../../next/proxy/
 import { resolveRouteHandlerRoutingStrategy } from '../../../next/shared/policy/routing-strategy';
 import {
   TEST_CATCH_ALL_ROUTE_PARAM_NAME,
+  TEST_MULTI_LOCALE_CONFIG,
   createTestHandlerBinding
 } from '../../helpers/fixtures';
 import { withTempDir } from '../../helpers/temp-dir';
@@ -18,11 +19,6 @@ import type { RouteHandlersConfig } from '../../../next/pages/types';
 
 const SYNTHETIC_INSTRUMENTATION_MARKER =
   'next-slug-splitter:experimental-proxy-instrumentation';
-const TEST_LOCALE_CONFIG = {
-  locales: ['en', 'de'],
-  defaultLocale: 'en'
-};
-
 const createMultiTargetConfig = (rootDir: string): RouteHandlersConfig => ({
   routerKind: 'pages',
   app: {
@@ -92,7 +88,7 @@ describe('generated instrumentation file lifecycle', () => {
         routingPolicy: createDevelopmentRoutingPolicy({
           routeHandlersConfig
         }),
-        localeConfig: TEST_LOCALE_CONFIG
+        localeConfig: TEST_MULTI_LOCALE_CONFIG
       });
 
       const instrumentationSource = await readFile(instrumentationPath, 'utf8');
@@ -136,7 +132,7 @@ describe('generated instrumentation file lifecycle', () => {
         routingPolicy: createDevelopmentRoutingPolicy({
           routeHandlersConfig
         }),
-        localeConfig: TEST_LOCALE_CONFIG
+        localeConfig: TEST_MULTI_LOCALE_CONFIG
       });
 
       routeHandlersConfig.app = {
@@ -158,7 +154,7 @@ describe('generated instrumentation file lifecycle', () => {
         routingPolicy: createDevelopmentRoutingPolicy({
           routeHandlersConfig
         }),
-        localeConfig: TEST_LOCALE_CONFIG
+        localeConfig: TEST_MULTI_LOCALE_CONFIG
       });
 
       await expect(access(instrumentationPath)).rejects.toBeTruthy();
@@ -197,7 +193,7 @@ describe('generated instrumentation file lifecycle', () => {
           routingPolicy: createDevelopmentRoutingPolicy({
             routeHandlersConfig
           }),
-          localeConfig: TEST_LOCALE_CONFIG
+          localeConfig: TEST_MULTI_LOCALE_CONFIG
         })
       ).rejects.toThrow(/existing app-owned instrumentation file/i);
     });
@@ -227,7 +223,7 @@ describe('generated instrumentation file lifecycle', () => {
         routingPolicy: createDevelopmentRoutingPolicy({
           routeHandlersConfig
         }),
-        localeConfig: TEST_LOCALE_CONFIG
+        localeConfig: TEST_MULTI_LOCALE_CONFIG
       });
 
       expect(await readFile(instrumentationPath, 'utf8')).toContain(

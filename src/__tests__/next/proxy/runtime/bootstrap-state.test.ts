@@ -10,6 +10,7 @@ import {
   clearRouteHandlerProxyBootstrapStateCache,
   getRouteHandlerProxyBootstrapState
 } from '../../../../next/proxy/runtime/bootstrap-state';
+import { TEST_MULTI_LOCALE_CONFIG } from '../../../helpers/fixtures';
 
 import type { LocaleConfig } from '../../../../core/types';
 import type {
@@ -18,13 +19,8 @@ import type {
   PersistedRouteHandlerProxyBootstrapTarget
 } from '../../../../next/proxy/bootstrap-persisted';
 
-const TEST_LOCALE_CONFIG: LocaleConfig = {
-  locales: ['en', 'de'],
-  defaultLocale: 'en'
-};
-
 const createBootstrapManifest = ({
-  localeConfig = TEST_LOCALE_CONFIG,
+  localeConfig = TEST_MULTI_LOCALE_CONFIG,
   targets = []
 }: {
   localeConfig?: LocaleConfig;
@@ -79,7 +75,7 @@ describe('proxy bootstrap state', () => {
     );
 
     await expect(
-      getRouteHandlerProxyBootstrapState(TEST_LOCALE_CONFIG, {
+      getRouteHandlerProxyBootstrapState(TEST_MULTI_LOCALE_CONFIG, {
         rootDir: '/repo/app'
       })
     ).resolves.toEqual({
@@ -119,15 +115,9 @@ describe('proxy bootstrap state', () => {
     );
 
     await expect(
-      getRouteHandlerProxyBootstrapState(
-        {
-          locales: ['en', 'de'],
-          defaultLocale: 'en'
-        },
-        {
-          rootDir: '/repo/app'
-        }
-      )
+      getRouteHandlerProxyBootstrapState(TEST_MULTI_LOCALE_CONFIG, {
+        rootDir: '/repo/app'
+      })
     ).rejects.toThrow(
       'Route-handler proxy bootstrap manifest localeConfig does not match the generated proxy localeConfig.'
     );

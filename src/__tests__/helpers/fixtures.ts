@@ -29,6 +29,11 @@ export const TEST_LOCALE_CONFIG: LocaleConfig = {
   defaultLocale: 'en'
 };
 
+export const TEST_MULTI_LOCALE_CONFIG: LocaleConfig = {
+  locales: ['en', 'de'],
+  defaultLocale: 'en'
+};
+
 const DEFAULT_TEST_FACTORY_VARIANTS = ['none', 'selection', 'wrapper'];
 
 type WriteTestRouteHandlerPackageOptions = {

@@ -15,8 +15,12 @@ vi.mock(import('../../../../core/discovery'), async importOriginal => {
 });
 
 import { resolveRouteHandlerLazyRequest } from '../../../../next/proxy/lazy/request-resolution';
+import {
+  TEST_LOCALE_CONFIG,
+  TEST_MULTI_LOCALE_CONFIG
+} from '../../../helpers/fixtures';
 
-import type { LocalizedRoutePath, LocaleConfig } from '../../../../core/types';
+import type { LocalizedRoutePath } from '../../../../core/types';
 import type {
   RouteHandlerLazyRequestIdentity,
   RouteHandlerLazyRequestResolution,
@@ -24,14 +28,8 @@ import type {
 } from '../../../../next/proxy/lazy/types';
 
 const rootDir = '/repo/app';
-const localeConfig: LocaleConfig = {
-  locales: ['en', 'de'],
-  defaultLocale: 'en'
-};
-const singleLocaleConfig: LocaleConfig = {
-  locales: ['en'],
-  defaultLocale: 'en'
-};
+const localeConfig = TEST_MULTI_LOCALE_CONFIG;
+const singleLocaleConfig = TEST_LOCALE_CONFIG;
 const docsConfig: RouteHandlerLazyResolvedTarget = {
   routerKind: 'pages' as const,
   targetId: 'docs',
