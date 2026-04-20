@@ -73,7 +73,7 @@ export const emitRouteHandlerPages = async ({
   // Generate mode is intentionally phase-local and fresh. Clearing the target
   // handlers directory up front keeps build/generate independent from prior
   // dev artifacts before the current heavy-route set is written back to disk.
-  await clearRouteHandlerOutputDirectory(paths.handlersDir);
+  await clearRouteHandlerOutputDirectory(paths.generatedDir);
 
   const renderedPages = [];
 

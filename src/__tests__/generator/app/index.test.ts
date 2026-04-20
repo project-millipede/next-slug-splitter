@@ -13,7 +13,7 @@ describe('App Router generator contract', () => {
       paths: {
         rootDir: '/repo',
         contentPagesDir: '/repo/content',
-        handlersDir: '/repo/app/content/generated-handlers'
+        generatedDir: '/repo/app/content/generated-handlers'
       },
       heavyRoute: createPlannedHeavyRoute({
         locale: 'de',
@@ -83,7 +83,7 @@ describe('App Router generator contract', () => {
       paths: {
         rootDir: '/repo',
         contentPagesDir: '/repo/content',
-        handlersDir: '/repo/app/content/generated-handlers'
+        generatedDir: '/repo/app/content/generated-handlers'
       },
       heavyRoute: createPlannedHeavyRoute({
         locale: 'en',

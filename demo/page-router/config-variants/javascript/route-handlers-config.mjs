@@ -4,10 +4,12 @@
  * Defines a single catch-all target under the `/docs/` route segment.
  * The configuration tells next-slug-splitter:
  *
- * - Where content pages live on disk (`contentPagesDir`).
+ * - Where source MDX/content pages live on disk (`contentPagesDir`).
  * - How the catch-all route parameter is shaped (`handlerRouteParam`).
  * - Where to find the handler processor that maps captured keys to
  *   component imports and a factory import (`handlerBinding`).
+ * - The preset derives `generatedRootDir`, which later resolves to the
+ *   canonical `generated-handlers/` output leaf.
  *
  * Module references use `relativeModule` so the code generator emits
  * import paths relative to the application root, independent of the

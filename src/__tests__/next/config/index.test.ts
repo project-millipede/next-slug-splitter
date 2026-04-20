@@ -159,8 +159,8 @@ describe('next config helpers', () => {
       expect(routeHandlersConfig.paths?.contentPagesDir).toBe(
         TEST_PRIMARY_CONTENT_PAGES_DIR
       );
-      expect(routeHandlersConfig.paths?.handlersDir).toBe(
-        path.join('pages', 'content', 'generated-handlers')
+      expect(routeHandlersConfig.generatedRootDir).toBe(
+        path.join('pages', 'content')
       );
     });
 
@@ -182,8 +182,8 @@ describe('next config helpers', () => {
       );
       expect(routeHandlersConfig.targetId).toBe(TEST_SECONDARY_ROUTE_SEGMENT);
       expect(routeHandlersConfig.routeBasePath).toBe('/secondary');
-      expect(routeHandlersConfig.paths?.handlersDir).toBe(
-        path.join('pages', 'secondary', 'generated-handlers')
+      expect(routeHandlersConfig.generatedRootDir).toBe(
+        path.join('pages', 'secondary')
       );
     });
   });
@@ -209,8 +209,8 @@ describe('next config helpers', () => {
       expect(routeHandlersConfig.paths?.contentPagesDir).toBe(
         TEST_PRIMARY_CONTENT_PAGES_DIR
       );
-      expect(routeHandlersConfig.paths?.handlersDir).toBe(
-        path.join('app', 'content', 'generated-handlers')
+      expect(routeHandlersConfig.generatedRootDir).toBe(
+        path.join('app', 'content')
       );
     });
 
@@ -229,8 +229,8 @@ describe('next config helpers', () => {
 
       expect(routeHandlersConfig.targetId).toBe('docs');
       expect(routeHandlersConfig.routeBasePath).toBe('/docs');
-      expect(routeHandlersConfig.paths?.handlersDir).toBe(
-        path.join('app', 'docs', '(docs-shared)', 'generated-handlers')
+      expect(routeHandlersConfig.generatedRootDir).toBe(
+        path.join('app', 'docs', '(docs-shared)')
       );
     });
   });

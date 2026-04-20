@@ -209,7 +209,7 @@ export const resolveRouteHandlersConfigBase = async (
     ),
     routeModuleImport: resolvedRouteModuleImport,
     handlerRouteSegment: path.basename(
-      normalizedTargetOptions.paths.handlersDir
+      normalizedTargetOptions.paths.generatedDir
     ),
     routeModule: await inspectAppRouteModuleContract({
       rootDir: resolvedRootDir,

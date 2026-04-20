@@ -34,7 +34,7 @@ const resolveRouteHandlerHeavyRewriteDestination = (
     localeConfig: config.localeConfig,
     routeBasePath: config.routeBasePath,
     handlerRouteSegment:
-      config.handlerRouteSegment ?? path.basename(config.paths.handlersDir)
+      config.handlerRouteSegment ?? path.basename(config.paths.generatedDir)
   });
 
   const matchedRewrite = rewrites.find(rewrite => rewrite.source === pathname);

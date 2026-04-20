@@ -46,7 +46,7 @@ export const createTestPaths = (rootDir: string): RouteHandlerNextPaths => ({
     'src',
     'pages'
   ),
-  handlersDir: path.join(
+  generatedDir: path.join(
     rootDir,
     'pages',
     TEST_PRIMARY_ROUTE_SEGMENT,

@@ -61,7 +61,7 @@ const createBootstrapTarget =
     paths: {
       rootDir: '/repo/app',
       contentPagesDir: '/repo/app/content/pages',
-      handlersDir: '/repo/app/pages/generated-handlers'
+      generatedDir: '/repo/app/pages/generated-handlers'
     }
   });
 

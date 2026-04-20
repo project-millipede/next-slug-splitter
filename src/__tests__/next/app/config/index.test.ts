@@ -75,9 +75,9 @@ describe('App Router config resolution', () => {
         }),
         routeBasePath: '/docs',
         routeModuleImport: absoluteModule(routeModulePath),
+        generatedRootDir: path.join('app', 'docs'),
         paths: {
-          contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', 'generated-handlers')
+          contentPagesDir: 'content'
         }
       };
 
@@ -94,7 +94,7 @@ describe('App Router config resolution', () => {
       expect(resolvedTarget.routerKind).toBe('app');
       expect(resolvedTarget.targetId).toBe('docs');
       expect(resolvedTarget.handlerRouteSegment).toBe('generated-handlers');
-      expect(resolvedTarget.paths.handlersDir).toBe(
+      expect(resolvedTarget.paths.generatedDir).toBe(
         path.join(rootDir, 'app', 'docs', 'generated-handlers')
       );
       expect(resolvedTarget.routeModuleImport).toEqual(
@@ -137,9 +137,9 @@ describe('App Router config resolution', () => {
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
         routeModuleImport: absoluteModule(sourceRouteModulePath),
+        generatedRootDir: path.join('app', 'docs'),
         paths: {
-          contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', 'generated-handlers')
+          contentPagesDir: 'content'
         }
       };
 
@@ -157,7 +157,7 @@ describe('App Router config resolution', () => {
       expect(resolvedTarget.routeModuleImport).toEqual(
         absoluteModule(sourceRouteModulePath)
       );
-      expect(resolvedTarget.paths.handlersDir).toBe(
+      expect(resolvedTarget.paths.generatedDir).toBe(
         path.join(rootDir, 'app', 'docs', 'generated-handlers')
       );
       expect(resolvedTarget.routeModule).toEqual({
@@ -205,7 +205,7 @@ describe('App Router config resolution', () => {
       expect(resolvedTarget.targetId).toBe('docs');
       expect(resolvedTarget.routeBasePath).toBe('/docs');
       expect(resolvedTarget.handlerRouteSegment).toBe('generated-handlers');
-      expect(resolvedTarget.paths.handlersDir).toBe(
+      expect(resolvedTarget.paths.generatedDir).toBe(
         path.join(rootDir, 'app', 'docs', '(docs-shared)', 'generated-handlers')
       );
     });
@@ -229,9 +229,9 @@ describe('App Router config resolution', () => {
         },
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
+        generatedRootDir: path.join('app', 'docs'),
         paths: {
-          contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', 'generated-handlers')
+          contentPagesDir: 'content'
         }
       };
 
@@ -276,9 +276,9 @@ describe('App Router config resolution', () => {
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
         routeModuleImport: absoluteModule(routeModulePath),
+        generatedRootDir: path.join('app', 'docs'),
         paths: {
-          contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', 'generated-handlers')
+          contentPagesDir: 'content'
         }
       };
 
@@ -325,9 +325,9 @@ describe('App Router config resolution', () => {
         handlerBinding: createTestHandlerBinding(),
         routeBasePath: '/docs',
         routeModuleImport: absoluteModule(routeModulePath),
+        generatedRootDir: path.join('app', 'docs'),
         paths: {
-          contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', 'generated-handlers')
+          contentPagesDir: 'content'
         }
       };
 

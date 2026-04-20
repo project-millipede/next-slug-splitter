@@ -1,14 +1,10 @@
 import path from 'path';
 
 import { relativeModule } from '../../../module-reference';
-import { createConfigError } from '../../../utils/errors';
 import type {
   RelativeModuleReference,
-  DynamicRouteParam,
-  RouteHandlerTargetPaths
+  DynamicRouteParam
 } from '../../shared/types';
-
-import { isNonEmptyString } from '../../shared/config/shared';
 
 /**
  * Render the Next.js filesystem segment for one dynamic route param.
@@ -32,22 +28,15 @@ const toDynamicPageSegment = (handlerRouteParam: DynamicRouteParam): string => {
  * Build the import specifier of the source page whose `getStaticProps` should
  * be proxied by generated handler pages.
  *
- * @param input - Static-props import construction input.
+ * @param routeSegment - Route segment owned by the target.
+ * @param handlerRouteParam - Dynamic route parameter descriptor for the source
+ * page.
  * @returns Source page module reference relative to the project root.
  */
-export const createCatchAllBaseStaticPropsImport = ({
-  routeSegment,
-  handlerRouteParam
-}: {
-  /**
-   * Route segment owned by the target.
-   */
-  routeSegment: string;
-  /**
-   * Dynamic route parameter descriptor for the source page.
-   */
-  handlerRouteParam: DynamicRouteParam;
-}): RelativeModuleReference => {
+export const createCatchAllBaseStaticPropsImport = (
+  routeSegment: string,
+  handlerRouteParam: DynamicRouteParam
+): RelativeModuleReference => {
   const routeSegments = routeSegment.split('/');
   const pageSegment = toDynamicPageSegment(handlerRouteParam);
 
@@ -64,32 +53,15 @@ export const createCatchAllRouteBasePath = (routeSegment: string): string =>
   `/${routeSegment}`;
 
 /**
- * Build the target-local path values implied by a catch-all preset.
+ * Build the generated-output root directory implied by a catch-all preset.
  *
- * @param input - Preset path input.
- * @returns Target-local path values that still need app-level root resolution.
+ * @param routeSegment - Normalized route segment for the target.
+ * @returns Directory that should own the canonical generated-handler leaf.
  */
-export const createCatchAllRouteHandlerNextPaths = ({
-  routeSegment,
-  contentPagesDir
-}: {
-  /**
-   * Normalized route segment for the target.
-   */
-  routeSegment: string;
-  /**
-   * Source content pages directory or import path.
-   */
-  contentPagesDir: string;
-}): Partial<RouteHandlerTargetPaths> => {
-  if (!isNonEmptyString(contentPagesDir)) {
-    throw createConfigError('contentPagesDir must be a non-empty string path.');
-  }
-
+export const createCatchAllRouteHandlerGeneratedRootDir = (
+  routeSegment: string
+): string => {
   const routeSegments = routeSegment.split('/');
 
-  return {
-    contentPagesDir,
-    handlersDir: path.join('pages', ...routeSegments, 'generated-handlers')
-  };
+  return path.join('pages', ...routeSegments);
 };

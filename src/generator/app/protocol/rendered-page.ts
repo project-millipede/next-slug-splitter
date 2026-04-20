@@ -26,19 +26,19 @@ export type RenderedAppHandlerPageLocation = {
 };
 
 export const resolveRenderedAppHandlerPageLocation = (
-  paths: Pick<RouteHandlerPaths, 'handlersDir'>,
+  paths: Pick<RouteHandlerPaths, 'generatedDir'>,
   emitFormat: EmitFormat,
   handlerRelativePath: string
 ): RenderedAppHandlerPageLocation => {
   const pageExtension = emitFormat === 'ts' ? 'tsx' : 'js';
   const pageFilePath = path.join(
-    paths.handlersDir,
+    paths.generatedDir,
     handlerRelativePath,
     `${GENERATED_APP_ROUTE_HANDLER_PAGE_BASENAME}.${pageExtension}`
   );
 
   return {
-    relativePath: path.relative(paths.handlersDir, pageFilePath),
+    relativePath: path.relative(paths.generatedDir, pageFilePath),
     pageFilePath
   };
 };
@@ -88,7 +88,10 @@ export const renderAppRouteHandlerPage = ({
         pageFilePath,
         heavyRoute.factoryImport
       ),
-      routeModuleImport: toEmittedImportSpecifier(pageFilePath, routeModuleImport),
+      routeModuleImport: toEmittedImportSpecifier(
+        pageFilePath,
+        routeModuleImport
+      ),
       handlerParams:
         fixedRouteParamValue === undefined
           ? {}

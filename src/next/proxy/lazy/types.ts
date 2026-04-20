@@ -104,7 +104,7 @@ export type RouteHandlerLazyResolvedTarget = {
      * `missing-route-file` request without having to re-resolve the full target
      * planning config.
      */
-    handlersDir: string;
+    generatedDir: string;
   };
 };
 
@@ -202,7 +202,7 @@ export type RouteHandlerLazyOutputConfig = {
   emitFormat: EmitFormat;
   contentLocaleMode: ContentLocaleMode;
   paths: {
-    handlersDir: string;
+    generatedDir: string;
   };
 };
 

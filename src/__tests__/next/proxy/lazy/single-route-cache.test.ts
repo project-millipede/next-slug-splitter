@@ -97,7 +97,7 @@ const createPlannerConfig = (
     paths: {
       rootDir: '/app',
       contentPagesDir: '/app/content',
-      handlersDir: '/app/pages/docs/generated-handlers'
+      generatedDir: '/app/pages/docs/generated-handlers'
     }
   }) satisfies RouteHandlerLazyPagesPlannerConfig;
 

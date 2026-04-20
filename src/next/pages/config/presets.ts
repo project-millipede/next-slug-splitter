@@ -3,10 +3,12 @@ import type {
   RouteHandlersTargetConfig
 } from '../types';
 
+import { createConfigError } from '../../../utils/errors';
+import { isNonEmptyString } from '../../shared/config/shared';
 import { resolveCatchAllRoutePresetIdentity } from '../../shared/config/catch-all-preset';
 import {
   createCatchAllBaseStaticPropsImport,
-  createCatchAllRouteHandlerNextPaths
+  createCatchAllRouteHandlerGeneratedRootDir
 } from './paths';
 
 /**
@@ -25,6 +27,10 @@ export const createCatchAllRouteHandlersPreset = ({
   handlerBinding,
   mdxCompileOptions
 }: CreateCatchAllRouteHandlersPresetOptions): RouteHandlersTargetConfig => {
+  if (!isNonEmptyString(contentPagesDir)) {
+    throw createConfigError('contentPagesDir must be a non-empty string path.');
+  }
+
   const resolvedPresetIdentity = resolveCatchAllRoutePresetIdentity({
     targetId,
     routeSegment,
@@ -38,14 +44,16 @@ export const createCatchAllRouteHandlersPreset = ({
     handlerRouteParam: resolvedPresetIdentity.handlerRouteParam,
     handlerBinding,
     mdxCompileOptions,
-    baseStaticPropsImport: createCatchAllBaseStaticPropsImport({
-      routeSegment: resolvedPresetIdentity.routeSegment,
-      handlerRouteParam: resolvedPresetIdentity.handlerRouteParam
-    }),
+    baseStaticPropsImport: createCatchAllBaseStaticPropsImport(
+      resolvedPresetIdentity.routeSegment,
+      resolvedPresetIdentity.handlerRouteParam
+    ),
     routeBasePath: resolvedPresetIdentity.routeBasePath,
-    paths: createCatchAllRouteHandlerNextPaths({
-      routeSegment: resolvedPresetIdentity.routeSegment,
+    generatedRootDir: createCatchAllRouteHandlerGeneratedRootDir(
+      resolvedPresetIdentity.routeSegment
+    ),
+    paths: {
       contentPagesDir
-    })
+    }
   };
 };

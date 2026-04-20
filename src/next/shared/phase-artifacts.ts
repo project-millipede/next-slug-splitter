@@ -75,7 +75,8 @@ const isRouteHandlerPhaseRecord = (
   const phase = readObjectProperty(value, 'phase');
 
   return (
-    readObjectProperty(value, 'version') === ROUTE_HANDLER_PHASE_RECORD_VERSION &&
+    readObjectProperty(value, 'version') ===
+      ROUTE_HANDLER_PHASE_RECORD_VERSION &&
     (phase === 'dev' || phase === 'build')
   );
 };
@@ -84,7 +85,10 @@ const readRouteHandlerPhaseOwner = async (
   rootDir: string
 ): Promise<RouteHandlerPhaseOwner | null> => {
   try {
-    const raw = await readFile(resolveRouteHandlerPhaseRecordPath(rootDir), 'utf8');
+    const raw = await readFile(
+      resolveRouteHandlerPhaseRecordPath(rootDir),
+      'utf8'
+    );
     const parsed = JSON.parse(raw);
 
     return isRouteHandlerPhaseRecord(parsed) ? parsed.phase : null;
@@ -171,12 +175,12 @@ export const synchronizeRouteHandlerPhaseArtifacts = async (
   } else if (previousPhase !== 'dev') {
     await clearDevLazySingleRouteCacheArtifacts(rootDir);
 
-    const handlersDirs = new Set(
-      resolvedConfigs.map(config => config.paths.handlersDir)
+    const generatedDirs = new Set(
+      resolvedConfigs.map(config => config.paths.generatedDir)
     );
 
-    for (const handlersDir of handlersDirs) {
-      await clearRouteHandlerOutputDirectory(handlersDir);
+    for (const generatedDir of generatedDirs) {
+      await clearRouteHandlerOutputDirectory(generatedDir);
     }
   }
 

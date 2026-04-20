@@ -78,7 +78,7 @@ function createBootstrapTarget(): PersistedRouteHandlerProxyBootstrapPagesTarget
     paths: {
       rootDir: '/repo/app',
       contentPagesDir: '/repo/app/content/pages',
-      handlersDir: '/repo/app/pages/generated-handlers'
+      generatedDir: '/repo/app/pages/generated-handlers'
     }
   };
 }
@@ -112,7 +112,7 @@ function createAppBootstrapTarget(): PersistedRouteHandlerProxyBootstrapAppTarge
     paths: {
       rootDir: '/repo/app',
       contentPagesDir: '/repo/app/content/pages',
-      handlersDir: '/repo/app/app/docs/generated-handlers'
+      generatedDir: '/repo/app/app/docs/generated-handlers'
     }
   };
 }
@@ -179,7 +179,7 @@ describe('proxy worker bootstrap', () => {
         paths: {
           rootDir: '/repo/app',
           contentPagesDir: '/repo/app/content/pages',
-          handlersDir: '/repo/app/pages/generated-handlers'
+          generatedDir: '/repo/app/pages/generated-handlers'
         }
       }
     ]);
@@ -208,7 +208,7 @@ describe('proxy worker bootstrap', () => {
       paths: {
         rootDir: '/repo/app',
         contentPagesDir: '/repo/app/content/pages',
-        handlersDir: '/repo/app/pages/generated-handlers'
+        generatedDir: '/repo/app/pages/generated-handlers'
       }
     });
     expect(resolvedConfig?.runtime.mdxCompileOptions.remarkPlugins).toEqual([
@@ -320,7 +320,7 @@ describe('proxy worker bootstrap', () => {
         paths: {
           rootDir: '/repo/app',
           contentPagesDir: '/repo/app/content/pages',
-          handlersDir: '/repo/app/app/docs/generated-handlers'
+          generatedDir: '/repo/app/app/docs/generated-handlers'
         }
       }
     ]);

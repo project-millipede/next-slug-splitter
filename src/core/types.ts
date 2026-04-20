@@ -197,7 +197,7 @@ export type RouteHandlerPaths = {
   /**
    * Output directory for generated handler files.
    */
-  handlersDir: string;
+  generatedDir: string;
 };
 
 /**

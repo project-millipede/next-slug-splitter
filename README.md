@@ -646,6 +646,7 @@ Create one catch-all target with normalized route and path values.
 | `routeSegment` | Public route segment (e.g. `'docs'`, `'blog'`) |
 | `handlerRouteParam` | Dynamic route parameter configuration |
 | `contentPagesDir` | Directory containing content pages |
+| `generatedRootDir` | Derived generated-output root; presets resolve this from `routeSegment` |
 | `handlerBinding` | Binding with processor module for route planning |
 | `contentLocaleMode` | Locale detection mode (see below) |
 
@@ -660,6 +661,7 @@ App-specific route-module inputs.
 | `routeTreeSegment` | Optional App Router filesystem subtree for emitted handlers; defaults to `routeSegment` |
 | `handlerRouteParam` | Dynamic route parameter configuration |
 | `contentPagesDir` | Directory containing content pages |
+| `generatedRootDir` | Derived generated-output root; presets resolve this from `routeSegment` or `routeTreeSegment` |
 | `handlerBinding` | Binding with processor module for route planning |
 | `routeModuleImport` | Page-safe App route module imported by the light page and generated heavy pages |
 | `routeModuleRuntimeImport` | Optional worker-owned App route module loaded whenever the library executes the route contract outside Next's server graph; defaults to `routeModuleImport` |
