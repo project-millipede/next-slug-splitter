@@ -186,6 +186,14 @@ export const normalizeRouteHandlersTargetOptions = (
     )
   };
 
+  // Current contract:
+  // 1. Catch-all presets already derive `.../generated-handlers`.
+  // 2. Manual target configs can still provide paths.handlersDir directly.
+  // 3. Those direct values must already include the canonical final segment.
+  //
+  // If target config later switches to generatedRootDir and central
+  // path.join(generatedRootDir, 'generated-handlers') derivation, this
+  // validation can be removed because the leaf will be appended centrally.
   if (path.basename(resolvedPaths.handlersDir) !== GENERATED_HANDLER_SEGMENT) {
     throw createConfigError(
       `paths.handlersDir must end with "${GENERATED_HANDLER_SEGMENT}".`

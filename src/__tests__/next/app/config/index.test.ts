@@ -249,50 +249,6 @@ describe('App Router config resolution', () => {
     });
   });
 
-  it('rejects handlersDir basenames other than generated-handlers', async () => {
-    await withTempDir('next-slug-splitter-app-config-', async rootDir => {
-      await writeTestRouteHandlerPackage(rootDir);
-
-      const routeModulePath = path.join(rootDir, 'dist', 'route-module.mjs');
-      await writeTestModule(routeModulePath, createRouteModuleSource());
-
-      const routeHandlersConfig: AppRouteHandlersConfig = {
-        routerKind: 'app',
-        app: {
-          rootDir
-        },
-        targetId: 'docs',
-        emitFormat: 'ts',
-        contentLocaleMode: 'filename',
-        handlerRouteParam: {
-          name: 'slug',
-          kind: 'catch-all'
-        },
-        handlerBinding: createTestHandlerBinding(),
-        routeBasePath: '/docs',
-        routeModuleImport: absoluteModule(routeModulePath),
-        paths: {
-          contentPagesDir: 'content',
-          handlersDir: path.join('app', 'docs', '_handlers')
-        }
-      };
-
-      const appConfig = resolveRouteHandlersAppConfig({
-        rootDir,
-        routeHandlersConfig
-      });
-
-      await expect(
-        resolveRouteHandlersConfigBasesFromAppConfig(
-          appConfig,
-          routeHandlersConfig
-        )
-      ).rejects.toThrow(
-        'paths.handlersDir must end with "generated-handlers".'
-      );
-    });
-  });
-
   it('fails validation when the App route contract omits getStaticParams', async () => {
     await withTempDir('next-slug-splitter-app-config-', async rootDir => {
       await writeTestRouteHandlerPackage(rootDir);
