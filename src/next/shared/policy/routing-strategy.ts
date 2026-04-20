@@ -59,10 +59,6 @@ export type RouteHandlerRoutingStrategy =
        */
       kind: 'proxy';
       /**
-       * Stable identifier for the current proxy strategy implementation.
-       */
-      implementation: 'synthetic-root-proxy-file';
-      /**
        * Human-readable explanation of why proxy was selected.
        */
       reason: 'development-policy-proxy' | 'environment-override-proxy';
@@ -76,22 +72,22 @@ export type RouteHandlerRoutingStrategy =
  */
 const readEnvironmentRoutingOverride =
   (): RouteHandlerDevelopmentRoutingMode | null => {
-  const configuredValue = process.env[ROUTE_HANDLER_DEV_ROUTING_ENV_VAR];
+    const configuredValue = process.env[ROUTE_HANDLER_DEV_ROUTING_ENV_VAR];
 
-  if (configuredValue == null) {
+    if (configuredValue == null) {
+      return null;
+    }
+
+    if (configuredValue === 'proxy') {
+      return 'proxy';
+    }
+
+    if (configuredValue === 'rewrites') {
+      return 'rewrites';
+    }
+
     return null;
-  }
-
-  if (configuredValue === 'proxy') {
-    return 'proxy';
-  }
-
-  if (configuredValue === 'rewrites') {
-    return 'rewrites';
-  }
-
-  return null;
-};
+  };
 
 /**
  * Resolve the active routing strategy for the current Next phase.
@@ -138,7 +134,6 @@ export const resolveRouteHandlerRoutingStrategy = (
   if (environmentOverride === 'proxy') {
     return {
       kind: 'proxy',
-      implementation: 'synthetic-root-proxy-file',
       reason: 'environment-override-proxy'
     };
   }
@@ -153,7 +148,6 @@ export const resolveRouteHandlerRoutingStrategy = (
   // Development defaults to proxy through the resolved app-level policy.
   return {
     kind: 'proxy',
-    implementation: 'synthetic-root-proxy-file',
     reason: 'development-policy-proxy'
   };
 };

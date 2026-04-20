@@ -16,29 +16,22 @@ describe('route handler routing strategy', () => {
 
   it('defaults development to proxy through the resolved app policy', () => {
     expect(
-      resolveRouteHandlerRoutingStrategy(
-        PHASE_DEVELOPMENT_SERVER,
-        {
-          development: 'proxy',
-          workerPrewarm: 'off'
-        }
-      )
+      resolveRouteHandlerRoutingStrategy(PHASE_DEVELOPMENT_SERVER, {
+        development: 'proxy',
+        workerPrewarm: 'off'
+      })
     ).toEqual({
       kind: 'proxy',
-      implementation: 'synthetic-root-proxy-file',
       reason: 'development-policy-proxy'
     });
   });
 
   it('allows the resolved app policy to force rewrite mode in development', () => {
     expect(
-      resolveRouteHandlerRoutingStrategy(
-        PHASE_DEVELOPMENT_SERVER,
-        {
-          development: 'rewrites',
-          workerPrewarm: 'off'
-        }
-      )
+      resolveRouteHandlerRoutingStrategy(PHASE_DEVELOPMENT_SERVER, {
+        development: 'rewrites',
+        workerPrewarm: 'off'
+      })
     ).toEqual({
       kind: 'rewrites',
       reason: 'development-policy-rewrites'
@@ -49,13 +42,10 @@ describe('route handler routing strategy', () => {
     vi.stubEnv(ROUTE_HANDLER_DEV_ROUTING_ENV_VAR, 'rewrites');
 
     expect(
-      resolveRouteHandlerRoutingStrategy(
-        PHASE_DEVELOPMENT_SERVER,
-        {
-          development: 'proxy',
-          workerPrewarm: 'off'
-        }
-      )
+      resolveRouteHandlerRoutingStrategy(PHASE_DEVELOPMENT_SERVER, {
+        development: 'proxy',
+        workerPrewarm: 'off'
+      })
     ).toEqual({
       kind: 'rewrites',
       reason: 'environment-override-rewrites'
@@ -66,16 +56,12 @@ describe('route handler routing strategy', () => {
     vi.stubEnv(ROUTE_HANDLER_DEV_ROUTING_ENV_VAR, 'proxy');
 
     expect(
-      resolveRouteHandlerRoutingStrategy(
-        PHASE_DEVELOPMENT_SERVER,
-        {
-          development: 'rewrites',
-          workerPrewarm: 'off'
-        }
-      )
+      resolveRouteHandlerRoutingStrategy(PHASE_DEVELOPMENT_SERVER, {
+        development: 'rewrites',
+        workerPrewarm: 'off'
+      })
     ).toEqual({
       kind: 'proxy',
-      implementation: 'synthetic-root-proxy-file',
       reason: 'environment-override-proxy'
     });
   });
@@ -84,13 +70,10 @@ describe('route handler routing strategy', () => {
     vi.stubEnv(ROUTE_HANDLER_DEV_ROUTING_ENV_VAR, 'proxy');
 
     expect(
-      resolveRouteHandlerRoutingStrategy(
-        PHASE_PRODUCTION_BUILD,
-        {
-          development: 'proxy',
-          workerPrewarm: 'off'
-        }
-      )
+      resolveRouteHandlerRoutingStrategy(PHASE_PRODUCTION_BUILD, {
+        development: 'proxy',
+        workerPrewarm: 'off'
+      })
     ).toEqual({
       kind: 'rewrites',
       reason: 'non-development-phase'
@@ -101,13 +84,10 @@ describe('route handler routing strategy', () => {
     vi.stubEnv('NODE_ENV', 'production');
 
     expect(
-      resolveRouteHandlerRoutingStrategy(
-        PHASE_PRODUCTION_BUILD,
-        {
-          development: 'proxy',
-          workerPrewarm: 'off'
-        }
-      )
+      resolveRouteHandlerRoutingStrategy(PHASE_PRODUCTION_BUILD, {
+        development: 'proxy',
+        workerPrewarm: 'off'
+      })
     ).toEqual({
       kind: 'rewrites',
       reason: 'proxy-disabled-in-production'
