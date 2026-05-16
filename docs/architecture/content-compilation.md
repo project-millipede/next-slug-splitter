@@ -174,12 +174,13 @@ For the current App Router compilation path, read these files in order:
 2. `demo/app-router/config-variants/javascript/route-handlers-config.mjs`
 3. `demo/app-router/config-variants/typescript/route-handlers-config.ts`
 4. `src/next/shared/config/handler-binding.ts`
-5. `src/next/shared/adapter.ts`
-6. `src/next/shared/lookup-persisted.ts`
-7. `src/next/shared/heavy-route-lookup.ts`
-8. `src/next/app/page-data-compiler-run.ts`
-9. `src/next/app/page-data-worker/host/client.ts`
-10. `src/next/app/page-data-worker/runtime/entry.ts`
+5. `src/next/app/config/resolve-target.ts`
+6. `src/next/integration/adapter.ts`
+7. `src/next/shared/lookup-persisted.ts`
+8. `src/next/shared/heavy-route-lookup.ts`
+9. `src/next/app/page-data-compiler-run.ts`
+10. `src/next/app/page-data-worker/host/client.ts`
+11. `src/next/app/page-data-worker/runtime/entry.ts`
 
 That sequence shows:
 

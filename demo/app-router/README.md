@@ -67,6 +67,11 @@ The default `dev` script automatically:
 Use `pnpm dev:ts` if you want to run the same demo through the optional
 TypeScript processor variant instead.
 
+This demo is also used for local Next.js integration work. If its
+`package.json` points `next` at an absolute local checkout, either use that
+matching checkout or align `next`, `react`, and `react-dom` with the versions in
+the root or Pages Router demo package before running the quick start elsewhere.
+
 For the current Pages-vs-App comparison around development proxy behavior,
 Pages-only quirks, and shared readiness safeguards, see
 [`docs/architecture/router-behavior-matrix.md`](../../docs/architecture/router-behavior-matrix.md).

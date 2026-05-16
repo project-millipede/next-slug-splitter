@@ -21,7 +21,9 @@ export default function DocsPage({ code }) {
 
 There is no other practical option within the Pages Router — every page served by this route shares a single bundle. Even pure-Markdown pages that never render any of these components inherit the full import graph.
 
-With the conventional approach, this demo's build output would look like this:
+With the conventional approach, this demo's build output would look roughly
+like this. The exact numbers are illustrative and can move with Next.js,
+React, and the generated ballast files:
 
 | Page            | Route                   | Bundle Size  |
 | --------------- | ----------------------- | ------------ |
@@ -39,17 +41,19 @@ next-slug-splitter scans MDX content at build time, detects which pages actually
 
 The result is **per-page component scoping**: each page bundles only the components it actually uses.
 
-### Build output with next-slug-splitter
+### Example build output with next-slug-splitter
 
-| Page            | Route                   | Components       | Bundle Size |
-| --------------- | ----------------------- | ---------------- | ----------- |
-| Home            | `/`                     | —                | 127 kB      |
-| Getting Started | `/docs/getting-started` | none (light)     | 141 kB      |
-| Tutorial        | `/docs/tutorial`        | none (light)     | 141 kB      |
-| Interactive     | `/docs/interactive`     | Counter          | 266 kB      |
-| Dashboard       | `/docs/dashboard`       | Chart, DataTable | 1250 kB     |
+| Page            | Route                   | Components       | Illustrative Bundle Size |
+| --------------- | ----------------------- | ---------------- | ------------------------ |
+| Home            | `/`                     | —                | 127 kB                   |
+| Getting Started | `/docs/getting-started` | none (light)     | 141 kB                   |
+| Tutorial        | `/docs/tutorial`        | none (light)     | 141 kB                   |
+| Interactive     | `/docs/interactive`     | Counter          | 266 kB                   |
+| Dashboard       | `/docs/dashboard`       | Chart, DataTable | 1250 kB                  |
 
-Light pages drop from ~1250 kB to **141 kB** — a ~89% reduction. The Interactive page loads only the Counter component it needs (266 kB instead of 1250 kB). Only the Dashboard page, which genuinely uses the heaviest components, pays the full cost.
+The important signal is the shape of the result: light pages no longer inherit
+the heavy component graph, intermediate pages pay only for the components they
+use, and only the genuinely heavy page pays the full cost.
 
 The ballast files in this demo simulate realistic dependency sizes (visualization libraries, data grids) and are generated at dev/build time by `scripts/generate-ballast.mjs`.
 
