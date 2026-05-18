@@ -1,5 +1,6 @@
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { MdxContent } from '../mdx-runtime';
+import { Callout } from '../components/callout';
 import {
   runtimeTrait,
   type RuntimeConfig,
@@ -12,7 +13,11 @@ import {
  * Keys are the tag names used in MDX source (e.g. `<Counter />`), values
  * are the React component that renders them.
  */
-type MDXComponentMap = Record<string, ComponentType<Record<string, unknown>>>;
+type MDXComponentProps = Record<string, unknown> & {
+  children?: ReactNode;
+};
+
+type MDXComponentMap = Record<string, ComponentType<MDXComponentProps>>;
 
 /**
  * One entry in the loadable component registry.
@@ -24,7 +29,7 @@ type LoadableEntry = RuntimeConfig & {
   /**
    * The React component to render when the corresponding tag appears in MDX.
    */
-  component: ComponentType<Record<string, unknown>>;
+  component: ComponentType<MDXComponentProps>;
 };
 
 /**
@@ -56,6 +61,17 @@ export type HandlerPageFactoryInput<T> = {
   loadableRegistrySubset: T;
 };
 
+/**
+ * Lightweight components always available in the MDX component scope.
+ *
+ * These components may be captured from MDX, but the demo processor omits them
+ * from generated handler imports because they do not cross the loadable package
+ * boundary.
+ */
+const mdxScopeComponents: MDXComponentMap = {
+  Callout
+};
+
 const hasRuntimeTrait = (
   entry: LoadableEntry,
   runtimeTraitKey: RuntimeTrait
@@ -63,7 +79,7 @@ const hasRuntimeTrait = (
 
 const enhanceComponent = (
   entry: LoadableEntry
-): ComponentType<Record<string, unknown>> => {
+): ComponentType<MDXComponentProps> => {
   const BaseComponent = entry.component;
   const requireWrapper = hasRuntimeTrait(entry, runtimeTrait.wrapper);
   const injectSelection = hasRuntimeTrait(entry, runtimeTrait.selection);
@@ -146,12 +162,16 @@ const enhanceComponent = (
 export function createHandlerPageFromRuntime<T extends LoadableRegistrySubset>({
   loadableRegistrySubset
 }: HandlerPageFactoryInput<T>) {
-  const components: MDXComponentMap = Object.fromEntries(
+  const loadableComponents: MDXComponentMap = Object.fromEntries(
     Object.entries(loadableRegistrySubset).map(([key, entry]) => [
       key,
       enhanceComponent(entry)
     ])
   );
+  const components: MDXComponentMap = {
+    ...mdxScopeComponents,
+    ...loadableComponents
+  };
 
   const HandlerPage = ({ code }: HandlerPageProps) => {
     return <MdxContent code={code} components={components} />;
