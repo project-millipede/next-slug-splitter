@@ -23,7 +23,7 @@ That makes every docs page share one component surface. Even pure-Markdown pages
 
 ## The Solution
 
-next-slug-splitter scans MDX content at build time, detects which pages actually reference heavy components, and generates dedicated handler pages for those routes only. Light pages continue to use the catch-all route — but with an empty component registry, so their bundle stays minimal.
+next-slug-splitter scans MDX content at build time, filters captured component names through the app-owned loadable key set, and generates dedicated handler pages only for routes that need generated handler imports. Light pages continue to use the catch-all route — but with an empty loadable registry, so their bundle stays minimal.
 
 For the App Router path, both sides delegate to one route-owned contract:
 
@@ -88,7 +88,7 @@ app/docs/generated-handlers/
 └── dashboard/page.tsx     ← imports only Chart + DataTable
 ```
 
-These files are auto-generated and gitignored. Each one imports exactly the components that its page needs — nothing more.
+These files are auto-generated and gitignored. Each one imports exactly the loadable components that its page needs — nothing more.
 
 The preset keeps source discovery and generated output explicit:
 
@@ -165,7 +165,7 @@ The underlying compilation architecture is described in
 `app/docs/[...slug]/page.tsx` uses `withHeavyRouteFilter(...)` on
 `generateStaticParams()` to exclude slugs already served by generated heavy
 handlers, preventing duplicate routes. Its `loadableRegistrySubset` is empty,
-so no heavy component code is bundled there.
+so no loadable component code is bundled there.
 
 ### The route-owned contract
 
@@ -186,15 +186,16 @@ The default demo path uses `config-variants/javascript/`.
 An optional TypeScript authoring variant lives in
 `config-variants/typescript/`.
 
-Both center on the same package boundary:
+Both center on the same loadable package boundary:
 
 ```js
 const componentsModule = packageModule('@demo/components');
 ```
 
-Every captured component key already maps to a named export from that workspace
-package, so the processor can emit direct package imports without maintaining a
-local module registry.
+Loadable components that may be emitted into generated handlers live behind the
+`@demo/components` package boundary. Captured names outside that set, such as
+`Callout`, are provided through the MDX component scope and are not emitted into
+generated handlers.
 
 The JavaScript and TypeScript variants stay behaviorally aligned:
 both attach the same runtime-trait metadata, use the same runtime-aware
@@ -240,9 +241,13 @@ optional TypeScript variant.
 │       └── generated-handlers/ ← auto-generated heavy page handlers
 ├── config-variants/        ← source-of-truth demo variant configs
 ├── content/pages/          ← MDX content files
+│   ├── getting-started.mdx  ← light (pure Markdown)
+│   ├── tutorial.mdx         ← light (uses <Callout /> from MDX scope)
+│   ├── interactive.mdx      ← heavy (uses <Counter />)
+│   └── dashboard.mdx        ← heavy (uses <Chart />, <DataTable />)
 ├── lib/
 │   ├── components/         ← React components with simulated ballast
-│   ├── content.ts                 ← page-safe typed content discovery helpers
+│   ├── content.ts          ← page-safe typed content discovery helpers
 │   ├── handler-factory/    ← shared page component factory
 │   └── mdx-runtime.tsx     ← MDX evaluation runtime
 ├── config-variants/
