@@ -156,25 +156,19 @@ const loadProcessorModule = async ({
 const createRouteLabel = (route: RouteHandlerRouteContext): string =>
   `target "${route.targetId ?? 'default'}", route "${route.routePath}", handler "${route.handlerId}"`;
 
-export const createRouteHandlerRoutePlanner = async ({
-  rootDir,
-  processorConfig
-}: {
-  rootDir: string;
-  processorConfig: ResolvedRouteHandlerProcessorConfig;
-}) => {
+export const createRouteHandlerRoutePlanner = async (
+  rootDir: string,
+  processorConfig: ResolvedRouteHandlerProcessorConfig
+) => {
   const processor = await loadProcessorModule({
     rootDir,
     processorImport: processorConfig.processorImport
   });
 
-  return async ({
-    route,
-    capturedComponentKeys
-  }: {
-    route: RouteHandlerRouteContext;
-    capturedComponentKeys: Array<string>;
-  }): Promise<{
+  return async (
+    route: RouteHandlerRouteContext,
+    capturedComponentKeys: Array<string>
+  ): Promise<{
     factoryImport: ResolvedModuleReference;
     factoryBindings?: ResolvedFactoryBindings;
     componentEntries: Array<LoadableComponentEntry>;

@@ -442,6 +442,52 @@ export const routeHandlerProcessor = defineRouteHandlerProcessor({
 });
 ```
 
+### Captured Components and MDX Scope
+
+This section distinguishes two related surfaces:
+
+- **Captured components** are custom component names found while analyzing the
+  MDX source graph.
+- **MDX scope** is the component map available when the compiled MDX renders.
+
+`capturedComponentKeys` contains every custom MDX component name found in the
+source graph. The processor's `components` array describes which of those keys
+should become imports emitted into generated handlers.
+
+For example, a page may reference both a lightweight `Callout` component and a
+heavyweight `Chart` component:
+
+```mdx
+<Callout />
+
+<Chart />
+```
+
+The capture step reports both names:
+
+```ts
+capturedComponentKeys = ['Callout', 'Chart'];
+```
+
+If `Callout` is already available in the MDX component scope, the processor
+result can include only the generated handler entry for `Chart`:
+
+```ts
+components = [
+  {
+    key: 'Chart',
+    componentImport: ...
+  }
+];
+```
+
+In that case, `Callout` renders through the existing MDX component scope. If
+that scope does not provide it, rendering fails through the normal MDX
+application path.
+
+The validation is one-way: the processor result may contain fewer keys than were
+captured, but every returned key must have been captured from the MDX graph.
+
 ### 4. Generate or Analyze (Optional CLI)
 
 The standalone CLI generates handler artifacts or runs analysis only.

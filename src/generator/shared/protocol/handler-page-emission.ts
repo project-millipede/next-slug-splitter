@@ -184,6 +184,7 @@ const createFactoryBindingPropertiesInitializer = (
  *
  * @param componentEntries - Ordered loadable component entries selected for the
  * handler.
+ * @param factoryBindingValues - Route-level binding aliases prepared for emission.
  * @returns A writer function that emits the `createHandlerPage(...)` call.
  */
 export const createHandlerPageInitializer = (

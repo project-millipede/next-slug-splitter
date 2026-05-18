@@ -4,9 +4,10 @@
  * The processor tells next-slug-splitter how to resolve captured components
  * and which factory import to use for each heavy route.
  *
- * Component imports reference the `@demo/components` workspace package
- * directly. Each captured component key already maps to a named export from
- * that package boundary, so this variant does not need a local module-map
+ * Loadable component imports reference the `@demo/components` workspace package
+ * directly. Captured keys outside the app-owned loadable key set remain in the
+ * MDX component scope, so this variant only resolves generated handler imports
+ * for keys that should cross the loadable package boundary.
  * lookup helper.
  *
  * This variant demonstrates inline per-entry metadata. The processor keeps a
@@ -75,20 +76,33 @@ const metadataByKey = {
   }
 };
 
+const loadableComponentKeySet = new Set(Object.keys(metadataByKey));
+
+/**
+ * Determine whether one captured component key should be emitted as loadable.
+ *
+ * @param {string} key Captured component key being evaluated.
+ * @returns {boolean} `true` when the key should become a generated handler import.
+ */
+const shouldEmitLoadableComponent = key => loadableComponentKeySet.has(key);
+
 /**
  * The exported processor implements the `RouteHandlerProcessor` contract.
  *
- * Each captured key already matches a named export from
- * `@demo/components`, so `resolve` can return the final generation plan
- * directly without a module-map lookup step.
+ * Captured keys are filtered through `loadableComponentKeySet`. Omitted keys
+ * remain in the MDX component scope and are not emitted into generated handlers.
  *
  * @type {import('next-slug-splitter/next').RouteHandlerProcessor<RuntimeConfig>}
  */
 export const routeHandlerProcessor = defineRouteHandlerProcessor({
   resolve({ capturedComponentKeys }) {
+    const loadableComponentKeys = capturedComponentKeys.filter(
+      shouldEmitLoadableComponent
+    );
+
     return {
       factoryImport: relativeModule('lib/handler-factory/runtime'),
-      components: capturedComponentKeys.map(key => ({
+      components: loadableComponentKeys.map(key => ({
         key,
         componentImport: {
           source: componentsModule,

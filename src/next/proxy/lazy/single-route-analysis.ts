@@ -1,7 +1,9 @@
-import { createRouteHandlerRoutePlanner } from '../../../core/processor-runner';
+import {
+  createHeavyRoutePlanner,
+  type PlanHeavyRoute
+} from '../../../core/heavy-route-planning';
 import {
   createPersistedRouteCaptureRecord,
-  createPlannedHeavyRouteFromUsedLoadableComponentKeys,
   type PersistedRouteCaptureRecord
 } from './route-plan-record';
 
@@ -81,32 +83,47 @@ const createLazyHeavyAnalysisResult = ({
 });
 
 /**
- * Reconstruct one heavy-route analysis result from trusted Stage 1 capture
- * facts.
+ * Reconstruct one lazy analysis result from trusted Stage 1 capture facts.
+ *
+ * @remarks
+ * Stage 1 reuse persists only MDX-capture facts. It does not persist processor
+ * output, because processor resolution can depend on current app code and
+ * should be rebuilt for each valid captured-component hit.
+ *
+ * The prepared heavy-route planner reruns processor planning from the captured
+ * component keys stored in the record:
+ * 1. If processor planning emits component entries, this returns a heavy
+ *    analysis result.
+ * 2. If every captured component is omitted by the processor, this returns a
+ *    light analysis result so the route stays on the MDX component scope path.
  *
  * @param input - Reconstruction input.
- * @returns Heavy lazy single-route analysis result.
+ * @returns Lazy single-route analysis result after reconstructing processor
+ * planning from the capture record.
  */
-const createLazyHeavyAnalysisResultFromCaptureRecord = async ({
+const createLazyAnalysisResultFromCaptureRecord = async ({
   source,
   config,
   routePath,
   routeCaptureRecord,
-  planRoute
+  planHeavyRoute
 }: {
   source: 'cache' | 'fresh';
   config: RouteHandlerLazyPlannerConfig;
   routePath: LocalizedRoutePath;
   routeCaptureRecord: PersistedRouteCaptureRecord;
-  planRoute: Awaited<ReturnType<typeof createRouteHandlerRoutePlanner>>;
+  planHeavyRoute: PlanHeavyRoute;
 }): Promise<RouteHandlerLazySingleRouteAnalysisResult> => {
-  const plannedHeavyRoute =
-    await createPlannedHeavyRouteFromUsedLoadableComponentKeys(
-      routePath,
-      config,
-      routeCaptureRecord.usedLoadableComponentKeys,
-      planRoute
-    );
+  const plannedHeavyRoute = await planHeavyRoute(
+    routePath,
+    routeCaptureRecord.usedLoadableComponentKeys
+  );
+
+  if (plannedHeavyRoute == null) {
+    // No component entries were emitted, so this route remains on the MDX
+    // component scope path; lazy analysis returns a light result.
+    return createLazyLightAnalysisResult({ source, config, routePath });
+  }
 
   return createLazyHeavyAnalysisResult({
     source,
@@ -146,23 +163,20 @@ export const analyzeRouteHandlerLazyMatchedRoute = async ({
     return null;
   }
 
-  let planRoutePromise: Promise<
-    Awaited<ReturnType<typeof createRouteHandlerRoutePlanner>>
-  > | null = null;
-  const resolvePlanRoute = async (): Promise<
-    Awaited<ReturnType<typeof createRouteHandlerRoutePlanner>>
-  > => {
-    if (planRoutePromise == null) {
+  let planHeavyRoutePromise: Promise<PlanHeavyRoute> | null = null;
+  const resolvePlanHeavyRoute = async (): Promise<PlanHeavyRoute> => {
+    if (planHeavyRoutePromise == null) {
       // Stage 1 hits with empty `usedLoadableComponentKeys` return `light`
-      // immediately, so processor planner construction stays lazy and happens
-      // only when a heavy route needs in-memory reconstruction.
-      planRoutePromise = createRouteHandlerRoutePlanner({
-        rootDir: config.paths.rootDir,
-        processorConfig: config.processorConfig
-      });
+      // immediately, so heavy-route planner construction stays lazy and
+      // happens only when a heavy route needs in-memory reconstruction.
+      planHeavyRoutePromise = createHeavyRoutePlanner(
+        config.paths.rootDir,
+        config.processorConfig,
+        config
+      );
     }
 
-    return planRoutePromise;
+    return planHeavyRoutePromise;
   };
   const cachedRouteCaptureRecord =
     lazySingleRouteCacheManager.readCachedRouteCaptureRecord(config, routePath);
@@ -179,12 +193,12 @@ export const analyzeRouteHandlerLazyMatchedRoute = async ({
       });
     }
 
-    return createLazyHeavyAnalysisResultFromCaptureRecord({
+    return createLazyAnalysisResultFromCaptureRecord({
       source: 'cache',
       config,
       routePath,
       routeCaptureRecord: cachedRouteCaptureRecord,
-      planRoute: await resolvePlanRoute()
+      planHeavyRoute: await resolvePlanHeavyRoute()
     });
   }
 
@@ -209,11 +223,11 @@ export const analyzeRouteHandlerLazyMatchedRoute = async ({
     });
   }
 
-  return createLazyHeavyAnalysisResultFromCaptureRecord({
+  return createLazyAnalysisResultFromCaptureRecord({
     source: 'fresh',
     config,
     routePath,
     routeCaptureRecord,
-    planRoute: await resolvePlanRoute()
+    planHeavyRoute: await resolvePlanHeavyRoute()
   });
 };

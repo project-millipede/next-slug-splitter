@@ -1,14 +1,6 @@
 import { captureRouteHandlerComponentGraph } from '../../../core/capture';
-import {
-  sortStringArray,
-  toHandlerId,
-  toHandlerRelativePath
-} from '../../../core/discovery';
-import {
-  createRouteContext,
-  createRouteHandlerRoutePlanner
-} from '../../../core/processor-runner';
-import type { LocalizedRoutePath, PlannedHeavyRoute } from '../../../core/types';
+import { sortStringArray } from '../../../core/discovery';
+import type { LocalizedRoutePath } from '../../../core/types';
 import {
   isObjectRecordOf,
   isStringArray,
@@ -53,7 +45,22 @@ export type PersistedRouteCaptureRecord = {
    */
   version: number;
   /**
-   * Sorted component keys captured from the reachable MDX graph.
+   * Sorted custom component names captured from the reachable MDX graph.
+   *
+   * Stage 1 predates processor-level filtering and keeps this persisted field
+   * name for cache compatibility. The values are captured before processor
+   * filtering runs.
+   *
+   * Cached here:
+   * Every custom component name found during MDX capture, including names that
+   * the processor may later omit from generated handler emission.
+   *
+   * Not cached here:
+   * 1. processor-selected component entries emitted into generated handlers.
+   * 2. the final heavy/light route classification after processor filtering.
+   *
+   * Example: a page using `<Callout />` and `<Chart />` stores both names here,
+   * even if only `Chart` is later emitted into a generated handler.
    */
   usedLoadableComponentKeys: Array<string>;
   /**
@@ -179,82 +186,5 @@ export const createPersistedRouteCaptureRecord = async (
       routePath.filePath,
       transitiveModulePaths
     )
-  };
-};
-
-/**
- * Build the derived non-processor fields for one heavy route.
- *
- * @param routePath - Localized route file being planned.
- * @param config - Fully resolved target config used for planning.
- * @param usedLoadableComponentKeys - Captured component keys for the route.
- * @returns Derived heavy-route fields that do not depend on processor output.
- */
-const createPlannedHeavyRouteBase = (
-  routePath: LocalizedRoutePath,
-  config: RouteHandlerLazyPlannerConfig,
-  usedLoadableComponentKeys: Array<string>
-): Omit<
-  PlannedHeavyRoute,
-  'factoryImport' | 'factoryBindings' | 'componentEntries'
-> => ({
-  locale: routePath.locale,
-  slugArray: routePath.slugArray,
-  handlerId: toHandlerId(routePath.locale, routePath.slugArray),
-  handlerRelativePath: toHandlerRelativePath(
-    routePath.locale,
-    routePath.slugArray,
-    {
-      includeLocaleLeaf: config.contentLocaleMode !== 'default-locale'
-    }
-  ),
-  usedLoadableComponentKeys
-});
-
-/**
- * Reconstruct one in-memory heavy-route plan from cached component keys.
- *
- * @remarks
- * This helper intentionally performs processor planning fresh every time it is
- * called. Stage 1 reuse persists only MDX-capture facts, so heavy-route
- * processor output is reconstructed in memory on each valid heavy hit.
- *
- * @param routePath - Localized route file being planned.
- * @param config - Fully resolved target config used for planning.
- * @param usedLoadableComponentKeys - Captured component keys trusted from the
- * Stage 1 cache hit or freshly captured on a miss.
- * @param planRoute - Prepared processor-backed route planner.
- * @returns Fully planned heavy route for one localized content file.
- */
-export const createPlannedHeavyRouteFromUsedLoadableComponentKeys = async (
-  routePath: LocalizedRoutePath,
-  config: RouteHandlerLazyPlannerConfig,
-  usedLoadableComponentKeys: Array<string>,
-  planRoute: Awaited<ReturnType<typeof createRouteHandlerRoutePlanner>>
-): Promise<PlannedHeavyRoute> => {
-  const plannedRouteBase = createPlannedHeavyRouteBase(
-    routePath,
-    config,
-    usedLoadableComponentKeys
-  );
-  const route = createRouteContext({
-    filePath: routePath.filePath,
-    handlerId: plannedRouteBase.handlerId,
-    handlerRelativePath: plannedRouteBase.handlerRelativePath,
-    locale: routePath.locale,
-    routeBasePath: config.routeBasePath,
-    slugArray: routePath.slugArray,
-    targetId: config.targetId
-  });
-  const { factoryImport, factoryBindings, componentEntries } = await planRoute({
-    route,
-    capturedComponentKeys: usedLoadableComponentKeys
-  });
-
-  return {
-    ...plannedRouteBase,
-    factoryImport,
-    factoryBindings,
-    componentEntries
   };
 };

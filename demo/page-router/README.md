@@ -37,19 +37,19 @@ Every docs page loads **~1250 kB** — the combined weight of all component depe
 
 ## The Solution
 
-next-slug-splitter scans MDX content at build time, detects which pages actually reference heavy components, and generates dedicated route handlers for those pages only. Light pages continue to use the catch-all route — but with an empty component registry, so their bundle stays minimal.
+next-slug-splitter scans MDX content at build time, filters captured component names through the app-owned loadable key set, and generates dedicated route handlers only for pages that need generated handler imports. Light pages continue to use the catch-all route — but with an empty loadable registry, so their bundle stays minimal.
 
-The result is **per-page component scoping**: each page bundles only the components it actually uses.
+The result is **per-page component scoping**: each page bundles only the loadable components it actually uses.
 
 ### Example build output with next-slug-splitter
 
-| Page            | Route                   | Components       | Illustrative Bundle Size |
-| --------------- | ----------------------- | ---------------- | ------------------------ |
-| Home            | `/`                     | —                | 127 kB                   |
-| Getting Started | `/docs/getting-started` | none (light)     | 141 kB                   |
-| Tutorial        | `/docs/tutorial`        | none (light)     | 141 kB                   |
-| Interactive     | `/docs/interactive`     | Counter          | 266 kB                   |
-| Dashboard       | `/docs/dashboard`       | Chart, DataTable | 1250 kB                  |
+| Page            | Route                   | Generated Imports             | Illustrative Bundle Size |
+| --------------- | ----------------------- | ----------------------------- | ------------------------ |
+| Home            | `/`                     | —                             | 127 kB                   |
+| Getting Started | `/docs/getting-started` | none                          | 141 kB                   |
+| Tutorial        | `/docs/tutorial`        | none (`Callout` in MDX scope) | 141 kB                   |
+| Interactive     | `/docs/interactive`     | Counter                       | 266 kB                   |
+| Dashboard       | `/docs/dashboard`       | Chart, DataTable              | 1250 kB                  |
 
 The important signal is the shape of the result: light pages no longer inherit
 the heavy component graph, intermediate pages pay only for the components they
@@ -59,9 +59,9 @@ The ballast files in this demo simulate realistic dependency sizes (visualizatio
 
 ### How it works
 
-**Light pages** are served by the catch-all `pages/docs/[...slug].tsx` with an empty component registry — no heavy code is bundled.
+**Light pages** are served by the catch-all `pages/docs/[...slug].tsx` with an empty loadable registry. They can still render lightweight components from the MDX component scope, such as `Callout`.
 
-**Heavy pages** get auto-generated handlers in `pages/docs/generated-handlers/` that import only the specific components they need:
+**Heavy pages** get auto-generated handlers in `pages/docs/generated-handlers/` that import only the specific loadable components they need:
 
 - `generated-handlers/interactive.tsx` bundles only `Counter`
 - `generated-handlers/dashboard.tsx` bundles only `Chart` + `DataTable`
@@ -108,7 +108,7 @@ pnpm build:ts
 
 Compare the bundle sizes in the build output:
 
-- **Light pages** (`getting-started`, `tutorial`) — minimal JS, no component code
+- **Light pages** (`getting-started`, `tutorial`) — minimal JS, no loadable component code
 - **Heavy pages** (`interactive`, `dashboard`) — include only their specific components
 
 ### Generated handlers
@@ -121,11 +121,11 @@ pages/docs/generated-handlers/
 └── dashboard.tsx     ← imports only Chart + DataTable
 ```
 
-These files are auto-generated and gitignored. Each one imports exactly the components that its page needs — nothing more.
+These files are auto-generated and gitignored. Each one imports exactly the loadable components that its page needs — nothing more.
 
 ### The catch-all route
 
-`pages/docs/[...slug].tsx` uses `withHeavyRouteFilter` to exclude slugs that are already served by generated handlers, preventing duplicate routes. Its `loadableRegistrySubset` is empty, so no component code is bundled.
+`pages/docs/[...slug].tsx` uses `withHeavyRouteFilter` to exclude slugs that are already served by generated handlers, preventing duplicate routes. Its `loadableRegistrySubset` is empty, so no loadable component code is bundled.
 
 In the Pages Router path, that same catch-all page module is also the route
 contract. Generated heavy handlers reuse its `getStaticProps` contract instead
@@ -153,15 +153,16 @@ The default demo path uses `config-variants/javascript/`.
 An optional TypeScript authoring variant lives in
 `config-variants/typescript/`.
 
-Both center on the same package boundary:
+Both center on the same loadable package boundary:
 
 ```js
 const componentsModule = packageModule('@demo/components');
 ```
 
-Every captured component key already maps to a named export from that workspace
-package, so the processor can emit direct package imports without maintaining a
-local module registry.
+Loadable components that may be emitted into generated handlers live behind the
+`@demo/components` package boundary. Captured names outside that set, such as
+`Callout`, are provided through the MDX component scope and are not emitted into
+generated handlers.
 
 The JavaScript and TypeScript variants stay behaviorally aligned:
 both attach the same runtime-trait metadata and use the same runtime-aware
@@ -205,7 +206,7 @@ Pages-specific and which belong to the shared proxy/readiness layer, see
 ├── config-variants/         ← source-of-truth demo variant configs
 ├── content/pages/           ← MDX content files
 │   ├── getting-started.mdx  ← light (pure Markdown)
-│   ├── tutorial.mdx         ← light (pure Markdown)
+│   ├── tutorial.mdx         ← light (uses <Callout /> from MDX scope)
 │   ├── interactive.mdx      ← heavy (uses <Counter />)
 │   └── dashboard.mdx        ← heavy (uses <Chart />, <DataTable />)
 ├── lib/

@@ -4,9 +4,10 @@
  * The processor tells next-slug-splitter how to resolve captured components
  * and which factory import to use for each heavy route.
  *
- * Component imports reference the `@demo/components` workspace package
- * directly. Each captured component key already maps to a named export from
- * that package boundary, so this variant does not need a local module-map
+ * Loadable component imports reference the `@demo/components` workspace package
+ * directly. Captured keys outside the app-owned loadable key set remain in the
+ * MDX component scope, so this variant only resolves generated handler imports
+ * for keys that should cross the loadable package boundary.
  * lookup helper.
  *
  * This variant demonstrates inline per-entry metadata. The processor keeps a
@@ -65,11 +66,32 @@ const metadataByKey: Readonly<
   }
 };
 
+const loadableComponentKeySet = new Set(Object.keys(metadataByKey));
+
+/**
+ * Determine whether one captured component key should be emitted as loadable.
+ *
+ * @param key - Captured component key being evaluated.
+ * @returns `true` when the key should become a generated handler import.
+ */
+const shouldEmitLoadableComponent = (key: string): boolean =>
+  loadableComponentKeySet.has(key);
+
+/**
+ * The exported processor implements the `RouteHandlerProcessor` contract.
+ *
+ * Captured keys are filtered through `loadableComponentKeySet`. Omitted keys
+ * remain in the MDX component scope and are not emitted into generated handlers.
+ */
 export const routeHandlerProcessor = defineRouteHandlerProcessor<RuntimeConfig>({
   resolve({ capturedComponentKeys }) {
+    const loadableComponentKeys = capturedComponentKeys.filter(
+      shouldEmitLoadableComponent
+    );
+
     return {
       factoryImport: relativeModule('lib/handler-factory/runtime'),
-      components: capturedComponentKeys.map(key => ({
+      components: loadableComponentKeys.map(key => ({
         key,
         componentImport: {
           source: componentsModule,

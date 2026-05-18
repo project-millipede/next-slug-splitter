@@ -38,7 +38,7 @@ const pages: PageEntry[] = [
     slug: 'tutorial',
     title: 'Tutorial',
     kind: 'light',
-    description: 'Pure Markdown — no custom React components'
+    description: 'Uses <Callout /> from the MDX component scope'
   },
   {
     slug: 'interactive',
