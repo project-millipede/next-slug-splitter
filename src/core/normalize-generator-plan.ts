@@ -1,4 +1,7 @@
-import { isModuleReference, normalizeModuleReference } from '../module-reference';
+import {
+  isModuleReference,
+  normalizeModuleReference
+} from '../module-reference';
 import { createPipelineError } from '../utils/errors';
 import {
   isObjectRecord,
@@ -81,7 +84,10 @@ export const normalizeGeneratorPlan = ({
   const factoryBindings =
     rawFactoryBindings == null
       ? undefined
-      : parseFactoryBindings(rawFactoryBindings, `Processor for ${routeLabel} factoryBindings`);
+      : parseFactoryBindings(
+          rawFactoryBindings,
+          `Processor for ${routeLabel} factoryBindings`
+        );
   const resolvedFactoryBindings =
     factoryBindings == null
       ? undefined
@@ -112,7 +118,10 @@ export const normalizeGeneratorPlan = ({
       );
     }
 
-    returnedComponentsByKey.set(key, component as RouteHandlerGeneratorComponent);
+    returnedComponentsByKey.set(
+      key,
+      component as RouteHandlerGeneratorComponent
+    );
   }
 
   const capturedKeySet = new Set(capturedComponentKeys);
@@ -124,20 +133,24 @@ export const normalizeGeneratorPlan = ({
     }
   }
 
-  const componentEntries = capturedComponentKeys.map(key => {
+  const componentEntries: Array<LoadableComponentEntry> = [];
+  for (const key of capturedComponentKeys) {
     const component = returnedComponentsByKey.get(key);
     if (component == null) {
-      throw createPipelineError(
-        `Processor for ${routeLabel} is missing captured component key "${key}".`
-      );
+      // 1. Processor-returned component entries are emitted.
+      // 2. Captured keys absent from the returned list stay outside generated
+      //    handlers and must be supplied by the consuming app when MDX renders.
+      continue;
     }
 
-    return normalizeComponentEntry({
-      rootDir,
-      routeLabel,
-      component
-    });
-  });
+    componentEntries.push(
+      normalizeComponentEntry({
+        rootDir,
+        routeLabel,
+        component
+      })
+    );
+  }
 
   return {
     factoryImport,

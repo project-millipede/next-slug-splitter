@@ -155,7 +155,7 @@ export type HeavyRouteCandidate = RouteIdentity & {
   handlerRelativePath: string;
 
   /**
-   * Loadable component keys referenced by this route's content.
+   * Component keys emitted into this route's generated handler.
    */
   usedLoadableComponentKeys: Array<string>;
 };
@@ -436,12 +436,13 @@ export type RouteHandlerGeneratorPlan<TMeta = JsonObject> = {
 /**
  * Generic app-owned processor contract.
  *
- * A processor is a route-local transformer that the library calls once per
- * heavy route.
+ * A processor is a route-local transformer that the library calls after MDX
+ * capture finds custom component names for one route.
  */
 export type RouteHandlerProcessor<TMeta = JsonObject> = {
   /**
-   * Produce the generation plan for one heavy route.
+   * Produce the generated-handler emission plan for one captured-component
+   * route.
    *
    * Receives the route context and captured component keys. Returns which
    * components to import, from where, and which factory module the generated

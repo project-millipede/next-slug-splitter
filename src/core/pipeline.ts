@@ -4,14 +4,9 @@ import { captureRouteHandlerComponentGraph } from './capture';
 import {
   compareLocalizedRouteIdentity,
   discoverLocalizedContentRoutes,
-  sortStringArray,
-  toHandlerId,
-  toHandlerRelativePath
+  sortStringArray
 } from './discovery';
-import {
-  createRouteContext,
-  createRouteHandlerRoutePlanner
-} from './processor-runner';
+import { createHeavyRoutePlanner } from './heavy-route-planning';
 
 import type {
   ContentLocaleMode,
@@ -99,10 +94,11 @@ export const executeRouteHandlerPipeline = async (
     localeConfig,
     config.contentLocaleMode
   );
-  const planRoute = await createRouteHandlerRoutePlanner({
-    rootDir: config.paths.rootDir,
-    processorConfig: config.processorConfig
-  });
+  const planHeavyRoute = await createHeavyRoutePlanner(
+    config.paths.rootDir,
+    config.processorConfig,
+    config
+  );
 
   const plannedHeavyRoutes: Array<PlannedHeavyRoute> = [];
   for (const routePath of routePaths) {
@@ -110,45 +106,27 @@ export const executeRouteHandlerPipeline = async (
       routePath.filePath,
       config.runtime?.mdxCompileOptions
     );
-    const usedLoadableComponentKeys = sortStringArray(usedComponentNames);
 
-    if (usedLoadableComponentKeys.length === 0) {
+    // Capture reports every MDX component name. The heavy-route planner keeps
+    // only component entries that should be emitted into generated handlers.
+    const capturedComponentKeys = sortStringArray(usedComponentNames);
+
+    if (capturedComponentKeys.length === 0) {
       continue;
     }
 
-    const handlerId = toHandlerId(routePath.locale, routePath.slugArray);
-    const handlerRelativePath = toHandlerRelativePath(
-      routePath.locale,
-      routePath.slugArray,
-      {
-        includeLocaleLeaf: config.contentLocaleMode !== 'default-locale'
-      }
+    const plannedHeavyRoute = await planHeavyRoute(
+      routePath,
+      capturedComponentKeys
     );
-    const route = createRouteContext({
-      filePath: routePath.filePath,
-      handlerId,
-      handlerRelativePath,
-      locale: routePath.locale,
-      routeBasePath: config.routeBasePath,
-      slugArray: routePath.slugArray,
-      targetId: config.targetId
-    });
-    const { factoryImport, factoryBindings, componentEntries } =
-      await planRoute({
-        route,
-        capturedComponentKeys: usedLoadableComponentKeys
-      });
 
-    plannedHeavyRoutes.push({
-      locale: routePath.locale,
-      slugArray: routePath.slugArray,
-      handlerId,
-      handlerRelativePath,
-      usedLoadableComponentKeys,
-      factoryImport,
-      factoryBindings,
-      componentEntries
-    });
+    if (plannedHeavyRoute == null) {
+      // No component entries were emitted, so this route remains on the MDX
+      // component scope path; eager generation skips handler emission.
+      continue;
+    }
+
+    plannedHeavyRoutes.push(plannedHeavyRoute);
   }
 
   plannedHeavyRoutes.sort(compareLocalizedRouteIdentity);
