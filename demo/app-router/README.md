@@ -36,14 +36,6 @@ That route-owned contract owns:
 - static param enumeration
 - page-facing helpers (`loadPageProps`, `generatePageMetadata`)
 
-This is intentionally aligned to the Pages worker principle:
-
-- workers own request routing, one-file analysis, one-file emission, and rewrite readiness
-- workers do not own App page semantics
-- public pages and generated heavy pages call the route contract directly
-- App page data is loaded directly through the route contract and the isolated
-  page-data compiler worker
-
 ## Quick Start
 
 ```bash
