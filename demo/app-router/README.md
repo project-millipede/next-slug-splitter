@@ -223,14 +223,14 @@ optional TypeScript variant.
 ```text
 .
 ├── app/
+│   ├── docs/
+│   │   ├── generated-handlers/ ← auto-generated heavy page handlers
+│   │   └── [...slug]/
+│   │   │   ├── page.tsx          ← public light catch-all page
+│   │   │   └── route-contract.ts ← route-owned shared contract
 │   ├── layout.tsx          ← shared layout shell
-│   ├── page.tsx            ← landing page with page listing
 │   ├── not-found.tsx       ← app-router not-found boundary
-│   └── docs/
-│       ├── [...slug]/
-│       │   ├── page.tsx          ← public light catch-all page
-│       │   └── route-contract.ts ← route-owned shared contract
-│       └── generated-handlers/ ← auto-generated heavy page handlers
+│   └── page.tsx            ← landing page with page listing
 ├── config-variants/        ← source-of-truth demo variant configs
 ├── content/pages/          ← MDX content files
 │   ├── getting-started.mdx  ← light (pure Markdown)
@@ -239,16 +239,9 @@ optional TypeScript variant.
 │   └── dashboard.mdx        ← heavy (uses <Chart />, <DataTable />)
 ├── lib/
 │   ├── components/         ← React components with simulated ballast
-│   ├── content.ts          ← page-safe typed content discovery helpers
 │   ├── handler-factory/    ← shared page component factory
-│   └── mdx-runtime.tsx     ← MDX evaluation runtime
-├── config-variants/
-│   ├── javascript/
-│   │   ├── handler-processor.mjs  ← JS handler processor loaded directly
-│   │   └── content-compiler.mjs   ← JS page-data compiler loaded directly
-│   └── typescript/
-│       ├── handler-processor.ts   ← TS handler processor prepared to `dist/`
-│       └── content-compiler.ts    ← TS page-data compiler prepared to `dist/`
+│   ├── content.ts          ← content discovery helpers
+│   └── mdx-runtime.tsx     ← client-side MDX evaluation runtime
 └── scripts/
     ├── generate-ballast.mjs ← creates simulated heavy dependencies
     ├── clean-handlers.mjs   ← removes generated handlers before rebuild
