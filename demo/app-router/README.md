@@ -222,28 +222,28 @@ optional TypeScript variant.
 
 ```text
 .
-├── app/
-│   ├── docs/
-│   │   ├── generated-handlers/ ← auto-generated heavy page handlers
-│   │   └── [...slug]/
-│   │   │   ├── page.tsx          ← public light catch-all page
-│   │   │   └── route-contract.ts ← route-owned shared contract
-│   ├── layout.tsx          ← shared layout shell
-│   ├── not-found.tsx       ← app-router not-found boundary
-│   └── page.tsx            ← landing page with page listing
-├── config-variants/        ← source-of-truth demo variant configs
-├── content/pages/          ← MDX content files
-│   ├── getting-started.mdx  ← light (pure Markdown)
-│   ├── tutorial.mdx         ← light (uses <Callout /> from MDX scope)
-│   ├── interactive.mdx      ← heavy (uses <Counter />)
-│   └── dashboard.mdx        ← heavy (uses <Chart />, <DataTable />)
-├── lib/
-│   ├── components/         ← React components with simulated ballast
-│   ├── handler-factory/    ← shared page component factory
-│   ├── content.ts          ← content discovery helpers
-│   └── mdx-runtime.tsx     ← client-side MDX evaluation runtime
-└── scripts/
-    ├── generate-ballast.mjs ← creates simulated heavy dependencies
-    ├── clean-handlers.mjs   ← removes generated handlers before rebuild
-    └── erase-generated-dev-state.mjs ← full demo reset for generated dev artifacts
+├── app
+│   ├── docs
+│   │   ├── generated-handlers          ← auto-generated heavy page handlers
+│   │   └── [...slug]
+│   │       ├── page.tsx                ← public light catch-all page
+│   │       └── route-contract.ts       ← route-owned shared contract
+│   ├── layout.tsx                      ← shared layout shell
+│   ├── not-found.tsx                   ← app-router not-found boundary
+│   └── page.tsx                        ← landing page with page listing
+├── config-variants                     ← source-of-truth demo variant configs
+├── content/pages                       ← MDX content files
+│   ├── getting-started.mdx             ← light (pure Markdown)
+│   ├── tutorial.mdx                    ← light (uses <Callout /> from MDX scope)
+│   ├── interactive.mdx                 ← heavy (uses <Counter />)
+│   └── dashboard.mdx                   ← heavy (uses <Chart />, <DataTable />)
+├── lib
+│   ├── components                      ← React components with simulated ballast
+│   ├── handler-factory                 ← shared page component factory
+│   ├── content.ts                      ← content discovery helpers
+│   └── mdx-runtime.tsx                 ← client-side MDX evaluation runtime
+└── scripts
+    ├── generate-ballast.mjs            ← creates simulated heavy dependencies
+    ├── clean-handlers.mjs              ← removes generated handlers before rebuild
+    └── erase-generated-dev-state.mjs   ← full demo reset for generated dev artifacts
 ```
