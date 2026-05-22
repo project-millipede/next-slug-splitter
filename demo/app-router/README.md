@@ -132,66 +132,13 @@ The library then derives `app/docs/generated-handlers/` internally.
 
 ### The demo target config
 
-The App demo uses `createAppCatchAllRouteHandlersPreset(...)`, so the target
-config stays close to the Pages Router demo while still making the route-owned
-contract explicit.
+This demo uses the App Router catch-all preset documented in the top-level
+[README](../../README.md#app-router-catch-all-targets).
 
-Conceptually, the target looks like this:
-
-```ts
-createAppCatchAllRouteHandlersPreset({
-  routeSegment: 'docs',
-  handlerRouteParam: { name: 'slug', kind: 'catch-all' },
-  contentDir: path.join(rootDir, 'content', 'pages'),
-  contentLocaleMode: 'default-locale',
-  routeContract: relativeModule('app/docs/[...slug]/route-contract'),
-  handlerBinding: {
-    processorImport: relativeModule('dist/handler-processor'),
-    pageDataCompilerImport: relativeModule(
-      'config-variants/javascript/content-compiler.mjs'
-    )
-  }
-});
-```
-
-The preset derives the repetitive App target plumbing for the demo:
-
-- `targetId`
-- `routeBasePath`
-- generated App handler params always use `handlerRouteParam.name`
-- `contentDir` as the source MDX/content root
-- `generatedRootDir` as `app/docs`
-
-The App-specific route contract stays explicit:
-
-- `routeContract` is the dedicated `app/docs/[...slug]/route-contract.ts`
-  module imported by the light page and generated heavy pages
-- that same file also owns route enumeration through `getStaticParams`, unlike
-  the Pages Router path where enumeration stays on the catch-all page's
-  `getStaticPaths`
-- `handlerBinding.pageDataCompilerImport` points at the app-owned compiler
-  module that the library executes in an isolated worker
-- omitting `routeHandlersConfig.app.localeConfig` keeps the demo in
-  single-locale mode
-
-For the full Pages-vs-App route-contract comparison, see the comparison table
-in the top-level [README](../../README.md).
-
-The demo uses:
-
-```ts
-app: {
-  rootDir;
-}
-```
-
-That does not remove locale semantics internally. The library normalizes
-single-locale App Router setups to a private internal locale identity so
-worker-side routing and static-param filtering can still reason about locale
-without exposing a synthetic public locale code.
-
-The underlying compilation architecture is described in
-`docs/architecture/content-compilation.md`.
+The App-specific pieces are the dedicated
+`app/docs/[...slug]/route-contract.ts` module and the `pageDataCompilerImport`
+used by that route contract. Generated heavy pages are emitted under
+`app/docs/generated-handlers/`.
 
 ### The catch-all route
 
