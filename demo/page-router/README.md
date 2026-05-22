@@ -1,4 +1,4 @@
-# next-slug-splitter Demo
+# next-slug-splitter Pages Router Demo
 
 Minimal Next.js Pages Router app that demonstrates how **next-slug-splitter** separates light and heavy MDX pages into optimized route handlers — reducing client-side bundle size for pages that don't need heavy components.
 
@@ -37,7 +37,7 @@ Every docs page loads **~1250 kB** — the combined weight of all component depe
 
 ## The Solution
 
-next-slug-splitter scans MDX content at build time, filters captured component names through the app-owned loadable key set, and generates dedicated route handlers only for pages that need generated handler imports. Light pages continue to use the catch-all route — but with an empty loadable registry, so their bundle stays minimal.
+next-slug-splitter scans MDX content at build time, filters captured component names through the app-owned loadable key set, and generates dedicated handlers only for pages that need generated handler imports. Light pages continue to use the catch-all route — but with an empty loadable registry, so their bundle stays minimal.
 
 The result is **per-page component scoping**: each page bundles only the loadable components it actually uses.
 
@@ -76,7 +76,7 @@ pnpm install
 cd demo/page-router
 pnpm dev
 
-# Optional: exercise the TypeScript config instead
+# Optional: exercise the TypeScript variant instead
 pnpm dev:ts
 ```
 

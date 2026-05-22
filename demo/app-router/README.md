@@ -21,9 +21,50 @@ export default async function DocsPage() {
 
 That makes every docs page share one component surface. Even pure-Markdown pages that never render these components inherit the full import graph.
 
+With the conventional approach, this demo's build output would look roughly
+like this. The exact numbers are illustrative and can move with Next.js,
+React, and the generated ballast files:
+
+| Page            | Route                   | Bundle Size  |
+| --------------- | ----------------------- | ------------ |
+| Home            | `/`                     | 127 kB       |
+| Getting Started | `/docs/getting-started` | **~1250 kB** |
+| Tutorial        | `/docs/tutorial`        | **~1250 kB** |
+| Interactive     | `/docs/interactive`     | **~1250 kB** |
+| Dashboard       | `/docs/dashboard`       | **~1250 kB** |
+
+Every docs page loads **~1250 kB** — the combined weight of all component dependencies — regardless of whether it actually uses any of them.
+
 ## The Solution
 
-next-slug-splitter scans MDX content at build time, filters captured component names through the app-owned loadable key set, and generates dedicated handler pages only for routes that need generated handler imports. Light pages continue to use the catch-all route — but with an empty loadable registry, so their bundle stays minimal.
+next-slug-splitter scans MDX content at build time, filters captured component names through the app-owned loadable key set, and generates dedicated handlers only for pages that need generated handler imports. Light pages continue to use the catch-all route — but with an empty loadable registry, so their bundle stays minimal.
+
+The result is **per-page component scoping**: each page bundles only the loadable components it actually uses.
+
+### Example build output with next-slug-splitter
+
+| Page            | Route                   | Generated Imports             | Illustrative Bundle Size |
+| --------------- | ----------------------- | ----------------------------- | ------------------------ |
+| Home            | `/`                     | —                             | 127 kB                   |
+| Getting Started | `/docs/getting-started` | none                          | 141 kB                   |
+| Tutorial        | `/docs/tutorial`        | none (`Callout` in MDX scope) | 141 kB                   |
+| Interactive     | `/docs/interactive`     | Counter                       | 266 kB                   |
+| Dashboard       | `/docs/dashboard`       | Chart, DataTable              | 1250 kB                  |
+
+The important signal is the shape of the result: light pages no longer inherit
+the heavy component graph, intermediate pages pay only for the components they
+use, and only the genuinely heavy page pays the full cost.
+
+The ballast files in this demo simulate realistic dependency sizes (visualization libraries, data grids) and are generated at dev/build time by `scripts/generate-ballast.mjs`.
+
+### How it works
+
+**Light pages** are served by the catch-all `app/docs/[...slug]/page.tsx` with an empty loadable registry. They can still render lightweight components from the MDX component scope, such as `Callout`.
+
+**Heavy pages** get auto-generated handlers in `app/docs/generated-handlers/` that import only the specific loadable components they need:
+
+- `generated-handlers/interactive/page.tsx` bundles only `Counter`
+- `generated-handlers/dashboard/page.tsx` bundles only `Chart` + `DataTable`
 
 For the App Router path, both sides delegate to one route-owned contract:
 
@@ -46,7 +87,7 @@ pnpm install
 cd demo/app-router
 pnpm dev
 
-# Optional: exercise the TypeScript processor config instead
+# Optional: exercise the TypeScript variant instead
 pnpm dev:ts
 ```
 
@@ -57,7 +98,7 @@ The default `dev` script automatically:
 3. Starts the Next.js dev server
 
 Use `pnpm dev:ts` if you want to run the same demo through the optional
-TypeScript processor variant instead.
+TypeScript variant instead.
 
 This demo is also used for local Next.js integration work. If its
 `package.json` points `next` at an absolute local checkout, either use that
@@ -91,7 +132,7 @@ The library then derives `app/docs/generated-handlers/` internally.
 
 ### The demo target config
 
-The App demo now uses `createAppCatchAllRouteHandlersPreset(...)`, so the target
+The App demo uses `createAppCatchAllRouteHandlersPreset(...)`, so the target
 config stays close to the Pages Router demo while still making the route-owned
 contract explicit.
 
