@@ -1,6 +1,6 @@
 # next-slug-splitter App Router Demo
 
-Minimal Next.js App Router app that demonstrates how **next-slug-splitter** separates light and heavy MDX pages into optimized route handlers while keeping one route-owned contract beside the public catch-all page.
+Minimal Next.js App Router app that demonstrates how **next-slug-splitter** separates light and heavy MDX pages into optimized route handlers — reducing client-side bundle size for pages that don't need heavy components.
 
 ## The Problem
 
@@ -8,9 +8,9 @@ MDX-based content sites frequently need interactive components embedded alongsid
 
 ```tsx
 // app/docs/[...slug]/page.tsx — the conventional approach
-import { Counter } from '../../components/counter';
-import { Chart } from '../../components/chart';
-import { DataTable } from '../../components/data-table';
+import { Counter } from '../../components/counter'; // ~1 MB dependency
+import { Chart } from '../../components/chart'; // ~3 MB dependency
+import { DataTable } from '../../components/data-table'; // ~6 MB dependency
 
 const components = { Counter, Chart, DataTable };
 
@@ -19,7 +19,7 @@ export default async function DocsPage() {
 }
 ```
 
-That makes every docs page share one component surface. Even pure-Markdown pages that never render these components inherit the full import graph.
+That makes every docs page share one component surface. Even pure-Markdown pages that never render any of these components inherit the full import graph.
 
 With the conventional approach, this demo's build output would look roughly
 like this. The exact numbers are illustrative and can move with Next.js,
@@ -66,7 +66,7 @@ The ballast files in this demo simulate realistic dependency sizes (visualizatio
 - `generated-handlers/interactive/page.tsx` bundles only `Counter`
 - `generated-handlers/dashboard/page.tsx` bundles only `Chart` + `DataTable`
 
-For the App Router path, both sides delegate to one route-owned contract:
+For the App Router path, `app/docs/[...slug]/route-contract.ts` is shared by the public light page and the generated heavy pages:
 
 - the light page at `app/docs/[...slug]/page.tsx`
 - generated heavy pages under `app/docs/generated-handlers/`
@@ -110,6 +110,22 @@ Pages-only quirks, and shared readiness safeguards, see
 [`docs/architecture/router-behavior-matrix.md`](../../docs/architecture/router-behavior-matrix.md).
 
 ## What to Look At
+
+### Bundle size difference
+
+Run a production build and inspect the output:
+
+```bash
+pnpm build
+
+# Optional: build the TypeScript variant instead
+pnpm build:ts
+```
+
+Compare the bundle sizes in the build output:
+
+- **Light pages** (`getting-started`, `tutorial`) — minimal JS, no loadable component code
+- **Heavy pages** (`interactive`, `dashboard`) — include only their specific components
 
 ### Generated handlers
 

@@ -19,7 +19,7 @@ export default function DocsPage({ code }) {
 }
 ```
 
-There is no other practical option within the Pages Router — every page served by this route shares a single bundle. Even pure-Markdown pages that never render any of these components inherit the full import graph.
+That makes every docs page share one component surface. Even pure-Markdown pages that never render any of these components inherit the full import graph.
 
 With the conventional approach, this demo's build output would look roughly
 like this. The exact numbers are illustrative and can move with Next.js,
