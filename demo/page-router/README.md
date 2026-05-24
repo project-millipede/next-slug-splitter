@@ -1,4 +1,4 @@
-# next-slug-splitter Demo
+# next-slug-splitter Pages Router Demo
 
 Minimal Next.js Pages Router app that demonstrates how **next-slug-splitter** separates light and heavy MDX pages into optimized route handlers — reducing client-side bundle size for pages that don't need heavy components.
 
@@ -19,7 +19,7 @@ export default function DocsPage({ code }) {
 }
 ```
 
-There is no other practical option within the Pages Router — every page served by this route shares a single bundle. Even pure-Markdown pages that never render any of these components inherit the full import graph.
+That makes every docs page share one component surface. Even pure-Markdown pages that never render any of these components inherit the full import graph.
 
 With the conventional approach, this demo's build output would look roughly
 like this. The exact numbers are illustrative and can move with Next.js,
@@ -37,7 +37,7 @@ Every docs page loads **~1250 kB** — the combined weight of all component depe
 
 ## The Solution
 
-next-slug-splitter scans MDX content at build time, filters captured component names through the app-owned loadable key set, and generates dedicated route handlers only for pages that need generated handler imports. Light pages continue to use the catch-all route — but with an empty loadable registry, so their bundle stays minimal.
+next-slug-splitter scans MDX content at build time, filters captured component names through the app-owned loadable key set, and generates dedicated handlers only for pages that need generated handler imports. Light pages continue to use the catch-all route — but with an empty loadable registry, so their bundle stays minimal.
 
 The result is **per-page component scoping**: each page bundles only the loadable components it actually uses.
 
@@ -76,7 +76,7 @@ pnpm install
 cd demo/page-router
 pnpm dev
 
-# Optional: exercise the TypeScript config instead
+# Optional: exercise the TypeScript variant instead
 pnpm dev:ts
 ```
 
@@ -201,28 +201,28 @@ Pages-specific and which belong to the shared proxy/readiness layer, see
 
 ## Project Structure
 
-```
+```text
 .
-├── config-variants/         ← source-of-truth demo variant configs
-├── content/pages/           ← MDX content files
-│   ├── getting-started.mdx  ← light (pure Markdown)
-│   ├── tutorial.mdx         ← light (uses <Callout /> from MDX scope)
-│   ├── interactive.mdx      ← heavy (uses <Counter />)
-│   └── dashboard.mdx        ← heavy (uses <Chart />, <DataTable />)
-├── lib/
-│   ├── components/          ← React components with simulated ballast
-│   ├── content.ts           ← MDX file discovery and compilation
-│   ├── handler-factory/     ← shared page component factory
-│   └── mdx-runtime.tsx      ← client-side MDX evaluation
-├── pages/
-│   ├── _app.tsx             ← shared layout shell
-│   ├── index.tsx            ← landing page with page listing
-│   ├── 404.tsx              ← dev-only retry workaround for transient lazy-route 404s
-│   └── docs/
-│       ├── [...slug].tsx    ← catch-all for light pages
-│       └── generated-handlers/ ← auto-generated heavy page handlers
-└── scripts/
-    ├── generate-ballast.mjs ← creates simulated heavy dependencies
-    ├── clean-handlers.mjs   ← removes generated handlers before rebuild
-    └── erase-generated-dev-state.mjs ← full demo reset for generated dev artifacts
+├── pages
+│   ├── docs
+│   │   ├── generated-handlers          ← auto-generated heavy page handlers
+│   │   └── [...slug].tsx               ← public light catch-all page
+│   ├── 404.tsx                         ← dev-only retry workaround for transient lazy-route 404s
+│   ├── _app.tsx                        ← shared layout shell
+│   └── index.tsx                       ← landing page with page listing
+├── config-variants                     ← source-of-truth demo variant configs
+├── content/pages                       ← MDX content files
+│   ├── getting-started.mdx             ← light (pure Markdown)
+│   ├── tutorial.mdx                    ← light (uses <Callout /> from MDX scope)
+│   ├── interactive.mdx                 ← heavy (uses <Counter />)
+│   └── dashboard.mdx                   ← heavy (uses <Chart />, <DataTable />)
+├── lib
+│   ├── components                      ← React components with simulated ballast
+│   ├── handler-factory                 ← shared page component factory
+│   ├── content.ts                      ← content discovery helpers
+│   └── mdx-runtime.tsx                 ← client-side MDX evaluation runtime
+└── scripts
+    ├── generate-ballast.mjs            ← creates simulated heavy dependencies
+    ├── clean-handlers.mjs              ← removes generated handlers before rebuild
+    └── erase-generated-dev-state.mjs   ← full demo reset for generated dev artifacts
 ```

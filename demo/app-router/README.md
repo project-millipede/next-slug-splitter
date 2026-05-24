@@ -1,6 +1,6 @@
 # next-slug-splitter App Router Demo
 
-Minimal Next.js App Router app that demonstrates how **next-slug-splitter** separates light and heavy MDX pages into optimized route handlers while keeping one route-owned contract beside the public catch-all page.
+Minimal Next.js App Router app that demonstrates how **next-slug-splitter** separates light and heavy MDX pages into optimized route handlers — reducing client-side bundle size for pages that don't need heavy components.
 
 ## The Problem
 
@@ -8,9 +8,9 @@ MDX-based content sites frequently need interactive components embedded alongsid
 
 ```tsx
 // app/docs/[...slug]/page.tsx — the conventional approach
-import { Counter } from '../../components/counter';
-import { Chart } from '../../components/chart';
-import { DataTable } from '../../components/data-table';
+import { Counter } from '../../components/counter'; // ~1 MB dependency
+import { Chart } from '../../components/chart'; // ~3 MB dependency
+import { DataTable } from '../../components/data-table'; // ~6 MB dependency
 
 const components = { Counter, Chart, DataTable };
 
@@ -19,13 +19,54 @@ export default async function DocsPage() {
 }
 ```
 
-That makes every docs page share one component surface. Even pure-Markdown pages that never render these components inherit the full import graph.
+That makes every docs page share one component surface. Even pure-Markdown pages that never render any of these components inherit the full import graph.
+
+With the conventional approach, this demo's build output would look roughly
+like this. The exact numbers are illustrative and can move with Next.js,
+React, and the generated ballast files:
+
+| Page            | Route                   | Bundle Size  |
+| --------------- | ----------------------- | ------------ |
+| Home            | `/`                     | 127 kB       |
+| Getting Started | `/docs/getting-started` | **~1250 kB** |
+| Tutorial        | `/docs/tutorial`        | **~1250 kB** |
+| Interactive     | `/docs/interactive`     | **~1250 kB** |
+| Dashboard       | `/docs/dashboard`       | **~1250 kB** |
+
+Every docs page loads **~1250 kB** — the combined weight of all component dependencies — regardless of whether it actually uses any of them.
 
 ## The Solution
 
-next-slug-splitter scans MDX content at build time, filters captured component names through the app-owned loadable key set, and generates dedicated handler pages only for routes that need generated handler imports. Light pages continue to use the catch-all route — but with an empty loadable registry, so their bundle stays minimal.
+next-slug-splitter scans MDX content at build time, filters captured component names through the app-owned loadable key set, and generates dedicated handlers only for pages that need generated handler imports. Light pages continue to use the catch-all route — but with an empty loadable registry, so their bundle stays minimal.
 
-For the App Router path, both sides delegate to one route-owned contract:
+The result is **per-page component scoping**: each page bundles only the loadable components it actually uses.
+
+### Example build output with next-slug-splitter
+
+| Page            | Route                   | Generated Imports             | Illustrative Bundle Size |
+| --------------- | ----------------------- | ----------------------------- | ------------------------ |
+| Home            | `/`                     | —                             | 127 kB                   |
+| Getting Started | `/docs/getting-started` | none                          | 141 kB                   |
+| Tutorial        | `/docs/tutorial`        | none (`Callout` in MDX scope) | 141 kB                   |
+| Interactive     | `/docs/interactive`     | Counter                       | 266 kB                   |
+| Dashboard       | `/docs/dashboard`       | Chart, DataTable              | 1250 kB                  |
+
+The important signal is the shape of the result: light pages no longer inherit
+the heavy component graph, intermediate pages pay only for the components they
+use, and only the genuinely heavy page pays the full cost.
+
+The ballast files in this demo simulate realistic dependency sizes (visualization libraries, data grids) and are generated at dev/build time by `scripts/generate-ballast.mjs`.
+
+### How it works
+
+**Light pages** are served by the catch-all `app/docs/[...slug]/page.tsx` with an empty loadable registry. They can still render lightweight components from the MDX component scope, such as `Callout`.
+
+**Heavy pages** get auto-generated handlers in `app/docs/generated-handlers/` that import only the specific loadable components they need:
+
+- `generated-handlers/interactive/page.tsx` bundles only `Counter`
+- `generated-handlers/dashboard/page.tsx` bundles only `Chart` + `DataTable`
+
+For the App Router path, `app/docs/[...slug]/route-contract.ts` is shared by the public light page and the generated heavy pages:
 
 - the light page at `app/docs/[...slug]/page.tsx`
 - generated heavy pages under `app/docs/generated-handlers/`
@@ -35,14 +76,6 @@ That route-owned contract owns:
 
 - static param enumeration
 - page-facing helpers (`loadPageProps`, `generatePageMetadata`)
-
-This is intentionally aligned to the Pages worker principle:
-
-- workers own request routing, one-file analysis, one-file emission, and rewrite readiness
-- workers do not own App page semantics
-- public pages and generated heavy pages call the route contract directly
-- App page data is loaded directly through the route contract and the isolated
-  page-data compiler worker
 
 ## Quick Start
 
@@ -54,7 +87,7 @@ pnpm install
 cd demo/app-router
 pnpm dev
 
-# Optional: exercise the TypeScript processor config instead
+# Optional: exercise the TypeScript variant instead
 pnpm dev:ts
 ```
 
@@ -65,7 +98,7 @@ The default `dev` script automatically:
 3. Starts the Next.js dev server
 
 Use `pnpm dev:ts` if you want to run the same demo through the optional
-TypeScript processor variant instead.
+TypeScript variant instead.
 
 This demo is also used for local Next.js integration work. If its
 `package.json` points `next` at an absolute local checkout, either use that
@@ -77,6 +110,22 @@ Pages-only quirks, and shared readiness safeguards, see
 [`docs/architecture/router-behavior-matrix.md`](../../docs/architecture/router-behavior-matrix.md).
 
 ## What to Look At
+
+### Bundle size difference
+
+Run a production build and inspect the output:
+
+```bash
+pnpm build
+
+# Optional: build the TypeScript variant instead
+pnpm build:ts
+```
+
+Compare the bundle sizes in the build output:
+
+- **Light pages** (`getting-started`, `tutorial`) — minimal JS, no loadable component code
+- **Heavy pages** (`interactive`, `dashboard`) — include only their specific components
 
 ### Generated handlers
 
@@ -99,66 +148,13 @@ The library then derives `app/docs/generated-handlers/` internally.
 
 ### The demo target config
 
-The App demo now uses `createAppCatchAllRouteHandlersPreset(...)`, so the target
-config stays close to the Pages Router demo while still making the route-owned
-contract explicit.
+This demo uses the App Router catch-all preset documented in the top-level
+[README](../../README.md#app-router-catch-all-targets).
 
-Conceptually, the target looks like this:
-
-```ts
-createAppCatchAllRouteHandlersPreset({
-  routeSegment: 'docs',
-  handlerRouteParam: { name: 'slug', kind: 'catch-all' },
-  contentDir: path.join(rootDir, 'content', 'pages'),
-  contentLocaleMode: 'default-locale',
-  routeContract: relativeModule('app/docs/[...slug]/route-contract'),
-  handlerBinding: {
-    processorImport: relativeModule('dist/handler-processor'),
-    pageDataCompilerImport: relativeModule(
-      'config-variants/javascript/content-compiler.mjs'
-    )
-  }
-});
-```
-
-The preset derives the repetitive App target plumbing for the demo:
-
-- `targetId`
-- `routeBasePath`
-- generated App handler params always use `handlerRouteParam.name`
-- `contentDir` as the source MDX/content root
-- `generatedRootDir` as `app/docs`
-
-The App-specific route contract stays explicit:
-
-- `routeContract` is the dedicated `app/docs/[...slug]/route-contract.ts`
-  module imported by the light page and generated heavy pages
-- that same file also owns route enumeration through `getStaticParams`, unlike
-  the Pages Router path where enumeration stays on the catch-all page's
-  `getStaticPaths`
-- `handlerBinding.pageDataCompilerImport` points at the app-owned compiler
-  module that the library executes in an isolated worker
-- omitting `routeHandlersConfig.app.localeConfig` keeps the demo in
-  single-locale mode
-
-For the full Pages-vs-App route-contract comparison, see the comparison table
-in the top-level [README](../../README.md).
-
-The demo uses:
-
-```ts
-app: {
-  rootDir;
-}
-```
-
-That does not remove locale semantics internally. The library normalizes
-single-locale App Router setups to a private internal locale identity so
-worker-side routing and static-param filtering can still reason about locale
-without exposing a synthetic public locale code.
-
-The underlying compilation architecture is described in
-`docs/architecture/content-compilation.md`.
+The App-specific pieces are the dedicated
+`app/docs/[...slug]/route-contract.ts` module and the `pageDataCompilerImport`
+used by that route contract. Generated heavy pages are emitted under
+`app/docs/generated-handlers/`.
 
 ### The catch-all route
 
@@ -230,35 +226,28 @@ optional TypeScript variant.
 
 ```text
 .
-├── app/
-│   ├── layout.tsx          ← shared layout shell
-│   ├── page.tsx            ← landing page with page listing
-│   ├── not-found.tsx       ← app-router not-found boundary
-│   └── docs/
-│       ├── [...slug]/
-│       │   ├── page.tsx          ← public light catch-all page
-│       │   └── route-contract.ts ← route-owned shared contract
-│       └── generated-handlers/ ← auto-generated heavy page handlers
-├── config-variants/        ← source-of-truth demo variant configs
-├── content/pages/          ← MDX content files
-│   ├── getting-started.mdx  ← light (pure Markdown)
-│   ├── tutorial.mdx         ← light (uses <Callout /> from MDX scope)
-│   ├── interactive.mdx      ← heavy (uses <Counter />)
-│   └── dashboard.mdx        ← heavy (uses <Chart />, <DataTable />)
-├── lib/
-│   ├── components/         ← React components with simulated ballast
-│   ├── content.ts          ← page-safe typed content discovery helpers
-│   ├── handler-factory/    ← shared page component factory
-│   └── mdx-runtime.tsx     ← MDX evaluation runtime
-├── config-variants/
-│   ├── javascript/
-│   │   ├── handler-processor.mjs  ← JS handler processor loaded directly
-│   │   └── content-compiler.mjs   ← JS page-data compiler loaded directly
-│   └── typescript/
-│       ├── handler-processor.ts   ← TS handler processor prepared to `dist/`
-│       └── content-compiler.ts    ← TS page-data compiler prepared to `dist/`
-└── scripts/
-    ├── generate-ballast.mjs ← creates simulated heavy dependencies
-    ├── clean-handlers.mjs   ← removes generated handlers before rebuild
-    └── erase-generated-dev-state.mjs ← full demo reset for generated dev artifacts
+├── app
+│   ├── docs
+│   │   ├── generated-handlers          ← auto-generated heavy page handlers
+│   │   └── [...slug]
+│   │       ├── page.tsx                ← public light catch-all page
+│   │       └── route-contract.ts       ← route-owned shared contract
+│   ├── layout.tsx                      ← shared layout shell
+│   ├── not-found.tsx                   ← app-router not-found boundary
+│   └── page.tsx                        ← landing page with page listing
+├── config-variants                     ← source-of-truth demo variant configs
+├── content/pages                       ← MDX content files
+│   ├── getting-started.mdx             ← light (pure Markdown)
+│   ├── tutorial.mdx                    ← light (uses <Callout /> from MDX scope)
+│   ├── interactive.mdx                 ← heavy (uses <Counter />)
+│   └── dashboard.mdx                   ← heavy (uses <Chart />, <DataTable />)
+├── lib
+│   ├── components                      ← React components with simulated ballast
+│   ├── handler-factory                 ← shared page component factory
+│   ├── content.ts                      ← content discovery helpers
+│   └── mdx-runtime.tsx                 ← client-side MDX evaluation runtime
+└── scripts
+    ├── generate-ballast.mjs            ← creates simulated heavy dependencies
+    ├── clean-handlers.mjs              ← removes generated handlers before rebuild
+    └── erase-generated-dev-state.mjs   ← full demo reset for generated dev artifacts
 ```
