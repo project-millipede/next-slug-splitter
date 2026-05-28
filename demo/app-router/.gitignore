@@ -12,3 +12,4 @@ lib/components/*-ballast.ts
 # Defensive ignore entries for generated root files
 proxy.ts
 instrumentation.ts
+.vercel

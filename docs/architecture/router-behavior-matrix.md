@@ -16,7 +16,7 @@ The goal is to keep three categories separate:
 | --- | --- | --- | --- |
 | Development lazy routing path | Uses the dev proxy path by default. | Uses the dev proxy path by default too. | This is shared library behavior in development. |
 | Production routing path | Uses build-time generation plus rewrites. | Uses build-time generation plus rewrites. | Shared production model. |
-| Stale client page-manifest bug | Yes. The repo applies a local Next patch for this. | No. This patch targets the Pages client router path only. | Dev-only. See `patches/next@16.2.0.patch`. |
+| Stale client page-manifest behavior | Historical dev-only issue in the Pages client router path. | No. | Pages client-router-specific behavior. |
 | Dev-only 404 retry helper | Yes. The demo uses `useSlugSplitterNotFoundRetry(...)`. | No current equivalent helper is applied. | The current retry helper is Pages-Router-specific. |
 | Uses Pages data transport | Yes. The current retry helper probes with `x-nextjs-data: '1'`. | No equivalent transport is used here. | This is one reason the retry helper does not carry over directly. |
 | Temporary self-redirect when an existing generated handler was updated in place | Yes. | Yes. | This is a shared proxy/readiness safeguard, not a Pages-only workaround. |
@@ -25,22 +25,7 @@ The goal is to keep three categories separate:
 
 ## Current Interpretation
 
-### 1. Pages-Router-only stale manifest bug
-
-This repo carries a local patch for a real development-time Pages Router issue:
-the client-side page manifest can stay stale after the proxy has already
-discovered and emitted a handler page lazily.
-
-That patch is wired through:
-
-- `pnpm-workspace.yaml`
-- `patches/next@16.2.0.patch`
-- the "Next.js Client-Side Page Manifest Patch" section in `README.md`
-
-This mechanism is tied to the Pages client router path and does not currently
-apply to App Router.
-
-### 2. Pages-Router-only transient 404 retry helper
+### 1. Pages-Router-only transient 404 retry helper
 
 The current transient 404 retry helper is also Pages-Router-specific.
 
@@ -59,7 +44,7 @@ That logic lives in:
 Because this helper is intentionally coupled to the Pages data transport, it is
 not currently reused for App Router.
 
-### 3. Shared proxy/readiness redirect safeguard
+### 2. Shared proxy/readiness redirect safeguard
 
 The temporary self-redirect for updated generated handlers is broader.
 
@@ -88,7 +73,7 @@ through that path.
 If App Router shows a similar transient 404 in development, it should not be
 explained away as:
 
-- the stale Pages client page-manifest bug
+- stale Pages client page-manifest behavior
 - or the Pages-only `x-nextjs-data` retry path
 
 Those two mechanisms are Pages-specific in the current repo.
@@ -103,7 +88,7 @@ The more plausible current explanations are:
 
 When describing router behavior in this repo:
 
-- document the stale page-manifest patch as Pages-Router-only
+- document stale page-manifest behavior as Pages-client-router-specific
 - document the 404 retry helper as Pages-Router-only
 - document the updated-handler self-redirect as shared proxy-mode behavior
 - avoid using the current App demo's plain `not-found.tsx` as evidence that App

@@ -1,2 +1,9 @@
 packages:
   - packages/*
+
+# Intent: make pnpm 11 dependency build-script decisions explicit.
+allowBuilds:
+  # Direct dependency: MDX capture/build tooling; native binary install check.
+  esbuild: false
+  # Transitive dependency from Next.js: optional native image optimizer.
+  sharp: false

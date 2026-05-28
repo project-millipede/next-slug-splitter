@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-05-28T13:07:26.244Z",
+  "generator": {
+    "scriptPath": "./create-next-combined-patch.sh",
+    "behavior": "compose all requested refs into one pnpm patch"
+  },
+  "target": {
+    "package": "next@16.3.0-canary.31",
+    "gitHead": "95f80a5499e3bffb012c7f4fdcefd91a10d01412"
+  },
+  "repositories": {
+    "next": "/Users/markusgritsch/Development/Topics/Millipede/Project/OSS-Projects/contributions/next.js",
+    "app": "/Users/markusgritsch/Development/Topics/Millipede/Project/OSS-Projects/next-slug-splitter/demo/page-router"
+  },
+  "commands": {
+    "install": "pnpm install",
+    "build": "pnpm build"
+  },
+  "patch": {
+    "path": "/Users/markusgritsch/Development/Topics/Millipede/Project/OSS-Projects/next-slug-splitter/demo/page-router/patches/next@16.3.0-canary.31.patch",
+    "candidate": false
+  },
+  "sourcePaths": [
+    "packages/next"
+  ],
+  "packagePaths": [
+    "dist"
+  ],
+  "refs": [
+    {
+      "label": "#91760/dev",
+      "ref": "stale-dev-manifest-rewrite-fix",
+      "resolvedCommit": "937057869341bf454ed4937b912b42c5e8a97f4f",
+      "mergeBase": "546250ec9db080d785046927e6dc7a473828cd7a",
+      "commitCount": 2,
+      "appliedCommitCount": 1
+    },
+    {
+      "label": "#93129/pages",
+      "ref": "rewrite-reconciliation-before-router",
+      "resolvedCommit": "1de2472bdebbe045946c658a4b8aba70caa34977",
+      "mergeBase": "8ddc1cdbdd89109fdfd0f1550bcdfbc7beb84889",
+      "commitCount": 3,
+      "appliedCommitCount": 2
+    }
+  ],
+  "commits": [
+    {
+      "refLabel": "#91760/dev",
+      "commit": "ab357e2359b76910b9149c96ec069f73d8029786",
+      "shortCommit": "ab357e2359",
+      "status": "applied",
+      "reason": "",
+      "subject": "fix: refresh stale dev page list before adopting rewritten routes"
+    },
+    {
+      "refLabel": "#91760/dev",
+      "commit": "937057869341bf454ed4937b912b42c5e8a97f4f",
+      "shortCommit": "9370578693",
+      "status": "skipped",
+      "reason": "no included source paths after filters",
+      "subject": "test: add stale dev pages manifest rewrite regression"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "shortCommit": "a7b978568e",
+      "status": "applied",
+      "reason": "",
+      "subject": "feat(next): compute Pages rewrite reconciliation before router creation"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "bf18ea3815699da8f3c8f051326d841f3ce53059",
+      "shortCommit": "bf18ea3815",
+      "status": "skipped",
+      "reason": "no included source paths after filters",
+      "subject": "test(next): cover rewrite reconciliation required not-required and unknown"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "1de2472bdebbe045946c658a4b8aba70caa34977",
+      "shortCommit": "1de2472bde",
+      "status": "applied",
+      "reason": "",
+      "subject": "fix(next): omit rewrite reconciliation from shared static HTML"
+    }
+  ],
+  "appliedSourceFiles": [
+    {
+      "refLabel": "#91760/dev",
+      "commit": "ab357e2359b76910b9149c96ec069f73d8029786",
+      "path": "packages/next/src/client/page-loader.ts"
+    },
+    {
+      "refLabel": "#91760/dev",
+      "commit": "ab357e2359b76910b9149c96ec069f73d8029786",
+      "path": "packages/next/src/shared/lib/router/router.ts"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "path": "packages/next/errors.json"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "path": "packages/next/src/build/webpack/plugins/build-manifest-plugin-utils.ts"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "path": "packages/next/src/client/index.tsx"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "path": "packages/next/src/lib/load-custom-routes.ts"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "path": "packages/next/src/server/base-server.ts"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "path": "packages/next/src/server/render.tsx"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "path": "packages/next/src/server/request-meta.ts"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "path": "packages/next/src/server/route-modules/pages/pages-handler.ts"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "path": "packages/next/src/server/server-utils.ts"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "path": "packages/next/src/shared/lib/router/router.ts"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "path": "packages/next/src/shared/lib/router/utils/resolve-rewrites.ts"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "path": "packages/next/src/shared/lib/router/utils/rewrite-reconciliation.ts"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "path": "packages/next/src/shared/lib/utils.ts"
+    },
+    {
+      "refLabel": "#93129/pages",
+      "commit": "1de2472bdebbe045946c658a4b8aba70caa34977",
+      "path": "packages/next/src/server/render.tsx"
+    }
+  ],
+  "changedOutputFiles": [
+    "dist/build/webpack/plugins/build-manifest-plugin-utils.js",
+    "dist/client/index.js",
+    "dist/client/page-loader.js",
+    "dist/compiled/next-server/pages-turbo.runtime.prod.js",
+    "dist/compiled/next-server/pages.runtime.prod.js",
+    "dist/compiled/next-server/server.runtime.prod.js",
+    "dist/esm/build/webpack/plugins/build-manifest-plugin-utils.js",
+    "dist/esm/client/index.js",
+    "dist/esm/client/page-loader.js",
+    "dist/esm/server/base-server.js",
+    "dist/esm/server/render.js",
+    "dist/esm/server/route-modules/pages/pages-handler.js",
+    "dist/esm/server/server-utils.js",
+    "dist/esm/shared/lib/router/router.js",
+    "dist/esm/shared/lib/router/utils/resolve-rewrites.js",
+    "dist/esm/shared/lib/router/utils/rewrite-reconciliation.js",
+    "dist/server/base-server.js",
+    "dist/server/render.js",
+    "dist/server/route-modules/pages/pages-handler.js",
+    "dist/server/server-utils.js",
+    "dist/shared/lib/router/router.js",
+    "dist/shared/lib/router/utils/resolve-rewrites.js",
+    "dist/shared/lib/router/utils/rewrite-reconciliation.js"
+  ]
+}

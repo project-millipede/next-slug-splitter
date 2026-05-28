@@ -199,6 +199,26 @@ For the broader Pages-vs-App comparison, including which dev-only behaviors are
 Pages-specific and which belong to the shared proxy/readiness layer, see
 [`docs/architecture/router-behavior-matrix.md`](../../docs/architecture/router-behavior-matrix.md).
 
+## Next.js Patch Status
+
+This Pages Router demo carries a local pnpm patch for Next.js fixes that are
+not yet available in the published package it tests against.
+
+| Upstream PR                                                          | What it fixes                                      | Target Next.js version  | Patch status                   |
+| -------------------------------------------------------------------- | -------------------------------------------------- | ----------------------- | ------------------------------ |
+| [vercel/next.js#91760](https://github.com/vercel/next.js/pull/91760) | Development-only stale client page manifest issue. | `next@16.3.0-canary.31` | Included in this demo's patch. |
+| [vercel/next.js#93129](https://github.com/vercel/next.js/pull/93129) | Production Pages Router rewrite issue.             | `next@16.3.0-canary.31` | Included in this demo's patch. |
+
+```yaml
+# demo/page-router/pnpm-workspace.yaml
+patchedDependencies:
+  next@16.3.0-canary.31: patches/next@16.3.0-canary.31.patch
+```
+
+The patch targets the published `next@16.3.0-canary.31` package output, so
+pnpm applies it during install. It is exact-versioned; when testing a new
+Next.js release, regenerate or revalidate the patch for that release.
+
 ## Project Structure
 
 ```text
