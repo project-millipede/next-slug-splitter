@@ -2,6 +2,7 @@
   "name": "next-slug-splitter",
   "version": "4.3.0",
   "type": "module",
+  "packageManager": "pnpm@11.1.1",
   "description": "Build-time Next.js route handler generation and rewrite integration for large content trees.",
   "sideEffects": false,
   "scripts": {
