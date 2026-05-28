@@ -639,30 +639,6 @@ export default NotFound;
 This hook is a no-op outside development, so production builds still render
 their normal 404 page immediately.
 
-##### Next.js Client-Side Page Manifest Patch
-
-In dev mode, Next.js caches the page manifest on the client side. When a handler
-page is lazily emitted after the manifest was cached, the client-side router does
-not know the page exists and may fail the navigation. To fix this, apply the
-included patch that adds manifest refresh on rewrite miss:
-
-```json
-{
-  "pnpm": {
-    "patchedDependencies": {
-      "next@16.2.0": "patches/next@16.2.0.patch"
-    }
-  }
-}
-```
-
-The patch modifies `page-loader.js` to accept a `refresh` parameter and
-`router.js` to re-fetch the dev pages manifest when a proxy rewrite targets
-a page not yet in the cached page list. This fix has been proposed upstream
-in [vercel/next.js#91760](https://github.com/vercel/next.js/pull/91760) and
-the local patch can be removed once it lands. This is only relevant in
-development; production builds pre-compile all handler pages.
-
 ### Configuring the Routing Policy
 
 The development routing mode defaults to `'proxy'`, and worker prewarm defaults

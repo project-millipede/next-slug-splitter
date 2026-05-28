@@ -12,3 +12,4 @@ lib/components/*-ballast.ts
 # Auto-generated proxy and instrumentation files
 proxy.ts
 instrumentation.ts
+.vercel

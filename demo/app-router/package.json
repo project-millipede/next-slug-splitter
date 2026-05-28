@@ -21,7 +21,7 @@
     "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
     "@mdx-js/esbuild": "^3.1.1",
     "esbuild": "^0.28.0",
-    "next": "file:/Users/markusgritsch/Development/Topics/Millipede/Project/OSS-Projects/contributions/next.js/packages/next",
+    "next": "^16.2.0",
     "next-slug-splitter": "file:../..",
     "react": "0.0.0-experimental-705268dc-20260409",
     "react-dom": "0.0.0-experimental-705268dc-20260409"
