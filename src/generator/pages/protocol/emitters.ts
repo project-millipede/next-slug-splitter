@@ -87,6 +87,12 @@ type HandlerPageEmitInput = {
    * Output format for the generated file.
    */
   emitFormat: EmitFormat;
+  /**
+   * Whether this handler is emitted under an optional catch-all leaf
+   * (`[[...rest]].tsx`) that must also export `getStaticPaths`. Derived from
+   * `L > 1`; `false` keeps the concrete single-locale page.
+   */
+  useDynamicLeaf: boolean;
 };
 
 /**
@@ -126,6 +132,32 @@ const createHandlerGetStaticPropsInitializer = (
 };
 
 /**
+ * Creates the initializer for the generated `getStaticPaths` export.
+ *
+ * Emits a call to the library's `createHandlerGetStaticPaths` enumerating the
+ * single `(base path, locale)` pair this handler owns, with the locale pinned
+ * so Next does not fan the page out across every configured i18n locale.
+ *
+ * @param sourceLocale - Locale this handler is pinned to.
+ * @returns A writer function that emits the `createHandlerGetStaticPaths(...)` call.
+ */
+const createHandlerGetStaticPathsInitializer = (
+  sourceLocale: string
+): WriterFunction => {
+  return writer => {
+    writer.write('createHandlerGetStaticPaths([');
+    writer.newLine();
+    writer.indent(() => {
+      writer.write('{ rest: [], locale: ');
+      writeStringLiteral(writer, sourceLocale);
+      writer.write(' }');
+      writer.newLine();
+    });
+    writer.write('])');
+  };
+};
+
+/**
  * Renders the full source text for one generated route-handler module.
  *
  * @param input - Fully prepared handler-page emission input.
@@ -143,6 +175,7 @@ export const renderHandlerPageSource = ({
   componentImports,
   componentEntries,
   factoryBindingValues,
+  useDynamicLeaf,
   emitFormat
 }: HandlerPageEmitInput): string => {
   /**
@@ -161,7 +194,9 @@ export const renderHandlerPageSource = ({
   // doesn't depend on the app's component wiring.
   importDeclarations.push({
     source: 'next-slug-splitter/next/handler',
-    namedImports: ['createHandlerGetStaticProps']
+    namedImports: useDynamicLeaf
+      ? ['createHandlerGetStaticPaths', 'createHandlerGetStaticProps']
+      : ['createHandlerGetStaticProps']
   });
 
   // Page component factory comes from the app — it's the genuinely
@@ -211,6 +246,19 @@ export const renderHandlerPageSource = ({
       }
     ]
   });
+
+  if (useDynamicLeaf) {
+    sourceFile.addVariableStatement({
+      isExported: true,
+      declarationKind: VariableDeclarationKind.Const,
+      declarations: [
+        {
+          name: 'getStaticPaths',
+          initializer: createHandlerGetStaticPathsInitializer(sourceLocale)
+        }
+      ]
+    });
+  }
 
   sourceFile.addExportAssignment({
     isExportEquals: false,

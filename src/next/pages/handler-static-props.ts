@@ -1,4 +1,4 @@
-import type { GetStaticProps, GetStaticPropsContext } from 'next';
+import type { GetStaticPaths, GetStaticProps, GetStaticPropsContext } from 'next';
 import type { ParsedUrlQuery } from 'node:querystring';
 import {
   resolveRouteParamValue,
@@ -103,3 +103,70 @@ export const createHandlerGetStaticProps = (
     return getStaticProps({ ...ctx, params });
   };
 };
+
+// ---------------------------------------------------------------------------
+// getStaticPaths enumeration (locale fan-out elimination)
+// ---------------------------------------------------------------------------
+
+/**
+ * Route-param name of the generated optional catch-all handler leaf
+ * (`[[...rest]].tsx`).
+ *
+ * The leaf is vestigial: it exists only so a generated handler page can export
+ * `getStaticPaths` (illegal on a fixed page) and thereby pin its locale instead
+ * of fanning out across every configured i18n locale. The param value is always
+ * the empty array — the bare base path the handler owns.
+ *
+ * This constant is the single source of truth shared by the runtime helper
+ * below and the generator's file-location resolver, so the emitted filename
+ * (`[[...rest]]`) and the enumerated `params` key can never drift apart.
+ */
+export const HANDLER_CATCHALL_PARAM = 'rest';
+
+/**
+ * One enumerated `(path, locale)` pair owned by a generated handler page.
+ */
+export type HandlerStaticPathsEntry = {
+  /**
+   * Optional catch-all segments for the entry. Always `[]` — the bare base
+   * route a generated handler owns.
+   */
+  rest: Array<string>;
+  /**
+   * The i18n locale this entry is prerendered for. Setting it explicitly stops
+   * Next from fanning the page out across every configured locale.
+   */
+  locale: string;
+};
+
+/**
+ * Create a `getStaticPaths` function for a generated handler page.
+ *
+ * A generated handler page sits under an optional catch-all leaf
+ * (`[[...rest]].tsx`) purely so it can export this function. Enumerating the
+ * exact `(params, locale)` pairs the handler owns — with `fallback: false` —
+ * restricts prerendering to those pairs, so a slug heavy in `H` of `L` locales
+ * builds `H` times instead of `H·L`.
+ *
+ * @param entries - Explicit owned entries. The generator passes one entry per
+ *   owned `(locale, slug)`; `rest` is the (empty) catch-all value and `locale`
+ *   is the pinned i18n locale. Explicit entries keep test fixtures trivial.
+ * @returns A `getStaticPaths` function the generated handler can export directly.
+ *
+ * @example
+ * ```ts
+ * // Emitted by the code generator into a handler page:
+ * export const getStaticPaths = createHandlerGetStaticPaths([
+ *   { rest: [], locale: 'en' }
+ * ]);
+ * ```
+ */
+export const createHandlerGetStaticPaths =
+  (entries: Array<HandlerStaticPathsEntry>): GetStaticPaths =>
+  () => ({
+    paths: entries.map(({ rest, locale }) => ({
+      params: { [HANDLER_CATCHALL_PARAM]: rest },
+      locale
+    })),
+    fallback: false
+  });

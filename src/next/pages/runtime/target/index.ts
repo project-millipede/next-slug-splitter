@@ -1,6 +1,7 @@
 import { emitRouteHandlerPages } from '../../../../generator/pages/target/handlers';
 import { buildRouteHandlerNextResult } from '../results';
 import { executeRouteHandlerTargetWithRuntimeHarness } from '../../../shared/runtime/target';
+import { isMultiLocaleConfig } from '../../../../core/locale-config';
 
 import type { PipelineMode } from '../../../../core/types';
 import type { RouteHandlerNextResult } from '../../../shared/types';
@@ -26,7 +27,8 @@ export const executeRouteHandlerTarget = async (
         emitFormat,
         routeContract: config.routeContract,
         handlerRouteParam,
-        routeBasePath
+        routeBasePath,
+        useDynamicLeaf: isMultiLocaleConfig(config.localeConfig)
       }),
     buildNextResult: buildRouteHandlerNextResult
   });

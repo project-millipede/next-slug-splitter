@@ -50,6 +50,7 @@ describe('proxy lazy stale-output cleanup', () => {
           routerKind: 'pages',
           emitFormat: 'ts',
           contentLocaleMode: 'filename',
+          localeConfig: { locales: ['en'], defaultLocale: 'en' },
           paths: {
             generatedDir: '/repo/app/pages/content/generated-handlers'
           }
@@ -66,11 +67,39 @@ describe('proxy lazy stale-output cleanup', () => {
         generatedDir: '/repo/app/pages/content/generated-handlers'
       },
       'ts',
-      'guides/en'
+      'guides/en',
+      false
     );
     expect(removeRenderedRouteHandlerPageIfPresentMock).toHaveBeenCalledWith(
       '/repo/app/pages/content/generated-handlers/guides/en.tsx',
       '/repo/app/pages/content/generated-handlers'
+    );
+  });
+
+  it('passes useDynamicLeaf=true to the location resolver for a multi-locale target', async () => {
+    await removeRouteHandlerLazyOutputForIdentity({
+      config: {
+        routerKind: 'pages',
+        emitFormat: 'ts',
+        contentLocaleMode: 'filename',
+        localeConfig: { locales: ['en', 'de'], defaultLocale: 'en' },
+        paths: {
+          generatedDir: '/repo/app/pages/content/generated-handlers'
+        }
+      },
+      identity: {
+        locale: 'en',
+        slugArray: ['guides']
+      }
+    });
+
+    expect(resolveRenderedHandlerPageLocationMock).toHaveBeenCalledWith(
+      {
+        generatedDir: '/repo/app/pages/content/generated-handlers'
+      },
+      'ts',
+      'guides/en',
+      true
     );
   });
 });

@@ -13,6 +13,7 @@
 import path from 'node:path';
 
 import { toEmittedImportSpecifier } from '../../../module-reference';
+import { HANDLER_CATCHALL_PARAM } from '../../../next/pages/handler-static-props';
 import {
   renderRouteHandlerModules,
   type PreparedHandlerRenderConfig
@@ -79,12 +80,21 @@ export type RenderedHandlerPageLocation = {
 export const resolveRenderedHandlerPageLocation = (
   paths: Pick<RouteHandlerPaths, 'generatedDir'>,
   emitFormat: EmitFormat,
-  handlerRelativePath: string
+  handlerRelativePath: string,
+  useDynamicLeaf: boolean
 ): RenderedHandlerPageLocation => {
   const pageExtension = emitFormat === 'ts' ? 'tsx' : 'js';
+  // At L > 1 the handler moves under an optional catch-all leaf so it can
+  // export `getStaticPaths` and pin its locale. `handlerRelativePath` itself
+  // stays the route-resolving directory (e.g. `interactive/en`), so rewrites
+  // are unaffected; the leaf resolves that same base via its empty match. At
+  // L = 1 the concrete single-locale page is kept.
+  const leafRelativePath = useDynamicLeaf
+    ? `${handlerRelativePath}/[[...${HANDLER_CATCHALL_PARAM}]]`
+    : handlerRelativePath;
   const pageFilePath = path.join(
     paths.generatedDir,
-    `${handlerRelativePath}.${pageExtension}`
+    `${leafRelativePath}.${pageExtension}`
   );
 
   return {
@@ -110,7 +120,8 @@ const createPreparedHandlerRenderConfig = ({
   routeBasePath,
   routeContract,
   factoryImport,
-  handlerRouteParam
+  handlerRouteParam,
+  useDynamicLeaf
 }: {
   pageFilePath: string;
   emitFormat: EmitFormat;
@@ -118,6 +129,7 @@ const createPreparedHandlerRenderConfig = ({
   routeContract: ResolvedRouteHandlerModuleReference;
   factoryImport: ResolvedRouteHandlerModuleReference;
   handlerRouteParam: DynamicRouteParam;
+  useDynamicLeaf: boolean;
 }): PreparedHandlerRenderConfig => {
   return {
     pageFilePath,
@@ -128,7 +140,8 @@ const createPreparedHandlerRenderConfig = ({
     routeContract: toEmittedImportSpecifier(pageFilePath, routeContract),
     handlerRouteParam,
     routeBasePath,
-    emitFormat
+    emitFormat,
+    useDynamicLeaf
   };
 };
 
@@ -150,7 +163,8 @@ export const renderRouteHandlerPage = ({
   emitFormat,
   routeContract,
   handlerRouteParam,
-  routeBasePath
+  routeBasePath,
+  useDynamicLeaf
 }: {
   paths: RouteHandlerPaths;
   heavyRoute: PlannedHeavyRoute;
@@ -158,11 +172,13 @@ export const renderRouteHandlerPage = ({
   routeContract: ResolvedRouteHandlerModuleReference;
   handlerRouteParam: DynamicRouteParam;
   routeBasePath: string;
+  useDynamicLeaf: boolean;
 }): RenderedHandlerPage => {
   const { relativePath, pageFilePath } = resolveRenderedHandlerPageLocation(
     paths,
     emitFormat,
-    heavyRoute.handlerRelativePath
+    heavyRoute.handlerRelativePath,
+    useDynamicLeaf
   );
   const renderConfig = createPreparedHandlerRenderConfig({
     pageFilePath,
@@ -170,7 +186,8 @@ export const renderRouteHandlerPage = ({
     routeBasePath,
     routeContract,
     factoryImport: heavyRoute.factoryImport,
-    handlerRouteParam
+    handlerRouteParam,
+    useDynamicLeaf
   });
 
   const pageSource = renderRouteHandlerModules({

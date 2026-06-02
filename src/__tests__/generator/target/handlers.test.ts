@@ -76,7 +76,8 @@ describe('generator handlers', () => {
         routeContract: '../../../../[...entry]',
         routeBasePath: '/content',
         emitFormat: 'ts',
-        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' },
+        useDynamicLeaf: false
       }
     });
 
@@ -115,7 +116,8 @@ describe('generator handlers', () => {
         routeContract: TEST_STATIC_PROPS_IMPORT,
         routeBasePath: '/content',
         emitFormat: 'ts',
-        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' },
+        useDynamicLeaf: false
       }
     });
 
@@ -143,7 +145,8 @@ describe('generator handlers', () => {
         routeContract: TEST_STATIC_PROPS_IMPORT,
         routeBasePath: '/content',
         emitFormat: 'ts',
-        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' },
+        useDynamicLeaf: false
       }
     });
 
@@ -209,7 +212,8 @@ describe('generator handlers', () => {
         routeContract: '../../../[...entry]',
         routeBasePath: '/content',
         emitFormat: 'ts',
-        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' },
+        useDynamicLeaf: false
       }
     });
 
@@ -251,7 +255,8 @@ describe('generator handlers', () => {
         routeContract: '../../../[...entry]',
         routeBasePath: '/content',
         emitFormat: 'ts',
-        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' },
+        useDynamicLeaf: false
       }
     });
 
@@ -313,7 +318,8 @@ describe('generator handlers', () => {
         routeContract: '../../../[...entry]',
         routeBasePath: '/content',
         emitFormat: 'ts',
-        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' },
+        useDynamicLeaf: false
       }
     });
 
@@ -360,7 +366,8 @@ describe('generator handlers', () => {
         routeContract: '../../../[...entry]',
         routeBasePath: '/content',
         emitFormat: 'ts',
-        handlerRouteParam: { name: 'entry', kind: 'catch-all' }
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' },
+        useDynamicLeaf: false
       }
     });
 
@@ -399,7 +406,8 @@ describe('generator handlers', () => {
         emitFormat: 'ts',
         routeContract: contentHandlerModuleInput.routeContract,
         handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
-        routeBasePath: contentHandlerModuleInput.routeBasePath
+        routeBasePath: contentHandlerModuleInput.routeBasePath,
+        useDynamicLeaf: false
       });
 
       const pageSource = await readFile(
@@ -484,7 +492,8 @@ describe('generator handlers', () => {
         emitFormat: 'ts',
         routeContract: contentHandlerModuleInput.routeContract,
         handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
-        routeBasePath: contentHandlerModuleInput.routeBasePath
+        routeBasePath: contentHandlerModuleInput.routeBasePath,
+        useDynamicLeaf: false
       });
 
       const unchangedPath = path.join(paths.generatedDir, 'stable', 'en.tsx');
@@ -521,7 +530,8 @@ describe('generator handlers', () => {
         emitFormat: 'ts',
         routeContract: contentHandlerModuleInput.routeContract,
         handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
-        routeBasePath: contentHandlerModuleInput.routeBasePath
+        routeBasePath: contentHandlerModuleInput.routeBasePath,
+        useDynamicLeaf: false
       });
 
       const unchangedSourceAfter = await readFile(unchangedPath, 'utf8');
@@ -531,6 +541,119 @@ describe('generator handlers', () => {
       expect(changedSourceAfter).not.toBe(changedSourceBefore);
       expect(changedSourceAfter).toContain("from 'selection'");
       expect(await fileExists(stalePath)).toBe(false);
+    });
+  });
+
+  it('emits getStaticPaths and the catch-all import when useDynamicLeaf is true', () => {
+    const pageSource = renderRouteHandlerModules({
+      locale: 'de',
+      slugArray: ['nested', 'example'],
+      handlerId: 'de-nested-example',
+      usedLoadableComponentKeys: ['Demo'],
+      selectedComponentEntries: [
+        createLoadableComponentEntry({
+          key: 'Demo',
+          componentImport: {
+            source: packageModule('@demo/pkg'),
+            kind: 'named',
+            importedName: 'Demo'
+          }
+        })
+      ],
+      renderConfig: {
+        pageFilePath:
+          '/repo/pages/generated-handlers/nested/example/de/[[...rest]].tsx',
+        runtimeHandlerFactoryImport: '@next-slug-splitter-test/factory/none',
+        routeContract: '../../../../[...entry]',
+        routeBasePath: '/content',
+        emitFormat: 'ts',
+        handlerRouteParam: { name: 'entry', kind: 'catch-all' },
+        useDynamicLeaf: true
+      }
+    });
+
+    // Both helpers are imported, grouped into a single import declaration.
+    expect(pageSource).toContain("from 'next-slug-splitter/next/handler';");
+    expect(pageSource).toContain('createHandlerGetStaticPaths');
+    expect(
+      pageSource.match(/from ['"]next-slug-splitter\/next\/handler['"]/g)
+        ?.length ?? 0
+    ).toBe(1);
+
+    // The locale is pinned via getStaticPaths alongside the existing props export.
+    expect(pageSource).toContain(
+      'export const getStaticPaths = createHandlerGetStaticPaths('
+    );
+    expect(pageSource).toMatch(/rest:\s*\[\]/);
+    expect(pageSource).toContain("locale: 'de'");
+    expect(pageSource).toContain(
+      'export const getStaticProps = createHandlerGetStaticProps('
+    );
+  });
+
+  it('emits the optional catch-all handler file under the locale directory when useDynamicLeaf is true', async () => {
+    await withTempDir('next-slug-splitter-', async rootDir => {
+      const paths = createTestPaths(rootDir);
+      const contentHandlerModuleInput =
+        createContentHandlerModuleInput(rootDir);
+
+      await emitRouteHandlerPages({
+        paths,
+        heavyRoutes: [
+          createPlannedHeavyRoute({
+            locale: 'de',
+            slugArray: ['nested', 'example'],
+            handlerId: 'de-nested-example',
+            handlerRelativePath: 'nested/example/de',
+            usedLoadableComponentKeys: ['NestedCustomComponent'],
+            factoryImport: packageModule('none'),
+            componentEntries: [
+              createLoadableComponentEntry({
+                key: 'NestedCustomComponent',
+                componentImport: {
+                  source: packageModule(
+                    '@next-slug-splitter-test/content-components'
+                  ),
+                  kind: 'named',
+                  importedName: 'NestedCustomComponent'
+                }
+              })
+            ]
+          })
+        ],
+        emitFormat: 'ts',
+        routeContract: contentHandlerModuleInput.routeContract,
+        handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
+        routeBasePath: contentHandlerModuleInput.routeBasePath,
+        useDynamicLeaf: true
+      });
+
+      const leafPath = path.join(
+        paths.generatedDir,
+        'nested',
+        'example',
+        'de',
+        '[[...rest]].tsx'
+      );
+      const concretePath = path.join(
+        paths.generatedDir,
+        'nested',
+        'example',
+        'de.tsx'
+      );
+
+      // The handler lands under the optional catch-all leaf, not the old
+      // concrete location.
+      expect(await fileExists(leafPath)).toBe(true);
+      expect(await fileExists(concretePath)).toBe(false);
+
+      const pageSource = await readFile(leafPath, 'utf8');
+      expect(pageSource).toContain(
+        'export const getStaticPaths = createHandlerGetStaticPaths('
+      );
+      expect(pageSource).toContain("locale: 'de'");
+      // Import paths recompute from the deeper leaf, gaining one extra level.
+      expect(pageSource).toContain("() => import('../../../../[...entry]')");
     });
   });
 });

@@ -36,6 +36,20 @@ export const isSingleLocaleConfig = (localeConfig: LocaleConfig): boolean =>
   localeConfig.locales[0] === localeConfig.defaultLocale;
 
 /**
+ * Determine whether a locale config has more than one configured locale.
+ *
+ * This is the precise `L > 1` test that gates the Pages fan-out fix: at
+ * `L > 1` a fixed handler page is prerendered once per configured locale, so
+ * the handler moves under an optional catch-all leaf and pins its locale via
+ * `getStaticPaths`. At `L = 1` there is no fan-out and the concrete page stays.
+ *
+ * @param localeConfig Locale config to inspect.
+ * @returns `true` when more than one locale is configured.
+ */
+export const isMultiLocaleConfig = (localeConfig: LocaleConfig): boolean =>
+  localeConfig.locales.length > 1;
+
+/**
  * Compare two locale-config objects for exact structural equality.
  *
  * @param left Expected locale semantics.

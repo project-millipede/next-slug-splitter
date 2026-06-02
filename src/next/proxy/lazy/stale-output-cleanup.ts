@@ -5,6 +5,7 @@ import {
 } from '../../../generator/shared/protocol/output-lifecycle';
 import { resolveRenderedAppHandlerPageLocation } from '../../../generator/app/protocol/rendered-page';
 import { resolveRenderedHandlerPageLocation } from '../../../generator/pages/protocol/rendered-page';
+import { isMultiLocaleConfig } from '../../../core/locale-config';
 
 import type {
   RouteHandlerLazyOutputConfig,
@@ -81,7 +82,8 @@ export const removeRouteHandlerLazyOutputForIdentity = ({
       : resolveRenderedHandlerPageLocation(
           config.paths,
           config.emitFormat,
-          handlerRelativePath
+          handlerRelativePath,
+          isMultiLocaleConfig(config.localeConfig)
         );
 
   return removeRenderedRouteHandlerPageIfPresent(

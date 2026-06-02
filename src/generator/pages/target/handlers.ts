@@ -43,7 +43,8 @@ export const emitRouteHandlerPages = async ({
   emitFormat,
   routeContract,
   handlerRouteParam,
-  routeBasePath
+  routeBasePath,
+  useDynamicLeaf
 }: {
   /**
    * Filesystem paths for the target.
@@ -69,6 +70,11 @@ export const emitRouteHandlerPages = async ({
    * Base path for public routes in this target.
    */
   routeBasePath: string;
+  /**
+   * Whether handlers are emitted under an optional catch-all leaf that exports
+   * `getStaticPaths` (derived from `L > 1`).
+   */
+  useDynamicLeaf: boolean;
 }): Promise<void> => {
   // Generate mode is intentionally phase-local and fresh. Clearing the target
   // handlers directory up front keeps build/generate independent from prior
@@ -85,7 +91,8 @@ export const emitRouteHandlerPages = async ({
         emitFormat,
         routeContract,
         handlerRouteParam,
-        routeBasePath
+        routeBasePath,
+        useDynamicLeaf
       })
     );
   }

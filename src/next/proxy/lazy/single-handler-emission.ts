@@ -11,6 +11,7 @@ import {
   renderRouteHandlerPage,
   resolveRenderedHandlerPageLocation
 } from '../../../generator/pages/protocol/rendered-page';
+import { isMultiLocaleConfig } from '../../../core/locale-config';
 
 import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
 
@@ -51,7 +52,8 @@ export const emitRouteHandlerLazySingleHandler = async (
           emitFormat: analysisResult.config.emitFormat,
           routeContract: analysisResult.config.routeContract,
           handlerRouteParam: analysisResult.config.handlerRouteParam,
-          routeBasePath: analysisResult.config.routeBasePath
+          routeBasePath: analysisResult.config.routeBasePath,
+          useDynamicLeaf: isMultiLocaleConfig(analysisResult.config.localeConfig)
         });
 
   return synchronizeRenderedRouteHandlerPage(renderedPage);
@@ -91,7 +93,8 @@ export const doesRouteHandlerLazySingleHandlerExist = async (
       : resolveRenderedHandlerPageLocation(
           analysisResult.config.paths,
           analysisResult.config.emitFormat,
-          analysisResult.plannedHeavyRoute.handlerRelativePath
+          analysisResult.plannedHeavyRoute.handlerRelativePath,
+          isMultiLocaleConfig(analysisResult.config.localeConfig)
         );
 
   return doesRouteHandlerOutputFileExist(pageFilePath);

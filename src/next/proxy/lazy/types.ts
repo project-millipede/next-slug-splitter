@@ -201,6 +201,12 @@ export type RouteHandlerLazyOutputConfig = {
   routerKind: 'pages' | 'app';
   emitFormat: EmitFormat;
   contentLocaleMode: ContentLocaleMode;
+  /**
+   * Locale config for the target. Used to decide whether the deterministic
+   * emitted handler path uses the optional catch-all leaf (`L > 1`), so stale-
+   * output cleanup removes the same file emission would have written.
+   */
+  localeConfig: LocaleConfig;
   paths: {
     generatedDir: string;
   };

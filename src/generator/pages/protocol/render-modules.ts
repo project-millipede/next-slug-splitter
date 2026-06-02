@@ -48,6 +48,11 @@ export type PreparedHandlerRenderConfig = {
    * Output format for the generated file.
    */
   emitFormat: EmitFormat;
+  /**
+   * Whether the handler is emitted under an optional catch-all leaf that also
+   * exports `getStaticPaths` (derived from `L > 1`).
+   */
+  useDynamicLeaf: boolean;
 };
 
 /**
@@ -119,6 +124,7 @@ export const renderRouteHandlerModules = ({
     componentImports,
     componentEntries,
     factoryBindingValues,
+    useDynamicLeaf: renderConfig.useDynamicLeaf,
     emitFormat: renderConfig.emitFormat
   });
 };
