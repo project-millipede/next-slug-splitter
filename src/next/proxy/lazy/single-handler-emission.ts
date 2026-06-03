@@ -35,6 +35,13 @@ import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
 export const emitRouteHandlerLazySingleHandler = async (
   analysisResult: RouteHandlerLazyHeavyAnalysisResult
 ): Promise<RouteHandlerOutputSynchronizationStatus> => {
+  // Pages and App gate their multi-locale shape on the same predicate, so
+  // compute it once. This is correctness, not the build-only merge (which dev
+  // never runs): a multi-locale handler must take its multi-locale shape in dev
+  // and build alike — Pages under the optional-catch-all leaf, App by baking the
+  // locale into handlerParams for loadPageProps.
+  const isMultiLocale = isMultiLocaleConfig(analysisResult.config.localeConfig);
+
   const renderedPage =
     analysisResult.config.routerKind === 'app'
       ? renderAppRouteHandlerPage({
@@ -44,7 +51,8 @@ export const emitRouteHandlerLazySingleHandler = async (
           routeContract: analysisResult.config.routeContract,
           handlerRouteParam: analysisResult.config.handlerRouteParam,
           routeBasePath: analysisResult.config.routeBasePath,
-          routeModuleContract: analysisResult.config.routeModule
+          routeModuleContract: analysisResult.config.routeModule,
+          includeLocaleParam: isMultiLocale
         })
       : renderRouteHandlerPage({
           paths: analysisResult.config.paths,
@@ -53,7 +61,7 @@ export const emitRouteHandlerLazySingleHandler = async (
           routeContract: analysisResult.config.routeContract,
           handlerRouteParam: analysisResult.config.handlerRouteParam,
           routeBasePath: analysisResult.config.routeBasePath,
-          useDynamicLeaf: isMultiLocaleConfig(analysisResult.config.localeConfig)
+          useDynamicLeaf: isMultiLocale
         });
 
   return synchronizeRenderedRouteHandlerPage(renderedPage);

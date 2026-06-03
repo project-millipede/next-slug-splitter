@@ -7,6 +7,20 @@ import type { LocaleConfig } from '../../core/types';
 export type { AppRouteStaticParamValue } from './types';
 export type AppRouteStaticParams = AppRouteParams;
 
+/**
+ * Params-bag key under which locale travels on the App Router surface.
+ *
+ * Single source of truth shared by both sides of the multi-locale contract:
+ * 1. the generator bakes `{ [APP_LOCALE_PARAM_NAME]: locale }` into a
+ *    multi-locale handler's `handlerParams`, and
+ * 2. {@link filterStaticParamsAgainstHeavyRoutes} reads it back to subtract
+ *    heavy routes per their own locale.
+ *
+ * Keeping both sides on one constant stops the baked key and the read key from
+ * silently drifting apart.
+ */
+export const APP_LOCALE_PARAM_NAME = 'locale';
+
 export type AppRouteGenerateStaticParams<
   TArgs extends Array<unknown> = [],
   TParams extends AppRouteStaticParams = AppRouteStaticParams
@@ -23,7 +37,12 @@ export type FilterStaticParamsAgainstHeavyRoutesOptions = {
    */
   handlerRouteParamName?: string;
   /**
-   * Declarative locale config used to derive locale structurally from params.
+   * Resolved locale config enabling locale-aware heavy-route subtraction.
+   *
+   * When present, each entry's locale is read from its
+   * {@link APP_LOCALE_PARAM_NAME} param (multi-locale targets) and otherwise
+   * falls back to `defaultLocale` (single-locale / default-locale mode). When
+   * absent, locale filtering is disabled.
    */
   localeConfig?: LocaleConfig;
 };
@@ -38,15 +57,35 @@ const normalizeSlugArray = (
   return Array.isArray(slug) ? slug : [slug];
 };
 
+/**
+ * Derive the locale that owns one static-params entry.
+ *
+ * @remarks
+ * Locale ownership resolves in priority order:
+ * 1. **Per-entry locale param** — a multi-locale target carries its locale in
+ *    the params bag under {@link APP_LOCALE_PARAM_NAME}; that value wins, so a
+ *    slug heavy in one locale but light in another is subtracted precisely.
+ * 2. **App-owned default** — single-locale targets (and default-locale content
+ *    mode) omit the locale param, so `defaultLocale` is used. This is also the
+ *    fallback when the param is missing or not a string.
+ *
+ * @param params - One static-params entry produced by the wrapped enumerator.
+ * @param localeConfig - Resolved locale config; `undefined` disables locale
+ *   filtering for the call.
+ * @returns The owning locale, or `undefined` when locale filtering is disabled.
+ */
 const deriveLocaleFromStaticParams = (
-  _params: AppRouteStaticParams,
+  params: AppRouteStaticParams,
   localeConfig?: LocaleConfig
 ): string | undefined => {
   if (localeConfig == null) {
     return undefined;
   }
 
-  return localeConfig.defaultLocale;
+  const localeParamValue = params[APP_LOCALE_PARAM_NAME];
+  return typeof localeParamValue === 'string' && localeParamValue.length > 0
+    ? localeParamValue
+    : localeConfig.defaultLocale;
 };
 
 /**

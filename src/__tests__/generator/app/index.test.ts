@@ -44,7 +44,8 @@ describe('App Router generator contract', () => {
       routeModuleContract: {
         hasGeneratePageMetadata: true,
         revalidate: false
-      }
+      },
+      includeLocaleParam: false
     });
 
     expect(renderedPage.pageFilePath).toBe(
@@ -54,6 +55,8 @@ describe('App Router generator contract', () => {
     expect(renderedPage.pageSource).toContain(
       '"slug": ["guides", "einfuehrung"]'
     );
+    // Single-locale targets keep the slug-only bag: no locale is baked in.
+    expect(renderedPage.pageSource).not.toContain('"locale"');
     expect(renderedPage.pageSource).toContain('generatePageMetadata');
     expect(renderedPage.pageSource).toContain('loadPageProps');
     expect(renderedPage.pageSource).toContain(
@@ -99,10 +102,49 @@ describe('App Router generator contract', () => {
       routeModuleContract: {
         hasGeneratePageMetadata: false,
         revalidate: undefined
-      }
+      },
+      includeLocaleParam: false
     });
 
     expect(renderedPage.pageSource).not.toContain('generatePageMetadata');
     expect(renderedPage.pageSource).not.toContain('export const revalidate =');
+  });
+
+  it('bakes the route locale into handlerParams for multi-locale targets', () => {
+    const renderedPage = renderAppRouteHandlerPage({
+      paths: {
+        rootDir: '/repo',
+        contentDir: '/repo/content',
+        generatedDir: '/repo/app/content/generated-handlers'
+      },
+      heavyRoute: createPlannedHeavyRoute({
+        locale: 'de',
+        slugArray: ['guides', 'einfuehrung'],
+        handlerId: 'de-guides-einfuehrung',
+        handlerRelativePath: 'guides/einfuehrung/de',
+        usedLoadableComponentKeys: [],
+        factoryImport: absoluteModule('/repo/runtime/create-handler-page.js'),
+        componentEntries: []
+      }),
+      emitFormat: 'ts',
+      routeContract: absoluteModule('/repo/app/content/route-contract.ts'),
+      handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
+      routeBasePath: '/content',
+      routeModuleContract: {
+        hasGeneratePageMetadata: true,
+        revalidate: false
+      },
+      includeLocaleParam: true
+    });
+
+    // The locale rides in handlerParams next to the slug, so the shared route
+    // contract's loadPageProps / generatePageMetadata receive it.
+    expect(renderedPage.pageSource).toContain(
+      '"slug": ["guides", "einfuehrung"]'
+    );
+    expect(renderedPage.pageSource).toContain('"locale": "de"');
+    expect(renderedPage.pageSource).toContain(
+      'const props = await loadPageProps(handlerParams);'
+    );
   });
 });

@@ -2,17 +2,37 @@ import {
   clearRouteHandlerOutputDirectory,
   synchronizeRenderedRouteHandlerPage
 } from '../../shared/protocol/output-lifecycle';
-import { renderAppRouteHandlerPage } from '../protocol/rendered-page';
+import {
+  renderAppRouteHandlerPage,
+  type AppRouteHandlerEmitBase
+} from '../protocol/rendered-page';
+import { isMultiLocaleConfig } from '../../../core/locale-config';
 
-import type {
-  EmitFormat,
-  PlannedHeavyRoute,
-  ResolvedRouteHandlerModuleReference,
-  RouteHandlerPaths
-} from '../../../core/types';
-import type { ResolvedAppRouteModuleContract } from '../../../next/app/types';
-import type { DynamicRouteParam } from '../../../next/shared/types';
+import type { LocaleConfig, PlannedHeavyRoute } from '../../../core/types';
 
+/** Input for {@link emitAppRouteHandlerPages}. */
+type EmitAppRouteHandlerPagesInput = AppRouteHandlerEmitBase & {
+  /** Heavy routes selected for handler generation. */
+  heavyRoutes: Array<PlannedHeavyRoute>;
+  /**
+   * Normalized locale config. Multi-locale targets bake each handler's locale
+   * into its `handlerParams`; single-locale targets keep the slug-only bag.
+   */
+  localeConfig: LocaleConfig;
+};
+
+/**
+ * Rebuild an App target's generated-handler directory from its heavy-route set.
+ *
+ * @remarks
+ * Each heavy route renders one concrete `page.tsx` (`dynamicParams = false`).
+ * For multi-locale targets the route's locale is baked into `handlerParams` so
+ * the shared route contract loads the correct per-locale data; single-locale
+ * targets keep today's slug-only bag.
+ *
+ * @param input - Handler emission input for one App target.
+ * @returns A promise that resolves once all handler pages are written to disk.
+ */
 export const emitAppRouteHandlerPages = async ({
   paths,
   heavyRoutes,
@@ -20,17 +40,15 @@ export const emitAppRouteHandlerPages = async ({
   routeContract,
   handlerRouteParam,
   routeBasePath,
-  routeModuleContract
-}: {
-  paths: RouteHandlerPaths;
-  heavyRoutes: Array<PlannedHeavyRoute>;
-  emitFormat: EmitFormat;
-  routeContract: ResolvedRouteHandlerModuleReference;
-  handlerRouteParam: DynamicRouteParam;
-  routeBasePath: string;
-  routeModuleContract: ResolvedAppRouteModuleContract;
-}): Promise<void> => {
+  routeModuleContract,
+  localeConfig
+}: EmitAppRouteHandlerPagesInput): Promise<void> => {
   await clearRouteHandlerOutputDirectory(paths.generatedDir);
+
+  // Multi-locale targets carry locale in handlerParams (see
+  // renderAppRouteHandlerPage); single-locale targets keep the slug-only bag,
+  // preserving today's output exactly.
+  const includeLocaleParam = isMultiLocaleConfig(localeConfig);
 
   const renderedPages = heavyRoutes.map(entry =>
     renderAppRouteHandlerPage({
@@ -40,7 +58,8 @@ export const emitAppRouteHandlerPages = async ({
       routeContract,
       handlerRouteParam,
       routeBasePath,
-      routeModuleContract
+      routeModuleContract,
+      includeLocaleParam
     })
   );
 

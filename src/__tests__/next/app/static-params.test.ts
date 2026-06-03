@@ -22,23 +22,29 @@ import {
 } from '../../helpers/fixtures';
 
 describe('filterStaticParamsAgainstHeavyRoutes', () => {
-  test('filters heavy params using structural default-locale semantics', async () => {
+  test('subtracts heavy routes per their own locale, not the default locale', async () => {
+    // de:dashboard must survive even though en:dashboard is heavy — proving the
+    // filter reads each entry's own locale instead of collapsing to defaultLocale.
     await expect(
       filterStaticParamsAgainstHeavyRoutes(
         [
-          { slug: ['getting-started'], locale: 'en' },
-          { slug: ['heavy-page'], locale: 'de' },
-          { slug: ['light-page'], locale: 'de' }
+          { slug: ['interactive'], locale: 'en' },
+          { slug: ['interactive'], locale: 'de' },
+          { slug: ['dashboard'], locale: 'en' },
+          { slug: ['dashboard'], locale: 'de' },
+          { slug: ['tutorial'], locale: 'de' }
         ],
         (locale, slugArray) =>
-          ['en:heavy-page'].includes(`${locale}:${slugArray.join('/')}`),
+          ['en:interactive', 'de:interactive', 'en:dashboard'].includes(
+            `${locale}:${slugArray.join('/')}`
+          ),
         {
           localeConfig: TEST_MULTI_LOCALE_CONFIG
         }
       )
     ).resolves.toEqual([
-      { slug: ['getting-started'], locale: 'en' },
-      { slug: ['light-page'], locale: 'de' }
+      { slug: ['dashboard'], locale: 'de' },
+      { slug: ['tutorial'], locale: 'de' }
     ]);
   });
 
