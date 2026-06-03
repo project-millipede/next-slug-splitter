@@ -23,7 +23,6 @@ import {
   synchronizeRenderedRouteHandlerPage
 } from '../../shared/protocol/output-lifecycle';
 import {
-  renderMergedRouteHandlerPage,
   renderRouteHandlerPage,
   type RouteHandlerEmitBase
 } from '../protocol/rendered-page';
@@ -71,35 +70,38 @@ export const emitRouteHandlerPages = async ({
   // dev artifacts before the current heavy-route set is written back to disk.
   await clearRouteHandlerOutputDirectory(paths.generatedDir);
 
-  // Lone-locale and distinct-set handlers still need the optional catch-all
-  // leaf at L > 1; merged groups carry their own (always-dynamic) leaf.
-  const useDynamicLeaf = isMultiLocaleConfig(localeConfig);
+  const isMultiLocale = isMultiLocaleConfig(localeConfig);
 
   const renderedPages = groupHeavyRoutesForEmission(
     heavyRoutes,
     localeConfig
-  ).map(unit =>
-    unit.kind === 'merged'
-      ? renderMergedRouteHandlerPage({
-          paths,
-          route: unit.route,
-          locales: unit.locales,
-          handlerRelativePath: unit.handlerRelativePath,
-          emitFormat,
-          routeContract,
-          handlerRouteParam,
-          routeBasePath
-        })
-      : renderRouteHandlerPage({
-          paths,
-          heavyRoute: unit.route,
-          emitFormat,
-          routeContract,
-          handlerRouteParam,
-          routeBasePath,
-          useDynamicLeaf
-        })
-  );
+  ).map(unit => {
+    // getStaticPathsLocales is the whole single/merged distinction at this
+    // layer: a merged group enumerates every locale it owns at its locale-less
+    // destination; a lone/distinct-set route enumerates only its own locale,
+    // and only at L > 1 (at L = 1 it stays a concrete page).
+    const emission =
+      unit.kind === 'merged'
+        ? {
+            route: unit.route,
+            handlerRelativePath: unit.handlerRelativePath,
+            getStaticPathsLocales: unit.locales
+          }
+        : {
+            route: unit.route,
+            handlerRelativePath: unit.route.handlerRelativePath,
+            getStaticPathsLocales: isMultiLocale ? [unit.route.locale] : []
+          };
+
+    return renderRouteHandlerPage({
+      paths,
+      emitFormat,
+      routeContract,
+      handlerRouteParam,
+      routeBasePath,
+      ...emission
+    });
+  });
 
   for (const page of renderedPages) {
     await synchronizeRenderedRouteHandlerPage(page);

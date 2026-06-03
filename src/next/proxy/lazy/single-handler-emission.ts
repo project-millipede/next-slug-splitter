@@ -56,12 +56,18 @@ export const emitRouteHandlerLazySingleHandler = async (
         })
       : renderRouteHandlerPage({
           paths: analysisResult.config.paths,
-          heavyRoute: analysisResult.plannedHeavyRoute,
+          route: analysisResult.plannedHeavyRoute,
+          handlerRelativePath: analysisResult.plannedHeavyRoute.handlerRelativePath,
+          // Dev never merges, so a lazily emitted Pages handler is always a lone
+          // per-locale route: it enumerates its own locale at L > 1 and stays a
+          // concrete page at L = 1.
+          getStaticPathsLocales: isMultiLocale
+            ? [analysisResult.plannedHeavyRoute.locale]
+            : [],
           emitFormat: analysisResult.config.emitFormat,
           routeContract: analysisResult.config.routeContract,
           handlerRouteParam: analysisResult.config.handlerRouteParam,
-          routeBasePath: analysisResult.config.routeBasePath,
-          useDynamicLeaf: isMultiLocale
+          routeBasePath: analysisResult.config.routeBasePath
         });
 
   return synchronizeRenderedRouteHandlerPage(renderedPage);

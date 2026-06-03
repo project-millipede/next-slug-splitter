@@ -122,27 +122,25 @@ export type RouteHandlerEmitBase = {
 
 /** Input for {@link renderRouteHandlerPage}. */
 type RenderRouteHandlerPageInput = RouteHandlerEmitBase & {
-  /** Planned heavy route to render. */
-  heavyRoute: PlannedHeavyRoute;
   /**
-   * When `true`, emit under the optional catch-all leaf (`[[...rest]]`) and pin
-   * the route's locale via `getStaticPaths`; when `false`, emit the concrete
-   * single-locale page.
-   */
-  useDynamicLeaf: boolean;
-};
-
-/** Input for {@link renderMergedRouteHandlerPage}. */
-type RenderMergedRouteHandlerPageInput = RouteHandlerEmitBase & {
-  /**
-   * Representative planned heavy route for the group; its component payload is
-   * shared by every owned locale.
+   * Planned heavy route supplying the emitted component payload — its locale,
+   * slug, handler id, loadable keys, factory import/bindings, and component
+   * entries. For a merged group this is the representative route (all members
+   * share one component set).
    */
   route: PlannedHeavyRoute;
-  /** Every locale the merged handler owns. */
-  locales: Array<string>;
-  /** Locale-less handler-relative path (the merged emit/rewrite destination). */
+  /**
+   * Handler-relative emit destination: locale-bearing for a per-locale handler
+   * (`<slug>/<locale>`), locale-less for a merged one (`<slug>`).
+   */
   handlerRelativePath: string;
+  /**
+   * Locales to enumerate in `getStaticPaths`, which also selects the file shape:
+   * 1. empty → a concrete page, no `getStaticPaths` (`L = 1`);
+   * 2. one → a per-locale optional-catch-all leaf pinning that locale;
+   * 3. several → one merged optional-catch-all leaf owning a `K = 1` group.
+   */
+  getStaticPathsLocales: Array<string>;
 };
 
 /** Input for {@link createPreparedHandlerRenderConfig}. */
@@ -198,86 +196,43 @@ const createPreparedHandlerRenderConfig = ({
 };
 
 /**
- * Render one planned heavy route into the emitted handler-page artifact that
- * can later be synchronized to disk. Shared by the eager target emitter (for
- * `single` units) and the lazy dev/proxy single-file emitter.
+ * Render one heavy route into the emitted handler-page artifact that can later
+ * be synchronized to disk.
+ *
+ * @remarks
+ * This is the single, locale-count-agnostic emit path shared by every caller —
+ * the eager target emitter (`single` and `merged` units alike) and the lazy
+ * dev/proxy emitter. It does not know whether its input represents a concrete
+ * page, a per-locale handler, or a merged group; the caller expresses that
+ * purely through `handlerRelativePath` and `getStaticPathsLocales`, the latter
+ * driving two things at once:
+ * 1. the file shape — a non-empty list emits under the optional catch-all leaf
+ *    (`[[...rest]]`), an empty list stays a concrete page; and
+ * 2. the `getStaticPaths` export — one enumerated `(rest: [], locale)` entry per
+ *    listed locale, omitted entirely when the list is empty.
  *
  * @param input - One-page render input.
  * @returns Fully rendered handler page artifact.
  */
 export const renderRouteHandlerPage = ({
   paths,
-  heavyRoute,
-  emitFormat,
-  routeContract,
-  handlerRouteParam,
-  routeBasePath,
-  useDynamicLeaf
-}: RenderRouteHandlerPageInput): RenderedHandlerPage => {
-  const { relativePath, pageFilePath } = resolveRenderedHandlerPageLocation(
-    paths,
-    emitFormat,
-    heavyRoute.handlerRelativePath,
-    useDynamicLeaf
-  );
-  const renderConfig = createPreparedHandlerRenderConfig({
-    pageFilePath,
-    emitFormat,
-    routeBasePath,
-    routeContract,
-    factoryImport: heavyRoute.factoryImport,
-    handlerRouteParam,
-    getStaticPathsLocales: useDynamicLeaf ? [heavyRoute.locale] : []
-  });
-
-  const pageSource = renderRouteHandlerModules({
-    locale: heavyRoute.locale,
-    slugArray: heavyRoute.slugArray,
-    handlerId: heavyRoute.handlerId,
-    usedLoadableComponentKeys: heavyRoute.usedLoadableComponentKeys,
-    factoryBindings: heavyRoute.factoryBindings,
-    selectedComponentEntries: heavyRoute.componentEntries,
-    renderConfig
-  });
-
-  return {
-    relativePath,
-    pageFilePath,
-    pageSource
-  };
-};
-
-/**
- * Render a merged handler that owns several locales of one slug (a `K = 1`
- * group).
- *
- * The merged handler:
- * 1. is emitted at the locale-less optional catch-all leaf
- *    (`<slug>/[[...rest]].tsx`),
- * 2. exports `getStaticPaths` enumerating every owned locale, and
- * 3. bundles the shared component payload once, taken from the representative
- *    `route` (valid because all members resolve to one component set).
- *
- * @param input - Merged-page render input.
- * @returns Fully rendered merged handler page artifact.
- */
-export const renderMergedRouteHandlerPage = ({
-  paths,
   route,
-  locales,
   handlerRelativePath,
+  getStaticPathsLocales,
   emitFormat,
   routeContract,
   handlerRouteParam,
   routeBasePath
-}: RenderMergedRouteHandlerPageInput): RenderedHandlerPage => {
-  // Merged handlers are always dynamic: the locale-less leaf must export
-  // getStaticPaths to enumerate (and pin) every owned locale.
+}: RenderRouteHandlerPageInput): RenderedHandlerPage => {
+  // A non-empty locale list is the single trigger for the optional catch-all
+  // leaf: a concrete page (empty list) needs no dynamic segment, while both a
+  // per-locale handler and a merged group export getStaticPaths and so require
+  // one. This keeps the leaf decision and the getStaticPaths export in lockstep.
   const { relativePath, pageFilePath } = resolveRenderedHandlerPageLocation(
     paths,
     emitFormat,
     handlerRelativePath,
-    true
+    getStaticPathsLocales.length > 0
   );
   const renderConfig = createPreparedHandlerRenderConfig({
     pageFilePath,
@@ -286,7 +241,7 @@ export const renderMergedRouteHandlerPage = ({
     routeContract,
     factoryImport: route.factoryImport,
     handlerRouteParam,
-    getStaticPathsLocales: locales
+    getStaticPathsLocales
   });
 
   const pageSource = renderRouteHandlerModules({
