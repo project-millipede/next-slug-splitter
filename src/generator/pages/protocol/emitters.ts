@@ -88,11 +88,12 @@ type HandlerPageEmitInput = {
    */
   emitFormat: EmitFormat;
   /**
-   * Whether this handler is emitted under an optional catch-all leaf
-   * (`[[...rest]].tsx`) that must also export `getStaticPaths`. Derived from
-   * `L > 1`; `false` keeps the concrete single-locale page.
+   * Locales to enumerate in `getStaticPaths`. Empty → a concrete page with no
+   * `getStaticPaths` (single-locale, `L = 1`); one entry → a per-locale dynamic
+   * handler; several → a merged (`K = 1`) handler. Non-empty also pulls in the
+   * `createHandlerGetStaticPaths` import.
    */
-  useDynamicLeaf: boolean;
+  getStaticPathsLocales: Array<string>;
 };
 
 /**
@@ -134,24 +135,28 @@ const createHandlerGetStaticPropsInitializer = (
 /**
  * Creates the initializer for the generated `getStaticPaths` export.
  *
- * Emits a call to the library's `createHandlerGetStaticPaths` enumerating the
- * single `(base path, locale)` pair this handler owns, with the locale pinned
- * so Next does not fan the page out across every configured i18n locale.
+ * Emits a call to the library's `createHandlerGetStaticPaths` enumerating one
+ * `(base path, locale)` pair per owned locale, each with the locale pinned so
+ * Next does not fan the page out across every configured i18n locale. A
+ * single-locale handler passes one locale; a merged (`K = 1`) handler passes
+ * all the locales it owns.
  *
- * @param sourceLocale - Locale this handler is pinned to.
+ * @param locales - Locales this handler is pinned to (one entry each).
  * @returns A writer function that emits the `createHandlerGetStaticPaths(...)` call.
  */
 const createHandlerGetStaticPathsInitializer = (
-  sourceLocale: string
+  locales: ReadonlyArray<string>
 ): WriterFunction => {
   return writer => {
     writer.write('createHandlerGetStaticPaths([');
     writer.newLine();
     writer.indent(() => {
-      writer.write('{ rest: [], locale: ');
-      writeStringLiteral(writer, sourceLocale);
-      writer.write(' }');
-      writer.newLine();
+      locales.forEach((locale, index) => {
+        writer.write('{ rest: [], locale: ');
+        writeStringLiteral(writer, locale);
+        writer.write(index < locales.length - 1 ? ' },' : ' }');
+        writer.newLine();
+      });
     });
     writer.write('])');
   };
@@ -175,7 +180,7 @@ export const renderHandlerPageSource = ({
   componentImports,
   componentEntries,
   factoryBindingValues,
-  useDynamicLeaf,
+  getStaticPathsLocales,
   emitFormat
 }: HandlerPageEmitInput): string => {
   /**
@@ -188,13 +193,17 @@ export const renderHandlerPageSource = ({
     'route-handler.generated'
   );
 
+  // A non-empty locale list means this handler exports `getStaticPaths`; it is
+  // the single source of truth for the dynamic-leaf shape at the emitter layer.
+  const emitsGetStaticPaths = getStaticPathsLocales.length > 0;
+
   const importDeclarations: Array<HandlerImportDeclarationRecord> = [];
 
   // Static props binding comes from the library — it's pure plumbing that
   // doesn't depend on the app's component wiring.
   importDeclarations.push({
     source: 'next-slug-splitter/next/handler',
-    namedImports: useDynamicLeaf
+    namedImports: emitsGetStaticPaths
       ? ['createHandlerGetStaticPaths', 'createHandlerGetStaticProps']
       : ['createHandlerGetStaticProps']
   });
@@ -247,14 +256,15 @@ export const renderHandlerPageSource = ({
     ]
   });
 
-  if (useDynamicLeaf) {
+  if (emitsGetStaticPaths) {
     sourceFile.addVariableStatement({
       isExported: true,
       declarationKind: VariableDeclarationKind.Const,
       declarations: [
         {
           name: 'getStaticPaths',
-          initializer: createHandlerGetStaticPathsInitializer(sourceLocale)
+          initializer:
+            createHandlerGetStaticPathsInitializer(getStaticPathsLocales)
         }
       ]
     });

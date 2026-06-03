@@ -9,9 +9,11 @@
  *
  * In the current phase-local architecture this module rebuilds one target's
  * handler output directory from the current heavy-route set:
- * 1. clear the target handlers directory
- * 2. render one page for each current heavy route
- * 3. write those rendered pages to disk
+ * 1. clear the target handlers directory,
+ * 2. group the heavy routes into emission units, collapsing same-component-set
+ *    locale groups into one merged handler (the build-only `K = 1` merge),
+ * 3. render one page per emission unit, and
+ * 4. write those rendered pages to disk.
  *
  * This module does not decide whether a route is heavy. It assumes
  * `heavyRoutes` is already the final generation set for the target.
@@ -20,22 +22,40 @@ import {
   clearRouteHandlerOutputDirectory,
   synchronizeRenderedRouteHandlerPage
 } from '../../shared/protocol/output-lifecycle';
-import { renderRouteHandlerPage } from '../protocol/rendered-page';
+import {
+  renderMergedRouteHandlerPage,
+  renderRouteHandlerPage,
+  type RouteHandlerEmitBase
+} from '../protocol/rendered-page';
+import { groupHeavyRoutesForEmission } from '../../../core/handler-emission-grouping';
+import { isMultiLocaleConfig } from '../../../core/locale-config';
 
-import type {
-  DynamicRouteParam,
-  EmitFormat,
-  PlannedHeavyRoute,
-  ResolvedRouteHandlerModuleReference,
-  RouteHandlerPaths
-} from '../../../core/types';
+import type { LocaleConfig, PlannedHeavyRoute } from '../../../core/types';
+
+/** Input for {@link emitRouteHandlerPages}. */
+type EmitRouteHandlerPagesInput = RouteHandlerEmitBase & {
+  /** Heavy routes selected for handler generation. */
+  heavyRoutes: Array<PlannedHeavyRoute>;
+  /**
+   * Normalized locale config; drives both the per-locale vs concrete leaf
+   * decision and the build-only `K = 1` merge grouping.
+   */
+  localeConfig: LocaleConfig;
+};
 
 /**
- * Emits one generated page per heavy route using the prepared route-local
- * component plans.
+ * Rebuild a target's generated-handler directory from its heavy-route set.
+ *
+ * @remarks
+ * Heavy routes are first grouped into emission units (see
+ * {@link groupHeavyRoutesForEmission}):
+ * 1. a `single` unit renders one per-locale handler — concrete at `L = 1`, an
+ *    optional catch-all leaf at `L > 1`;
+ * 2. a `merged` unit renders one locale-less handler covering a whole
+ *    same-component-set locale group (the build-only `K = 1` merge).
  *
  * @param input - Handler emission input for one target.
- * @returns A promise that resolves once all route-handler pages are written.
+ * @returns A promise that resolves once all handler pages are written to disk.
  */
 export const emitRouteHandlerPages = async ({
   paths,
@@ -44,58 +64,42 @@ export const emitRouteHandlerPages = async ({
   routeContract,
   handlerRouteParam,
   routeBasePath,
-  useDynamicLeaf
-}: {
-  /**
-   * Filesystem paths for the target.
-   */
-  paths: RouteHandlerPaths;
-  /**
-   * Heavy routes selected for handler generation.
-   */
-  heavyRoutes: Array<PlannedHeavyRoute>;
-  /**
-   * Output format for generated files.
-   */
-  emitFormat: EmitFormat;
-  /**
-   * Resolved Pages route contract module reference.
-   */
-  routeContract: ResolvedRouteHandlerModuleReference;
-  /**
-   * Dynamic route parameter descriptor for the handler page.
-   */
-  handlerRouteParam: DynamicRouteParam;
-  /**
-   * Base path for public routes in this target.
-   */
-  routeBasePath: string;
-  /**
-   * Whether handlers are emitted under an optional catch-all leaf that exports
-   * `getStaticPaths` (derived from `L > 1`).
-   */
-  useDynamicLeaf: boolean;
-}): Promise<void> => {
+  localeConfig
+}: EmitRouteHandlerPagesInput): Promise<void> => {
   // Generate mode is intentionally phase-local and fresh. Clearing the target
   // handlers directory up front keeps build/generate independent from prior
   // dev artifacts before the current heavy-route set is written back to disk.
   await clearRouteHandlerOutputDirectory(paths.generatedDir);
 
-  const renderedPages = [];
+  // Lone-locale and distinct-set handlers still need the optional catch-all
+  // leaf at L > 1; merged groups carry their own (always-dynamic) leaf.
+  const useDynamicLeaf = isMultiLocaleConfig(localeConfig);
 
-  for (const entry of heavyRoutes) {
-    renderedPages.push(
-      renderRouteHandlerPage({
-        paths,
-        heavyRoute: entry,
-        emitFormat,
-        routeContract,
-        handlerRouteParam,
-        routeBasePath,
-        useDynamicLeaf
-      })
-    );
-  }
+  const renderedPages = groupHeavyRoutesForEmission(
+    heavyRoutes,
+    localeConfig
+  ).map(unit =>
+    unit.kind === 'merged'
+      ? renderMergedRouteHandlerPage({
+          paths,
+          route: unit.route,
+          locales: unit.locales,
+          handlerRelativePath: unit.handlerRelativePath,
+          emitFormat,
+          routeContract,
+          handlerRouteParam,
+          routeBasePath
+        })
+      : renderRouteHandlerPage({
+          paths,
+          heavyRoute: unit.route,
+          emitFormat,
+          routeContract,
+          handlerRouteParam,
+          routeBasePath,
+          useDynamicLeaf
+        })
+  );
 
   for (const page of renderedPages) {
     await synchronizeRenderedRouteHandlerPage(page);

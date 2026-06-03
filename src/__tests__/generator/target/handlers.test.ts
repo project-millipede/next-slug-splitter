@@ -12,7 +12,9 @@ import {
   createTestPaths
 } from '../../helpers/builders';
 import {
+  TEST_MULTI_LOCALE_CONFIG,
   TEST_PRIMARY_FACTORY_IMPORT,
+  TEST_SINGLE_LOCALE_CONFIG,
   TEST_STATIC_PROPS_IMPORT
 } from '../../helpers/fixtures';
 import { withTempDir } from '../../helpers/temp-dir';
@@ -77,7 +79,7 @@ describe('generator handlers', () => {
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' },
-        useDynamicLeaf: false
+        getStaticPathsLocales: []
       }
     });
 
@@ -117,7 +119,7 @@ describe('generator handlers', () => {
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' },
-        useDynamicLeaf: false
+        getStaticPathsLocales: []
       }
     });
 
@@ -146,7 +148,7 @@ describe('generator handlers', () => {
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' },
-        useDynamicLeaf: false
+        getStaticPathsLocales: []
       }
     });
 
@@ -213,7 +215,7 @@ describe('generator handlers', () => {
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' },
-        useDynamicLeaf: false
+        getStaticPathsLocales: []
       }
     });
 
@@ -256,7 +258,7 @@ describe('generator handlers', () => {
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' },
-        useDynamicLeaf: false
+        getStaticPathsLocales: []
       }
     });
 
@@ -319,7 +321,7 @@ describe('generator handlers', () => {
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' },
-        useDynamicLeaf: false
+        getStaticPathsLocales: []
       }
     });
 
@@ -367,7 +369,7 @@ describe('generator handlers', () => {
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' },
-        useDynamicLeaf: false
+        getStaticPathsLocales: []
       }
     });
 
@@ -407,7 +409,7 @@ describe('generator handlers', () => {
         routeContract: contentHandlerModuleInput.routeContract,
         handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
         routeBasePath: contentHandlerModuleInput.routeBasePath,
-        useDynamicLeaf: false
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG
       });
 
       const pageSource = await readFile(
@@ -493,7 +495,7 @@ describe('generator handlers', () => {
         routeContract: contentHandlerModuleInput.routeContract,
         handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
         routeBasePath: contentHandlerModuleInput.routeBasePath,
-        useDynamicLeaf: false
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG
       });
 
       const unchangedPath = path.join(paths.generatedDir, 'stable', 'en.tsx');
@@ -531,7 +533,7 @@ describe('generator handlers', () => {
         routeContract: contentHandlerModuleInput.routeContract,
         handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
         routeBasePath: contentHandlerModuleInput.routeBasePath,
-        useDynamicLeaf: false
+        localeConfig: TEST_SINGLE_LOCALE_CONFIG
       });
 
       const unchangedSourceAfter = await readFile(unchangedPath, 'utf8');
@@ -544,7 +546,7 @@ describe('generator handlers', () => {
     });
   });
 
-  it('emits getStaticPaths and the catch-all import when useDynamicLeaf is true', () => {
+  it('emits getStaticPaths and the catch-all import for an enumerated-locale handler', () => {
     const pageSource = renderRouteHandlerModules({
       locale: 'de',
       slugArray: ['nested', 'example'],
@@ -568,7 +570,7 @@ describe('generator handlers', () => {
         routeBasePath: '/content',
         emitFormat: 'ts',
         handlerRouteParam: { name: 'entry', kind: 'catch-all' },
-        useDynamicLeaf: true
+        getStaticPathsLocales: ['de']
       }
     });
 
@@ -591,7 +593,7 @@ describe('generator handlers', () => {
     );
   });
 
-  it('emits the optional catch-all handler file under the locale directory when useDynamicLeaf is true', async () => {
+  it('emits the optional catch-all handler file under the locale directory for a multi-locale target', async () => {
     await withTempDir('next-slug-splitter-', async rootDir => {
       const paths = createTestPaths(rootDir);
       const contentHandlerModuleInput =
@@ -625,7 +627,7 @@ describe('generator handlers', () => {
         routeContract: contentHandlerModuleInput.routeContract,
         handlerRouteParam: contentHandlerModuleInput.handlerRouteParam,
         routeBasePath: contentHandlerModuleInput.routeBasePath,
-        useDynamicLeaf: true
+        localeConfig: TEST_MULTI_LOCALE_CONFIG
       });
 
       const leafPath = path.join(

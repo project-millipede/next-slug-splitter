@@ -49,10 +49,10 @@ export type PreparedHandlerRenderConfig = {
    */
   emitFormat: EmitFormat;
   /**
-   * Whether the handler is emitted under an optional catch-all leaf that also
-   * exports `getStaticPaths` (derived from `L > 1`).
+   * Locales to enumerate in `getStaticPaths`. Empty → concrete page (no
+   * `getStaticPaths`); one → per-locale handler; several → merged handler.
    */
-  useDynamicLeaf: boolean;
+  getStaticPathsLocales: Array<string>;
 };
 
 /**
@@ -124,7 +124,7 @@ export const renderRouteHandlerModules = ({
     componentImports,
     componentEntries,
     factoryBindingValues,
-    useDynamicLeaf: renderConfig.useDynamicLeaf,
+    getStaticPathsLocales: renderConfig.getStaticPathsLocales,
     emitFormat: renderConfig.emitFormat
   });
 };

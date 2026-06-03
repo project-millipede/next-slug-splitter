@@ -104,15 +104,75 @@ export const resolveRenderedHandlerPageLocation = (
 };
 
 /**
+ * Fields shared by every Pages handler-emission entry point: where the page is
+ * written, how it is formatted, and the route identity it serves.
+ */
+export type RouteHandlerEmitBase = {
+  /** Target filesystem paths. */
+  paths: RouteHandlerPaths;
+  /** Output format for generated files. */
+  emitFormat: EmitFormat;
+  /** Resolved Pages route contract import (the catch-all the handler delegates to). */
+  routeContract: ResolvedRouteHandlerModuleReference;
+  /** Dynamic route-param descriptor for the handler page. */
+  handlerRouteParam: DynamicRouteParam;
+  /** Public route base path for the target. */
+  routeBasePath: string;
+};
+
+/** Input for {@link renderRouteHandlerPage}. */
+type RenderRouteHandlerPageInput = RouteHandlerEmitBase & {
+  /** Planned heavy route to render. */
+  heavyRoute: PlannedHeavyRoute;
+  /**
+   * When `true`, emit under the optional catch-all leaf (`[[...rest]]`) and pin
+   * the route's locale via `getStaticPaths`; when `false`, emit the concrete
+   * single-locale page.
+   */
+  useDynamicLeaf: boolean;
+};
+
+/** Input for {@link renderMergedRouteHandlerPage}. */
+type RenderMergedRouteHandlerPageInput = RouteHandlerEmitBase & {
+  /**
+   * Representative planned heavy route for the group; its component payload is
+   * shared by every owned locale.
+   */
+  route: PlannedHeavyRoute;
+  /** Every locale the merged handler owns. */
+  locales: Array<string>;
+  /** Locale-less handler-relative path (the merged emit/rewrite destination). */
+  handlerRelativePath: string;
+};
+
+/** Input for {@link createPreparedHandlerRenderConfig}. */
+type PrepareHandlerRenderConfigInput = {
+  /** Absolute path the page is written to; import specifiers are relative to it. */
+  pageFilePath: string;
+  /** Output format for the generated file. */
+  emitFormat: EmitFormat;
+  /** Public route base path for the target. */
+  routeBasePath: string;
+  /** Resolved source route contract module reference. */
+  routeContract: ResolvedRouteHandlerModuleReference;
+  /** Resolved runtime handler-factory module reference. */
+  factoryImport: ResolvedRouteHandlerModuleReference;
+  /** Dynamic route-param descriptor for the handler page. */
+  handlerRouteParam: DynamicRouteParam;
+  /** Locales to enumerate in `getStaticPaths` (empty → a concrete page). */
+  getStaticPathsLocales: Array<string>;
+};
+
+/**
  * Prepare the final render config for one emitted handler page.
+ *
+ * @remarks
+ * Translates resolved module references into the exact import specifiers
+ * written into the generated file, so the target-wide and lazy one-file
+ * emitters produce identical imports.
  *
  * @param input - Render-config preparation input.
  * @returns Fully prepared render config consumed by the renderer layer.
- *
- * @remarks
- * This helper translates resolved module references into the exact import
- * specifiers that will be written into the generated file. Both the target-wide
- * and lazy one-file emitters must perform that translation identically.
  */
 const createPreparedHandlerRenderConfig = ({
   pageFilePath,
@@ -121,16 +181,8 @@ const createPreparedHandlerRenderConfig = ({
   routeContract,
   factoryImport,
   handlerRouteParam,
-  useDynamicLeaf
-}: {
-  pageFilePath: string;
-  emitFormat: EmitFormat;
-  routeBasePath: string;
-  routeContract: ResolvedRouteHandlerModuleReference;
-  factoryImport: ResolvedRouteHandlerModuleReference;
-  handlerRouteParam: DynamicRouteParam;
-  useDynamicLeaf: boolean;
-}): PreparedHandlerRenderConfig => {
+  getStaticPathsLocales
+}: PrepareHandlerRenderConfigInput): PreparedHandlerRenderConfig => {
   return {
     pageFilePath,
     runtimeHandlerFactoryImport: toEmittedImportSpecifier(
@@ -141,20 +193,16 @@ const createPreparedHandlerRenderConfig = ({
     handlerRouteParam,
     routeBasePath,
     emitFormat,
-    useDynamicLeaf
+    getStaticPathsLocales
   };
 };
 
 /**
  * Render one planned heavy route into the emitted handler-page artifact that
- * can later be synchronized to disk.
+ * can later be synchronized to disk. Shared by the eager target emitter (for
+ * `single` units) and the lazy dev/proxy single-file emitter.
  *
  * @param input - One-page render input.
- * @param input.paths - Target filesystem paths.
- * @param input.heavyRoute - Planned heavy route to render.
- * @param input.emitFormat - Output format for generated files.
- * @param input.routeContract - Resolved Pages route contract import.
- * @param input.routeBasePath - Public route base path for the target.
  * @returns Fully rendered handler page artifact.
  */
 export const renderRouteHandlerPage = ({
@@ -165,15 +213,7 @@ export const renderRouteHandlerPage = ({
   handlerRouteParam,
   routeBasePath,
   useDynamicLeaf
-}: {
-  paths: RouteHandlerPaths;
-  heavyRoute: PlannedHeavyRoute;
-  emitFormat: EmitFormat;
-  routeContract: ResolvedRouteHandlerModuleReference;
-  handlerRouteParam: DynamicRouteParam;
-  routeBasePath: string;
-  useDynamicLeaf: boolean;
-}): RenderedHandlerPage => {
+}: RenderRouteHandlerPageInput): RenderedHandlerPage => {
   const { relativePath, pageFilePath } = resolveRenderedHandlerPageLocation(
     paths,
     emitFormat,
@@ -187,7 +227,7 @@ export const renderRouteHandlerPage = ({
     routeContract,
     factoryImport: heavyRoute.factoryImport,
     handlerRouteParam,
-    useDynamicLeaf
+    getStaticPathsLocales: useDynamicLeaf ? [heavyRoute.locale] : []
   });
 
   const pageSource = renderRouteHandlerModules({
@@ -197,6 +237,65 @@ export const renderRouteHandlerPage = ({
     usedLoadableComponentKeys: heavyRoute.usedLoadableComponentKeys,
     factoryBindings: heavyRoute.factoryBindings,
     selectedComponentEntries: heavyRoute.componentEntries,
+    renderConfig
+  });
+
+  return {
+    relativePath,
+    pageFilePath,
+    pageSource
+  };
+};
+
+/**
+ * Render a merged handler that owns several locales of one slug (a `K = 1`
+ * group).
+ *
+ * The merged handler:
+ * 1. is emitted at the locale-less optional catch-all leaf
+ *    (`<slug>/[[...rest]].tsx`),
+ * 2. exports `getStaticPaths` enumerating every owned locale, and
+ * 3. bundles the shared component payload once, taken from the representative
+ *    `route` (valid because all members resolve to one component set).
+ *
+ * @param input - Merged-page render input.
+ * @returns Fully rendered merged handler page artifact.
+ */
+export const renderMergedRouteHandlerPage = ({
+  paths,
+  route,
+  locales,
+  handlerRelativePath,
+  emitFormat,
+  routeContract,
+  handlerRouteParam,
+  routeBasePath
+}: RenderMergedRouteHandlerPageInput): RenderedHandlerPage => {
+  // Merged handlers are always dynamic: the locale-less leaf must export
+  // getStaticPaths to enumerate (and pin) every owned locale.
+  const { relativePath, pageFilePath } = resolveRenderedHandlerPageLocation(
+    paths,
+    emitFormat,
+    handlerRelativePath,
+    true
+  );
+  const renderConfig = createPreparedHandlerRenderConfig({
+    pageFilePath,
+    emitFormat,
+    routeBasePath,
+    routeContract,
+    factoryImport: route.factoryImport,
+    handlerRouteParam,
+    getStaticPathsLocales: locales
+  });
+
+  const pageSource = renderRouteHandlerModules({
+    locale: route.locale,
+    slugArray: route.slugArray,
+    handlerId: route.handlerId,
+    usedLoadableComponentKeys: route.usedLoadableComponentKeys,
+    factoryBindings: route.factoryBindings,
+    selectedComponentEntries: route.componentEntries,
     renderConfig
   });
 
