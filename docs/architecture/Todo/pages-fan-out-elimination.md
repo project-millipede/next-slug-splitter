@@ -467,6 +467,28 @@ for a given `(slug, locale)` comes from the same source feeding both sides — s
 merge-eligibility is *identical* across routers. They merge in lockstep, which
 is exactly what keeps parity intact rather than coincidental.
 
+### Implementation note — the merge is build-only (dev never groups)
+
+The `K = 1` merge runs only on the **eager build path**. The lazy dev/proxy path
+emits one route at a time and never groups, so dev keeps the per-locale Phase 1
+shape. Dev and build therefore differ in generated *file layout* for `K = 1`
+slugs; the *rendered output* is identical, and generated files are
+gitignored/ephemeral and full-cleared on phase transitions, so the layout
+difference is inert. (Pages implements this today; the App half is Phase 2b.)
+
+This is a deliberate asymmetry, not an oversight: the eager build already
+analyzes every locale variant to find heavy routes, so grouping is a free
+in-memory comparison of data it already holds and scales to any locale count.
+The lazy path reads exactly the one requested variant, so it must never reach
+for the full per-slug locale set the merge needs.
+
+| axis           | dev (`next dev`)           | build (`next build`)             |
+|----------------|----------------------------|----------------------------------|
+| route strategy | proxy → lazy               | rewrites → eager (`generate`)    |
+| when emitted   | one handler per request    | whole heavy-route set up front   |
+| `K = 1` merge  | never (per-locale Phase 1) | groups each `K = 1` set into one |
+| rendered out   | per-locale content         | identical per-locale content     |
+
 Rules:
 
 - **Only when `K = 1`** for the group (the heavy locales genuinely share a
