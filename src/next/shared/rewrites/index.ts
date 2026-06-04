@@ -2,6 +2,7 @@ import { toRoutePath } from '../../../core/discovery';
 import { isSingleLocaleConfig } from '../../../core/locale-config';
 import type { HeavyRouteCandidate, LocaleConfig } from '../../../core/types';
 import { dedupeRewriteIdentities } from './identity';
+import { createAbsoluteRewriteRoutePath } from './route-path';
 import type { RouteHandlerRewrite, RouteHandlerRewriteBuckets } from '../types';
 
 /**
@@ -67,33 +68,68 @@ export const buildRouteRewriteBuckets = (
 
   for (const entry of heavyRoutes) {
     const sourceRoutePath = toRoutePath(routeBasePath, entry.slugArray);
-    const destinationBase = `${routeBasePath}/${handlerRouteSegment}/${entry.handlerRelativePath}`;
+    /**
+     * Generated-handler destination:
+     * 1. The destination stays locale-less at the front.
+     * 2. The public source path owns the browser-visible locale shape.
+     * 3. `handlerRelativePath` selects the concrete locale handler.
+     * 4. Root targets are slash-normalized so `/` + `generated-handlers`
+     *    does not become `//generated-handlers`.
+     *
+     * Example:
+     * `/de/docs/a/b` -> `/docs/generated-handlers/a/b/de`
+     */
+    const destinationBase = createAbsoluteRewriteRoutePath(
+      routeBasePath,
+      handlerRouteSegment,
+      entry.handlerRelativePath
+    );
 
     if (entry.locale === localeConfig.defaultLocale) {
-      // 1. Add the canonical locale-less public rewrite.
-      // Next.js inherently maps the default locale to the unprefixed route shape.
+      /**
+       * Default locale, canonical URL:
+       * 1. Every locale configuration has a default locale.
+       * 2. The canonical public source URL is unprefixed.
+       * 3. The destination stays locale-less at the front.
+       * 4. The handler path suffix selects the default locale.
+       *
+       * Example:
+       * `/docs/a/b` -> `/docs/generated-handlers/a/b/en`
+       */
       rewrites.push(createRewrite(sourceRoutePath, destinationBase));
 
-      // 2. Multi-locale apps also expose an explicit /<locale>/... alias for
-      //    the default locale. Single-locale apps intentionally skip that
-      //    alias so internal locale sentinels never leak into public rewrites.
-      if (!isSingleLocale) {
-        rewritesOfDefaultLocale.push(
-          createRewrite(
-            `/${entry.locale}${sourceRoutePath}`,
-            `/${entry.locale}${destinationBase}`
-          )
-        );
+      if (isSingleLocale) {
+        continue;
       }
+
+      /**
+       * Default locale, explicit alias:
+       * 1. This branch is still handling the default locale.
+       * 2. Multi-locale configurations also support a locale-prefixed public
+       *    source URL for the default locale.
+       * 3. The destination stays locale-less at the front.
+       * 4. The handler path suffix selects the default locale.
+       *
+       * Example:
+       * `/en/docs/a/b` -> `/docs/generated-handlers/a/b/en`
+       */
+      rewritesOfDefaultLocale.push(
+        createRewrite(`/${entry.locale}${sourceRoutePath}`, destinationBase)
+      );
       continue;
     }
 
-    // Add the explicit /<locale>/... rewrite for non-default locales.
+    /*
+     * Non-default locale:
+     * 1. The public source URL is locale-prefixed.
+     * 2. The destination stays locale-less at the front.
+     * 3. The handler path suffix selects the non-default locale.
+     *
+     * Example:
+     * `/de/docs/a/b` -> `/docs/generated-handlers/a/b/de`
+     */
     rewrites.push(
-      createRewrite(
-        `/${entry.locale}${sourceRoutePath}`,
-        `/${entry.locale}${destinationBase}`
-      )
+      createRewrite(`/${entry.locale}${sourceRoutePath}`, destinationBase)
     );
   }
 
