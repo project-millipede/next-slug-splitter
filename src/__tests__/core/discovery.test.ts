@@ -27,6 +27,11 @@ describe('discovery helpers', () => {
     expect(toSlugPath([])).toBe('');
   });
 
+  it('builds root-owned route paths without double slashes', () => {
+    expect(toRoutePath('/', [])).toBe('/');
+    expect(toRoutePath('/', ['nested', 'example'])).toBe('/nested/example');
+  });
+
   it('builds stable handler id', () => {
     expect(toHandlerId('de', ['nested', 'example'])).toBe('de-nested-example');
     expect(toHandlerId('en', [])).toBe('en-index');

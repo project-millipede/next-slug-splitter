@@ -154,6 +154,12 @@ const TEST_NEXT_CONFIG = {
   }
 };
 
+const TEST_RESOLVED_PAGES_TARGET = {
+  targetId: 'docs',
+  routeBasePath: '/docs',
+  handlerRouteSegment: 'generated-handlers'
+} as const;
+
 describe('route handlers adapter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -164,9 +170,7 @@ describe('route handlers adapter', () => {
     resolveRouteHandlersAppContextMock.mockReturnValue(TEST_APP_CONTEXT);
     prepareRouteHandlersFromConfigMock.mockResolvedValue(undefined);
     resolveRouteHandlersConfigsFromAppConfigMock.mockReturnValue([
-      {
-        targetId: 'docs'
-      }
+      TEST_RESOLVED_PAGES_TARGET
     ]);
     resolveAppRouteHandlersConfigsFromAppConfigMock.mockResolvedValue([]);
     resolveRouteHandlerRoutingStrategyMock.mockReturnValue({
@@ -279,7 +283,9 @@ describe('route handlers adapter', () => {
       },
       [
         {
-          targetId: 'docs'
+          targetId: 'docs',
+          routeBasePath: '/docs',
+          handlerRouteSegment: 'generated-handlers'
         }
       ]
     );
@@ -374,6 +380,8 @@ describe('route handlers adapter', () => {
       {
         targetId: 'docs',
         routerKind: 'app',
+        routeBasePath: '/docs',
+        handlerRouteSegment: 'generated-handlers',
         app: {
           rootDir: '/repo/app'
         },
@@ -458,6 +466,65 @@ describe('route handlers adapter', () => {
     );
   });
 
+  it('installs Pages generated-handler guards and heavy rewrites in beforeFiles only', async () => {
+    executeResolvedRouteHandlerNextPipelineMock.mockResolvedValue([
+      {
+        targetId: 'docs',
+        analyzedCount: 1,
+        heavyCount: 1,
+        heavyPaths: [],
+        rewrites: [
+          {
+            source: '/docs/heavy',
+            destination: '/docs/generated-handlers/heavy/fr',
+            locale: false
+          }
+        ],
+        rewritesOfDefaultLocale: [
+          {
+            source: '/fr/docs/heavy',
+            destination: '/docs/generated-handlers/heavy/fr',
+            locale: false
+          }
+        ]
+      }
+    ]);
+
+    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
+      phase: PHASE_PRODUCTION_BUILD,
+      nextVersion: '16.2.0'
+    });
+
+    expect(withRouteHandlerRewritesMock).toHaveBeenCalledWith(
+      TEST_NEXT_CONFIG,
+      {
+        beforeFiles: [
+          {
+            source: '/docs/generated-handlers/:path*',
+            destination: '/404',
+            locale: false
+          },
+          {
+            source: '/:locale(en|fr)/docs/generated-handlers/:path*',
+            destination: '/404',
+            locale: false
+          },
+          {
+            source: '/docs/heavy',
+            destination: '/docs/generated-handlers/heavy/fr',
+            locale: false
+          },
+          {
+            source: '/fr/docs/heavy',
+            destination: '/docs/generated-handlers/heavy/fr',
+            locale: false
+          }
+        ],
+        afterFiles: []
+      }
+    );
+  });
+
   it('writes structural App lookup metadata without invoking page-data execution', async () => {
     const runtimeRouteModulePath = `${process.cwd()}/src/next/index.ts`;
     const pageDataCompilerModulePath = runtimeRouteModulePath;
@@ -481,6 +548,8 @@ describe('route handlers adapter', () => {
     resolveAppRouteHandlersConfigsFromAppConfigMock.mockResolvedValue([
       {
         targetId: 'docs',
+        routeBasePath: '/docs',
+        handlerRouteSegment: 'generated-handlers',
         app: {
           rootDir: '/repo/app'
         },
@@ -538,5 +607,115 @@ describe('route handlers adapter', () => {
       executeResolvedAppRouteHandlerNextPipelineMock
     ).toHaveBeenCalledTimes(1);
     expect(executeResolvedRouteHandlerNextPipelineMock).not.toHaveBeenCalled();
+  });
+
+  it('installs App guards and heavy rewrites before App normalization afterFiles', async () => {
+    const appRouteHandlersConfig = {
+      routerKind: 'app' as const,
+      app: {
+        rootDir: '/repo/app',
+        localeConfig: {
+          locales: ['en', 'de'],
+          defaultLocale: 'en'
+        }
+      }
+    };
+
+    loadRouteHandlersConfigOrRegisteredMock.mockResolvedValue(
+      appRouteHandlersConfig
+    );
+    resolveRouteHandlersAppContextMock.mockReturnValue({
+      routeHandlersConfig: appRouteHandlersConfig,
+      appConfig: {
+        ...TEST_APP_CONFIG,
+        rootDir: '/repo/app'
+      }
+    });
+    resolveAppRouteHandlersConfigsFromAppConfigMock.mockResolvedValue([
+      {
+        targetId: 'docs',
+        routerKind: 'app',
+        routeBasePath: '/docs',
+        handlerRouteSegment: 'generated-handlers',
+        localeConfig: {
+          locales: ['en', 'de'],
+          defaultLocale: 'en'
+        },
+        app: {
+          rootDir: '/repo/app'
+        },
+        handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM
+      }
+    ]);
+    executeResolvedAppRouteHandlerNextPipelineMock.mockResolvedValue([
+      {
+        targetId: 'docs',
+        analyzedCount: 1,
+        heavyCount: 1,
+        heavyPaths: [],
+        rewrites: [
+          {
+            source: '/docs/heavy',
+            destination: '/docs/generated-handlers/heavy/en',
+            locale: false
+          }
+        ],
+        rewritesOfDefaultLocale: [
+          {
+            source: '/en/docs/heavy',
+            destination: '/docs/generated-handlers/heavy/en',
+            locale: false
+          }
+        ]
+      }
+    ]);
+
+    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
+      phase: PHASE_PRODUCTION_BUILD,
+      nextVersion: '16.2.0'
+    });
+
+    expect(
+      executeResolvedAppRouteHandlerNextPipelineMock
+    ).toHaveBeenCalledTimes(1);
+    expect(withRouteHandlerRewritesMock).toHaveBeenCalledWith(
+      TEST_NEXT_CONFIG,
+      {
+        beforeFiles: [
+          {
+            source: '/docs/generated-handlers/:path*',
+            destination: '/404',
+            locale: false
+          },
+          {
+            source: '/:locale(en|de)/docs/generated-handlers/:path*',
+            destination: '/404',
+            locale: false
+          },
+          {
+            source: '/docs/heavy',
+            destination: '/docs/generated-handlers/heavy/en',
+            locale: false
+          },
+          {
+            source: '/en/docs/heavy',
+            destination: '/docs/generated-handlers/heavy/en',
+            locale: false
+          }
+        ],
+        afterFiles: [
+          {
+            source: '/docs',
+            destination: '/en/docs',
+            locale: false
+          },
+          {
+            source: '/docs/:path*',
+            destination: '/en/docs/:path*',
+            locale: false
+          }
+        ]
+      }
+    );
   });
 });

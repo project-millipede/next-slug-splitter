@@ -8,7 +8,7 @@ import type {
 } from '../../../next/shared/types';
 
 describe('rewrite plugin', () => {
-  it('prepends nested route-handler rewrites into beforeFiles preserving existing rewrites', async () => {
+  it('maps library rewrite arrays to beforeFiles and preserves user phases', async () => {
     const routeRewrites: Array<RouteHandlerRewrite> = [
       {
         source: '/content/example',
@@ -52,6 +52,119 @@ describe('rewrite plugin', () => {
       {
         source: '/existing-c',
         destination: '/dest-c'
+      }
+    ]);
+  });
+
+  it('maps user rewrite arrays to afterFiles while library arrays map to beforeFiles', async () => {
+    const wrapped = withRouteHandlerRewrites(
+      {
+        rewrites: async (): Promise<Array<RouteHandlerRewrite>> => [
+          {
+            source: '/user-array',
+            destination: '/user-array-to'
+          }
+        ]
+      },
+      [
+        {
+          source: '/library-array',
+          destination: '/library-array-to',
+          locale: false
+        }
+      ]
+    );
+
+    const rewrites = await wrapped.rewrites();
+
+    expect(rewrites).toEqual({
+      beforeFiles: [
+        {
+          source: '/library-array',
+          destination: '/library-array-to',
+          locale: false
+        }
+      ],
+      afterFiles: [
+        {
+          source: '/user-array',
+          destination: '/user-array-to'
+        }
+      ],
+      fallback: []
+    });
+  });
+
+  it('merges explicit library phases around user phases', async () => {
+    const existingRewritePhases: RouteHandlerRewritePhases = {
+      beforeFiles: [{ source: '/user-before', destination: '/user-before-to' }],
+      afterFiles: [{ source: '/user-after', destination: '/user-after-to' }],
+      fallback: [{ source: '/user-fallback', destination: '/user-fallback-to' }]
+    };
+
+    const wrapped = withRouteHandlerRewrites(
+      {
+        rewrites: async (): Promise<RouteHandlerRewritePhases> =>
+          existingRewritePhases
+      },
+      {
+        beforeFiles: [
+          {
+            source: '/library-before',
+            destination: '/library-before-to',
+            locale: false
+          }
+        ],
+        afterFiles: [
+          {
+            source: '/library-after',
+            destination: '/library-after-to',
+            locale: false
+          }
+        ],
+        fallback: [
+          {
+            source: '/library-fallback',
+            destination: '/library-fallback-to',
+            locale: false
+          }
+        ]
+      }
+    );
+
+    const rewrites = await wrapped.rewrites();
+
+    expect(rewrites.beforeFiles).toEqual([
+      {
+        source: '/library-before',
+        destination: '/library-before-to',
+        locale: false
+      },
+      {
+        source: '/user-before',
+        destination: '/user-before-to'
+      }
+    ]);
+    expect(rewrites.afterFiles).toEqual([
+      {
+        source: '/user-after',
+        destination: '/user-after-to'
+      },
+      {
+        source: '/library-after',
+        destination: '/library-after-to',
+        locale: false
+      }
+    ]);
+    expect(rewrites.fallback).toEqual([
+      {
+        source: '/user-fallback',
+        destination: '/user-fallback-to'
+      },
+      {
+        source: '/library-fallback',
+        destination: '/library-fallback-to',
+        locale: false
       }
     ]);
   });
