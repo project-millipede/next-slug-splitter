@@ -111,7 +111,22 @@ export const resolveRouteHandlerProxyLazyMiss = async (
       return {
         subject: 'pass-through',
         payload: {
-          reason: 'light'
+          /*
+           * Target-owned light route:
+           * 1. The request belongs to a configured target.
+           * 2. No generated handler rewrite is needed.
+           * 3. The thin proxy still needs target identity for App-only
+           *    default-locale normalization.
+           */
+          reason: 'light',
+          routerKind:
+            lazyMatchedRoutePreparation.analysisResult.config.routerKind,
+          routeBasePath:
+            lazyMatchedRoutePreparation.analysisResult.config.routeBasePath,
+          locale: lazyMatchedRoutePreparation.analysisResult.routePath.locale,
+          slugArray: [
+            ...lazyMatchedRoutePreparation.analysisResult.routePath.slugArray
+          ]
         }
       };
     }
@@ -124,7 +139,18 @@ export const resolveRouteHandlerProxyLazyMiss = async (
     return {
       subject: 'pass-through',
       payload: {
-        reason: 'missing-route-file'
+        /*
+         * Target-owned missing route:
+         * 1. The request shape belongs to a configured target.
+         * 2. The backing route file is absent.
+         * 3. The thin proxy still needs target identity so App normalization
+         *    can rewrite first and let Next produce the final 404.
+         */
+        reason: 'missing-route-file',
+        routerKind: lazyRequestResolution.config.routerKind,
+        routeBasePath: lazyRequestResolution.config.routeBasePath,
+        locale: lazyRequestResolution.identity.locale,
+        slugArray: [...lazyRequestResolution.identity.slugArray]
       }
     };
   }

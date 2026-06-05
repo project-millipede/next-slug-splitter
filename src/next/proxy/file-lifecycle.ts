@@ -3,7 +3,8 @@ import path from 'node:path';
 
 import { Project, IndentationText, QuoteKind, ScriptKind } from 'ts-morph';
 
-import { createRuntimeError } from '../../utils/errors';
+import { createConfigError, createRuntimeError } from '../../utils/errors';
+import { hasNonRootRouteBasePath } from '../shared/route-base-path';
 import {
   readFileIfExists,
   renderConfigRegistrationLiteral,
@@ -250,6 +251,51 @@ const removeGeneratedProxyFileIfPresent = async (
 };
 
 /**
+ * Assert that every proxy target has a route base path the generated Proxy
+ * matcher can claim safely.
+ *
+ * 1. Non-root route base paths have a concrete public namespace.
+ * 2. Root route base paths would require the generated proxy to claim
+ *    `/:path*`.
+ * 3. Claiming `/:path*` would route unrelated application URLs through the
+ *    library proxy.
+ * 4. Root targets remain valid for rewrite/build mode, where exact rewrites
+ *    and generated-handler guards can stay explicit.
+ *
+ * @example
+ * // Supported proxy target
+ * '/a' -> '/a/:path*'
+ *
+ * // Rejected proxy target
+ * '/'  -> would require '/:path*'
+ *
+ * @param resolvedConfigs - Route-aware matcher configs for proxy generation.
+ */
+const assertProxyTargetsHaveNonRootRouteBasePaths = (
+  resolvedConfigs: ReadonlyArray<RouteHandlerProxyMatcherConfig>
+): void => {
+  const rootTargetConfig = resolvedConfigs.find(
+    config => !hasNonRootRouteBasePath(config.routeBasePath)
+  );
+
+  if (rootTargetConfig == null) {
+    return;
+  }
+
+  throw createConfigError(
+    [
+      'routeBasePath "/" is not supported with development proxy routing',
+      'because it has no concrete public namespace for a generated matcher.',
+      'Use a non-root routeBasePath such as "/a",',
+      'or set routeHandlersConfig.app.routing.development to "rewrites".'
+    ].join(' '),
+    {
+      routeBasePath: rootTargetConfig.routeBasePath
+    }
+  );
+};
+
+/**
  * Synchronize the root `proxy.ts` file with the selected routing strategy.
  *
  * @param input - Synchronization input.
@@ -286,6 +332,8 @@ export const synchronizeRouteHandlerProxyFile = async ({
 
   const generatedProxyFilePath = resolveGeneratedProxyFilePath(rootDir);
   await assertNoProxyConflicts(rootDir, generatedProxyFilePath);
+  assertProxyTargetsHaveNonRootRouteBasePaths(resolvedConfigs);
+
   // We intentionally take locale config from the resolved targets rather than
   // loading app config again inside the generated file. Locale config is shared
   // across resolved targets, so capturing the first resolved config keeps the

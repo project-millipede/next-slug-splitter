@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server.js';
 
+import { buildAppDefaultLocaleNormalizationProxyDecision } from '../../app/proxy/default-locale-normalization';
+import {
+  isGeneratedHandlerSourcePath,
+  ROUTE_HANDLER_PUBLIC_GUARD_DESTINATION
+} from '../../shared/rewrites/guards';
 import { resolveRouteHandlerProxyRewriteResponseDecision } from '../rewrite-readiness';
 import { debugRouteHandlerProxy } from '../observability/debug-log';
 import {
@@ -73,6 +78,7 @@ const createEmptyRouteHandlerProxyRoutingState =
   (): RouteHandlerProxyRoutingState => ({
     rewriteBySourcePath: new Map(),
     targetRouteBasePaths: [],
+    handlerGuardTargets: [],
     hasConfiguredTargets: true,
     bootstrapGenerationToken: 'route-handler-proxy-worker-only-fallback'
   });
@@ -141,6 +147,42 @@ const createRouteHandlerProxyDecisionForLazyHeavyRoute = (
 };
 
 /**
+ * Create the guard decision for direct generated-handler source paths.
+ *
+ * 1. The input pathname is the browser-visible rewrite source path.
+ * 2. Matching happens before cached rewrite lookup and worker classification.
+ * 3. Internal generated-handler rewrite destinations are unaffected because
+ *    this guard only checks the original request pathname.
+ *
+ * @param pathname - Browser-visible request pathname.
+ * @param localeConfig - Locale semantics captured by the proxy bridge.
+ * @param routingState - Request-time proxy routing state.
+ * @returns Rewrite decision to `/404`, or `null` when the pathname is allowed.
+ */
+const createGeneratedHandlerGuardDecision = (
+  pathname: string,
+  localeConfig: LocaleConfig,
+  routingState: RouteHandlerProxyRoutingState
+): Extract<RouteHandlerProxyDecision, { kind: 'rewrite' }> | null => {
+  const shouldGuardGeneratedHandlerSourcePath = isGeneratedHandlerSourcePath(
+    pathname,
+    localeConfig,
+    routingState.handlerGuardTargets
+  );
+
+  if (shouldGuardGeneratedHandlerSourcePath) {
+    return {
+      kind: 'rewrite',
+      pathname,
+      routeBasePaths: routingState.targetRouteBasePaths,
+      rewriteDestination: ROUTE_HANDLER_PUBLIC_GUARD_DESTINATION
+    };
+  }
+
+  return null;
+};
+
+/**
  * Resolve the route decision plus the one raw response-side fact needed by the
  * updated-handler redirect safeguard.
  *
@@ -187,6 +229,26 @@ const resolveRouteHandlerProxyResponseInput = async (
     localeConfig,
     configRegistration
   );
+
+  const generatedHandlerGuardDecision = createGeneratedHandlerGuardDecision(
+    pathname,
+    localeConfig,
+    routingState
+  );
+
+  if (generatedHandlerGuardDecision != null) {
+    debugRouteHandlerProxy('public-guard:generated-handler', {
+      pathname,
+      requestKind: requestShape.kind,
+      rewriteDestination: generatedHandlerGuardDecision.rewriteDestination
+    });
+
+    return {
+      decision: generatedHandlerGuardDecision,
+      updatedHandlerWasRewritten: false
+    };
+  }
+
   const knownRewriteDestination =
     routingState.rewriteBySourcePath.get(pathname);
 
@@ -247,6 +309,27 @@ const resolveRouteHandlerProxyResponseInput = async (
       requestKind: requestShape.kind,
       reason: lazyWorkerResult.payload.reason
     });
+
+    const normalizationDecision =
+      buildAppDefaultLocaleNormalizationProxyDecision({
+        pathname,
+        routeBasePaths: routingState.targetRouteBasePaths,
+        localeConfig,
+        payload: lazyWorkerResult.payload
+      });
+
+    if (normalizationDecision != null) {
+      debugRouteHandlerProxy('lazy-worker:app-locale-normalization', {
+        pathname,
+        requestKind: requestShape.kind,
+        rewriteDestination: normalizationDecision.rewriteDestination
+      });
+
+      return {
+        decision: normalizationDecision,
+        updatedHandlerWasRewritten: false
+      };
+    }
 
     // Conservative fall-through: unless the existing cached/generated routing
     // state marks this exact public pathname as heavy, the proxy path leaves
@@ -334,8 +417,8 @@ const decorateRouteHandlerProxyResponse = (
  * 3. `redirect` materializes as `NextResponse.redirect(...)` back to the same
  *    public pathname. This is the conservative dev-only refresh boundary used
  *    before the browser enters a just-updated generated handler route.
- * 4. `rewrite` materializes as `NextResponse.rewrite(...)` to the internal
- *    generated handler page pathname.
+ * 4. `rewrite` materializes as `NextResponse.rewrite(...)` to the resolved
+ *    internal route pathname.
  *
  * @param request - Incoming Next proxy request.
  * @param requestShape - Normalized proxy request shape.
@@ -392,9 +475,8 @@ const createRouteHandlerProxyResponse = async (
     );
   }
 
-  // 4. Rewrite enters the generated handler directly. Rewrite responses always
-  // target the generated handler *page* pathname, and Next handles data-route
-  // translation internally when needed.
+  // 4. Rewrite enters either a generated heavy handler or an App physical
+  // locale route. Next handles data-route translation internally when needed.
   const rewriteUrl = new URL(responseDecision.rewriteDestination, request.url);
   rewriteUrl.search = request.nextUrl.search;
 

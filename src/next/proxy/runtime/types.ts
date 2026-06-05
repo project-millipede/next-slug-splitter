@@ -1,4 +1,5 @@
 import type { LocaleConfig } from '../../../core/types';
+import type { RouteHandlerGuardTarget } from '../../shared/rewrites/guards';
 
 /**
  * Adapter-time registration that lets the proxy runtime and worker find the
@@ -52,6 +53,10 @@ export type RouteHandlerProxyRoutingState = {
    * Configured splitter-owned route bases used only for diagnostics.
    */
   targetRouteBasePaths: Array<string>;
+  /**
+   * Config-derived public generated-handler guard targets.
+   */
+  handlerGuardTargets: Array<RouteHandlerGuardTarget>;
   /**
    * Whether any splitter config is currently available in the parent process.
    *
@@ -152,7 +157,7 @@ export type RouteHandlerProxyDecision =
     }
   | {
       /**
-       * Path is known-heavy and should rewrite to a generated handler.
+       * Path should rewrite to an internal route destination.
        */
       kind: 'rewrite';
       /**
@@ -164,7 +169,7 @@ export type RouteHandlerProxyDecision =
        */
       routeBasePaths: Array<string>;
       /**
-       * Internal generated handler destination.
+       * Internal rewrite destination.
        */
       rewriteDestination: string;
     };
