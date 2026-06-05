@@ -22,7 +22,7 @@ import {
 } from '../../helpers/fixtures';
 
 describe('filterStaticParamsAgainstHeavyRoutes', () => {
-  test('filters heavy params using structural default-locale semantics', async () => {
+  test('filters heavy params using the explicit App locale param when present', async () => {
     await expect(
       filterStaticParamsAgainstHeavyRoutes(
         [
@@ -31,7 +31,7 @@ describe('filterStaticParamsAgainstHeavyRoutes', () => {
           { slug: ['light-page'], locale: 'de' }
         ],
         (locale, slugArray) =>
-          ['en:heavy-page'].includes(`${locale}:${slugArray.join('/')}`),
+          ['de:heavy-page'].includes(`${locale}:${slugArray.join('/')}`),
         {
           localeConfig: TEST_MULTI_LOCALE_CONFIG
         }
@@ -152,13 +152,11 @@ describe('withHeavyRouteFilter App Router path', () => {
 
     const generateStaticParams = withHeavyRouteFilter({
       targetId: TEST_PRIMARY_ROUTE_SEGMENT,
-      generateStaticParams: async (
-        parent: {
-          params: {
-            section: string;
-          };
-        }
-      ) => [
+      generateStaticParams: async (parent: {
+        params: {
+          section: string;
+        };
+      }) => [
         { slug: [parent.params.section, 'intro'] },
         { slug: [parent.params.section, 'einfuehrung'] }
       ]
