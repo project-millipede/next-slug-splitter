@@ -1,4 +1,4 @@
-# next-slug-splitter App Router Demo
+# next-slug-splitter App Router Multi-Locale Demo
 
 Minimal Next.js App Router app that demonstrates how **next-slug-splitter** separates light and heavy MDX pages into optimized route handlers — reducing client-side bundle size for pages that don't need heavy components.
 
