@@ -613,28 +613,60 @@ describe('proxy request routing', () => {
         }
       },
       {
-        id: 'Created-Page-Rewrite',
-        description: 'rewrites immediately for a cold heavy page request',
+        id: 'Pages-Created-NonDefault-Locale-Rewrite',
+        description:
+          'preserves the non-default Pages Router locale when a cold heavy request rewrites to a locale-less generated-handler destination',
         requestUrl:
-          'https://example.com/en/docs/ai/reverse/hooks?slug=ai&slug=reverse&slug=hooks',
+          'https://example.com/de/docs/ai/reverse/hooks?slug=ai&slug=reverse&slug=hooks',
         localeConfig: TEST_MULTI_LOCALE_CONFIG,
         targetRouteBasePaths: ['/docs'],
         workerResult: {
           subject: 'heavy',
           payload: {
+            routerKind: 'pages',
             handlerSynchronizationStatus: 'created',
             rewriteDestination:
-              '/en/docs/generated-handlers/ai/reverse/hooks/en',
-            routeBasePath: '/docs'
+              '/docs/generated-handlers/ai/reverse/hooks/de',
+            routeBasePath: '/docs',
+            locale: 'de'
           }
         },
         expectedMode: 'rewrite',
         expectedTarget: '/docs',
         expectedRewrite:
-          'https://example.com/en/docs/generated-handlers/ai/reverse/hooks/en?slug=ai&slug=reverse&slug=hooks',
+          'https://example.com/de/docs/generated-handlers/ai/reverse/hooks/de?slug=ai&slug=reverse&slug=hooks',
         expectedLocation: null,
         expectedWorkerArgs: {
-          pathname: '/en/docs/ai/reverse/hooks',
+          pathname: '/de/docs/ai/reverse/hooks',
+          localeConfig: TEST_MULTI_LOCALE_CONFIG,
+          bootstrapGenerationToken: 'bootstrap-1',
+          configRegistration: {}
+        }
+      },
+      {
+        id: 'App-Created-NonDefault-Locale-Rewrite',
+        description:
+          'keeps App Router generated-handler destinations locale-less because locale is already passed through handler params',
+        requestUrl: 'https://example.com/de/docs/interactive',
+        localeConfig: TEST_MULTI_LOCALE_CONFIG,
+        targetRouteBasePaths: ['/docs'],
+        workerResult: {
+          subject: 'heavy',
+          payload: {
+            routerKind: 'app',
+            handlerSynchronizationStatus: 'created',
+            rewriteDestination: '/docs/generated-handlers/interactive/de',
+            routeBasePath: '/docs',
+            locale: 'de'
+          }
+        },
+        expectedMode: 'rewrite',
+        expectedTarget: '/docs',
+        expectedRewrite:
+          'https://example.com/docs/generated-handlers/interactive/de',
+        expectedLocation: null,
+        expectedWorkerArgs: {
+          pathname: '/de/docs/interactive',
           localeConfig: TEST_MULTI_LOCALE_CONFIG,
           bootstrapGenerationToken: 'bootstrap-1',
           configRegistration: {}

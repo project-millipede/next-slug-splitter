@@ -7,6 +7,7 @@ import type {
   WorkerShutdownRequest,
   WorkerShutdownResponse
 } from '../../shared/worker/types';
+import type { RouteHandlerRouterKind } from '../../shared/types';
 import type {
   BootstrapGenerationToken,
   RouteHandlerProxyConfigRegistration
@@ -162,6 +163,25 @@ type RouteHandlerProxyWorkerHeavyPayload = {
    * Public route base path owning the matched heavy route.
    */
   routeBasePath: string;
+  /**
+   * Router family owning the generated handler destination.
+   *
+   * 1. This is dev-proxy transport metadata.
+   * 2. Shared rewrite generation stays router-neutral.
+   * 3. The thin proxy uses this only when turning a heavy route-handler rewrite
+   *    decision into `NextResponse.rewrite(...)`.
+   */
+  routerKind?: RouteHandlerRouterKind;
+  /**
+   * Locale resolved from the public request and matched content route.
+   *
+   * 1. This is the locale matched by the heavy content route.
+   * 2. Request routing may derive `pagesRouterRewriteLocalePrefix` from this
+   *    value for Pages Router heavy rewrites.
+   * 3. App Router heavy rewrites do not derive response metadata from this
+   *    value because generated handler params already carry the locale.
+   */
+  locale?: string;
 };
 
 /**
@@ -180,7 +200,7 @@ export type RouteHandlerProxyWorkerTargetOwnedPayload = RouteIdentity & {
   /**
    * Router family owning the target-local request.
    */
-  routerKind: 'pages' | 'app';
+  routerKind: RouteHandlerRouterKind;
   /**
    * Public route base path that owns the request.
    */

@@ -81,11 +81,14 @@ export const resolveRouteHandlerProxyLazyMiss = async (
         return {
           subject: 'heavy',
           payload: {
+            routerKind:
+              lazyMatchedRoutePreparation.analysisResult.config.routerKind,
             handlerSynchronizationStatus:
               lazyMatchedRoutePreparation.handlerSynchronizationStatus,
             rewriteDestination,
             routeBasePath:
-              lazyMatchedRoutePreparation.analysisResult.config.routeBasePath
+              lazyMatchedRoutePreparation.analysisResult.config.routeBasePath,
+            locale: lazyMatchedRoutePreparation.analysisResult.routePath.locale
           }
         };
       }

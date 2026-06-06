@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server.js';
 
 import { buildAppDefaultLocaleNormalizationProxyDecision } from '../../app/proxy/default-locale-normalization';
+import { preservePagesRouterLocaleInProxyRewriteDestination } from '../../pages/proxy/rewrite-transport';
 import {
   isGeneratedHandlerSourcePath,
   ROUTE_HANDLER_PUBLIC_GUARD_DESTINATION
@@ -20,12 +21,15 @@ import {
 import { resolveRouteHandlerProxyLazyMissWithWorker } from '../worker/host/client';
 
 import type { LocaleConfig } from '../../../core/types';
+import type { RouteHandlerRouterKind } from '../../shared/types';
 import type {
   RouteHandlerProxyDecision,
   RouteHandlerProxyConfigRegistration,
   RouteHandlerProxyOptions,
   RouteHandlerProxyRoutingState
 } from './types';
+
+type RewriteDecision = Extract<RouteHandlerProxyDecision, { kind: 'rewrite' }>;
 
 /**
  * Request classification and response creation for the dev proxy path.
@@ -127,23 +131,135 @@ const getRouteHandlerProxyRoutingStateWithFallback = async (
  * @param fallbackRouteBasePath - Target-local route base used when the shared
  * routing state does not yet have any discovered base paths.
  * @param rewriteDestination - Concrete generated handler destination.
+ * @param heavyRouteRouterKind - Optional router family owning the generated
+ * handler.
+ * @param heavyRouteLocale - Optional locale resolved for the matched heavy
+ * route.
  * @returns Final proxy decision for this heavy route.
  */
 const createRouteHandlerProxyDecisionForLazyHeavyRoute = (
   pathname: string,
   routeBasePaths: Array<string>,
   fallbackRouteBasePath: string,
-  rewriteDestination: string
-): Extract<RouteHandlerProxyDecision, { kind: 'rewrite' }> => {
+  rewriteDestination: string,
+  heavyRouteRouterKind?: RouteHandlerRouterKind,
+  heavyRouteLocale?: string
+): RewriteDecision => {
   const decisionRouteBasePaths =
     routeBasePaths.length > 0 ? routeBasePaths : [fallbackRouteBasePath];
 
-  return {
+  const rewriteDecision: RewriteDecision = {
     kind: 'rewrite',
     pathname,
     routeBasePaths: decisionRouteBasePaths,
     rewriteDestination
   };
+
+  /*
+   * Pages Router dev-proxy locale protocol, step 1:
+   * 1. The router-kind check happens while the heavy rewrite decision is
+   *    created.
+   * 2. Pages Router rewrites store the resolved request locale as response
+   *    metadata.
+   * 3. App Router rewrites do not store this metadata because generated handler
+   *    params already carry the locale.
+   */
+  if (heavyRouteRouterKind === 'pages' && heavyRouteLocale != null) {
+    rewriteDecision.pagesRouterRewriteLocalePrefix = heavyRouteLocale;
+  }
+
+  return rewriteDecision;
+};
+
+/**
+ * Check whether one rewrite decision carries a Pages Router locale prefix.
+ *
+ * Pages Router dev-proxy locale protocol, step 2:
+ * 1. The router-kind decision already happened when the rewrite decision was
+ *    created.
+ * 2. This response step only checks whether that earlier decision stored
+ *    `pagesRouterRewriteLocalePrefix`.
+ * 3. Pages Router heavy rewrite decisions carry
+ *    `pagesRouterRewriteLocalePrefix`.
+ * 4. App Router rewrite decisions do not carry this field because generated
+ *    handler params carry the locale.
+ * 5. This predicate only narrows the optional string metadata.
+ *
+ * @param decision - Final rewrite decision.
+ * @returns `true` when the rewrite decision carries a Pages Router rewrite
+ * locale prefix.
+ */
+const hasPagesRouterRewriteLocalePrefix = (
+  decision: RewriteDecision
+): decision is RewriteDecision & {
+  pagesRouterRewriteLocalePrefix: string;
+} => decision.pagesRouterRewriteLocalePrefix != null;
+
+/**
+ * Resolve the internal destination used for one proxy rewrite response.
+ *
+ * 1. Most rewrite decisions use `rewriteDestination` unchanged.
+ * 2. Pages Router heavy rewrites may carry `pagesRouterRewriteLocalePrefix`
+ *    because `NextResponse.rewrite(...)` needs the public locale as the first
+ *    destination segment in dev mode.
+ * 3. The Pages transport helper owns the actual destination transformation.
+ *
+ * @example
+ * // Ordinary rewrite decision
+ * rewriteDestination: '/en/docs/a' -> '/en/docs/a'
+ *
+ * // Pages Router generated-handler rewrite decision
+ * rewriteDestination: '/docs/generated-handlers/a/de'
+ * pagesRouterRewriteLocalePrefix: 'de'
+ * -> '/de/docs/generated-handlers/a/de'
+ *
+ * @param decision - Final rewrite decision.
+ * @param localeConfig - Locale semantics captured by the generated proxy.
+ * @returns Internal destination path for `NextResponse.rewrite(...)`.
+ */
+const resolveRouteHandlerProxyRewriteDestination = (
+  decision: RewriteDecision,
+  localeConfig: LocaleConfig
+): string => {
+  if (hasPagesRouterRewriteLocalePrefix(decision)) {
+    return preservePagesRouterLocaleInProxyRewriteDestination(
+      decision.rewriteDestination,
+      decision.pagesRouterRewriteLocalePrefix,
+      localeConfig
+    );
+  }
+
+  return decision.rewriteDestination;
+};
+
+/**
+ * Create the URL passed to `NextResponse.rewrite(...)`.
+ *
+ * 1. Shared rewrite destinations remain locale-less.
+ * 2. App Router generated handlers remain locale-less because locale is passed
+ *    through generated handler params.
+ * 3. Pages Router generated handlers receive the resolved request locale only
+ *    at this proxy transport boundary.
+ * 4. Single-locale internal sentinels are never prefixed.
+ *
+ * @param request - Incoming proxy request.
+ * @param localeConfig - Locale semantics captured by the generated proxy.
+ * @param decision - Final rewrite decision.
+ * @returns Absolute rewrite URL with the original query string preserved.
+ */
+const createRouteHandlerProxyRewriteUrl = (
+  request: NextRequest,
+  localeConfig: LocaleConfig,
+  decision: RewriteDecision
+): URL => {
+  const rewriteDestination = resolveRouteHandlerProxyRewriteDestination(
+    decision,
+    localeConfig
+  );
+  const rewriteUrl = new URL(rewriteDestination, request.url);
+  rewriteUrl.search = request.nextUrl.search;
+
+  return rewriteUrl;
 };
 
 /**
@@ -295,7 +411,9 @@ const resolveRouteHandlerProxyResponseInput = async (
         pathname,
         routingState.targetRouteBasePaths,
         lazyWorkerResult.payload.routeBasePath,
-        lazyWorkerResult.payload.rewriteDestination
+        lazyWorkerResult.payload.rewriteDestination,
+        lazyWorkerResult.payload.routerKind,
+        lazyWorkerResult.payload.locale
       );
 
       return {
@@ -430,6 +548,7 @@ const decorateRouteHandlerProxyResponse = (
 const createRouteHandlerProxyResponse = async (
   request: NextRequest,
   requestShape: RouteHandlerProxyRequestShape,
+  localeConfig: LocaleConfig,
   decision: RouteHandlerProxyDecision,
   updatedHandlerWasRewritten: boolean
 ): Promise<NextResponse> => {
@@ -477,8 +596,11 @@ const createRouteHandlerProxyResponse = async (
 
   // 4. Rewrite enters either a generated heavy handler or an App physical
   // locale route. Next handles data-route translation internally when needed.
-  const rewriteUrl = new URL(responseDecision.rewriteDestination, request.url);
-  rewriteUrl.search = request.nextUrl.search;
+  const rewriteUrl = createRouteHandlerProxyRewriteUrl(
+    request,
+    localeConfig,
+    responseDecision
+  );
 
   debugRouteHandlerProxy('response:rewrite', {
     pathname: responseDecision.pathname,
@@ -522,6 +644,7 @@ export const handleRouteHandlerProxyRequest = async ({
   return createRouteHandlerProxyResponse(
     request,
     requestShape,
+    options.localeConfig,
     decision,
     updatedHandlerWasRewritten
   );
