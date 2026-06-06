@@ -16,7 +16,10 @@ export default defineConfig([
       'next/lookup': 'src/next/lookup.ts',
       'next/handler': 'src/next/handler-static-props.ts',
       'next/page-data-compiler': 'src/next/page-data-compiler.ts',
-      'next/not-found-retry': 'src/next/not-found-retry.ts',
+      'next/pages/proxy/not-found-retry':
+        'src/next/pages/proxy/not-found-retry.ts',
+      'next/app/proxy/not-found-retry':
+        'src/next/app/proxy/not-found-retry.ts',
       'next/proxy': 'src/next/proxy/index.ts',
       cli: 'src/cli/index.ts'
     },

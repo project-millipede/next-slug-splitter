@@ -87,6 +87,39 @@ describe('generated proxy file lifecycle', () => {
     vi.unstubAllEnvs();
   });
 
+  it('rejects root targets in development proxy routing', async () => {
+    await withTempDir('next-slug-splitter-synthetic-proxy-', async rootDir => {
+      vi.stubEnv('NODE_ENV', 'development');
+
+      await expect(
+        synchronizeRouteHandlerProxyFile({
+          rootDir,
+          strategy: resolveRouteHandlerRoutingStrategy(
+            PHASE_DEVELOPMENT_SERVER,
+            {
+              development: 'proxy',
+              workerPrewarm: 'off'
+            }
+          ),
+          resolvedConfigs: [
+            {
+              routeBasePath: '/',
+              localeConfig: TEST_MULTI_LOCALE_CONFIG
+            }
+          ] as Array<ResolvedRouteHandlersConfig>
+        })
+      ).rejects.toThrow(
+        [
+          '[next-slug-splitter] routeBasePath "/" is not supported with',
+          'development proxy routing because it has no concrete public',
+          'namespace for a generated matcher. Use a non-root routeBasePath',
+          'such as "/a", or set routeHandlersConfig.app.routing.development',
+          'to "rewrites".'
+        ].join(' ')
+      );
+    });
+  });
+
   it('writes a plugin-owned proxy.ts with target matchers in development by default', async () => {
     await withTempDir('next-slug-splitter-synthetic-proxy-', async rootDir => {
       const routeHandlersConfig = createMultiTargetConfig(rootDir);

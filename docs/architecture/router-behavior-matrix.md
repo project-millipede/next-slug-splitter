@@ -17,79 +17,47 @@ The goal is to keep three categories separate:
 | Development lazy routing path | Uses the dev proxy path by default. | Uses the dev proxy path by default too. | This is shared library behavior in development. |
 | Production routing path | Uses build-time generation plus rewrites. | Uses build-time generation plus rewrites. | Shared production model. |
 | Stale client page-manifest behavior | Historical dev-only issue in the Pages client router path. | No. | Pages client-router-specific behavior. |
-| Dev-only 404 retry helper | Yes. The demo uses `useSlugSplitterNotFoundRetry(...)`. | No current equivalent helper is applied. | The current retry helper is Pages-Router-specific. |
-| Uses Pages data transport | Yes. The current retry helper probes with `x-nextjs-data: '1'`. | No equivalent transport is used here. | This is one reason the retry helper does not carry over directly. |
+| Dev-only 404 retry helper | Yes. The demo uses `useSlugSplitterNotFoundRetry(...)` from the Pages subpath. | Yes. The demo uses `useSlugSplitterNotFoundRetry(...)` from the App subpath. | The helpers are separate because the router transports differ. |
+| Uses Pages data transport | Yes. The Pages helper probes with `x-nextjs-data: '1'`. | No. The App helper probes with ordinary HTML document requests. | The Pages helper does not carry over directly. |
 | Temporary self-redirect when an existing generated handler was updated in place | Yes. | Yes. | This is a shared proxy/readiness safeguard, not a Pages-only workaround. |
 | When the self-redirect applies | Primary HTML navigation request only. | Primary HTML navigation request only. | Data transport, `HEAD`, and non-HTML follow-up requests stay on the fast path. |
-| Demo not-found behavior | `pages/404.tsx` performs the dev retry flow. | `app/not-found.tsx` is a plain not-found boundary. | This is current demo wiring, not proof that App Router can never see a similar transient 404. |
+| Demo not-found behavior | `pages/404.tsx` performs the Pages dev retry flow. | `app/not-found.tsx` performs the App dev retry flow. | Both are development-only transient 404 workarounds. |
 
-## Current Interpretation
+## 404 Retry Contract
 
-### 1. Pages-Router-only transient 404 retry helper
+The Pages and App retry helpers intentionally stay separate in implementation,
+but they follow the same development-only contract:
 
-The current transient 404 retry helper is also Pages-Router-specific.
+1. A cold heavy request can reach the router's not-found boundary while Next is
+   still warming the generated handler page.
+2. The helper hides the not-found UI during a bounded readiness probe.
+3. The helper probes the same public URL.
+4. The helper retries the original browser URL once the route becomes ready.
+5. If readiness never arrives, the normal not-found UI is shown.
+6. Production builds do not use this path because generated handlers are already
+   compiled before requests arrive.
 
-It works by:
+The transport is router-specific and remains in the router-specific helper.
 
-1. landing on the demo's `pages/404.tsx`
-2. probing the same route through the Pages data path
-3. sending `x-nextjs-data: '1'`
-4. retrying the browser navigation once the route starts responding
+## Router Transport Difference
 
-That logic lives in:
+| Router | Boundary | Probe | Retry |
+| --- | --- | --- | --- |
+| Pages | `pages/404.tsx` | `HEAD` with `x-nextjs-data` | `router.replace(...)` |
+| App | `app/not-found.tsx` | HTML `GET` | `window.location.replace(...)` |
 
-- `src/next/proxy/not-found-retry.ts`
-- `demo/page-router/pages/404.tsx`
+## Shared Redirect Safeguard
 
-Because this helper is intentionally coupled to the Pages data transport, it is
-not currently reused for App Router.
+The temporary self-redirect for updated generated handlers remains a separate
+shared proxy/readiness safeguard.
 
-### 2. Shared proxy/readiness redirect safeguard
+It applies when lazy heavy preparation updates an existing generated handler in
+place and the request is a primary HTML navigation request. That safeguard can
+matter for either router family because it belongs to the shared dev proxy path,
+not to either router-specific retry helper.
 
-The temporary self-redirect for updated generated handlers is broader.
+## Read More
 
-When lazy heavy preparation overwrites an existing generated handler file in
-place, the proxy can already know the correct destination while Next/Turbopack
-is still catching up to the updated module state for that route.
-
-The current safeguard therefore:
-
-1. detects that the handler was updated in place
-2. checks whether the request is the primary HTML navigation request
-3. converts the rewrite into one temporary self-redirect to the same public
-   pathname
-
-That logic lives in:
-
-- `src/next/proxy/rewrite-readiness/redirect-policy.ts`
-- `src/next/proxy/rewrite-readiness/navigation.ts`
-
-This is not a Pages-only behavior. It belongs to the shared dev proxy/readiness
-layer and can therefore matter for either router family when the request goes
-through that path.
-
-## What A Similar App Router 404 Means Today
-
-If App Router shows a similar transient 404 in development, it should not be
-explained away as:
-
-- stale Pages client page-manifest behavior
-- or the Pages-only `x-nextjs-data` retry path
-
-Those two mechanisms are Pages-specific in the current repo.
-
-The more plausible current explanations are:
-
-- the shared proxy/readiness window around generated handler updates
-- another App-Router-specific readiness issue that still needs its own
-  dedicated diagnosis
-
-## Documentation Rule Of Thumb
-
-When describing router behavior in this repo:
-
-- document stale page-manifest behavior as Pages-client-router-specific
-- document the 404 retry helper as Pages-Router-only
-- document the updated-handler self-redirect as shared proxy-mode behavior
-- avoid using the current App demo's plain `not-found.tsx` as evidence that App
-  Router can never hit a similar transient readiness window
+- [`../README.md`](../../README.md#dev-mode-cold-start-behavior)
+- [`../../demo/page-router/README.md`](../../demo/page-router/README.md#dev-404-retry-workaround)
+- [`../../demo/app-router/README.md`](../../demo/app-router/README.md#dev-404-retry-workaround)

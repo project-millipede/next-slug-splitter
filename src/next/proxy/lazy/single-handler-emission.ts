@@ -11,6 +11,7 @@ import {
   renderRouteHandlerPage,
   resolveRenderedHandlerPageLocation
 } from '../../../generator/pages/protocol/rendered-page';
+import { resolveOptionalAppLocaleRouteParamName } from '../../app/route-params';
 
 import type { RouteHandlerLazyHeavyAnalysisResult } from './types';
 
@@ -42,6 +43,9 @@ export const emitRouteHandlerLazySingleHandler = async (
           emitFormat: analysisResult.config.emitFormat,
           routeContract: analysisResult.config.routeContract,
           handlerRouteParam: analysisResult.config.handlerRouteParam,
+          localeParamName: resolveOptionalAppLocaleRouteParamName(
+            analysisResult.config.localeConfig
+          ),
           routeBasePath: analysisResult.config.routeBasePath,
           routeModuleContract: analysisResult.config.routeModule
         })

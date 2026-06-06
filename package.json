@@ -97,10 +97,15 @@
       "import": "./dist/next/proxy.js",
       "default": "./dist/next/proxy.js"
     },
-    "./next/not-found-retry": {
-      "types": "./dist/next/not-found-retry.d.ts",
-      "import": "./dist/next/not-found-retry.js",
-      "default": "./dist/next/not-found-retry.js"
+    "./next/pages/proxy/not-found-retry": {
+      "types": "./dist/next/pages/proxy/not-found-retry.d.ts",
+      "import": "./dist/next/pages/proxy/not-found-retry.js",
+      "default": "./dist/next/pages/proxy/not-found-retry.js"
+    },
+    "./next/app/proxy/not-found-retry": {
+      "types": "./dist/next/app/proxy/not-found-retry.d.ts",
+      "import": "./dist/next/app/proxy/not-found-retry.js",
+      "default": "./dist/next/app/proxy/not-found-retry.js"
     },
     "./module-reference": {
       "types": "./dist/module-reference/index.d.ts",

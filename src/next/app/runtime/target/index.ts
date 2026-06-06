@@ -1,4 +1,5 @@
 import { emitAppRouteHandlerPages } from '../../../../generator/app/target/handlers';
+import { resolveOptionalAppLocaleRouteParamName } from '../../route-params';
 import { buildRouteHandlerNextResult } from '../results';
 import { executeRouteHandlerTargetWithRuntimeHarness } from '../../../shared/runtime/target';
 
@@ -26,6 +27,9 @@ export const executeRouteHandlerTarget = async (
         emitFormat,
         routeContract: config.routeContract,
         handlerRouteParam,
+        localeParamName: resolveOptionalAppLocaleRouteParamName(
+          config.localeConfig
+        ),
         routeBasePath,
         routeModuleContract: config.routeModule
       }),

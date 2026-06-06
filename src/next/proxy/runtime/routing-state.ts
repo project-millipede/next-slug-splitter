@@ -40,6 +40,10 @@ const buildRouteHandlerProxyRoutingState = (
   return {
     rewriteBySourcePath: new Map(),
     targetRouteBasePaths: [...bootstrapState.targetRouteBasePaths],
+    handlerGuardTargets:
+      bootstrapState.handlerGuardTargets.map(guardTarget => ({
+        ...guardTarget
+      })),
     hasConfiguredTargets: bootstrapState.hasConfiguredTargets,
     bootstrapGenerationToken: bootstrapState.bootstrapGenerationToken
   };

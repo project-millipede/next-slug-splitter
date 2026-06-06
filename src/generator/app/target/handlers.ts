@@ -19,6 +19,7 @@ export const emitAppRouteHandlerPages = async ({
   emitFormat,
   routeContract,
   handlerRouteParam,
+  localeParamName,
   routeBasePath,
   routeModuleContract
 }: {
@@ -27,6 +28,7 @@ export const emitAppRouteHandlerPages = async ({
   emitFormat: EmitFormat;
   routeContract: ResolvedRouteHandlerModuleReference;
   handlerRouteParam: DynamicRouteParam;
+  localeParamName?: string;
   routeBasePath: string;
   routeModuleContract: ResolvedAppRouteModuleContract;
 }): Promise<void> => {
@@ -39,6 +41,7 @@ export const emitAppRouteHandlerPages = async ({
       emitFormat,
       routeContract,
       handlerRouteParam,
+      localeParamName,
       routeBasePath,
       routeModuleContract
     })

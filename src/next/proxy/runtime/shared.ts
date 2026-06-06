@@ -3,10 +3,12 @@ import {
   isSingleLocaleConfig
 } from '../../../core/locale-config';
 import type { LocaleConfig } from '../../../core/types';
+import { hasNonRootRouteBasePath } from '../../shared/route-base-path';
 
 export type RouteHandlerProxyMatcherConfig = {
   routeBasePath: string;
   localeConfig: LocaleConfig;
+  handlerRouteSegment?: string;
 };
 
 /**
@@ -45,34 +47,63 @@ export const doesRouteHandlerProxyLocaleConfigMatch = (
 ): boolean => doLocaleConfigsMatch(left, right);
 
 /**
- * Convert one route base path into the non-locale matcher used by Proxy.
+ * Build the generated Proxy matcher for an unprefixed target namespace.
+ *
+ * 1. The matcher is embedded into the generated root `proxy.ts` file.
+ * 2. It claims all public requests below one non-root route base path.
+ * 3. Root route base paths return `null` because claiming `/:path*` would make
+ *    the generated Proxy observe unrelated application URLs.
+ *
+ * @example
+ * // Non-root target namespace
+ * '/a' -> '/a/:path*'
+ *
+ * // Root target namespace
+ * '/'  -> null
  *
  * @param routeBasePath - Target-owned route base path.
- * @returns Static matcher string.
+ * @returns Static Proxy matcher string, or `null` for the root route base path.
  */
-const toRouteMatcher = (routeBasePath: string): string =>
-  // The root route is special because `/:path*` is the static matcher shape
-  // that tells Next "proxy every path under the root segment." Non-root base
-  // paths can stay namespaced under their configured public prefix.
-  routeBasePath === '/' ? '/:path*' : `${routeBasePath}/:path*`;
+const toRouteMatcher = (routeBasePath: string): string | null => {
+  if (!hasNonRootRouteBasePath(routeBasePath)) {
+    return null;
+  }
+
+  return `${routeBasePath}/:path*`;
+};
 
 /**
- * Convert one route base path into a locale-prefixed matcher.
+ * Build the generated Proxy matcher for a locale-prefixed target namespace.
+ *
+ * 1. The matcher is embedded into the generated root `proxy.ts` file.
+ * 2. Multi-locale targets expose explicit `/<locale>/...` public URLs.
+ * 3. Proxy matching is static, so each configured locale receives its own
+ *    matcher entry.
+ * 4. Root route base paths return `null` because claiming `/<locale>/:path*`
+ *    would make the generated Proxy observe unrelated application URLs for
+ *    that locale prefix.
+ *
+ * @example
+ * // Non-root target namespace
+ * locale 'de' + '/a' -> '/de/a/:path*'
+ *
+ * // Root target namespace
+ * locale 'de' + '/'  -> null
  *
  * @param locale - Locale code.
  * @param routeBasePath - Target-owned route base path.
- * @returns Static matcher string for the locale-prefixed public route.
+ * @returns Static Proxy matcher string, or `null` for the root route base path.
  */
 const toLocalizedRouteMatcher = (
   locale: string,
   routeBasePath: string
-): string =>
-  // Locale-prefixed public URLs are still served by the same configured target,
-  // but Next's matcher language requires us to enumerate those prefixes
-  // statically in the generated root `proxy.ts`.
-  routeBasePath === '/'
-    ? `/${locale}/:path*`
-    : `/${locale}${routeBasePath}/:path*`;
+): string | null => {
+  if (!hasNonRootRouteBasePath(routeBasePath)) {
+    return null;
+  }
+
+  return `/${locale}${routeBasePath}/:path*`;
+};
 
 /**
  * Builds the static proxy matcher list embedded into the generated root
@@ -98,18 +129,47 @@ export const buildRouteHandlerProxyMatchers = (
   const matchers = new Set<string>();
 
   for (const config of resolvedConfigs) {
-    // 1. Every target owns the canonical locale-less public path.
-    matchers.add(toRouteMatcher(config.routeBasePath));
+    /*
+     * Canonical matcher:
+     * 1. A non-root target owns a concrete public namespace.
+     * 2. The generated proxy can safely claim that namespace.
+     * 3. Root targets are skipped defensively here and rejected by the proxy
+     *    file lifecycle before output is written.
+     *
+     * Example:
+     * `/a` -> `/a/:path*`
+     */
+    const routeMatcher = toRouteMatcher(config.routeBasePath);
+    if (routeMatcher == null) {
+      continue;
+    }
 
-    // 2. Single-locale apps do not expose /<locale>/... public aliases.
+    matchers.add(routeMatcher);
+
     if (isSingleLocaleConfig(config.localeConfig)) {
       continue;
     }
 
-    // 3. Multi-locale apps need explicit locale-prefixed matchers because proxy
-    //    matching happens before runtime code can interpret the pathname.
     for (const locale of config.localeConfig.locales) {
-      matchers.add(toLocalizedRouteMatcher(locale, config.routeBasePath));
+      /*
+       * Locale-prefixed matcher:
+       * 1. Multi-locale targets also expose explicit `/<locale>/...` paths.
+       * 2. Proxy matching happens before runtime code can interpret locale
+       *    ownership, so the generated matcher list must enumerate them.
+       * 3. The destination decision still happens later inside the proxy
+       *    runtime.
+       *
+       * Example:
+       * `/de/a` -> `/de/a/:path*`
+       */
+      const localizedRouteMatcher = toLocalizedRouteMatcher(
+        locale,
+        config.routeBasePath
+      );
+
+      if (localizedRouteMatcher != null) {
+        matchers.add(localizedRouteMatcher);
+      }
     }
   }
 

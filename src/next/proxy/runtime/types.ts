@@ -1,4 +1,5 @@
 import type { LocaleConfig } from '../../../core/types';
+import type { RouteHandlerGuardTarget } from '../../shared/rewrites/guards';
 
 /**
  * Adapter-time registration that lets the proxy runtime and worker find the
@@ -52,6 +53,10 @@ export type RouteHandlerProxyRoutingState = {
    * Configured splitter-owned route bases used only for diagnostics.
    */
   targetRouteBasePaths: Array<string>;
+  /**
+   * Config-derived public generated-handler guard targets.
+   */
+  handlerGuardTargets: Array<RouteHandlerGuardTarget>;
   /**
    * Whether any splitter config is currently available in the parent process.
    *
@@ -152,7 +157,7 @@ export type RouteHandlerProxyDecision =
     }
   | {
       /**
-       * Path is known-heavy and should rewrite to a generated handler.
+       * Path should rewrite to an internal route destination.
        */
       kind: 'rewrite';
       /**
@@ -164,7 +169,28 @@ export type RouteHandlerProxyDecision =
        */
       routeBasePaths: Array<string>;
       /**
-       * Internal generated handler destination.
+       * Internal rewrite destination.
        */
       rewriteDestination: string;
+      /**
+       * Pages Router locale prefix used only when materializing the dev-proxy
+       * rewrite response.
+       *
+       * 1. Shared rewrite destinations stay locale-less at the front.
+       * 2. Pages Router dev rewrites still need the public locale as the first
+       *    destination segment so Next keeps the correct i18n context.
+       * 3. The handler suffix locale remains part of `rewriteDestination`.
+       * 4. This value is derived from the heavy worker payload `locale` only
+       *    after request routing confirms the heavy route belongs to Pages
+       *    Router.
+       * 5. This field is the dev-proxy response metadata counterpart to
+       *    https://github.com/project-millipede/next-slug-splitter/commit/2dc3dd716104cfda1324586eb55edc1f05da2a94,
+       *    which made shared generated-handler destinations locale-less.
+       *
+       * @example
+       * rewriteDestination: '/docs/generated-handlers/a/de'
+       * pagesRouterRewriteLocalePrefix: 'de'
+       * final proxy rewrite URL: '/de/docs/generated-handlers/a/de'
+       */
+      pagesRouterRewriteLocalePrefix?: string;
     };

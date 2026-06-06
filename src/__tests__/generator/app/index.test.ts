@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { renderAppRouteHandlerPage } from '../../../generator/app/index';
 import { absoluteModule, packageModule } from '../../../module-reference';
+import { APP_LOCALE_ROUTE_PARAM_NAME } from '../../../next/app/route-params';
 import {
   createLoadableComponentEntry,
   createPlannedHeavyRoute
@@ -40,6 +41,7 @@ describe('App Router generator contract', () => {
       emitFormat: 'ts',
       routeContract: absoluteModule('/repo/app/content/route-contract.ts'),
       handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
+      localeParamName: APP_LOCALE_ROUTE_PARAM_NAME,
       routeBasePath: '/content',
       routeModuleContract: {
         hasGeneratePageMetadata: true,
@@ -51,6 +53,7 @@ describe('App Router generator contract', () => {
       '/repo/app/content/generated-handlers/guides/einfuehrung/de/page.tsx'
     );
     expect(renderedPage.pageSource).toContain('const handlerParams = ');
+    expect(renderedPage.pageSource).toContain('"locale": "de"');
     expect(renderedPage.pageSource).toContain(
       '"slug": ["guides", "einfuehrung"]'
     );

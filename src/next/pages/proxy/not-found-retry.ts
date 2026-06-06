@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { isNotFoundRetryRoute } from '../../shared/not-found-retry-route';
+
 /**
  * Import `next/router.js` instead of `next/router` here.
  *
  * 1. This package ships ESM subpath exports through `dist/`.
- * 2. The built `next/not-found-retry` entry is then loaded as an external package
- *    module during Next's build-time page-data collection.
+ * 2. The built `next/pages/proxy/not-found-retry` entry is then loaded as an
+ *    external package module during Next's build-time page-data collection.
  * 3. In that packaged ESM context, the concrete `next/router.js` file
  *    resolves more reliably than the bare `next/router` specifier.
  */
@@ -27,21 +29,13 @@ const sleep = (ms: number) =>
   });
 
 /**
- * Check whether the current pathname belongs to one of the configured
- * catch-all routes that can trigger a development-time retry.
+ * Poll the current route until it starts responding or the retry budget is
+ * exhausted.
  *
- * @param pathname - Current browser pathname.
- * @param catchAllRoutePrefixes - Configured catch-all route prefixes.
- * @returns `true` when the pathname should participate in the retry flow.
- */
-const isRetryableRoute = (
-  pathname: string,
-  catchAllRoutePrefixes: ReadonlyArray<string>
-): boolean => catchAllRoutePrefixes.some(prefix => pathname.includes(prefix));
-
-/**
- * Poll the current route with bounded `HEAD` requests until it starts
- * responding or the retry budget is exhausted.
+ * 1. Pages Router uses a small `HEAD` request for this retry path.
+ * 2. The probe sends `x-nextjs-data` so it follows the Pages data route.
+ * 3. `no-store` avoids cached probe responses while the dev server is warming.
+ * 4. Only the response status is used; the response body is not inspected.
  *
  * @param routePath - Current route path, including its query string.
  * @param shouldStop - Cancellation check used to abort polling on unmount.
@@ -58,11 +52,6 @@ const waitForRouteReadiness = async (
     }
 
     try {
-      // 1. Use `fetch` because this client-side hook only needs a small,
-      //    built-in readiness probe and not a full navigation.
-      // 2. Use `HEAD` to probe readiness without requesting the full page body.
-      // 3. Use `no-store` so every retry checks the current dev-server state.
-      // 4. Send `x-nextjs-data` so the probe follows the pages-router data path.
       const response = await fetch(routePath, {
         method: 'HEAD',
         cache: 'no-store',
@@ -87,47 +76,38 @@ const waitForRouteReadiness = async (
 
 export type UseSlugSplitterNotFoundRetryOptions = {
   /**
-   * Routes served by the slug-splitter proxy rewrite system.
+   * Route segments served by the slug-splitter proxy rewrite system.
    *
-   * Only paths matching one of these prefixes participate in the bounded
+   * Only paths matching one of these segments participate in the bounded
    * development-only readiness probe and retry.
    */
-  catchAllRoutePrefixes: ReadonlyArray<string>;
+  catchAllRouteSegments: ReadonlyArray<string>;
 };
 
 /**
  * Development-only retry helper for transient proxy-owned 404s.
  *
- * 1. Routes served by the proxy rewrite system can hit a narrow
- * development-time race on first cold load in Turbopack: the proxy may
- * already know the correct rewrite target while Next is still warming the
- * emitted handler page up.
- *
- * 2. During that window, the request can still land on a transient 404 even
- * though the route is about to become ready.
- *
- * 3. Instead of showing a not-found page immediately, this hook performs a
- * single bounded readiness probe against the current route and retries once
- * only after the route starts responding. That avoids guessing with a blind
- * delay while still preventing an endless retry loop if the route never
- * becomes ready.
- *
- * 4. In production builds this is a no-op. Handler pages are already compiled
- * and rewrite ownership is already materialized, so the transient cold-start
- * 404 window does not apply there.
- *
- * 5. Non-retryable routes also render their 404 UI immediately.
+ * 1. In dev proxy mode, a cold heavy route can hit a narrow readiness race
+ *    while Next is still warming the generated handler page.
+ * 2. During that window, the request can land on a transient 404 even though
+ *    the route is about to become ready.
+ * 3. This hook hides the not-found UI, polls the same public URL until it
+ *    responds, then retries the navigation once.
+ * 4. The Pages retry uses `router.replace(...)` after the Pages data-route
+ *    readiness probe succeeds.
+ * 5. In production builds this is a no-op. Handler pages are already compiled
+ *    and the transient cold-start 404 window does not apply there.
  *
  * @param options - Retry configuration.
  * @returns `true` when the caller should render its 404 UI.
  */
 export const useSlugSplitterNotFoundRetry = ({
-  catchAllRoutePrefixes
+  catchAllRouteSegments
 }: UseSlugSplitterNotFoundRetryOptions): boolean => {
   const router = useRouter();
   const hasRetried = useRef(false);
   // Start hidden so retryable development routes do not flash a 404 before
-  // the readiness probe and single retry get a chance to run.
+  // the readiness probe and router-specific retry get a chance to run.
   const [showNotFound, setShowNotFound] = useState<boolean>(false);
 
   useEffect(() => {
@@ -144,7 +124,7 @@ export const useSlugSplitterNotFoundRetry = ({
       return;
     }
 
-    if (!isRetryableRoute(window.location.pathname, catchAllRoutePrefixes)) {
+    if (!isNotFoundRetryRoute(window.location.pathname, catchAllRouteSegments)) {
       setShowNotFound(true);
       return;
     }
@@ -153,17 +133,17 @@ export const useSlugSplitterNotFoundRetry = ({
     const retryTarget = `${window.location.pathname}${window.location.search}`;
 
     /**
-     * Execute the bounded readiness probe and dispatch the single retry once
-     * the current catch-all route starts responding.
+     * Execute the bounded readiness probe and dispatch the router-specific
+     * retry once the current route starts responding.
      *
      * Flow:
-     * 1. The initial client navigation lands on the app's 404 page during the
-     *    transient handler warm-up window.
-     * 2. This helper probes that same route through the pages-router data path
-     *    until the route begins responding.
-     * 3. Once the probe succeeds, `router.replace(...)` retries the original
-     *    navigation target.
-     * 4. If readiness never arrives, the hook leaves the normal 404 UI in place.
+     * 1. The initial navigation lands on the router-specific not-found
+     *    boundary: `pages/404.tsx`.
+     * 2. This helper probes the same public route until it starts responding.
+     * 3. Once the route responds, the router-specific retry navigates to the
+     *    original URL.
+     * 4. If readiness never arrives or retry dispatch fails, the normal
+     *    not-found UI is shown.
      *
      * The effect keeps the async flow inside this helper so the effect body can
      * stay synchronous and still return a normal cleanup function.
@@ -186,9 +166,9 @@ export const useSlugSplitterNotFoundRetry = ({
       hasRetried.current = true;
 
       try {
-        const result = await router.replace(retryTarget);
+        const retrySucceeded = await router.replace(retryTarget);
 
-        if (!cancelled && !result) {
+        if (!cancelled && !retrySucceeded) {
           setShowNotFound(true);
         }
       } catch {
@@ -203,7 +183,7 @@ export const useSlugSplitterNotFoundRetry = ({
     return () => {
       cancelled = true;
     };
-  }, [catchAllRoutePrefixes, router]);
+  }, [catchAllRouteSegments, router]);
 
   return showNotFound;
 };

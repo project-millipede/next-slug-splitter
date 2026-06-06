@@ -1,4 +1,4 @@
-import type { LocaleConfig } from '../../../core/types';
+import type { LocaleConfig, RouteIdentity } from '../../../core/types';
 import type { RouteHandlerOutputSynchronizationStatus } from '../../../generator/shared/protocol/output-lifecycle';
 import type {
   WorkerRequestAction,
@@ -7,6 +7,7 @@ import type {
   WorkerShutdownRequest,
   WorkerShutdownResponse
 } from '../../shared/worker/types';
+import type { RouteHandlerRouterKind } from '../../shared/types';
 import type {
   BootstrapGenerationToken,
   RouteHandlerProxyConfigRegistration
@@ -162,6 +163,25 @@ type RouteHandlerProxyWorkerHeavyPayload = {
    * Public route base path owning the matched heavy route.
    */
   routeBasePath: string;
+  /**
+   * Router family owning the generated handler destination.
+   *
+   * 1. This is dev-proxy transport metadata.
+   * 2. Shared rewrite generation stays router-neutral.
+   * 3. The thin proxy uses this only when turning a heavy route-handler rewrite
+   *    decision into `NextResponse.rewrite(...)`.
+   */
+  routerKind?: RouteHandlerRouterKind;
+  /**
+   * Locale resolved from the public request and matched content route.
+   *
+   * 1. This is the locale matched by the heavy content route.
+   * 2. Request routing may derive `pagesRouterRewriteLocalePrefix` from this
+   *    value for Pages Router heavy rewrites.
+   * 3. App Router heavy rewrites do not derive response metadata from this
+   *    value because generated handler params already carry the locale.
+   */
+  locale?: string;
 };
 
 /**
@@ -173,18 +193,43 @@ export type RouteHandlerProxyWorkerHeavyResponse = WorkerResponseAction<
 >;
 
 /**
+ * Target-owned metadata returned for pass-through requests where the worker
+ * resolved the pathname to a configured target.
+ */
+export type RouteHandlerProxyWorkerTargetOwnedPayload = RouteIdentity & {
+  /**
+   * Router family owning the target-local request.
+   */
+  routerKind: RouteHandlerRouterKind;
+  /**
+   * Public route base path that owns the request.
+   */
+  routeBasePath: string;
+};
+
+/**
+ * Payload returned when the proxy worker passes through a request that belongs
+ * to a configured target.
+ */
+export type RouteHandlerProxyWorkerTargetOwnedPassThroughPayload =
+  RouteHandlerProxyWorkerTargetOwnedPayload & {
+    /**
+     * Semantic reason why the worker did not rewrite into a heavy handler.
+     */
+    reason: 'missing-route-file' | 'light';
+  };
+
+/**
  * Payload returned when the proxy worker passes one request through.
  */
-type RouteHandlerProxyWorkerPassThroughPayload = {
-  /**
-   * Semantic reason why the worker did not rewrite into a heavy handler.
-   */
-  reason:
-    | 'no-target'
-    | 'missing-route-file'
-    | 'light'
-    | 'missing-rewrite-destination';
-};
+export type RouteHandlerProxyWorkerPassThroughPayload =
+  | {
+      /**
+       * Semantic reason why the worker did not rewrite into a heavy handler.
+       */
+      reason: 'no-target' | 'missing-rewrite-destination';
+    }
+  | RouteHandlerProxyWorkerTargetOwnedPassThroughPayload;
 
 /**
  * Response action for a pass-through lazy-miss resolution.

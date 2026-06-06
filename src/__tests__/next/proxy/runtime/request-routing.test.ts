@@ -56,16 +56,19 @@ const createProxyRequest = (
 const createRoutingState = ({
   rewrites = [],
   targetRouteBasePaths = [],
+  handlerGuardTargets = [],
   hasConfiguredTargets = true,
   bootstrapGenerationToken = 'bootstrap-1'
 }: {
   rewrites?: Array<[string, string]>;
   targetRouteBasePaths?: Array<string>;
+  handlerGuardTargets?: RouteHandlerProxyRoutingState['handlerGuardTargets'];
   hasConfiguredTargets?: boolean;
   bootstrapGenerationToken?: string;
 } = {}): RouteHandlerProxyRoutingState => ({
   rewriteBySourcePath: new Map(rewrites),
   targetRouteBasePaths,
+  handlerGuardTargets,
   hasConfiguredTargets,
   bootstrapGenerationToken
 });
@@ -86,6 +89,110 @@ describe('proxy request routing', () => {
       payload: {
         reason: 'no-target'
       }
+    });
+  });
+
+  describe('generated-handler public guard', () => {
+    test.for([
+      {
+        id: 'unprefixed',
+        requestUrl: 'https://example.com/a/generated-handlers/x/en'
+      },
+      {
+        id: 'default-locale-prefixed',
+        requestUrl: 'https://example.com/en/a/generated-handlers/x/en'
+      },
+      {
+        id: 'non-default-locale-prefixed',
+        requestUrl: 'https://example.com/de/a/generated-handlers/x/de'
+      }
+    ])('[$id] rewrites direct generated-handler URLs to 404', async ({
+      requestUrl
+    }) => {
+      getRouteHandlerProxyRoutingStateMock.mockResolvedValue(
+        createRoutingState({
+          targetRouteBasePaths: ['/a'],
+          handlerGuardTargets: [
+            {
+              routeBasePath: '/a',
+              handlerRouteSegment: 'generated-handlers'
+            }
+          ]
+        })
+      );
+
+      const response = await handleRouteHandlerProxyRequest({
+        request: createProxyRequest(requestUrl),
+        options: {
+          localeConfig: TEST_MULTI_LOCALE_CONFIG
+        }
+      });
+
+      expect(response.headers.get('x-next-slug-splitter-synthetic-proxy')).toBe(
+        'rewrite'
+      );
+      expect(response.headers.get('x-middleware-rewrite')).toBe(
+        'https://example.com/404'
+      );
+      expect(
+        resolveRouteHandlerProxyLazyMissWithWorkerMock
+      ).not.toHaveBeenCalled();
+    });
+
+    it('uses the configured generated-handler segment', async () => {
+      getRouteHandlerProxyRoutingStateMock.mockResolvedValue(
+        createRoutingState({
+          targetRouteBasePaths: ['/a'],
+          handlerGuardTargets: [
+            {
+              routeBasePath: '/a',
+              handlerRouteSegment: 'internal-handlers'
+            }
+          ]
+        })
+      );
+
+      const response = await handleRouteHandlerProxyRequest({
+        request: createProxyRequest('https://example.com/a/internal-handlers/x'),
+        options: {
+          localeConfig: TEST_MULTI_LOCALE_CONFIG
+        }
+      });
+
+      expect(response.headers.get('x-next-slug-splitter-synthetic-proxy')).toBe(
+        'rewrite'
+      );
+      expect(response.headers.get('x-middleware-rewrite')).toBe(
+        'https://example.com/404'
+      );
+      expect(
+        resolveRouteHandlerProxyLazyMissWithWorkerMock
+      ).not.toHaveBeenCalled();
+    });
+
+    it('does not guard similar route segment names', async () => {
+      getRouteHandlerProxyRoutingStateMock.mockResolvedValue(
+        createRoutingState({
+          targetRouteBasePaths: ['/a'],
+          handlerGuardTargets: [
+            {
+              routeBasePath: '/a',
+              handlerRouteSegment: 'generated-handlers'
+            }
+          ]
+        })
+      );
+
+      await handleRouteHandlerProxyRequest({
+        request: createProxyRequest(
+          'https://example.com/a/generated-handlers-extra/x'
+        ),
+        options: {
+          localeConfig: TEST_MULTI_LOCALE_CONFIG
+        }
+      });
+
+      expect(resolveRouteHandlerProxyLazyMissWithWorkerMock).toHaveBeenCalled();
     });
   });
 
@@ -406,7 +513,11 @@ describe('proxy request routing', () => {
         workerResult: {
           subject: 'pass-through',
           payload: {
-            reason: 'light'
+            reason: 'light',
+            routerKind: 'pages',
+            routeBasePath: '/blog',
+            locale: 'en',
+            slugArray: ['application-extensibility']
           }
         },
         expectedMode: 'pass-through',
@@ -430,7 +541,11 @@ describe('proxy request routing', () => {
         workerResult: {
           subject: 'pass-through',
           payload: {
-            reason: 'missing-route-file'
+            reason: 'missing-route-file',
+            routerKind: 'pages',
+            routeBasePath: '/docs',
+            locale: 'en',
+            slugArray: ['missing-page']
           }
         },
         expectedMode: 'pass-through',
@@ -469,28 +584,89 @@ describe('proxy request routing', () => {
         }
       },
       {
-        id: 'Created-Page-Rewrite',
-        description: 'rewrites immediately for a cold heavy page request',
-        requestUrl:
-          'https://example.com/en/docs/ai/reverse/hooks?slug=ai&slug=reverse&slug=hooks',
+        id: 'App-Light-Normalization',
+        description:
+          'materializes an App default-locale normalization decision as a rewrite response',
+        requestUrl: 'https://example.com/docs/getting-started?view=full',
         localeConfig: TEST_MULTI_LOCALE_CONFIG,
         targetRouteBasePaths: ['/docs'],
         workerResult: {
-          subject: 'heavy',
+          subject: 'pass-through',
           payload: {
-            handlerSynchronizationStatus: 'created',
-            rewriteDestination:
-              '/en/docs/generated-handlers/ai/reverse/hooks/en',
-            routeBasePath: '/docs'
+            reason: 'light',
+            routerKind: 'app',
+            routeBasePath: '/docs',
+            locale: 'en',
+            slugArray: ['getting-started']
           }
         },
         expectedMode: 'rewrite',
         expectedTarget: '/docs',
         expectedRewrite:
-          'https://example.com/en/docs/generated-handlers/ai/reverse/hooks/en?slug=ai&slug=reverse&slug=hooks',
+          'https://example.com/en/docs/getting-started?view=full',
         expectedLocation: null,
         expectedWorkerArgs: {
-          pathname: '/en/docs/ai/reverse/hooks',
+          pathname: '/docs/getting-started',
+          localeConfig: TEST_MULTI_LOCALE_CONFIG,
+          bootstrapGenerationToken: 'bootstrap-1',
+          configRegistration: {}
+        }
+      },
+      {
+        id: 'Pages-Created-NonDefault-Locale-Rewrite',
+        description:
+          'preserves the non-default Pages Router locale when a cold heavy request rewrites to a locale-less generated-handler destination',
+        requestUrl:
+          'https://example.com/de/docs/ai/reverse/hooks?slug=ai&slug=reverse&slug=hooks',
+        localeConfig: TEST_MULTI_LOCALE_CONFIG,
+        targetRouteBasePaths: ['/docs'],
+        workerResult: {
+          subject: 'heavy',
+          payload: {
+            routerKind: 'pages',
+            handlerSynchronizationStatus: 'created',
+            rewriteDestination:
+              '/docs/generated-handlers/ai/reverse/hooks/de',
+            routeBasePath: '/docs',
+            locale: 'de'
+          }
+        },
+        expectedMode: 'rewrite',
+        expectedTarget: '/docs',
+        expectedRewrite:
+          'https://example.com/de/docs/generated-handlers/ai/reverse/hooks/de?slug=ai&slug=reverse&slug=hooks',
+        expectedLocation: null,
+        expectedWorkerArgs: {
+          pathname: '/de/docs/ai/reverse/hooks',
+          localeConfig: TEST_MULTI_LOCALE_CONFIG,
+          bootstrapGenerationToken: 'bootstrap-1',
+          configRegistration: {}
+        }
+      },
+      {
+        id: 'App-Created-NonDefault-Locale-Rewrite',
+        description:
+          'keeps App Router generated-handler destinations locale-less because locale is already passed through handler params',
+        requestUrl: 'https://example.com/de/docs/interactive',
+        localeConfig: TEST_MULTI_LOCALE_CONFIG,
+        targetRouteBasePaths: ['/docs'],
+        workerResult: {
+          subject: 'heavy',
+          payload: {
+            routerKind: 'app',
+            handlerSynchronizationStatus: 'created',
+            rewriteDestination: '/docs/generated-handlers/interactive/de',
+            routeBasePath: '/docs',
+            locale: 'de'
+          }
+        },
+        expectedMode: 'rewrite',
+        expectedTarget: '/docs',
+        expectedRewrite:
+          'https://example.com/docs/generated-handlers/interactive/de',
+        expectedLocation: null,
+        expectedWorkerArgs: {
+          pathname: '/de/docs/interactive',
           localeConfig: TEST_MULTI_LOCALE_CONFIG,
           bootstrapGenerationToken: 'bootstrap-1',
           configRegistration: {}

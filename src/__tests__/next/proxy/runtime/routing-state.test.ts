@@ -25,6 +25,7 @@ describe('proxy routing state', () => {
     bootstrapState: RouteHandlerProxyBootstrapState;
     expected: {
       targetRouteBasePaths: Array<string>;
+      handlerGuardTargets: RouteHandlerProxyBootstrapState['handlerGuardTargets'];
       hasConfiguredTargets: boolean;
       bootstrapGenerationToken: string;
     };
@@ -37,10 +38,22 @@ describe('proxy routing state', () => {
       bootstrapState: {
         hasConfiguredTargets: true,
         targetRouteBasePaths: ['/blog'],
+        handlerGuardTargets: [
+          {
+            routeBasePath: '/blog',
+            handlerRouteSegment: 'generated-handlers'
+          }
+        ],
         bootstrapGenerationToken: 'bootstrap-1'
       },
       expected: {
         targetRouteBasePaths: ['/blog'],
+        handlerGuardTargets: [
+          {
+            routeBasePath: '/blog',
+            handlerRouteSegment: 'generated-handlers'
+          }
+        ],
         hasConfiguredTargets: true,
         bootstrapGenerationToken: 'bootstrap-1'
       }
@@ -51,10 +64,12 @@ describe('proxy routing state', () => {
       bootstrapState: {
         hasConfiguredTargets: false,
         targetRouteBasePaths: [],
+        handlerGuardTargets: [],
         bootstrapGenerationToken: 'bootstrap-2'
       },
       expected: {
         targetRouteBasePaths: [],
+        handlerGuardTargets: [],
         hasConfiguredTargets: false,
         bootstrapGenerationToken: 'bootstrap-2'
       }
@@ -74,6 +89,9 @@ describe('proxy routing state', () => {
 
     expect(state.rewriteBySourcePath.size).toBe(0);
     expect(state.targetRouteBasePaths).toEqual(expected.targetRouteBasePaths);
+    expect(state.handlerGuardTargets).toEqual(
+      expected.handlerGuardTargets
+    );
     expect(state.hasConfiguredTargets).toBe(expected.hasConfiguredTargets);
     expect(state.bootstrapGenerationToken).toBe(
       expected.bootstrapGenerationToken

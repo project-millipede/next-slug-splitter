@@ -3,6 +3,7 @@ import { readRouteHandlerProxyBootstrap } from '../bootstrap-persisted';
 import { doesRouteHandlerProxyLocaleConfigMatch } from './shared';
 
 import type { LocaleConfig } from '../../../core/types';
+import type { RouteHandlerGuardTarget } from '../../shared/rewrites/guards';
 import type {
   BootstrapGenerationToken,
   RouteHandlerProxyConfigRegistration
@@ -21,6 +22,7 @@ import type {
 export type RouteHandlerProxyBootstrapState = {
   hasConfiguredTargets: boolean;
   targetRouteBasePaths: Array<string>;
+  handlerGuardTargets: Array<RouteHandlerGuardTarget>;
   bootstrapGenerationToken: BootstrapGenerationToken;
 };
 
@@ -69,6 +71,10 @@ const loadFreshRouteHandlerProxyBootstrapState = async (
   return {
     hasConfiguredTargets: manifest.targets.length > 0,
     targetRouteBasePaths: manifest.targets.map(target => target.routeBasePath),
+    handlerGuardTargets: manifest.targets.map(target => ({
+      routeBasePath: target.routeBasePath,
+      handlerRouteSegment: target.handlerRouteSegment
+    })),
     bootstrapGenerationToken: manifest.bootstrapGenerationToken
   };
 };

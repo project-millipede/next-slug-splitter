@@ -43,11 +43,13 @@ import {
   createRouteHandlerLookupSnapshot,
   writeRouteHandlerLookupSnapshot
 } from '../shared/lookup-persisted';
+import { buildRouteHandlerGuards } from '../shared/rewrites/guards';
 import {
   createRouteHandlerProxyBootstrapGenerationToken,
   createRouteHandlerProxyBootstrapManifest,
   writeRouteHandlerProxyBootstrap
 } from '../proxy/bootstrap-persisted';
+import { buildAppDefaultLocaleNormalizationRewrites } from '../app/rewrites/default-locale-normalization';
 import { withRouteHandlerRewrites } from '../shared/rewrites/plugin';
 import { prepareRouteHandlersFromConfig } from '../shared/prepare/index';
 import { applyRouteHandlerProxyNextConfigPolicy } from '../proxy/policy/proxy-next-config';
@@ -57,6 +59,12 @@ import { resolveRouteHandlerRoutingStrategy } from '../shared/policy/routing-str
 import { executeResolvedRouteHandlerNextPipeline } from '../pages/runtime';
 import { synchronizeRouteHandlerInstrumentationFile } from '../proxy/instrumentation/file-lifecycle';
 import { resolveRouteHandlerRouterKind } from '../shared/config/router-kind';
+
+import type { LocaleConfig } from '../../core/types';
+import type {
+  RouteHandlerNextResult,
+  RouteHandlerRewrite
+} from '../shared/types';
 
 /**
  * Determine whether the current Next phase should run route-handler
@@ -98,6 +106,81 @@ const createPersistedAppLookupTargets = (
           )
         })
   }));
+
+/**
+ * Collect public generated-handler guard rewrites for resolved targets.
+ *
+ * 1. The guards are config-derived and independent from heavy-route analysis.
+ * 2. They live before exact heavy rewrites so direct public generated-handler
+ *    requests are blocked before route resolution reaches generated output.
+ * 3. Each target contributes guards scoped to its route base and handler segment.
+ *
+ * @param localeConfig - Locale semantics for the current router path.
+ * @param resolvedConfigs - Target configs resolved for the current adapter run.
+ * @returns Generated-handler public access guard rewrites from all targets.
+ */
+const collectRouteHandlerGuardRewrites = (
+  localeConfig: LocaleConfig,
+  resolvedConfigs: Array<{
+    routeBasePath: string;
+    handlerRouteSegment?: string;
+  }>
+): Array<RouteHandlerRewrite> =>
+  resolvedConfigs.flatMap(resolvedConfig =>
+    buildRouteHandlerGuards({
+      localeConfig,
+      routeBasePath: resolvedConfig.routeBasePath,
+      handlerRouteSegment: resolvedConfig.handlerRouteSegment
+    })
+  );
+
+/**
+ * Collect exact heavy-route rewrites from target-local pipeline results.
+ *
+ * 1. `rewrites` contains canonical default-locale sources and non-default
+ *    locale-prefixed sources.
+ * 2. `rewritesOfDefaultLocale` contains the explicit default-locale aliases.
+ * 3. Both buckets must stay in `beforeFiles` so heavy routes win early.
+ *
+ * @param results - Route-handler pipeline results for this adapter run.
+ * @returns Exact heavy-route rewrite records.
+ */
+const collectHeavyRouteHandlerRewrites = (
+  results: Array<RouteHandlerNextResult>
+): Array<RouteHandlerRewrite> =>
+  results.flatMap(result => [
+    ...result.rewrites,
+    ...result.rewritesOfDefaultLocale
+  ]);
+
+/**
+ * Build the App-only default-locale normalization rewrites for `afterFiles`.
+ *
+ * 1. Pages Router does not use the library normalization layer.
+ * 2. App normalization is broad, so it runs after user `afterFiles` rewrites.
+ * 3. The rewrite is config-derived and does not depend on analyzer output.
+ *
+ * @param routerKind - Router family selected by the user config.
+ * @param localeConfig - Locale semantics for the current router path.
+ * @param resolvedConfigs - Resolved App target configs, when App Router is active.
+ * @returns Library-owned `afterFiles` normalization rewrites.
+ */
+const buildAppDefaultLocaleNormalizationAfterFiles = (
+  routerKind: 'pages' | 'app',
+  localeConfig: LocaleConfig,
+  resolvedConfigs: Array<ResolvedAppRouteHandlersConfig> | undefined
+): Array<RouteHandlerRewrite> => {
+  if (routerKind !== 'app') {
+    return [];
+  }
+
+  return (resolvedConfigs ?? []).flatMap(resolvedConfig =>
+    buildAppDefaultLocaleNormalizationRewrites(
+      localeConfig,
+      resolvedConfig.routeBasePath
+    )
+  );
+};
 
 const routeHandlersAdapter: NextAdapter = {
   name: 'route-handlers-adapter',
@@ -272,17 +355,30 @@ const routeHandlersAdapter: NextAdapter = {
       );
     }
 
+    const routeHandlerGuardRewrites = collectRouteHandlerGuardRewrites(
+      localeConfig,
+      resolvedConfigs
+    );
+    const heavyRouteHandlerRewrites = collectHeavyRouteHandlerRewrites(results);
+    const appDefaultLocaleNormalizationRewrites =
+      buildAppDefaultLocaleNormalizationAfterFiles(
+        routerKind,
+        localeConfig,
+        appResolvedConfigs
+      );
+
     // The returned value is the effective config for the current phase.
     // A wrapped copy is returned so the incoming config object stays unchanged.
-    // This is the one intentional flattening boundary: runtime results remain
-    // target-local and bucketed, but Next config installation needs one final
-    // rewrite list.
-    return withRouteHandlerRewrites(config, [
-      ...results.flatMap(result => [
-        ...result.rewrites,
-        ...result.rewritesOfDefaultLocale
-      ])
-    ]);
+    //
+    // Build-mode library rewrites intentionally use separate Next phases:
+    // 1. `beforeFiles`: block direct generated-handler URLs, then route exact
+    //    heavy paths before ordinary page resolution.
+    // 2. `afterFiles`: let user rewrites run first, then normalize remaining
+    //    App default-locale light routes onto the physical `[locale]` tree.
+    return withRouteHandlerRewrites(config, {
+      beforeFiles: [...routeHandlerGuardRewrites, ...heavyRouteHandlerRewrites],
+      afterFiles: appDefaultLocaleNormalizationRewrites
+    });
   }
 };
 

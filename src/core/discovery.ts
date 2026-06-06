@@ -36,6 +36,17 @@ export const toSlugPath = (slugArray: Array<string>): string =>
 /**
  * Build the public route path for a target route base and slug segments.
  *
+ * Route construction rules:
+ * 1. A non-root target keeps its configured route base.
+ *    `/docs` + `['a', 'b']` -> `/docs/a/b`
+ *
+ * 2. A root target owns the URL root directly.
+ *    `/` + `['a', 'b']` -> `/a/b`
+ *
+ * 3. Empty slug segments resolve to the target route base.
+ *    `/docs` + `[]` -> `/docs`
+ *    `/` + `[]` -> `/`
+ *
  * @param routeBasePath - Public route base path owned by the target.
  * @param slugArray - Ordered slug segments.
  * @returns Full public route path.
@@ -45,7 +56,16 @@ export const toRoutePath = (
   slugArray: Array<string>
 ): string => {
   const slugPath = toSlugPath(slugArray);
-  return slugPath.length > 0 ? `${routeBasePath}/${slugPath}` : routeBasePath;
+
+  if (slugPath.length === 0) {
+    return routeBasePath;
+  }
+
+  if (routeBasePath === '/') {
+    return `/${slugPath}`;
+  }
+
+  return `${routeBasePath}/${slugPath}`;
 };
 
 /**

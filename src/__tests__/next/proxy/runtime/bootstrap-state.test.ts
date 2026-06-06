@@ -82,6 +82,12 @@ describe('proxy bootstrap state', () => {
     ).resolves.toEqual({
       hasConfiguredTargets: true,
       targetRouteBasePaths: ['/docs'],
+      handlerGuardTargets: [
+        {
+          routeBasePath: '/docs',
+          handlerRouteSegment: 'generated-handlers'
+        }
+      ],
       bootstrapGenerationToken: 'bootstrap-token'
     });
     expect(readRouteHandlerProxyBootstrapMock).toHaveBeenCalledWith(

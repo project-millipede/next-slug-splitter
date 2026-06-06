@@ -1,15 +1,15 @@
 import type { NextPage } from 'next';
 
-import { useSlugSplitterNotFoundRetry } from 'next-slug-splitter/next/not-found-retry';
+import { useSlugSplitterNotFoundRetry } from 'next-slug-splitter/next/pages/proxy/not-found-retry';
 
 /**
  * Routes served by the proxy rewrite system.
  */
-const CATCH_ALL_ROUTE_PREFIXES = ['/docs/', '/blog/'];
+const CATCH_ALL_ROUTE_SEGMENTS = ['docs'];
 
 const NotFound: NextPage = () => {
   const isNotFoundConfirmed = useSlugSplitterNotFoundRetry({
-    catchAllRoutePrefixes: CATCH_ALL_ROUTE_PREFIXES
+    catchAllRouteSegments: CATCH_ALL_ROUTE_SEGMENTS
   });
 
   if (!isNotFoundConfirmed) {
