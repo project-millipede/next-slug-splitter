@@ -276,14 +276,14 @@ directly there. The catch-all preset stays on the conventional
 
 Concrete comparison:
 
-| Aspect                           | Pages Router                                                               | App Router                                                                             |
-| -------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Public light route file          | `pages/docs/[...slug].tsx`                                                 | `app/docs/[...slug]/page.tsx` or `app/[locale]/docs/[...slug]/page.tsx`                |
+| Aspect                           | Pages Router                                                               | App Router                                                                               |
+| -------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Public light route file          | `pages/docs/[...slug].tsx`                                                 | `app/docs/[...slug]/page.tsx` or `app/[locale]/docs/[...slug]/page.tsx`                  |
 | Route contract location          | Usually the catch-all page module itself                                   | Usually a dedicated sibling file such as `app/[locale]/docs/[...slug]/route-contract.ts` |
-| Route enumeration                | `getStaticPaths` stays on the catch-all page                               | `getStaticParams` lives on the dedicated route contract                                |
-| Shared page-data contract        | Generated heavy handlers reuse the catch-all page's `getStaticProps`       | The light page and generated heavy pages share `loadPageProps` from the route contract |
-| Optional metadata / revalidation | Follows normal Pages Router page exports around the catch-all page surface | `generatePageMetadata` and `revalidate` live on the dedicated route contract           |
-| Locale semantics                 | Uses normal Pages Router `i18n` when multi-locale                          | Uses `app.localeConfig` for multi-locale App routing semantics                         |
+| Route enumeration                | `getStaticPaths` stays on the catch-all page                               | `getStaticParams` lives on the dedicated route contract                                  |
+| Shared page-data contract        | Generated heavy handlers reuse the catch-all page's `getStaticProps`       | The light page and generated heavy pages share `loadPageProps` from the route contract   |
+| Optional metadata / revalidation | Follows normal Pages Router page exports around the catch-all page surface | `generatePageMetadata` and `revalidate` live on the dedicated route contract             |
+| Locale semantics                 | Uses normal Pages Router `i18n` when multi-locale                          | Uses `app.localeConfig` for multi-locale App routing semantics                           |
 
 ## Usage
 
@@ -354,7 +354,7 @@ The handler binding tells the library which processor module to load:
 ```ts
 {
   handlerBinding: {
-    processorImport: relativeModule('lib/handler-processor')
+    processorImport: relativeModule('lib/handler-processor');
   }
 }
 ```
@@ -402,10 +402,7 @@ imports:
 
 ```ts
 // site-route-handlers/docs/processor.ts
-import {
-  packageModule,
-  relativeModule
-} from 'next-slug-splitter/next';
+import { packageModule, relativeModule } from 'next-slug-splitter/next';
 
 const componentsModule = packageModule('@site/components');
 
@@ -621,19 +618,23 @@ narrow Next/Turbopack warm-up window where the proxy already knows the correct
 handler destination while the emitted page is not fully ready yet. During that
 window, the browser can briefly land on a transient 404 for a catch-all route.
 
-To smooth that development-only case, add a custom `pages/404.*` page that uses
-the dedicated not-found helper:
+To smooth that development-only case, install the router-specific not-found
+retry helper in the not-found boundary that owns your catch-all route.
+
+Pages Router uses `pages/404.*` and imports the helper from
+`next-slug-splitter/next/pages/proxy/not-found-retry`:
 
 ```tsx
+// pages/404.tsx
 import type { NextPage } from 'next';
 
-import { useSlugSplitterNotFoundRetry } from 'next-slug-splitter/next/not-found-retry';
+import { useSlugSplitterNotFoundRetry } from 'next-slug-splitter/next/pages/proxy/not-found-retry';
 
-const CATCH_ALL_ROUTE_PREFIXES = ['/docs/', '/blog/'];
+const CATCH_ALL_ROUTE_SEGMENTS = ['docs'];
 
 const NotFound: NextPage = () => {
   const isNotFoundConfirmed = useSlugSplitterNotFoundRetry({
-    catchAllRoutePrefixes: CATCH_ALL_ROUTE_PREFIXES
+    catchAllRouteSegments: CATCH_ALL_ROUTE_SEGMENTS
   });
 
   if (!isNotFoundConfirmed) {
@@ -644,6 +645,30 @@ const NotFound: NextPage = () => {
 };
 
 export default NotFound;
+```
+
+App Router uses `app/not-found.*` and imports the helper from
+`next-slug-splitter/next/app/proxy/not-found-retry`:
+
+```tsx
+// app/not-found.tsx
+'use client';
+
+import { useSlugSplitterNotFoundRetry } from 'next-slug-splitter/next/app/proxy/not-found-retry';
+
+const CATCH_ALL_ROUTE_SEGMENTS = ['docs'];
+
+export default function NotFound() {
+  const isNotFoundConfirmed = useSlugSplitterNotFoundRetry({
+    catchAllRouteSegments: CATCH_ALL_ROUTE_SEGMENTS
+  });
+
+  if (!isNotFoundConfirmed) {
+    return null;
+  }
+
+  return <h1>Page Not Found</h1>;
+}
 ```
 
 This hook is a no-op outside development, so production builds still render
@@ -730,14 +755,14 @@ are treated as conflicts and are never overwritten.
 
 Create one catch-all target with normalized route and path values.
 
-| Option              | Description                                                             |
-| ------------------- | ----------------------------------------------------------------------- |
-| `routeSegment`      | Public route segment (e.g. `'docs'`, `'blog'`)                          |
-| `handlerRouteParam` | Dynamic route parameter configuration                                   |
-| `contentDir`        | Directory containing content pages                                      |
+| Option              | Description                                                                                  |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| `routeSegment`      | Public route segment (e.g. `'docs'`, `'blog'`)                                               |
+| `handlerRouteParam` | Dynamic route parameter configuration                                                        |
+| `contentDir`        | Directory containing content pages                                                           |
 | `routeContract`     | Pages route contract module, typically the catch-all page such as `pages/docs/[...slug].tsx` |
-| `handlerBinding`    | Binding with processor module for route planning                        |
-| `contentLocaleMode` | Locale detection mode (see below)                                       |
+| `handlerBinding`    | Binding with processor module for route planning                                             |
+| `contentLocaleMode` | Locale detection mode (see below)                                                            |
 
 The preset derives `generatedRootDir` from `routeSegment`. Set
 `generatedRootDir` only when writing a manual target config instead of using the
@@ -748,15 +773,15 @@ preset.
 Create one App Router catch-all target with normalized public route values and
 App-specific route-module inputs.
 
-| Option                                  | Description                                                                                                      |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `routeSegment`                          | Public route segment (e.g. `'docs'`)                                                                             |
-| `handlerRouteParam`                     | Dynamic route parameter configuration                                                                            |
-| `contentDir`                            | Directory containing content pages                                                                               |
-| `handlerBinding`                        | Binding with processor module for route planning                                                                 |
-| `handlerBinding.pageDataCompilerImport` | Optional App page-data compiler module executed through the library-owned isolated worker                         |
+| Option                                  | Description                                                                                                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `routeSegment`                          | Public route segment (e.g. `'docs'`)                                                                                |
+| `handlerRouteParam`                     | Dynamic route parameter configuration                                                                               |
+| `contentDir`                            | Directory containing content pages                                                                                  |
+| `handlerBinding`                        | Binding with processor module for route planning                                                                    |
+| `handlerBinding.pageDataCompilerImport` | Optional App page-data compiler module executed through the library-owned isolated worker                           |
 | `routeContract`                         | Dedicated App route-contract module that owns `getStaticParams`, `loadPageProps`, optional metadata, and revalidate |
-| `contentLocaleMode`                     | Locale detection mode (see below)                                                                                |
+| `contentLocaleMode`                     | Locale detection mode (see below)                                                                                   |
 
 ### `DynamicRouteParam`
 
