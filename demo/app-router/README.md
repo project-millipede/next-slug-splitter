@@ -222,6 +222,27 @@ active variant is derived from the current package script name through
 variant by default, while `dev:ts`, `build:ts`, and `start:ts` select the
 optional TypeScript variant.
 
+## Dev 404 Retry Workaround
+
+The demo also includes `app/not-found.tsx`, which uses
+`useSlugSplitterNotFoundRetry(...)` from
+`next-slug-splitter/next/app/proxy/not-found-retry` as a dev-only workaround
+for a remaining Next/Turbopack race.
+
+When a heavy route is emitted lazily on first request, the proxy can already
+know the correct rewrite target while Next is still warming that page up. In
+that narrow window the same request may still land on a transient 404. The
+demo's not-found boundary probes the route for readiness and retries once
+instead of immediately showing a not-found page.
+
+This is not part of the core route-classification logic, and production builds
+do not need it. It exists only to make the demo smoother while the underlying
+Next/Turbopack readiness behavior remains.
+
+For the broader Pages-vs-App comparison, including which dev-only behaviors are
+Pages-specific and which belong to the shared proxy/readiness layer, see
+[`docs/architecture/router-behavior-matrix.md`](../../docs/architecture/router-behavior-matrix.md).
+
 ## Project Structure
 
 ```text
@@ -233,7 +254,7 @@ optional TypeScript variant.
 │   │       ├── page.tsx                ← public light catch-all page
 │   │       └── route-contract.ts       ← route-owned shared contract
 │   ├── layout.tsx                      ← shared layout shell
-│   ├── not-found.tsx                   ← app-router not-found boundary
+│   ├── not-found.tsx                   ← dev-only App retry boundary
 │   └── page.tsx                        ← landing page with page listing
 ├── config-variants                     ← source-of-truth demo variant configs
 ├── content/pages                       ← MDX content files
