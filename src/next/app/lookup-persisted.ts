@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { isNonEmptyString } from '../../utils/type-guards-extended';
 import { isObjectRecord, readObjectProperty } from '../shared/config/shared';
 
 const APP_ROUTE_LOOKUP_SNAPSHOT_VERSION = 1;
@@ -25,6 +26,11 @@ export type PersistedAppRouteLookupTarget = {
    * This is derived from `handlerRouteParam.name` during adapter execution.
    */
   handlerRouteParamName: string;
+
+  /**
+   * Physical App Router dynamic segment name that carries the locale.
+   */
+  localeRouteParamName?: string;
 
   /**
    * Optional resolved page-data compiler module path used by App Router route
@@ -70,39 +76,89 @@ const isPersistedAppRouteLookupTarget = (
     value,
     'handlerRouteParamName'
   );
+  const localeRouteParamName = readObjectProperty(
+    value,
+    'localeRouteParamName'
+  );
   const pageDataCompilerModulePath = readObjectProperty(
     value,
     'pageDataCompilerModulePath'
   );
+  const localeRouteParamNameIsValid =
+    localeRouteParamName === undefined ||
+    isNonEmptyString(localeRouteParamName);
+
+  const pageDataCompilerModulePathIsValid =
+    pageDataCompilerModulePath === undefined ||
+    isNonEmptyString(pageDataCompilerModulePath);
 
   return (
-    typeof targetId === 'string' &&
-    targetId.length > 0 &&
-    typeof handlerRouteParamName === 'string' &&
-    handlerRouteParamName.length > 0 &&
-    (pageDataCompilerModulePath === undefined ||
-      (typeof pageDataCompilerModulePath === 'string' &&
-        pageDataCompilerModulePath.length > 0))
+    isNonEmptyString(targetId) &&
+    isNonEmptyString(handlerRouteParamName) &&
+    localeRouteParamNameIsValid &&
+    pageDataCompilerModulePathIsValid
   );
 };
 
 /**
- * Clone one persisted App target entry.
+ * Normalize one persisted App target entry.
  *
- * @param target App target snapshot entry to copy.
- * @returns A defensive copy of the App target snapshot entry.
+ * 1. Required identity fields are always written.
+ * 2. Optional fields are written only when the target actually provides them.
+ * 3. Each branch represents one valid optional-field combination:
+ *    both App locale metadata and page-data compiler metadata, only App locale
+ *    metadata, only page-data compiler metadata, or neither.
+ * 4. Returning explicit object shapes keeps the persisted JSON stable without
+ *    mutating a partially built snapshot object.
+ *
+ * @example
+ * // Locale-aware target with a page-data compiler
+ * { targetId: 'docs', handlerRouteParamName: 'slug', localeRouteParamName:
+ * 'locale', pageDataCompilerModulePath: '/repo/dist/content-compiler.js' }
+ *
+ * @example
+ * // Single-locale target without a page-data compiler
+ * { targetId: 'docs', handlerRouteParamName: 'slug' }
+ *
+ * @param target App target snapshot entry to normalize.
+ * @returns A snapshot entry containing only persisted App lookup fields.
  */
-const clonePersistedAppRouteLookupTarget = (
-  target: PersistedAppRouteLookupTarget
-): PersistedAppRouteLookupTarget => ({
-  targetId: target.targetId,
-  handlerRouteParamName: target.handlerRouteParamName,
-  ...(target.pageDataCompilerModulePath == null
-    ? {}
-    : {
-        pageDataCompilerModulePath: target.pageDataCompilerModulePath
-      })
-});
+const normalizePersistedAppRouteLookupTarget = ({
+  targetId,
+  handlerRouteParamName,
+  localeRouteParamName,
+  pageDataCompilerModulePath
+}: PersistedAppRouteLookupTarget): PersistedAppRouteLookupTarget => {
+  if (localeRouteParamName != null && pageDataCompilerModulePath != null) {
+    return {
+      targetId,
+      handlerRouteParamName,
+      localeRouteParamName,
+      pageDataCompilerModulePath
+    };
+  }
+
+  if (localeRouteParamName != null) {
+    return {
+      targetId,
+      handlerRouteParamName,
+      localeRouteParamName
+    };
+  }
+
+  if (pageDataCompilerModulePath != null) {
+    return {
+      targetId,
+      handlerRouteParamName,
+      pageDataCompilerModulePath
+    };
+  }
+
+  return {
+    targetId,
+    handlerRouteParamName
+  };
+};
 
 /**
  * Resolve the on-disk App lookup snapshot path for one app root.
@@ -124,7 +180,7 @@ export const createAppRouteLookupSnapshot = (
 ): PersistedAppRouteLookupSnapshot => ({
   version: APP_ROUTE_LOOKUP_SNAPSHOT_VERSION,
   targets: targets
-    .map(clonePersistedAppRouteLookupTarget)
+    .map(normalizePersistedAppRouteLookupTarget)
     .sort((left, right) => left.targetId.localeCompare(right.targetId))
 });
 
@@ -140,7 +196,7 @@ export const serializeAppRouteLookupSnapshot = (
   JSON.stringify(
     {
       version: APP_ROUTE_LOOKUP_SNAPSHOT_VERSION,
-      targets: snapshot.targets.map(clonePersistedAppRouteLookupTarget)
+      targets: snapshot.targets.map(normalizePersistedAppRouteLookupTarget)
     },
     null,
     2
@@ -162,19 +218,25 @@ export const parseAppRouteLookupSnapshot = (
       return null;
     }
 
-    if (readObjectProperty(parsed, 'version') !== APP_ROUTE_LOOKUP_SNAPSHOT_VERSION) {
+    if (
+      readObjectProperty(parsed, 'version') !==
+      APP_ROUTE_LOOKUP_SNAPSHOT_VERSION
+    ) {
       return null;
     }
 
     const targets = readObjectProperty(parsed, 'targets');
 
-    if (!Array.isArray(targets) || !targets.every(isPersistedAppRouteLookupTarget)) {
+    if (
+      !Array.isArray(targets) ||
+      !targets.every(isPersistedAppRouteLookupTarget)
+    ) {
       return null;
     }
 
     return {
       version: APP_ROUTE_LOOKUP_SNAPSHOT_VERSION,
-      targets: targets.map(clonePersistedAppRouteLookupTarget)
+      targets: targets.map(normalizePersistedAppRouteLookupTarget)
     };
   } catch {
     return null;
@@ -215,5 +277,9 @@ export const writeAppRouteLookupSnapshot = async (
   await mkdir(path.dirname(snapshotPath), {
     recursive: true
   });
-  await writeFile(snapshotPath, serializeAppRouteLookupSnapshot(snapshot), 'utf8');
+  await writeFile(
+    snapshotPath,
+    serializeAppRouteLookupSnapshot(snapshot),
+    'utf8'
+  );
 };

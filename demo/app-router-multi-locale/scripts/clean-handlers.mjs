@@ -3,9 +3,9 @@
  * or dev session.
  *
  * The code generator (next-slug-splitter CLI) creates handler pages under
- * `app/<section>/generated-handlers/`. These are derived artifacts that must
- * be
- * regenerated whenever the content tree or generator logic changes.
+ * `app/[locale]/<section>/generated-handlers/`. These are derived artifacts
+ * that must be regenerated whenever the content tree or generator logic
+ * changes.
  * Cleaning them first avoids stale handlers surviving across runs.
  *
  * Run via `pnpm clean:handlers`.
@@ -21,7 +21,9 @@ import { join } from 'node:path';
 // Add new sections here as they are introduced.
 // ---------------------------------------------------------------------------
 
-const handlerDirs = [join(process.cwd(), 'app', 'docs', 'generated-handlers')];
+const handlerDirs = [
+  join(process.cwd(), 'app', '[locale]', 'docs', 'generated-handlers')
+];
 
 // ---------------------------------------------------------------------------
 // Cleanup

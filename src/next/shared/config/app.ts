@@ -10,6 +10,10 @@ import {
 } from '../../../utils/errors';
 import { isUndefined } from '../../../utils/type-guards';
 import { isNonEmptyString as isNonEmptyResolvedString } from '../../../utils/type-guards-extended';
+import {
+  getAppLocaleRouteParamName,
+  resolveAppLocaleRouteParamPolicy
+} from '../../app/config/locale-route-param';
 import type {
   ResolvedRouteHandlersAppConfig,
   ResolvedRouteHandlerPreparation,
@@ -19,11 +23,7 @@ import type {
 
 import { resolveConfiguredPathOption } from './paths';
 import { resolveRouteHandlersRoutingPolicy } from './routing-policy';
-import {
-  isNonEmptyString,
-  isObjectRecord,
-  readObjectProperty
-} from './shared';
+import { isNonEmptyString, isObjectRecord, readObjectProperty } from './shared';
 
 /**
  * Read the app-level `RouteHandlersConfig.app` object.
@@ -93,6 +93,39 @@ const resolveConfiguredAppRootDir = ({
 };
 
 /**
+ * Resolve the App Router filesystem param name used for locale routing.
+ *
+ * 1. `localeConfig` describes public locale semantics.
+ * 2. `localeRouteParamName` describes the physical App Router folder name.
+ * 3. Multi-locale App configs default to `[locale]`.
+ * 4. Custom physical folder names can override the default by configuring the
+ *    bare param name, for example `lang` for `app/[lang]/...`.
+ * 5. Single-locale App configs must not provide `localeRouteParamName`.
+ *
+ * @param configuredApp - Raw `routeHandlersConfig.app` object.
+ * @returns Locale route param name, or `undefined` for single-locale apps.
+ */
+const resolveConfiguredLocaleRouteParamName = (
+  configuredApp: Record<string, unknown>
+): string | undefined => {
+  const configuredLocaleConfig = readObjectProperty(
+    configuredApp,
+    'localeConfig'
+  );
+  const configuredLocaleRouteParamName = readObjectProperty(
+    configuredApp,
+    'localeRouteParamName'
+  );
+
+  return getAppLocaleRouteParamName(
+    resolveAppLocaleRouteParamPolicy(
+      !isUndefined(configuredLocaleConfig),
+      configuredLocaleRouteParamName
+    )
+  );
+};
+
+/**
  * Input for resolving the route handlers app config.
  *
  * @remarks
@@ -100,8 +133,14 @@ const resolveConfiguredAppRootDir = ({
  * app context through `routeHandlersConfig.app` or explicit entrypoint
  * arguments; `process.cwd()` is not probed implicitly.
  */
-export type ResolveRouteHandlersAppConfigInput =
-  RouteHandlersEntrypointInput<RouteHandlersConfigBase>;
+export type ResolveRouteHandlersAppConfigInput = RouteHandlersEntrypointInput<
+  Omit<RouteHandlersConfigBase, 'app'> & {
+    app?: RouteHandlersConfigBase['app'] & {
+      localeConfig?: unknown;
+      localeRouteParamName?: unknown;
+    };
+  }
+>;
 
 /**
  * Resolve the optional app-owned preparation step or steps.
@@ -199,6 +238,7 @@ export const resolveRouteHandlersAppConfig = ({
 
   return {
     rootDir: resolvedRootDir,
+    localeRouteParamName: resolveConfiguredLocaleRouteParamName(configuredApp),
     // The app-level routing policy is resolved here so the rest of the
     // integration stack can consume one already-validated contract instead of
     // re-reading raw `routeHandlersConfig.app.routing` shape in multiple

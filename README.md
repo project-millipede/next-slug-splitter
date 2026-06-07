@@ -234,6 +234,12 @@ This preset resolves `generatedRootDir` for you from `routeSegment`, and the
 library later resolves the final `generated-handlers/` directory under that
 root.
 
+For single-locale App Router targets, the preset derives a conventional output
+root such as `app/docs`. For multi-locale App Router targets with
+`app.localeConfig`, the preset derives a locale-subtree output root such as
+`app/[locale]/docs` so generated heavy pages inherit the same physical locale
+layout subtree as the public catch-all page.
+
 Unlike the Pages Router path, App Router usually keeps the route contract in a
 dedicated sibling file:
 
@@ -254,6 +260,8 @@ The App-specific fields are:
   the library executes in an isolated worker for page-data compilation
 - `app.localeConfig` — optional multi-locale semantics used for App-side
   worker routing, static-param filtering, and default-locale URL normalization
+- `app.localeRouteParamName` — optional physical App route-param name for the
+  locale segment; defaults to `locale` when `app.localeConfig` is configured
 
 `app.localeConfig` is a library routing contract, not a direct mirror of
 Next.js `i18n` settings:
@@ -263,16 +271,27 @@ Next.js `i18n` settings:
 - `locales` lists every locale identity the library should reason about
 - `defaultLocale` must be included in `locales`
 
-App static-param filtering reads an explicit `locale` param when returned from
-`getStaticParams`; params without `locale` fall back to the configured default
-locale. In multi-locale App setups, unprefixed default-locale light routes are
-rewritten internally to the physical `[locale]` route, so `/docs/foo` serves the
-same App page as `/en/docs/foo` without generating a handler.
+`app.localeRouteParamName` describes the filesystem segment name, not a public
+URL prefix:
+
+- omit it for the default App shape `app/[locale]/...`
+- set it to a bare name such as `lang` for `app/[lang]/...`
+- do not include brackets or slashes; use `locale`, not `[locale]`
+- do not configure it without `app.localeConfig`
+
+App static-param filtering reads the configured locale route param when
+returned from `getStaticParams`; the default param name is `locale`, and a
+custom `app.localeRouteParamName` changes the field the library reads. Params
+without that field fall back to the configured default locale. In multi-locale
+App setups, unprefixed default-locale light routes are rewritten internally to
+the physical locale route, so `/docs/foo` serves the same App page as
+`/en/docs/foo` without generating a handler.
 
 If the App tree needs route groups or another custom filesystem placement for
 generated handlers, use manual target config and set `generatedRootDir`
-directly there. The catch-all preset stays on the conventional
-`app/<routeSegment>` branch on purpose.
+directly there. The catch-all preset intentionally stays on the library's
+conventional App placement: `app/<routeSegment>` for single-locale targets and
+`app/[<localeRouteParamName>]/<routeSegment>` for multi-locale targets.
 
 Concrete comparison:
 
@@ -723,6 +742,8 @@ Top-level configuration shape.
 | --------------------------- | -------------------------------------------------------------------------- |
 | `routerKind`                | Required router family: `'pages'` or `'app'`                               |
 | `app.rootDir`               | Application root directory                                                 |
+| `app.localeConfig`          | App-only multi-locale routing semantics; omit for single-locale App setups |
+| `app.localeRouteParamName`  | Bare App locale route-param name, defaulting to `locale` when configured   |
 | `app.routing.development`   | Development routing mode: `'proxy'` (default) or `'rewrites'`              |
 | `app.routing.workerPrewarm` | Dev-only worker startup strategy: `'off'` (default) or `'instrumentation'` |
 | `app.prepare`               | Optional TypeScript prepare step or steps run before route planning        |
@@ -782,6 +803,16 @@ App-specific route-module inputs.
 | `handlerBinding.pageDataCompilerImport` | Optional App page-data compiler module executed through the library-owned isolated worker                           |
 | `routeContract`                         | Dedicated App route-contract module that owns `getStaticParams`, `loadPageProps`, optional metadata, and revalidate |
 | `contentLocaleMode`                     | Locale detection mode (see below)                                                                                   |
+
+The preset derives `generatedRootDir` from the resolved App route base and the
+App locale route-param policy:
+
+1. Without `app.localeConfig`, `routeSegment: 'docs'` derives `app/docs`.
+2. With `app.localeConfig`, the same target derives `app/[locale]/docs`.
+3. With `app.localeConfig` and `app.localeRouteParamName: 'lang'`, it derives
+   `app/[lang]/docs`.
+4. Set `generatedRootDir` manually only when writing a low-level target config
+   instead of using the preset.
 
 ### `DynamicRouteParam`
 

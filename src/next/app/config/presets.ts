@@ -6,13 +6,13 @@ import type {
 import { createConfigError } from '../../../utils/errors';
 import { resolveCatchAllRoutePresetIdentity } from '../../shared/config/catch-all-preset';
 import { isNonEmptyString } from '../../shared/config/shared';
-import { createCatchAllAppRouteHandlerGeneratedRootDir } from './paths';
 
 /**
  * Create a catch-all App Router target preset for next-slug-splitter.
  *
- * The public route identity still comes from `routeSegment`, and the preset
- * derives the conventional `app/<routeSegment>` generated-output root.
+ * The public route identity comes from `routeSegment`. Generated-output
+ * placement is derived later from the resolved App config so locale-aware apps
+ * can place heavy handlers under the same `[locale]` layout subtree.
  *
  * @param options - Preset options describing one catch-all App target.
  * @returns Target config with normalized route and path values.
@@ -47,9 +47,6 @@ export const createAppCatchAllRouteHandlersPreset = ({
     mdxCompileOptions,
     routeBasePath: resolvedPresetIdentity.routeBasePath,
     routeContract,
-    contentDir,
-    generatedRootDir: createCatchAllAppRouteHandlerGeneratedRootDir(
-      resolvedPresetIdentity.routeSegment
-    )
+    contentDir
   };
 };

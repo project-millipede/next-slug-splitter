@@ -44,7 +44,8 @@ export const emitRouteHandlerLazySingleHandler = async (
           routeContract: analysisResult.config.routeContract,
           handlerRouteParam: analysisResult.config.handlerRouteParam,
           localeParamName: resolveOptionalAppLocaleRouteParamName(
-            analysisResult.config.localeConfig
+            analysisResult.config.localeConfig,
+            analysisResult.config.localeRouteParamName
           ),
           routeBasePath: analysisResult.config.routeBasePath,
           routeModuleContract: analysisResult.config.routeModule

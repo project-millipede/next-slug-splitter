@@ -3,9 +3,10 @@
  *
  * Defines a single catch-all target under the `/docs/` route segment.
  * The processor is a local TypeScript file compiled to JavaScript via
- * the `prepare` step before the pipeline loads it at runtime. The preset
- * derives `generatedRootDir`, which later resolves to the canonical
- * `generated-handlers/` output leaf.
+ * the `prepare` step before the pipeline loads it at runtime.
+ *
+ * The target uses App locale config, so generated handlers default below
+ * `app/[locale]/docs`.
  */
 
 import path from 'node:path';

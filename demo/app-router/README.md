@@ -144,7 +144,9 @@ The preset keeps source discovery and generated output explicit:
 - `contentDir: content/pages`
 - derived `generatedRootDir: app/docs`
 
-The library then derives `app/docs/generated-handlers/` internally.
+This demo is single-locale and omits `app.localeConfig`, so the App catch-all
+preset keeps generated output under the conventional `app/docs` branch. The
+library then derives `app/docs/generated-handlers/` internally.
 
 ### The demo target config
 
@@ -155,6 +157,10 @@ The App-specific pieces are the dedicated
 `app/docs/[...slug]/route-contract.ts` module and the `pageDataCompilerImport`
 used by that route contract. Generated heavy pages are emitted under
 `app/docs/generated-handlers/`.
+
+For the multi-locale variant of the same App model, see
+[`../app-router-multi-locale`](../app-router-multi-locale). That demo adds
+`app.localeConfig` and lets the preset derive `app/[locale]/docs` instead.
 
 ### The catch-all route
 

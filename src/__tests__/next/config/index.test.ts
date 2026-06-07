@@ -155,7 +155,9 @@ describe('next config helpers', () => {
         handlerBinding: createTestHandlerBinding()
       });
 
-      expect(routeHandlersConfig.routeContract).toEqual(TEST_PRIMARY_ROUTE_CONTRACT);
+      expect(routeHandlersConfig.routeContract).toEqual(
+        TEST_PRIMARY_ROUTE_CONTRACT
+      );
       expect(routeHandlersConfig.targetId).toBe(TEST_PRIMARY_ROUTE_SEGMENT);
       expect(routeHandlersConfig.routeBasePath).toBe('/content');
       expect(routeHandlersConfig.contentDir).toBe(
@@ -212,9 +214,7 @@ describe('next config helpers', () => {
       expect(routeHandlersConfig.contentDir).toBe(
         TEST_PRIMARY_CONTENT_PAGES_DIR
       );
-      expect(routeHandlersConfig.generatedRootDir).toBe(
-        path.join('app', 'content')
-      );
+      expect(routeHandlersConfig.generatedRootDir).toBeUndefined();
     });
   });
 

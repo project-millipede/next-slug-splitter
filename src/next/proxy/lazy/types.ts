@@ -175,6 +175,10 @@ export type RouteHandlerLazyAppPlannerConfig =
      * Build-time inspection result for the page-safe route module.
      */
     routeModule: ResolvedAppRouteModuleContract;
+    /**
+     * Physical App Router dynamic segment name that carries the locale.
+     */
+    localeRouteParamName?: string;
   };
 
 /**

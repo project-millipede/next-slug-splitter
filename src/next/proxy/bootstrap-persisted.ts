@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 
 import { cloneLocaleConfig } from '../../core/locale-config';
 import { isModuleReference } from '../../module-reference';
-import { isArrayOf, isString } from '../../utils/type-guards';
+import { isArrayOf, isString, isUndefined } from '../../utils/type-guards';
 import {
   isObjectRecordOf,
   isStringArray,
@@ -30,7 +30,7 @@ import type {
   RouteHandlerLazyResolvedTarget
 } from './lazy/types';
 
-const ROUTE_HANDLER_PROXY_BOOTSTRAP_VERSION = 6;
+const ROUTE_HANDLER_PROXY_BOOTSTRAP_VERSION = 7;
 const ROUTE_HANDLER_PROXY_BOOTSTRAP_PATH = path.join(
   '.next',
   'cache',
@@ -117,6 +117,10 @@ export type PersistedRouteHandlerProxyBootstrapAppTarget =
      * Build-time inspection result for the App route contract.
      */
     routeModule: ResolvedAppRouteModuleContract;
+    /**
+     * Physical App Router dynamic segment name that carries the locale.
+     */
+    localeRouteParamName?: string;
   };
 
 export type PersistedRouteHandlerProxyBootstrapTarget =
@@ -169,6 +173,9 @@ const isContentLocaleMode = (value: unknown): value is ContentLocaleMode =>
 
 const isEmitFormat = (value: unknown): value is EmitFormat =>
   value === 'js' || value === 'ts';
+
+const isOptionalString = (value: unknown): value is string | undefined =>
+  isUndefined(value) || isString(value);
 
 const isDynamicRouteParam = (value: unknown): value is DynamicRouteParam => {
   if (!isObjectRecordOf<DynamicRouteParam>(value)) {
@@ -266,9 +273,17 @@ const isPersistedRouteHandlerProxyBootstrapTarget = (
   }
 
   if (routerKind === 'app') {
+    const localeRouteParamName = readObjectProperty(
+      value,
+      'localeRouteParamName'
+    );
+
     return (
       isModuleReference(readObjectProperty(value, 'routeContract')) &&
-      isResolvedAppRouteModuleContract(readObjectProperty(value, 'routeModule'))
+      isResolvedAppRouteModuleContract(
+        readObjectProperty(value, 'routeModule')
+      ) &&
+      isOptionalString(localeRouteParamName)
     );
   }
 
@@ -351,7 +366,8 @@ export const createRouteHandlerProxyBootstrapManifest = (
         ...sharedTarget,
         routerKind: 'app' as const,
         routeContract: config.routeContract,
-        routeModule: config.routeModule
+        routeModule: config.routeModule,
+        localeRouteParamName: config.app.localeRouteParamName
       };
     }
 
@@ -456,6 +472,7 @@ export const createRouteHandlerPlannerConfigsByIdFromProxyBootstrap = (
             handlerRouteSegment: target.handlerRouteSegment,
             routeContract: target.routeContract,
             routeModule: target.routeModule,
+            localeRouteParamName: target.localeRouteParamName,
             processorConfig: target.processorConfig,
             localeConfig: cloneLocaleConfig(manifest.localeConfig),
             paths: {

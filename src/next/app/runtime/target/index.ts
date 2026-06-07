@@ -28,7 +28,8 @@ export const executeRouteHandlerTarget = async (
         routeContract: config.routeContract,
         handlerRouteParam,
         localeParamName: resolveOptionalAppLocaleRouteParamName(
-          config.localeConfig
+          config.localeConfig,
+          config.app.localeRouteParamName
         ),
         routeBasePath,
         routeModuleContract: config.routeModule

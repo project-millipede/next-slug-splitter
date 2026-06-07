@@ -33,7 +33,8 @@ describe('filterStaticParamsAgainstHeavyRoutes', () => {
         (locale, slugArray) =>
           ['de:heavy-page'].includes(`${locale}:${slugArray.join('/')}`),
         {
-          localeConfig: TEST_MULTI_LOCALE_CONFIG
+          localeConfig: TEST_MULTI_LOCALE_CONFIG,
+          localeRouteParamName: 'locale'
         }
       )
     ).resolves.toEqual([
@@ -61,10 +62,11 @@ describe('filterStaticParamsAgainstHeavyRoutes', () => {
           { path: 'light-page', lang: 'de' }
         ],
         (locale, slugArray) =>
-          ['en:heavy-page'].includes(`${locale}:${slugArray.join('/')}`),
+          ['de:heavy-page'].includes(`${locale}:${slugArray.join('/')}`),
         {
           handlerRouteParamName: 'path',
-          localeConfig: TEST_MULTI_LOCALE_CONFIG
+          localeConfig: TEST_MULTI_LOCALE_CONFIG,
+          localeRouteParamName: 'lang'
         }
       )
     ).resolves.toEqual([{ path: 'light-page', lang: 'de' }]);

@@ -1,9 +1,26 @@
 import { isSingleLocaleConfig } from '../../../core/locale-config';
 import type { LocaleConfig } from '../../../core/types';
+import { toRoutePathSegments } from '../../../utils/route-path';
 import { createAbsoluteRewriteRoutePath } from '../../shared/rewrites/route-path';
 
 /**
- * Check whether one internal rewrite destination already starts with a locale.
+ * Check whether one Pages Router proxy rewrite destination already carries a
+ * leading locale segment.
+ *
+ * 1. Only the first route path segment is inspected.
+ * 2. Locale-looking segments later in the destination are handler identity, not
+ *    Pages Router transport locale.
+ * 3. Existing locale-prefixed destinations must not be prefixed again.
+ *
+ * @example
+ * // Locale-prefixed destination
+ * '/de/docs/generated-handlers/a/de' -> true
+ *
+ * // Locale-less destination with locale handler suffix
+ * '/docs/generated-handlers/a/de' -> false
+ *
+ * // Empty/root destination
+ * '/' -> false
  *
  * @param rewriteDestination - Internal rewrite destination pathname.
  * @param localeConfig - Locale semantics captured by the generated proxy.
@@ -13,9 +30,7 @@ const hasLeadingLocaleSegment = (
   rewriteDestination: string,
   localeConfig: LocaleConfig
 ): boolean => {
-  const [leadingSegment] = rewriteDestination
-    .split('/')
-    .filter(segment => segment.length > 0);
+  const [leadingSegment] = toRoutePathSegments(rewriteDestination);
 
   if (leadingSegment == null) {
     return false;

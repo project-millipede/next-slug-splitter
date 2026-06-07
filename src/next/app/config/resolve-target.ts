@@ -20,6 +20,7 @@ import {
   type NormalizedRouteHandlersTargetOptions,
   type NormalizedRouteHandlersTargetRuntimeAttachments
 } from '../../shared/config/resolve-target';
+import { createCatchAllAppRouteHandlerGeneratedRootDir } from './generated-root-dir';
 import { inspectAppRouteModuleContract } from '../runtime/route-module';
 
 import type {
@@ -124,6 +125,43 @@ const resolveAppPageDataCompilerConfig = (
 };
 
 /**
+ * Ensure App catch-all targets have the generated-output root implied by the
+ * resolved app-level locale shape.
+ *
+ * 1. Explicit `generatedRootDir` is still respected for low-level target
+ *    configs.
+ * 2. Preset-created targets omit it so this resolver can derive the default
+ *    from `routeBasePath` and `app.localeRouteParamName`.
+ * 3. Locale-aware App configs emit below `app/[<localeRouteParamName>]`.
+ * 4. Single-locale App configs emit below `app`.
+ *
+ * @param appConfig - Resolved app-level config shared by all targets.
+ * @param routeHandlersConfig - Raw target config or single-target wrapper.
+ * @returns Target config with a generated root available for shared resolution.
+ */
+const withResolvedAppGeneratedRootDir = (
+  appConfig: ResolvedRouteHandlersAppConfig,
+  routeHandlersConfig: RouteHandlersConfig | RouteHandlersTargetConfig
+): RouteHandlersConfig | RouteHandlersTargetConfig => {
+  if (routeHandlersConfig.generatedRootDir != null) {
+    return routeHandlersConfig;
+  }
+
+  const routeBasePath = routeHandlersConfig.routeBasePath;
+  if (routeBasePath == null) {
+    return routeHandlersConfig;
+  }
+
+  return {
+    ...routeHandlersConfig,
+    generatedRootDir: createCatchAllAppRouteHandlerGeneratedRootDir(
+      routeBasePath,
+      appConfig.localeRouteParamName
+    )
+  };
+};
+
+/**
  * Normalize the optional runtime-attachment block for one App target.
  *
  * @param routeHandlersConfig Raw target config or single-target config wrapper.
@@ -147,7 +185,9 @@ export const normalizeRouteHandlersTargetOptions = (
 ): NormalizedAppRouteHandlersTargetOptions =>
   normalizeSharedRouteHandlersTargetOptions(
     appConfig,
-    routeHandlersConfig,
+    routeHandlersConfig == null
+      ? routeHandlersConfig
+      : withResolvedAppGeneratedRootDir(appConfig, routeHandlersConfig),
     'app'
   );
 

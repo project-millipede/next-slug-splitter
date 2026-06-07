@@ -1,24 +1,22 @@
-import { buildRouteRewriteBuckets } from '../rewrites/index'
+import {
+  buildRouteRewriteBuckets,
+  type RouteHandlerGeneratedDestinationOptions,
+  type RouteHandlerRewriteTargetConfig
+} from '../rewrites/index';
 
-import type { LocaleConfig, RouteHandlerPipelineResult } from '../../../core/types'
+import type { RouteHandlerPipelineResult } from '../../../core/types';
 import type {
   ResolvedRouteHandlersConfigBase,
   RouteHandlerNextResult
-} from '../types'
+} from '../types';
 
 type RouteHandlerResultConfig = Pick<
   ResolvedRouteHandlersConfigBase,
-  'targetId' | 'routeBasePath'
-> & {
-  /**
-   * Normalized locale configuration for the current router path.
-   */
-  localeConfig: LocaleConfig;
-  /**
-   * Internal route segment owning generated handler pages.
-   */
-  handlerRouteSegment?: string;
-}
+  'targetId'
+> &
+  RouteHandlerRewriteTargetConfig;
+
+type RouteHandlerNextResultOptions = RouteHandlerGeneratedDestinationOptions;
 
 /**
  * Convert one core pipeline result into the Next integration result shape.
@@ -35,14 +33,16 @@ export const buildRouteHandlerNextResultWithRuntimeHarness = <
   TResolvedConfig extends RouteHandlerResultConfig
 >(
   config: TResolvedConfig,
-  pipelineResult: RouteHandlerPipelineResult
+  pipelineResult: RouteHandlerPipelineResult,
+  options: RouteHandlerNextResultOptions = {}
 ): RouteHandlerNextResult => {
   const rewriteBuckets = buildRouteRewriteBuckets(
     pipelineResult.heavyPaths,
     config.localeConfig,
     config.routeBasePath,
-    config.handlerRouteSegment
-  )
+    config.handlerRouteSegment,
+    options.generatedHandlersAreLocaleScoped
+  );
 
   return {
     targetId: config.targetId,
@@ -56,5 +56,5 @@ export const buildRouteHandlerNextResultWithRuntimeHarness = <
     })),
     rewrites: rewriteBuckets.rewrites,
     rewritesOfDefaultLocale: rewriteBuckets.rewritesOfDefaultLocale
-  }
-}
+  };
+};

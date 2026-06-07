@@ -373,7 +373,8 @@ describe('route handlers adapter', () => {
       routeHandlersConfig: appRouteHandlersConfig,
       appConfig: {
         ...TEST_APP_CONFIG,
-        rootDir: '/repo/app'
+        rootDir: '/repo/app',
+        localeRouteParamName: 'locale'
       }
     });
     resolveAppRouteHandlersConfigsFromAppConfigMock.mockResolvedValue([
@@ -383,7 +384,8 @@ describe('route handlers adapter', () => {
         routeBasePath: '/docs',
         handlerRouteSegment: 'generated-handlers',
         app: {
-          rootDir: '/repo/app'
+          rootDir: '/repo/app',
+          localeRouteParamName: 'locale'
         },
         handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
         routeContract: absoluteModule(runtimeRouteModulePath),
@@ -397,7 +399,7 @@ describe('route handlers adapter', () => {
         paths: {
           rootDir: '/repo/app',
           contentDir: '/repo/app/content/pages',
-          generatedDir: '/repo/app/app/docs/generated-handlers'
+          generatedDir: '/repo/app/app/[locale]/docs/generated-handlers'
         }
       }
     ]);
@@ -440,6 +442,7 @@ describe('route handlers adapter', () => {
         {
           targetId: 'docs',
           handlerRouteParamName: 'slug',
+          localeRouteParamName: 'locale',
           pageDataCompilerModulePath
         }
       ]
@@ -628,7 +631,8 @@ describe('route handlers adapter', () => {
       routeHandlersConfig: appRouteHandlersConfig,
       appConfig: {
         ...TEST_APP_CONFIG,
-        rootDir: '/repo/app'
+        rootDir: '/repo/app',
+        localeRouteParamName: 'locale'
       }
     });
     resolveAppRouteHandlersConfigsFromAppConfigMock.mockResolvedValue([
@@ -642,7 +646,8 @@ describe('route handlers adapter', () => {
           defaultLocale: 'en'
         },
         app: {
-          rootDir: '/repo/app'
+          rootDir: '/repo/app',
+          localeRouteParamName: 'locale'
         },
         handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM
       }
@@ -656,14 +661,14 @@ describe('route handlers adapter', () => {
         rewrites: [
           {
             source: '/docs/heavy',
-            destination: '/docs/generated-handlers/heavy/en',
+            destination: '/en/docs/generated-handlers/heavy/en',
             locale: false
           }
         ],
         rewritesOfDefaultLocale: [
           {
             source: '/en/docs/heavy',
-            destination: '/docs/generated-handlers/heavy/en',
+            destination: '/en/docs/generated-handlers/heavy/en',
             locale: false
           }
         ]
@@ -694,12 +699,12 @@ describe('route handlers adapter', () => {
           },
           {
             source: '/docs/heavy',
-            destination: '/docs/generated-handlers/heavy/en',
+            destination: '/en/docs/generated-handlers/heavy/en',
             locale: false
           },
           {
             source: '/en/docs/heavy',
-            destination: '/docs/generated-handlers/heavy/en',
+            destination: '/en/docs/generated-handlers/heavy/en',
             locale: false
           }
         ],

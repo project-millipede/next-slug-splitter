@@ -1,5 +1,5 @@
 import { VariableDeclarationKind, type WriterFunction } from 'ts-morph';
-import type { JsonObject } from '../../../utils/type-guards-json';
+import type { JsonObject, JsonValue } from '../../../utils/type-guards-json';
 
 import type { EmitFormat } from '../../../core/types';
 import type { ResolvedAppRouteModuleContract } from '../../../next/app/types';
@@ -38,6 +38,11 @@ type AppHandlerPageEmitInput = {
    * generated page.
    */
   handlerParams: JsonObject;
+  /**
+   * Static route params that make a generated handler addressable below App
+   * Router dynamic layout segments.
+   */
+  staticParams?: JsonValue;
   emitFormat: EmitFormat;
 } & ResolvedAppRouteModuleContract;
 
@@ -68,6 +73,7 @@ export const renderAppHandlerPageSource = ({
   componentEntries,
   factoryBindingValues,
   handlerParams,
+  staticParams,
   hasGeneratePageMetadata,
   revalidate,
   emitFormat
@@ -126,6 +132,22 @@ export const renderAppHandlerPageSource = ({
       }
     ]
   });
+
+  if (staticParams !== undefined) {
+    sourceFile.addVariableStatement({
+      isExported: true,
+      declarationKind: VariableDeclarationKind.Const,
+      declarations: [
+        {
+          name: 'generateStaticParams',
+          initializer: writer => {
+            writer.write('() => ');
+            createSerializableValueInitializer(staticParams)(writer);
+          }
+        }
+      ]
+    });
+  }
 
   if (hasGeneratePageMetadata) {
     sourceFile.addFunction({

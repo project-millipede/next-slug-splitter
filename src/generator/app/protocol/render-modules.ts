@@ -1,4 +1,4 @@
-import type { JsonObject } from '../../../utils/type-guards-json';
+import type { JsonObject, JsonValue } from '../../../utils/type-guards-json';
 import type {
   EmitFormat,
   LoadableComponentEntry,
@@ -15,6 +15,7 @@ export type PreparedAppHandlerRenderConfig = {
   routeBasePath: string;
   emitFormat: EmitFormat;
   handlerParams: JsonObject;
+  staticParams?: JsonValue;
 } & ResolvedAppRouteModuleContract;
 
 type AppHandlerSourceInput = {
@@ -55,6 +56,7 @@ export const renderAppRouteHandlerModules = ({
     componentEntries,
     factoryBindingValues,
     handlerParams: renderConfig.handlerParams,
+    staticParams: renderConfig.staticParams,
     hasGeneratePageMetadata: renderConfig.hasGeneratePageMetadata,
     revalidate: renderConfig.revalidate,
     emitFormat: renderConfig.emitFormat

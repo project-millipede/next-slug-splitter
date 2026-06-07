@@ -163,6 +163,33 @@ describe('rewrite generation', () => {
     ).toBe(true);
   });
 
+  test('can prefix handler destinations for locale-scoped App generated output', () => {
+    const rewrites: Array<RouteHandlerRewrite> = buildRouteRewriteEntries({
+      heavyRoutes: multiLocaleHeavyRoutes,
+      localeConfig: TEST_MULTI_LOCALE_CONFIG,
+      routeBasePath: '/content',
+      generatedHandlersAreLocaleScoped: true
+    });
+
+    expect(rewrites).toEqual([
+      {
+        source: '/content/nested/example',
+        destination: '/en/content/generated-handlers/nested/example/en',
+        locale: false
+      },
+      {
+        source: '/de/content/nested/example',
+        destination: '/de/content/generated-handlers/nested/example/de',
+        locale: false
+      },
+      {
+        source: '/en/content/nested/example',
+        destination: '/en/content/generated-handlers/nested/example/en',
+        locale: false
+      }
+    ]);
+  });
+
   test('builds slash-safe generated-handler destinations for root targets', () => {
     const rewrites: Array<RouteHandlerRewrite> = buildRouteRewriteEntries({
       heavyRoutes: [

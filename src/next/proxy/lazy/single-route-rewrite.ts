@@ -1,11 +1,36 @@
 import { buildRouteRewriteEntries } from '../../shared/rewrites/index';
 import path from 'node:path';
 
+import { hasGeneratedHandlersInAppLocaleSubtree } from '../../app/generated-handlers/location';
+
 import type { PlannedHeavyRoute } from '../../../core/types';
 import type {
   RouteHandlerLazyHeavyAnalysisResult,
   RouteHandlerLazyPlannerConfig
 } from './types';
+
+/**
+ * Check whether one lazy proxy target emits generated handlers below its
+ * physical App locale route segment.
+ *
+ * 1. Pages Router and conventional App output use locale-less destinations.
+ * 2. Locale-scoped App output uses locale-prefixed destinations so the rewrite
+ *    stays inside the physical locale layout subtree.
+ *
+ * @param config - Lazy planner config that owns the route.
+ * @returns `true` when generated-handler destinations need a route-locale
+ * prefix.
+ */
+const hasLocaleScopedLazyGeneratedHandlerDestinations = (
+  config: RouteHandlerLazyPlannerConfig
+): boolean =>
+  Boolean(
+    config.routerKind === 'app' &&
+      hasGeneratedHandlersInAppLocaleSubtree(
+        config.paths,
+        config.localeRouteParamName
+      )
+  );
 
 /**
  * Resolve the concrete rewrite destination for the current pathname from one
@@ -34,7 +59,9 @@ const resolveRouteHandlerHeavyRewriteDestination = (
     localeConfig: config.localeConfig,
     routeBasePath: config.routeBasePath,
     handlerRouteSegment:
-      config.handlerRouteSegment ?? path.basename(config.paths.generatedDir)
+      config.handlerRouteSegment ?? path.basename(config.paths.generatedDir),
+    generatedHandlersAreLocaleScoped:
+      hasLocaleScopedLazyGeneratedHandlerDestinations(config)
   });
 
   const matchedRewrite = rewrites.find(rewrite => rewrite.source === pathname);

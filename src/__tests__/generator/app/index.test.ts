@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import { renderAppRouteHandlerPage } from '../../../generator/app/index';
 import { absoluteModule, packageModule } from '../../../module-reference';
-import { APP_LOCALE_ROUTE_PARAM_NAME } from '../../../next/app/route-params';
 import {
   createLoadableComponentEntry,
   createPlannedHeavyRoute
@@ -41,7 +40,7 @@ describe('App Router generator contract', () => {
       emitFormat: 'ts',
       routeContract: absoluteModule('/repo/app/content/route-contract.ts'),
       handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
-      localeParamName: APP_LOCALE_ROUTE_PARAM_NAME,
+      localeParamName: 'locale',
       routeBasePath: '/content',
       routeModuleContract: {
         hasGeneratePageMetadata: true,
@@ -107,5 +106,42 @@ describe('App Router generator contract', () => {
 
     expect(renderedPage.pageSource).not.toContain('generatePageMetadata');
     expect(renderedPage.pageSource).not.toContain('export const revalidate =');
+  });
+
+  it('enumerates the owning locale when the generated handler lives below [locale]', () => {
+    const renderedPage = renderAppRouteHandlerPage({
+      paths: {
+        rootDir: '/repo',
+        contentDir: '/repo/content',
+        generatedDir: '/repo/app/[locale]/content/generated-handlers'
+      },
+      heavyRoute: createPlannedHeavyRoute({
+        locale: 'de',
+        slugArray: ['guides', 'intro'],
+        handlerId: 'de-guides-intro',
+        handlerRelativePath: 'guides/intro/de',
+        usedLoadableComponentKeys: [],
+        factoryImport: absoluteModule('/repo/runtime/create-handler-page.js'),
+        componentEntries: []
+      }),
+      emitFormat: 'ts',
+      routeContract: absoluteModule(
+        '/repo/app/[locale]/content/route-contract.ts'
+      ),
+      handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
+      localeParamName: 'locale',
+      routeBasePath: '/content',
+      routeModuleContract: {
+        hasGeneratePageMetadata: false,
+        revalidate: undefined
+      }
+    });
+
+    expect(renderedPage.pageFilePath).toBe(
+      '/repo/app/[locale]/content/generated-handlers/guides/intro/de/page.tsx'
+    );
+    expect(renderedPage.pageSource).toContain(
+      'export const generateStaticParams = () => [{ "locale": "de" }];'
+    );
   });
 });

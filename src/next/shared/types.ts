@@ -254,6 +254,12 @@ export type ResolvedRouteHandlersAppConfig = Required<AppConfigBase> & {
    * Resolved app-level routing policy.
    */
   routing: ResolvedRouteHandlersRoutingPolicy;
+  /**
+   * Physical App Router dynamic segment name that carries the locale.
+   *
+   * Present only for multi-locale App Router configurations.
+   */
+  localeRouteParamName?: string;
 };
 
 // DynamicRouteParamKind and DynamicRouteParam are defined in core/types.ts
