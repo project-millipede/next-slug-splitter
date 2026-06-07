@@ -64,15 +64,17 @@ The ballast files in this demo simulate realistic dependency sizes (visualizatio
 still render lightweight components from the MDX component scope, such as
 `Callout`.
 
-**Heavy pages** get auto-generated handlers in `app/docs/generated-handlers/` that import only the specific loadable components they need:
+**Heavy pages** get auto-generated handlers in
+`app/[locale]/docs/generated-handlers/` that import only the specific loadable
+components they need:
 
-- `generated-handlers/interactive/en/page.tsx` bundles only `Counter`
-- `generated-handlers/dashboard/en/page.tsx` bundles only `Chart` + `DataTable`
+- `app/[locale]/docs/generated-handlers/interactive/en/page.tsx` bundles only `Counter`
+- `app/[locale]/docs/generated-handlers/dashboard/en/page.tsx` bundles only `Chart` + `DataTable`
 
 For the App Router path, `app/[locale]/docs/[...slug]/route-contract.ts` is shared by the public light page and the generated heavy pages:
 
 - the light page at `app/[locale]/docs/[...slug]/page.tsx`
-- generated heavy pages under `app/docs/generated-handlers/`
+- generated heavy pages under `app/[locale]/docs/generated-handlers/`
 - the shared route contract at `app/[locale]/docs/[...slug]/route-contract.ts`
 
 That route-owned contract owns:
@@ -132,10 +134,11 @@ Compare the bundle sizes in the build output:
 
 ### Generated handlers
 
-After starting dev or running a build, look at `app/docs/generated-handlers/`:
+After starting dev or running a build, look at
+`app/[locale]/docs/generated-handlers/`:
 
 ```text
-app/docs/generated-handlers/
+app/[locale]/docs/generated-handlers/
 ├── interactive
 │   ├── en/page.tsx        ← imports only Counter
 │   └── de/page.tsx        ← imports only Counter
@@ -148,10 +151,11 @@ These files are auto-generated and gitignored. Each one imports exactly the load
 
 The preset keeps source discovery and generated output explicit:
 
+- `app.localeConfig: en, de`
 - `contentDir: content/pages`
-- derived `generatedRootDir: app/docs`
 
-The library then derives `app/docs/generated-handlers/` internally.
+The library derives `app/[locale]/docs/generated-handlers/` from the App
+locale config default route param and the `/docs` target route segment.
 
 ### The demo target config
 
@@ -161,7 +165,8 @@ This demo uses the App Router catch-all preset documented in the top-level
 The App-specific pieces are `app.localeConfig`, the dedicated
 `app/[locale]/docs/[...slug]/route-contract.ts` module, and the
 `pageDataCompilerImport` used by that route contract. Generated heavy pages are
-emitted under `app/docs/generated-handlers/`.
+emitted under `app/[locale]/docs/generated-handlers/` so they stay inside the
+same locale layout subtree as the public catch-all route.
 
 The demo uses `en` and `de` with `en` as the default locale. English docs use
 canonical unprefixed URLs such as `/docs/getting-started`; German docs use
@@ -260,18 +265,22 @@ Pages-specific and which belong to the shared proxy/readiness layer, see
 ```text
 .
 ├── app
+│   ├── (default)                       ← invisible route group for `/`
+│   │   ├── layout.tsx                  ← default-locale shell layout
+│   │   └── page.tsx                    ← default-locale landing page
 │   ├── [locale]
+│   │   ├── layout.tsx                  ← locale-owned shell layout
 │   │   ├── docs
-│   │   │   └── [...slug]
-│   │   │       ├── page.tsx            ← public light catch-all page
-│   │   │       └── route-contract.ts   ← route-owned shared contract
+│   │   │   ├── [...slug]
+│   │   │   │   ├── page.tsx            ← public light catch-all page
+│   │   │   │   └── route-contract.ts   ← route-owned shared contract
+│   │   │   └── generated-handlers      ← auto-generated heavy page handlers
 │   │   └── page.tsx                    ← localized landing page
-│   ├── docs
-│   │   └── generated-handlers          ← auto-generated heavy page handlers
+│   ├── home-page.tsx                   ← shared landing page content
 │   ├── language-switch.tsx             ← locale switch preserving the slug
-│   ├── layout.tsx                      ← shared layout shell
+│   ├── layout.tsx                      ← root document frame
 │   ├── not-found.tsx                   ← dev-only App retry boundary
-│   └── page.tsx                        ← landing page with page listing
+│   └── shell.tsx                       ← shared navigation shell
 ├── config-variants                     ← source-of-truth demo variant configs
 ├── content/pages                       ← MDX content files
 │   ├── getting-started

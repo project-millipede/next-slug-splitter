@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import type { CSSProperties } from 'react';
 
 import {
-  DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
   createHrefForLocale,
   isSupportedLocale,
@@ -31,44 +30,39 @@ const separatorStyle: CSSProperties = {
 };
 
 /**
- * Resolve the browser-path state needed by the language switch.
+ * Resolve the active page pathname needed by the language switch.
  *
  * Why this is pathname-based:
- * 1. The switch is rendered from `app/layout.tsx`, above the `[locale]` route
- *    segment, so it does not receive child route params.
- * 2. The default locale is canonical without a visible locale segment:
+ * 1. The active locale is supplied by the layout that owns locale semantics.
+ * 2. The active slug still comes from the browser-visible URL.
+ * 3. The default locale is canonical without a visible locale segment:
  *    `/docs/a` means the default locale.
- * 3. Explicit locale URLs are still supported:
+ * 4. Explicit locale URLs are still supported:
  *    `/en/docs/a` and `/de/docs/a`.
  *
  * Resolution rules:
- * 1. A leading supported locale segment becomes the active locale.
- * 2. Without a leading locale segment, the active locale is the default locale.
- * 3. The returned active pathname removes any leading locale segment so
+ * 1. A leading supported locale segment is removed.
+ * 2. Without a leading locale segment, the pathname is returned unchanged.
+ * 3. The returned active pathname is locale-free so
  *    alternate language links can be created for the same page.
  *
  * @example
  * // Default locale, canonical URL
- * '/docs/a' -> { locale: 'en', activePathname: '/docs/a' }
+ * '/docs/a' -> '/docs/a'
  *
  * // Default locale, explicit URL
- * '/en/docs/a' -> { locale: 'en', activePathname: '/docs/a' }
+ * '/en/docs/a' -> '/docs/a'
  *
  * // Non-default locale
- * '/de/docs/a' -> { locale: 'de', activePathname: '/docs/a' }
+ * '/de/docs/a' -> '/docs/a'
  *
  * // Locale root
- * '/de' -> { locale: 'de', activePathname: '/' }
+ * '/de' -> '/'
  *
  * @param pathname - Browser-visible pathname returned by `usePathname()`.
- * @returns Active locale plus the active page pathname used for language links.
+ * @returns Locale-free active page pathname used for language links.
  */
-const resolveLanguageSwitchPathState = (
-  pathname: string
-): {
-  locale: SupportedLocale;
-  activePathname: string;
-} => {
+const resolveLanguageSwitchActivePathname = (pathname: string): string => {
   const pathSegments = pathname
     .split('/')
     .filter(segment => segment.length > 0);
@@ -76,24 +70,19 @@ const resolveLanguageSwitchPathState = (
   const [leadingPathSegment, ...remainingPathSegments] = pathSegments;
 
   if (leadingPathSegment != null && isSupportedLocale(leadingPathSegment)) {
-    const activePathname = `/${remainingPathSegments.join('/')}`;
-
-    return {
-      locale: leadingPathSegment,
-      activePathname
-    };
+    return `/${remainingPathSegments.join('/')}`;
   }
 
-  return {
-    locale: DEFAULT_LOCALE,
-    activePathname: pathname || '/'
-  };
+  return pathname || '/';
 };
 
-export function LanguageSwitch() {
+export function LanguageSwitch({
+  activeLocale
+}: {
+  activeLocale: SupportedLocale;
+}) {
   const pathname = usePathname() ?? '/';
-  const { locale: activeLocale, activePathname } =
-    resolveLanguageSwitchPathState(pathname);
+  const activePathname = resolveLanguageSwitchActivePathname(pathname);
 
   return (
     <div aria-label='Language switch' style={switchStyle}>

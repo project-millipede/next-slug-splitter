@@ -10,8 +10,8 @@
  *   component imports and a factory import (`handlerBinding`).
  * - Which route-owned contract the light page and generated heavy pages
  *   should both delegate to (`routeContract`).
- * - The preset derives `generatedRootDir`, which later resolves to the
- *   canonical `generated-handlers/` output leaf.
+ * - App locale config makes the preset derive generated handlers below the
+ *   conventional `app/[locale]/docs` subtree.
  *
  * Module references use `relativeModule` so the code generator emits
  * import paths relative to the application root, independent of the

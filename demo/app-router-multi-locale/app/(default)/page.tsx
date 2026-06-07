@@ -1,5 +1,5 @@
-import { DEFAULT_LOCALE } from '../lib/locale-utils';
-import { HomePage } from './home-page';
+import { DEFAULT_LOCALE } from '../../lib/locale-utils';
+import { HomePage } from '../home-page';
 
 /**
  * Render the default-locale homepage at `/`.

@@ -70,7 +70,7 @@ const homeContentByLocale: Record<
     lightDescription:
       'Light pages are served by the locale-aware catch-all app/[locale]/docs/[...slug]/page.tsx backed by one shared route module.',
     heavyDescription:
-      'Heavy pages get auto-generated handlers in app/docs/generated-handlers/ that import only the components they need.',
+      'Heavy pages get auto-generated handlers in app/[locale]/docs/generated-handlers/ that import only the components they need.',
     entries: {
       'getting-started': {
         title: 'Getting Started',
@@ -101,7 +101,7 @@ const homeContentByLocale: Record<
     lightDescription:
       'Leichte Seiten laufen über die locale-bewusste Catch-all-Route app/[locale]/docs/[...slug]/page.tsx mit einem gemeinsamen Route-Modul.',
     heavyDescription:
-      'Schwere Seiten bekommen automatisch generierte Handler in app/docs/generated-handlers/, die nur die benötigten Komponenten importieren.',
+      'Schwere Seiten bekommen automatisch generierte Handler in app/[locale]/docs/generated-handlers/, die nur die benötigten Komponenten importieren.',
     entries: {
       'getting-started': {
         title: 'Erste Schritte',
