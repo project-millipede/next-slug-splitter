@@ -89,7 +89,7 @@ That route-owned contract owns:
 pnpm install
 
 # Start the demo with the default JavaScript config
-cd demo/app-router
+cd demo/app-router-multi-locale
 pnpm dev
 
 # Optional: exercise the TypeScript variant instead
@@ -152,17 +152,20 @@ These files are auto-generated and gitignored. Each one imports exactly the load
 The preset keeps source discovery and generated output explicit:
 
 - `app.localeConfig: en, de`
+- default `app.localeRouteParamName: locale`
 - `contentDir: content/pages`
 
-The library derives `app/[locale]/docs/generated-handlers/` from the App
-locale config default route param and the `/docs` target route segment.
+The library derives `app/[locale]/docs/generated-handlers/` from
+`app.localeConfig`, the default App locale route param (`locale`), and the
+`/docs` target route segment.
 
 ### The demo target config
 
 This demo uses the App Router catch-all preset documented in the top-level
 [README](../../README.md#app-router-catch-all-targets).
 
-The App-specific pieces are `app.localeConfig`, the dedicated
+The App-specific pieces are `app.localeConfig`, the default
+`app.localeRouteParamName`, the dedicated
 `app/[locale]/docs/[...slug]/route-contract.ts` module, and the
 `pageDataCompilerImport` used by that route contract. Generated heavy pages are
 emitted under `app/[locale]/docs/generated-handlers/` so they stay inside the
