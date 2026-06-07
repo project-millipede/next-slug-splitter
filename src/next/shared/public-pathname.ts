@@ -1,4 +1,5 @@
 import type { LocaleConfig } from '../../core/types';
+import { toRoutePathSegments } from '../../utils/route-path';
 
 /**
  * Split one browser-visible rewrite source pathname into path segments.
@@ -12,8 +13,7 @@ import type { LocaleConfig } from '../../core/types';
  */
 export const toSourcePathSegments = (
   sourcePathname: string
-): Array<string> =>
-  sourcePathname.split('/').filter(segment => segment.length > 0);
+): Array<string> => toRoutePathSegments(sourcePathname);
 
 /**
  * Check whether a source/public pathname starts with a configured locale.

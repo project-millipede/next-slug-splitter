@@ -173,6 +173,15 @@ export type AppRouteHandlersAppConfig = SharedRouteHandlersAppConfig & {
    * Omit this field entirely for single-locale apps.
    */
   localeConfig?: AppRouteHandlersLocaleConfig;
+  /**
+   * Physical App Router dynamic segment name that carries the locale.
+   *
+   * When `localeConfig` is configured, this defaults to `locale` for the
+   * conventional `app/[locale]/...` folder. Configure this only when the
+   * physical folder uses a different bare param name, for example `lang` for
+   * `app/[lang]/...`.
+   */
+  localeRouteParamName?: string;
 };
 
 /**

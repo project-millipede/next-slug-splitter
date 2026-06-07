@@ -95,6 +95,7 @@ const createPersistedAppLookupTargets = (
   resolvedConfigs.map(resolvedConfig => ({
     targetId: resolvedConfig.targetId,
     handlerRouteParamName: resolvedConfig.handlerRouteParam.name,
+    localeRouteParamName: resolvedConfig.app.localeRouteParamName,
     ...(resolvedConfig.pageDataCompilerConfig == null
       ? {}
       : {

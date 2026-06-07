@@ -1,5 +1,4 @@
 import type { AppRouteParams, AppRouteStaticParamValue } from './types';
-import { APP_LOCALE_ROUTE_PARAM_NAME } from './route-params';
 import type { LocaleConfig } from '../../core/types';
 
 export type { AppRouteStaticParamValue } from './types';
@@ -24,6 +23,10 @@ export type FilterStaticParamsAgainstHeavyRoutesOptions = {
    * Declarative locale config used to derive locale structurally from params.
    */
   localeConfig?: LocaleConfig;
+  /**
+   * Physical App Router dynamic segment name that carries the locale.
+   */
+  localeRouteParamName?: string;
 };
 
 /**
@@ -62,13 +65,13 @@ const normalizeSlugArray = (
  *
  * Source of the value:
  * 1. App Router static params mirror dynamic route segment names.
- * 2. For a physical `[locale]` segment, the locale is carried under
- *    `APP_LOCALE_ROUTE_PARAM_NAME`, which is the public `"locale"` key.
+ * 2. For a physical locale segment such as `[locale]` or `[lang]`, the locale
+ *    is carried under the configured `localeRouteParamName`.
  * 3. Slug or catch-all params are independent and are not used to infer locale.
  *
  * Resolution rules:
  * 1. Without locale config, static params are treated as locale-independent.
- * 2. A string value at `params[APP_LOCALE_ROUTE_PARAM_NAME]` wins.
+ * 2. A string value at `params[localeRouteParamName]` wins.
  * 3. Missing or non-string locale values fall back to the configured default
  *    locale, allowing default-locale params to omit the explicit locale field.
  *
@@ -90,20 +93,24 @@ const normalizeSlugArray = (
  *
  * @param params - One static-params entry returned by `generateStaticParams`.
  * @param localeConfig - Optional locale semantics for the App target.
+ * @param localeRouteParamName - Optional physical App Router locale param name.
  * @returns Resolved locale, or `undefined` when locale filtering is disabled.
  */
 const deriveLocaleFromStaticParams = (
   params: AppRouteStaticParams,
-  localeConfig?: LocaleConfig
+  localeConfig?: LocaleConfig,
+  localeRouteParamName?: string
 ): string | undefined => {
   if (localeConfig == null) {
     return undefined;
   }
 
-  const explicitLocale = params[APP_LOCALE_ROUTE_PARAM_NAME];
+  if (localeRouteParamName != null) {
+    const explicitLocale = params[localeRouteParamName];
 
-  if (typeof explicitLocale === 'string') {
-    return explicitLocale;
+    if (typeof explicitLocale === 'string') {
+      return explicitLocale;
+    }
   }
 
   return localeConfig.defaultLocale;
@@ -124,7 +131,8 @@ export const filterStaticParamsAgainstHeavyRoutes = <
   isHeavyRoute: (locale: string, slugArray: Array<string>) => boolean,
   {
     handlerRouteParamName = 'slug',
-    localeConfig
+    localeConfig,
+    localeRouteParamName
   }: FilterStaticParamsAgainstHeavyRoutesOptions = {}
 ): Promise<Array<TParams>> =>
   (async () => {
@@ -132,7 +140,11 @@ export const filterStaticParamsAgainstHeavyRoutes = <
 
     for (const params of allParams) {
       const slugArray = normalizeSlugArray(params[handlerRouteParamName]);
-      const locale = deriveLocaleFromStaticParams(params, localeConfig);
+      const locale = deriveLocaleFromStaticParams(
+        params,
+        localeConfig,
+        localeRouteParamName
+      );
 
       if (slugArray == null || locale == null) {
         filteredParams.push(params);

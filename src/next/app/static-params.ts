@@ -125,6 +125,7 @@ export const withHeavyRouteStaticParamsFilter = <
       heavyRouteLookup.isHeavyRoute,
       {
         handlerRouteParamName: appTargetSnapshot.handlerRouteParamName,
+        localeRouteParamName: appTargetSnapshot.localeRouteParamName,
         localeConfig: cloneLocaleConfig(snapshot.localeConfig)
       }
     );

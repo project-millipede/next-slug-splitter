@@ -72,7 +72,8 @@ const createResolvedAppConfigFixture = (
       routing: {
         development: 'proxy',
         workerPrewarm: 'off'
-      }
+      },
+      localeRouteParamName: 'locale'
     },
     targetId: 'docs',
     routeBasePath: '/docs',
@@ -85,7 +86,7 @@ const createResolvedAppConfigFixture = (
     paths: {
       rootDir,
       contentDir: `${rootDir}/content/pages`,
-      generatedDir: `${rootDir}/app/docs/generated-handlers`
+      generatedDir: `${rootDir}/app/[locale]/docs/generated-handlers`
     },
     localeConfig: TEST_MULTI_LOCALE_CONFIG,
     runtime: {
@@ -226,13 +227,14 @@ describe('proxy bootstrap persistence', () => {
           hasGeneratePageMetadata: true,
           revalidate: false
         },
+        localeRouteParamName: 'locale',
         processorConfig: {
           processorImport: packageModule('@test/processor')
         },
         paths: {
           rootDir: '/repo/app',
           contentDir: '/repo/app/content/pages',
-          generatedDir: '/repo/app/app/docs/generated-handlers'
+          generatedDir: '/repo/app/app/[locale]/docs/generated-handlers'
         }
       }
     ]);
@@ -243,7 +245,8 @@ describe('proxy bootstrap persistence', () => {
       routeModule: {
         hasGeneratePageMetadata: true,
         revalidate: false
-      }
+      },
+      localeRouteParamName: 'locale'
     });
   });
 
@@ -260,7 +263,7 @@ describe('proxy bootstrap persistence', () => {
       const persistedManifest = await readRouteHandlerProxyBootstrap(rootDir);
 
       expect(persistedManifest).toEqual({
-        version: 6,
+        version: 7,
         bootstrapGenerationToken: 'bootstrap-token',
         localeConfig: TEST_SINGLE_LOCALE_CONFIG,
         targets: []

@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import { toEmittedImportSpecifier } from '../../../module-reference';
+import { hasGeneratedHandlersInAppLocaleSubtree } from '../../../next/app/generated-handlers/location';
 import { resolveRouteParamValue } from '../../../next/shared/types';
 import { renderAppRouteHandlerModules } from './render-modules';
 
@@ -12,7 +13,7 @@ import type {
   RouteHandlerPaths
 } from '../../../core/types';
 import type { ResolvedAppRouteModuleContract } from '../../../next/app/types';
-import type { JsonObject } from '../../../utils/type-guards-json';
+import type { JsonObject, JsonValue } from '../../../utils/type-guards-json';
 
 const GENERATED_APP_ROUTE_HANDLER_PAGE_BASENAME = 'page';
 
@@ -101,6 +102,49 @@ const createAppHandlerRouteParams = (
   return handlerRouteParams;
 };
 
+/**
+ * Build the static params exported by a generated App handler page.
+ *
+ * 1. This is only needed when the generated handler file lives below an App
+ *    `[locale]` route segment.
+ * 2. The generated page path already encodes the heavy route slug with static
+ *    filesystem segments.
+ * 3. The only dynamic route segment that remains to enumerate is the owning
+ *    App locale.
+ *
+ * @example
+ * // Generated below app/[locale]/docs/generated-handlers
+ * localeParamName: 'locale', appRouteLocale: 'de' -> [{ locale: 'de' }]
+ *
+ * // Generated outside app/[locale]
+ * localeParamName: 'locale', appRouteLocale: 'de' -> undefined
+ *
+ * @param paths - Resolved target paths for the generated handler.
+ * @param appLocaleParamName - Name of the App locale param, when present.
+ * @param appRouteLocale - Locale owned by the heavy route being rendered.
+ * @returns Static params for `generateStaticParams`, or undefined when the
+ * generated page has no App locale route segment to enumerate.
+ */
+const createAppHandlerStaticParams = (
+  paths: RouteHandlerPaths,
+  appLocaleParamName: string | undefined,
+  appRouteLocale: string
+): JsonValue | undefined => {
+  if (appLocaleParamName === undefined) {
+    return undefined;
+  }
+
+  if (!hasGeneratedHandlersInAppLocaleSubtree(paths, appLocaleParamName)) {
+    return undefined;
+  }
+
+  return [
+    {
+      [appLocaleParamName]: appRouteLocale
+    }
+  ];
+};
+
 export const renderAppRouteHandlerPage = ({
   paths,
   heavyRoute,
@@ -151,6 +195,11 @@ export const renderAppRouteHandlerPage = ({
         heavyRoute.locale,
         handlerRouteParam,
         fixedRouteParamValue
+      ),
+      staticParams: createAppHandlerStaticParams(
+        paths,
+        localeParamName,
+        heavyRoute.locale
       ),
       hasGeneratePageMetadata: routeModuleContract.hasGeneratePageMetadata,
       revalidate: routeModuleContract.revalidate

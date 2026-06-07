@@ -5,6 +5,7 @@ import { resolveNormalizedRouteHandlersTargetsFromAppConfig } from '../../pages/
 import { requireAppRouteHandlersConfig } from '../../app/config/router-kind';
 import { requirePagesRouteHandlersConfig } from '../../pages/config/router-kind';
 import { resolveRouteHandlerRouterKind } from '../../shared/config/router-kind';
+import { toRoutePathSegments } from '../../../utils/route-path';
 
 import type { LocaleConfig } from '../../../core/types';
 import type { ResolvedRouteHandlersAppConfig } from '../../shared/types';
@@ -14,7 +15,6 @@ import type {
   RouteHandlerLazyRequestResolution,
   RouteHandlerLazyResolvedTarget
 } from './types';
-import { isNonEmptyString } from '../../../utils/type-guards-extended';
 
 /**
  * Target-local lazy request resolution for the dev proxy path.
@@ -38,19 +38,6 @@ import { isNonEmptyString } from '../../../utils/type-guards-extended';
  * path-local lookup for the requested route identity. It no longer scans the
  * full target content tree just to answer one request.
  */
-
-/**
- * Splits a path into clean, validated segments.
- *
- * @param path - The raw pathname or base path.
- * @returns Ordered non-empty segments that satisfy {@link isNonEmptyString}.
- *
- * @example
- * toSegments('/de/docs/'); // ['de', 'docs']
- * toSegments('/');         // []
- */
-const toSegments = (path: string): string[] =>
-  path.split('/').filter(isNonEmptyString);
 
 /**
  * Derives a locale-aware request identity for a specific target configuration.
@@ -94,8 +81,8 @@ const resolveRequestIdentityForConfig = (
   const { locales, defaultLocale } = config.localeConfig;
 
   // Normalize the pathname and the configured base path into segment arrays.
-  const allSegments = toSegments(pathname);
-  const baseSegments = toSegments(config.routeBasePath);
+  const allSegments = toRoutePathSegments(pathname);
+  const baseSegments = toRoutePathSegments(config.routeBasePath);
 
   // 1. Determine if the path starts with a valid locale prefix.
   //    Using destructuring allows us to peek at the first segment without
