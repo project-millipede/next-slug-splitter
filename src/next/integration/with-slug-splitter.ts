@@ -2,6 +2,7 @@ import path from 'node:path';
 import process from 'node:process';
 
 import type { NextConfig } from 'next';
+import type { NextAdapter } from 'next';
 
 import { createConfigError } from '../../utils/errors';
 import { isFunction } from '../../utils/type-guards';
@@ -18,6 +19,10 @@ import {
   registerSlugSplitterConfigPath,
   resolveSlugSplitterConfigPath
 } from './slug-splitter-config';
+import {
+  clearRegisteredNextAdapter,
+  registerNextAdapter
+} from './adapter-registry';
 
 /**
  * Supported Next config factory signature.
@@ -96,6 +101,20 @@ export type WithSlugSplitterOptions =
        */
       configPath: string;
       routeHandlersConfig?: never;
+      /**
+       * Optional user Next adapter composed with slug-splitter's adapter.
+       *
+       * Composition guarantees:
+       *
+       * 1. The provided adapter's `modifyConfig` runs before slug-splitter's,
+       *    so slug-splitter layers its routing on the already-adapted config.
+       * 2. `onBuildComplete` is only exposed to Next when the provided
+       *    adapter implements it, so builds without one keep Next's fast
+       *    path.
+       *
+       * Composition covers the `modifyConfig` and `onBuildComplete` hooks.
+       */
+      adapter?: NextAdapter;
     }
   | {
       /**
@@ -104,10 +123,27 @@ export type WithSlugSplitterOptions =
        */
       routeHandlersConfig: RouteHandlersConfig;
       configPath?: never;
+      /**
+       * Optional user Next adapter composed with slug-splitter's adapter.
+       *
+       * Composition guarantees:
+       *
+       * 1. The provided adapter's `modifyConfig` runs before slug-splitter's,
+       *    so slug-splitter layers its routing on the already-adapted config.
+       * 2. `onBuildComplete` is only exposed to Next when the provided
+       *    adapter implements it, so builds without one keep Next's fast
+       *    path.
+       *
+       * Composition covers the `modifyConfig` and `onBuildComplete` hooks.
+       */
+      adapter?: NextAdapter;
     };
 
 /**
  * Inject next-slug-splitter's adapter into one evaluated Next config object.
+ *
+ * The stable top-level `adapterPath` option is available since Next `16.2.0`,
+ * the minimum Next version this package supports.
  *
  * @param nextConfig - Evaluated Next config object.
  * @param resolvedAdapterPath - Absolute adapter entry path to install.
@@ -123,30 +159,10 @@ const injectSlugSplitterAdapter = (
     );
   }
 
-  const configuredExperimental = readObjectProperty(nextConfig, 'experimental');
-  if (
-    configuredExperimental != null &&
-    !isObjectRecord(configuredExperimental)
-  ) {
-    throw createConfigError(
-      'withSlugSplitter(...) requires nextConfig.experimental to be an object when provided.'
-    );
-  }
-
   const existingAdapterPath = readObjectProperty(nextConfig, 'adapterPath');
   if (existingAdapterPath != null) {
     throw createConfigError(
       'withSlugSplitter(...) cannot be combined with an existing adapterPath.'
-    );
-  }
-
-  const existingExperimentalAdapterPath =
-    configuredExperimental == null
-      ? undefined
-      : readObjectProperty(configuredExperimental, 'adapterPath');
-  if (existingExperimentalAdapterPath != null) {
-    throw createConfigError(
-      'withSlugSplitter(...) now installs the stable adapterPath option. Move any existing experimental.adapterPath to adapterPath before applying withSlugSplitter(...).'
     );
   }
 
@@ -162,7 +178,8 @@ const injectSlugSplitterAdapter = (
  * Integration steps:
  * 1. Resolve and validate the app-owned config file path.
  * 2. Register that path for later adapter-side loading.
- * 3. Install the published adapter entrypoint into `adapterPath`.
+ * 3. Register the optional user adapter for composition.
+ * 4. Install the published adapter entrypoint into `adapterPath`.
  *
  * @param nextConfigExport - Next config object or config factory.
  * @param options - next-slug-splitter integration options.
@@ -187,6 +204,15 @@ export function withSlugSplitter(
     entrypointRootDir,
     options
   });
+
+  // Adapter registration happens only after adapter-path resolution has
+  // validated the options, so a rejected configuration leaves the
+  // process-global registry unchanged.
+  if (options.adapter != null) {
+    registerNextAdapter(options.adapter);
+  } else {
+    clearRegisteredNextAdapter();
+  }
 
   if (isNextConfigFactory(nextConfigExport)) {
     return async (phase, context) =>

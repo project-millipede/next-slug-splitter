@@ -2,6 +2,14 @@ export {
   createRouteHandlersAdapterPath,
   resolveSlugSplitterAdapterEntry
 } from './adapter-entry';
+// Internal composition and registry surface: consumed by the adapter entry
+// and tests, intentionally not re-exported from the published package entry.
+export { composeNextAdapters } from './adapter-composition';
+export {
+  clearRegisteredNextAdapter,
+  readRegisteredNextAdapter,
+  registerNextAdapter
+} from './adapter-registry';
 export {
   resolveRegisteredSlugSplitterConfigRegistration,
   readRegisteredSlugSplitterConfigRootDir,
