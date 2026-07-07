@@ -66,12 +66,16 @@ const toDynamicPageSegment = ({
 }: {
   name: string;
   kind: 'single' | 'catch-all' | 'optional-catch-all';
-}): string =>
-  kind === 'single'
-    ? `[${name}]`
-    : kind === 'catch-all'
-      ? `[...${name}]`
-      : `[[...${name}]]`;
+}): string => {
+  switch (kind) {
+    case 'single':
+      return `[${name}]`;
+    case 'catch-all':
+      return `[...${name}]`;
+    case 'optional-catch-all':
+      return `[[...${name}]]`;
+  }
+};
 
 const createComponentModuleSource = (): string =>
   [

@@ -55,6 +55,30 @@ describe('route handler preparation', () => {
     prepareTypeScript.resolveAppLocalTypeScriptCompilerPath
   );
 
+  /**
+   * Build the test-only prepare config shape from a list of tsconfig paths.
+   *
+   * @param preparePaths - Test fixture tsconfig paths to include.
+   * @returns Route handler prepare config for zero, one, or many paths.
+   */
+  const buildPrepareConfig = (preparePaths: Array<string>) => {
+    if (preparePaths.length === 0) {
+      return undefined;
+    }
+
+    if (preparePaths.length === 1) {
+      const [singlePreparePath] = preparePaths;
+
+      return {
+        tsconfigPath: relativeModule(singlePreparePath)
+      };
+    }
+
+    return preparePaths.map(preparePath => ({
+      tsconfigPath: relativeModule(preparePath)
+    }));
+  };
+
   const buildRouteHandlersConfig = ({
     rootDir,
     preparePaths
@@ -62,16 +86,7 @@ describe('route handler preparation', () => {
     rootDir: string;
     preparePaths: Array<string>;
   }): RouteHandlersConfig => {
-    const prepare =
-      preparePaths.length === 0
-        ? undefined
-        : preparePaths.length === 1
-          ? {
-              tsconfigPath: relativeModule(preparePaths[0])
-            }
-          : preparePaths.map(preparePath => ({
-              tsconfigPath: relativeModule(preparePath)
-            }));
+    const prepare = buildPrepareConfig(preparePaths);
 
     return {
       routerKind: 'pages',

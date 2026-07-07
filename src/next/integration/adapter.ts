@@ -59,6 +59,11 @@ import { resolveRouteHandlerRoutingStrategy } from '../shared/policy/routing-str
 import { executeResolvedRouteHandlerNextPipeline } from '../pages/runtime';
 import { synchronizeRouteHandlerInstrumentationFile } from '../proxy/instrumentation/file-lifecycle';
 import { resolveRouteHandlerRouterKind } from '../shared/config/router-kind';
+import {
+  composeNextAdapters,
+  SLUG_SPLITTER_ADAPTER_NAME
+} from './adapter-composition';
+import { readRegisteredNextAdapter } from './adapter-registry';
 
 import type { LocaleConfig } from '../../core/types';
 import type {
@@ -383,4 +388,45 @@ const routeHandlersAdapter: NextAdapter = {
   }
 };
 
-export default routeHandlersAdapter;
+/**
+ * Compose the registered user adapter with slug-splitter's route-handlers
+ * adapter.
+ *
+ * @returns Composed adapter reflecting the current registry state.
+ */
+const composeInstalledNextAdapters = (): NextAdapter =>
+  composeNextAdapters(readRegisteredNextAdapter(), routeHandlersAdapter);
+
+/**
+ * Adapter entry installed through `adapterPath`.
+ *
+ * The hooks are exposed through lazy getters, which performs two critical
+ * operations:
+ *
+ * 1. Lazy Registry Read
+ *    Each hook is composed at property-read time, after `next.config.*`
+ *    evaluation has populated the adapter registry via `withSlugSplitter`.
+ *    Example:
+ *     withSlugSplitter(nextConfig, { configPath, adapter: userAdapter }) ->
+ *     `modifyConfig` runs userAdapter before routeHandlersAdapter.
+ *
+ * 2. Presence-Accurate Hooks
+ *    Next gates its expensive build-output collection on
+ *    `typeof adapter.onBuildComplete === 'function'`. Each getter returns
+ *    `undefined` unless a composed adapter implements the hook, preserving
+ *    Next's fast path for apps without a user adapter.
+ *    Example:
+ *     withSlugSplitter(nextConfig, { configPath }) ->
+ *     `onBuildComplete` reads as `undefined` -> Next skips output collection.
+ */
+const slugSplitterAdapter: NextAdapter = {
+  name: SLUG_SPLITTER_ADAPTER_NAME,
+  get modifyConfig() {
+    return composeInstalledNextAdapters().modifyConfig;
+  },
+  get onBuildComplete() {
+    return composeInstalledNextAdapters().onBuildComplete;
+  }
+};
+
+export default slugSplitterAdapter;

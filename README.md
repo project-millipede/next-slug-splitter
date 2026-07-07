@@ -83,8 +83,9 @@ npm install next-slug-splitter next
 pnpm add next-slug-splitter next
 ```
 
-`next-slug-splitter` requires Next.js `16.2.0` or newer and installs the
-stable top-level `adapterPath` option.
+`next-slug-splitter` integrates with Next.js entirely through the stable
+top-level `adapterPath` option, available since Next.js `16.2.0` — the
+minimum version the package supports.
 
 ## Quick Start
 
@@ -353,6 +354,34 @@ the proxy worker later needs an importable config path of its own. If you use a
 direct object with proxy mode, keep a conventional root config file such as
 `route-handlers-config.ts` or `route-handlers-config.mjs` beside the Next config.
 
+#### Composing an Existing Adapter
+
+Next supports a single `adapterPath`, and `withSlugSplitter(...)` claims it for
+the slug-splitter adapter entry. Apps that already rely on another Next adapter
+(a deployment adapter, for example) pass it through the optional `adapter`
+option instead of setting `adapterPath` themselves:
+
+```js
+import deploymentAdapter from 'my-deployment-adapter';
+
+withSlugSplitter(nextConfig, {
+  routeHandlersConfig: myConfig,
+  adapter: deploymentAdapter
+});
+```
+
+Composition guarantees:
+
+- `modifyConfig` runs the provided adapter first, so slug-splitter derives
+  locale semantics from the already-adapted config and layers its rewrites on
+  top of it.
+- `onBuildComplete` is only exposed to Next when the provided adapter
+  implements it. Without one, Next skips its adapter build-output collection
+  entirely, so builds that do not pass an adapter keep their current cost.
+
+Composition covers the two adapter hooks Next currently defines,
+`modifyConfig` and `onBuildComplete`.
+
 ### 2. Declare Route Targets
 
 The route handlers config is the app-owned source of truth for route handler
@@ -477,27 +506,27 @@ source graph. The processor's `components` array describes which of those keys
 should become imports emitted into generated handlers.
 
 For example, a page may reference both a lightweight `Callout` component and a
-heavyweight `Chart` component:
+heavyweight `FlowComposer` component:
 
 ```mdx
 <Callout />
 
-<Chart />
+<FlowComposer />
 ```
 
 The capture step reports both names:
 
 ```ts
-capturedComponentKeys = ['Callout', 'Chart'];
+capturedComponentKeys = ['Callout', 'FlowComposer'];
 ```
 
 If `Callout` is already available in the MDX component scope, the processor
-result can include only the generated handler entry for `Chart`:
+result can include only the generated handler entry for `FlowComposer`:
 
 ```ts
 components = [
   {
-    key: 'Chart',
+    key: 'FlowComposer',
     componentImport: ...
   }
 ];
@@ -733,6 +762,7 @@ Wrap one Next config export and register the route handlers config.
 | --------------------- | ---------------------------------------------------- |
 | `configPath`          | Path to the app-owned `route-handlers-config` module |
 | `routeHandlersConfig` | Direct config object (alternative to `configPath`)   |
+| `adapter`             | Optional Next adapter composed before slug-splitter  |
 
 ### `RouteHandlersConfig`
 
@@ -877,13 +907,21 @@ Supported modes:
 
 ### Adapter
 
-The adapter (`adapterPath`) is the entry point for Next.js integration. It
-runs during the relevant Next.js phases and coordinates:
+The adapter (`adapterPath`, available since Next.js `16.2.0`) is the entry
+point for Next.js integration and the foundation the whole library builds on.
+It runs during the relevant Next.js phases and coordinates:
 
 - Routing strategy selection (rewrite vs. proxy)
 - App-owned preparation and config resolution
 - Phase-local artifact ownership for dev versus build
 - Rewrite injection or generated `proxy.ts` / `instrumentation.ts` bridges
+- Composition of an optional app-provided adapter ahead of its own hooks
+
+When an app passes its own adapter through `withSlugSplitter(..., { adapter })`,
+the installed entry composes it ahead of the built-in adapter: `modifyConfig`
+pipes the config through the app adapter first, and `onBuildComplete` is only
+exposed to Next when the app adapter implements it, so builds without one keep
+Next's fast path.
 
 ### Runtime Reuse
 
@@ -954,7 +992,7 @@ bootstrap generation, and returns lazy route classifications on demand.
 
 | Next.js API                      | Purpose                                                                                                                                                      |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `adapterPath`                    | Adapter entry point — hooks into Next.js config resolution                                                                                                   |
+| `adapterPath`                    | Adapter entry point — hooks into Next.js config resolution; stable since Next.js `16.2.0`                                                                    |
 | `rewrites()`                     | Installs library rewrites into the correct Next rewrite phases                                                                                               |
 | `proxy.ts` (root file)           | Intercepts and classifies requests on demand in development; existing `proxy.*` or `middleware.*` files at the root or under `src/` are treated as conflicts |
 | `instrumentation.ts` (root file) | Optional dev-only worker-session prewarm when `workerPrewarm: 'instrumentation'` is enabled                                                                  |

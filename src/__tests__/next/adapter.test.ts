@@ -1,6 +1,8 @@
 import { PHASE_PRODUCTION_BUILD } from 'next/constants.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { NextAdapter, NextConfig } from 'next';
+
 const loadRouteHandlersConfigOrRegisteredMock = vi.hoisted(() => vi.fn());
 const prepareRouteHandlersFromConfigMock = vi.hoisted(() => vi.fn());
 const resolveRouteHandlersConfigsFromAppConfigMock = vi.hoisted(() => vi.fn());
@@ -24,6 +26,9 @@ const createAppRouteLookupSnapshotMock = vi.hoisted(() => vi.fn());
 const writeAppRouteLookupSnapshotMock = vi.hoisted(() => vi.fn());
 const createRouteHandlerProxyBootstrapManifestMock = vi.hoisted(() => vi.fn());
 const writeRouteHandlerProxyBootstrapMock = vi.hoisted(() => vi.fn());
+const SLUG_SPLITTER_NEXT_ADAPTER_SYMBOL = Symbol.for(
+  'next-slug-splitter/next/adapter'
+);
 
 vi.mock(import('../../next/shared/bootstrap/route-handlers-bootstrap'), () => ({
   resolveRouteHandlersAppContext: resolveRouteHandlersAppContextMock
@@ -125,6 +130,7 @@ vi.mock(import('../../next/proxy/bootstrap-persisted'), () => ({
 import routeHandlersAdapter from '../../next/adapter';
 import { createSingleLocaleConfig } from '../../core/locale-config';
 import { absoluteModule } from '../../module-reference';
+import { registerNextAdapter } from '../../next/integration';
 import { TEST_SLUG_CATCH_ALL_ROUTE_PARAM } from '../helpers/fixtures';
 
 const TEST_ROUTE_HANDLERS_CONFIG = {
@@ -147,11 +153,16 @@ const TEST_APP_CONTEXT = {
   appConfig: TEST_APP_CONFIG
 };
 
-const TEST_NEXT_CONFIG = {
+const TEST_NEXT_CONFIG: NextConfig = {
   i18n: {
     locales: ['en', 'fr'],
     defaultLocale: 'fr'
   }
+};
+
+const TEST_MODIFY_CONFIG_CONTEXT = {
+  phase: PHASE_PRODUCTION_BUILD,
+  nextVersion: '16.2.0'
 };
 
 const TEST_RESOLVED_PAGES_TARGET = {
@@ -160,8 +171,53 @@ const TEST_RESOLVED_PAGES_TARGET = {
   handlerRouteSegment: 'generated-handlers'
 } as const;
 
+/**
+ * Test-facing modifyConfig signature built from public Next types only.
+ *
+ * The narrowed shape stays cast-compatible for two reasons:
+ *
+ * 1. Config Input
+ *    The real hook consumes Next's internal resolved config, a subtype of the
+ *    public `NextConfig`, so a `NextConfig` parameter widens safely.
+ *
+ * 2. Result Type
+ *    The tests never consume the resolved config result, so `Promise<never>`
+ *    is the only return type assignable to the real hook's return without
+ *    naming Next's internal complete-config type.
+ */
+type StubModifyConfig = (
+  config: NextConfig,
+  context: {
+    phase: string;
+    nextVersion: string;
+  }
+) => Promise<never>;
+
+/**
+ * Invoke the adapter's modifyConfig hook with the production-build context.
+ *
+ * @param config - Public-typed Next config fixture for the invocation.
+ * @returns Promise resolving after the hook completes.
+ */
+const runModifyConfig = async (config: NextConfig): Promise<void> => {
+  const modifyConfig = routeHandlersAdapter.modifyConfig as
+    | StubModifyConfig
+    | undefined;
+
+  expect(modifyConfig).toBeTypeOf('function');
+
+  await modifyConfig?.(config, TEST_MODIFY_CONFIG_CONTEXT);
+};
+
 describe('route handlers adapter', () => {
   beforeEach(() => {
+    const globalScope = globalThis as typeof globalThis & {
+      [SLUG_SPLITTER_NEXT_ADAPTER_SYMBOL]?: {
+        adapter?: unknown;
+      };
+    };
+
+    delete globalScope[SLUG_SPLITTER_NEXT_ADAPTER_SYMBOL];
     vi.clearAllMocks();
 
     loadRouteHandlersConfigOrRegisteredMock.mockResolvedValue(
@@ -209,11 +265,95 @@ describe('route handlers adapter', () => {
     writeRouteHandlerProxyBootstrapMock.mockResolvedValue(undefined);
   });
 
+  it('runs a registered user adapter before slug-splitter modifyConfig work', async () => {
+    /**
+     * Named traces of the user adapter stage and the built-in rewrite
+     * installation, so composition order and config chaining are asserted
+     * through object identity instead of marker fields.
+     */
+    const userAdapterTrace: {
+      receivedConfig?: NextConfig;
+      receivedContext?: unknown;
+      returnedConfig?: NextConfig;
+    } = {};
+    const rewriteInstallTrace: {
+      receivedConfig?: unknown;
+    } = {};
+
+    const userAdapter: NextAdapter = {
+      name: 'user-adapter',
+      modifyConfig: (config, context) => {
+        const adaptedConfig = { ...config };
+
+        userAdapterTrace.receivedConfig = config;
+        userAdapterTrace.receivedContext = context;
+        userAdapterTrace.returnedConfig = adaptedConfig;
+
+        return adaptedConfig;
+      }
+    };
+
+    withRouteHandlerRewritesMock.mockImplementation(config => {
+      rewriteInstallTrace.receivedConfig = config;
+      return config;
+    });
+    registerNextAdapter(userAdapter);
+
+    await runModifyConfig(TEST_NEXT_CONFIG);
+
+    expect(userAdapterTrace.receivedConfig).toBe(TEST_NEXT_CONFIG);
+    expect(userAdapterTrace.receivedContext).toBe(TEST_MODIFY_CONFIG_CONTEXT);
+    expect(rewriteInstallTrace.receivedConfig).toBe(
+      userAdapterTrace.returnedConfig
+    );
+  });
+
+  it('does not expose onBuildComplete when no composed adapter implements it', () => {
+    expect(routeHandlersAdapter.onBuildComplete).toBeUndefined();
+
+    registerNextAdapter({
+      name: 'user-adapter'
+    });
+
+    expect(routeHandlersAdapter.onBuildComplete).toBeUndefined();
+  });
+
+  it('forwards onBuildComplete when the registered user adapter implements it', async () => {
+    type OnBuildComplete = NonNullable<
+      typeof routeHandlersAdapter.onBuildComplete
+    >;
+    /**
+     * The composed hook forwards the build-complete context by reference
+     * without reading it, so the test invokes through a narrowed signature
+     * carrying only an identity marker instead of Next's full context type.
+     */
+    type StubOnBuildComplete = (context: {
+      distDir: string;
+    }) => Promise<void> | void;
+
+    const userOnBuildComplete = vi.fn<OnBuildComplete>();
+
+    registerNextAdapter({
+      name: 'user-adapter',
+      onBuildComplete: userOnBuildComplete
+    });
+
+    const composedOnBuildComplete = routeHandlersAdapter.onBuildComplete as
+      | StubOnBuildComplete
+      | undefined;
+    const buildCompleteContext = {
+      distDir: '/tmp/app/.next'
+    };
+
+    expect(composedOnBuildComplete).toBeTypeOf('function');
+
+    await composedOnBuildComplete?.(buildCompleteContext);
+
+    expect(userOnBuildComplete).toHaveBeenCalledWith(buildCompleteContext);
+  });
+
   it('derives locale semantics from the resolved Next config during adapter execution', async () => {
     const routeHandlersConfig = TEST_ROUTE_HANDLERS_CONFIG;
-    type ModifyConfig = NonNullable<typeof routeHandlersAdapter.modifyConfig>;
-    type AdapterConfigInput = Parameters<ModifyConfig>[0];
-    const nextConfig = TEST_NEXT_CONFIG as unknown as AdapterConfigInput;
 
     loadRouteHandlersConfigOrRegisteredMock.mockResolvedValue(
       routeHandlersConfig
@@ -223,10 +363,7 @@ describe('route handlers adapter', () => {
       routeHandlersConfig
     });
 
-    await routeHandlersAdapter.modifyConfig!(nextConfig, {
-      phase: PHASE_PRODUCTION_BUILD,
-      nextVersion: '16.2.0'
-    });
+    await runModifyConfig(TEST_NEXT_CONFIG);
 
     expect(prepareRouteHandlersFromConfigMock).toHaveBeenCalledWith(
       TEST_ROUTE_HANDLERS_CONFIG.app.rootDir,
@@ -269,10 +406,7 @@ describe('route handlers adapter', () => {
       kind: 'proxy'
     });
 
-    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
-      phase: PHASE_PRODUCTION_BUILD,
-      nextVersion: '16.2.0'
-    });
+    await runModifyConfig(TEST_NEXT_CONFIG);
 
     expect(executeResolvedRouteHandlerNextPipelineMock).not.toHaveBeenCalled();
     expect(createRouteHandlerProxyBootstrapManifestMock).toHaveBeenCalledWith(
@@ -321,10 +455,7 @@ describe('route handlers adapter', () => {
     });
     resolveRouteHandlersConfigsFromAppConfigMock.mockReturnValue([]);
 
-    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
-      phase: PHASE_PRODUCTION_BUILD,
-      nextVersion: '16.2.0'
-    });
+    await runModifyConfig(TEST_NEXT_CONFIG);
 
     expect(createRouteHandlerProxyBootstrapManifestMock).toHaveBeenCalledWith(
       'route-handler-proxy-bootstrap-test',
@@ -404,10 +535,7 @@ describe('route handlers adapter', () => {
       }
     ]);
 
-    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
-      phase: PHASE_PRODUCTION_BUILD,
-      nextVersion: '16.2.0'
-    });
+    await runModifyConfig(TEST_NEXT_CONFIG);
 
     expect(createRouteHandlerProxyBootstrapManifestMock).toHaveBeenCalledWith(
       'route-handler-proxy-bootstrap-test',
@@ -457,10 +585,7 @@ describe('route handlers adapter', () => {
       kind: 'rewrites'
     });
 
-    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
-      phase: PHASE_PRODUCTION_BUILD,
-      nextVersion: '16.2.0'
-    });
+    await runModifyConfig(TEST_NEXT_CONFIG);
 
     expect(createRouteHandlerProxyBootstrapManifestMock).not.toHaveBeenCalled();
     expect(writeRouteHandlerProxyBootstrapMock).not.toHaveBeenCalled();
@@ -493,10 +618,7 @@ describe('route handlers adapter', () => {
       }
     ]);
 
-    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
-      phase: PHASE_PRODUCTION_BUILD,
-      nextVersion: '16.2.0'
-    });
+    await runModifyConfig(TEST_NEXT_CONFIG);
 
     expect(withRouteHandlerRewritesMock).toHaveBeenCalledWith(
       TEST_NEXT_CONFIG,
@@ -577,10 +699,7 @@ describe('route handlers adapter', () => {
       }
     ]);
 
-    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
-      phase: PHASE_PRODUCTION_BUILD,
-      nextVersion: '16.2.0'
-    });
+    await runModifyConfig(TEST_NEXT_CONFIG);
 
     expect(writeRouteHandlerLookupSnapshotMock).toHaveBeenCalledWith(
       '/repo/app',
@@ -675,10 +794,7 @@ describe('route handlers adapter', () => {
       }
     ]);
 
-    await routeHandlersAdapter.modifyConfig!(TEST_NEXT_CONFIG as never, {
-      phase: PHASE_PRODUCTION_BUILD,
-      nextVersion: '16.2.0'
-    });
+    await runModifyConfig(TEST_NEXT_CONFIG);
 
     expect(
       executeResolvedAppRouteHandlerNextPipelineMock
