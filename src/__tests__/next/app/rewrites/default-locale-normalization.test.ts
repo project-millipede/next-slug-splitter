@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { buildAppDefaultLocaleNormalizationRewrites } from '../../../../next/app/rewrites/default-locale-normalization';
+import { buildAppDefaultLocaleNormalizationRewrites } from '../../../../next/config';
 import { TEST_MULTI_LOCALE_CONFIG } from '../../../helpers/fixtures';
 
 describe('App default-locale normalization rewrites', () => {
