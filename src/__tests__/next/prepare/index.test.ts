@@ -111,7 +111,7 @@ describe('route handler preparation', () => {
 
     spawnMock.mockImplementation(() => createSuccessfulChildProcess({}));
     resolveAppLocalTypeScriptCompilerPathMock.mockImplementation(rootDir =>
-      path.join(rootDir, 'node_modules', 'typescript', 'lib', 'tsc.js')
+      path.join(rootDir, 'node_modules', 'typescript', 'bin', 'tsc')
     );
   });
 
