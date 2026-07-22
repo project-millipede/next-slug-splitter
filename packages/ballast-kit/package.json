@@ -1,0 +1,27 @@
+{
+  "name": "@next-slug-splitter/ballast-kit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "build:scripts": "tsup --config tsup.config.ts",
+    "generate": "pnpm build:scripts && node dist/ballast/generate.js"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./callout": "./src/components/Callout/index.tsx",
+    "./component-workbench": "./src/components/ComponentWorkbench/index.tsx",
+    "./example-preview": "./src/components/ExamplePreview/index.tsx",
+    "./flow-composer": "./src/components/FlowComposer/index.tsx"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "tsup": "^8.5.0",
+    "typescript": "6.0.2"
+  }
+}

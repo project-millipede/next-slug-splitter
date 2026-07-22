@@ -1,0 +1,39 @@
+/**
+ * Shared chrome for the demo components — card shell, header bar, and
+ * eyebrow label, composed into each component's own CSS module.
+ */
+
+.card {
+  margin: 1rem 0;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #17202a;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 1rem;
+}
+
+.header h3,
+.eyebrow {
+  margin: 0;
+}
+
+.eyebrow {
+  color: #52616f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/** Side-panel section labels share the eyebrow style. */
+.panelLabel {
+  composes: eyebrow;
+}

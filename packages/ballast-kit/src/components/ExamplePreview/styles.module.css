@@ -1,0 +1,222 @@
+.examplePreview {
+  composes: card from '../chrome.module.css';
+}
+
+.header {
+  composes: header from '../chrome.module.css';
+}
+
+.eyebrow {
+  composes: eyebrow from '../chrome.module.css';
+}
+
+.modeTabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.25rem;
+  background: #f8fafc;
+}
+
+.modeTab,
+.modeTabActive,
+.densityButton,
+.densityButtonActive,
+.comboboxToggleButton {
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.modeTab:focus-visible,
+.modeTabActive:focus-visible,
+.densityButton:focus-visible,
+.densityButtonActive:focus-visible,
+.comboboxToggleButton:focus-visible {
+  outline: 2px solid #17202a;
+  outline-offset: 2px;
+}
+
+.modeTab,
+.modeTabActive {
+  padding: 0.4rem 0.65rem;
+  background: transparent;
+  color: #52616f;
+}
+
+.modeTabActive {
+  background: #17202a;
+  color: #ffffff;
+}
+
+.modeTab:hover {
+  color: #17202a;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 13rem;
+}
+
+.previewPane {
+  min-height: 21rem;
+  padding: 1rem;
+}
+
+.demoSurface {
+  display: grid;
+  max-width: 28rem;
+  gap: 0.75rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.demoSurfaceCompact {
+  max-width: 22rem;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.demoSurfaceCompact .comboboxInput {
+  padding: 0.5rem;
+}
+
+.comboboxLabel {
+  font-weight: 700;
+}
+
+.comboboxInputGroup {
+  display: flex;
+  border: 1px solid #17202a;
+}
+
+.comboboxInput {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  padding: 0.75rem;
+  color: #17202a;
+  font: inherit;
+}
+
+.comboboxToggleButton {
+  width: 2.75rem;
+  background: #f8fafc;
+  color: #17202a;
+}
+
+.comboboxToggleButton:hover {
+  background: #e2e8f0;
+}
+
+.comboboxPopover {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 0.12);
+}
+
+.comboboxPopover span {
+  padding: 0.55rem 0.75rem;
+}
+
+.comboboxPopover span+span {
+  border-top: 1px solid #e2e8f0;
+}
+
+.comboboxPopover span[aria-selected='true'] {
+  background: #dff6ec;
+  color: #0f6b4f;
+  font-weight: 700;
+}
+
+.codeBlock {
+  min-height: 12rem;
+  overflow: auto;
+  border-radius: 6px;
+  margin: 0;
+  padding: 1rem;
+  background: #17202a;
+  color: #e5eef7;
+  font-size: 0.9rem;
+}
+
+.propsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.propsGrid div {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.8rem;
+  background: #f8fafc;
+}
+
+.propsGrid dt {
+  color: #52616f;
+  font-weight: 700;
+}
+
+.propsGrid dd {
+  margin: 0.25rem 0 0;
+}
+
+.densityControls {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  border-left: 1px solid #e2e8f0;
+  padding: 1rem;
+  background: #f8fafc;
+}
+
+.panelLabel {
+  composes: panelLabel from '../chrome.module.css';
+}
+
+.densityButton,
+.densityButtonActive {
+  padding: 0.6rem 0.7rem;
+  text-align: left;
+}
+
+.densityButton {
+  background: #ffffff;
+  color: #17202a;
+}
+
+.densityButtonActive {
+  background: #dff6ec;
+  color: #0f6b4f;
+}
+
+.densityButton:hover {
+  background: #f1f5f9;
+}
+
+@media (max-width: 720px) {
+
+  .header,
+  .body {
+    display: block;
+  }
+
+  .modeTabs {
+    margin-top: 0.75rem;
+  }
+
+  .densityControls {
+    border-top: 1px solid #e2e8f0;
+    border-left: 0;
+  }
+
+  .propsGrid {
+    grid-template-columns: 1fr;
+  }
+}
