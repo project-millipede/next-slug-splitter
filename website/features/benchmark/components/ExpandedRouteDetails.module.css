@@ -1,0 +1,203 @@
+.details {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-top: 1px solid #e6e9e8;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: 0;
+  overflow: hidden;
+  border: 1px solid #d7dcda;
+  border-radius: 8px;
+  background: #d7dcda;
+}
+
+.detailsGrid div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  background: #fff;
+}
+
+.detailsGrid span {
+  color: #5c6a70;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.detailsGrid code,
+.detailsGrid strong {
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  padding: 12px;
+  border: 1px dashed #c8d0ce;
+  border-radius: 8px;
+  color: #5c6a70;
+  font-size: 0.88rem;
+}
+
+.error {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid #a33b00;
+  background: #ffe9e2;
+  color: #8d2f00;
+  font-weight: 700;
+}
+
+.technicalSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.technicalSummary span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid #c8d0ce;
+  border-radius: 999px;
+  background: #fff;
+  color: #3d4a4f;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.decodedJsSizeSummary {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.2fr);
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #d7dcda;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.decodedJsSizeSummary h3,
+.decodedJsSizeSummary p,
+.decodedJsSizeSummary dl,
+.decodedJsSizeSummary dd {
+  margin: 0;
+}
+
+.decodedJsSizeSummary h3 {
+  color: #3d4a4f;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+}
+
+.decodedJsSizeSummary p {
+  margin-top: 4px;
+  color: #5c6a70;
+  font-size: 0.84rem;
+}
+
+.decodedJsSizeSummary dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #e3e7e5;
+  border-radius: 7px;
+  background: #e3e7e5;
+}
+
+.decodedJsSizeSummary dl div {
+  min-width: 0;
+  padding: 9px 10px;
+  background: #fbfcfc;
+}
+
+.decodedJsSizeSummary dt {
+  color: #5c6a70;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.decodedJsSizeSummary dd {
+  margin-top: 4px;
+  color: #162127;
+  font-size: 0.94rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.decodedJsSizeSummary small {
+  display: block;
+  margin-top: 2px;
+  color: #155c3f;
+  font-size: 0.74rem;
+}
+
+.decodedJsSizeSummary .regression dd,
+.decodedJsSizeSummary .regression small {
+  color: #8d2f00;
+}
+
+.meter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  row-gap: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 8px;
+}
+
+.meterTrack {
+  grid-column: 1 / 3;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dce8e4;
+}
+
+.meterIndicator {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: #208a61;
+  transition: width 500ms;
+}
+
+.meterLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.diagnosticsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1080px) {
+
+  .detailsGrid,
+  .diagnosticsGrid,
+  .decodedJsSizeSummary {
+    grid-template-columns: 1fr;
+  }
+
+  .decodedJsSizeSummary dl {
+    grid-template-columns: 1fr;
+  }
+}

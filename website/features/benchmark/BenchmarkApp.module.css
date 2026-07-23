@@ -1,0 +1,19 @@
+.main {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px clamp(16px, 2vw, 24px);
+}
+
+@media (max-width: 1080px) {
+  .main {
+    padding: 20px 16px;
+  }
+}
+
+@media (max-width: 460px) {
+  .main {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}

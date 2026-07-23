@@ -1,0 +1,33 @@
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #d7dcda;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: #5c6a70;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.15;
+}
+
+@media (max-width: 1080px) {
+  .header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .title {
+    font-size: 1.72rem;
+  }
+}

@@ -1,0 +1,83 @@
+.toolbar {
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.button {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 36px;
+  padding: 0 12px;
+  margin: 0;
+  appearance: none;
+  border: 1px solid #b9c3c0;
+  border-radius: 6px;
+  background: #fff;
+  color: #172026;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.button[data-disabled],
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.button:focus-visible {
+  outline: 2px solid #135f63;
+  outline-offset: 2px;
+}
+
+.primaryButton {
+  border-color: #135f63;
+  background: #135f63;
+  color: white;
+}
+
+@media (hover: hover) {
+  .secondaryButton:hover:not([data-disabled]) {
+    border-color: #6f7d82;
+    background: #f7fafa;
+  }
+
+  .primaryButton:hover:not([data-disabled]) {
+    background: #0f5255;
+  }
+}
+
+.secondaryButton:active:not([data-disabled]) {
+  background: #eef3f2;
+}
+
+.primaryButton:active:not([data-disabled]) {
+  background: #0b4649;
+}
+
+@media (max-width: 1080px) {
+  .toolbar {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 460px) {
+  .toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .button {
+    width: 100%;
+  }
+}

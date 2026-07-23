@@ -1,0 +1,58 @@
+.diagnostics {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #d7dcda;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.diagnostics h3 {
+  margin: 0 0 10px;
+  color: #3d4a4f;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+}
+
+.diagnostics p {
+  margin: 0;
+  color: #5c6a70;
+  font-size: 0.88rem;
+}
+
+.chunkList {
+  display: grid;
+  gap: 8px;
+}
+
+.chunkRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(4, auto);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eef1f0;
+  font-size: 0.82rem;
+}
+
+.chunkRow:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.chunkRow code {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chunkRow span {
+  white-space: nowrap;
+}
+
+@media (max-width: 1080px) {
+  .chunkRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

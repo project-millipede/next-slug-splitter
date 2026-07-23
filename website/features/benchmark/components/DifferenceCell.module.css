@@ -1,0 +1,177 @@
+.cell {
+  display: grid;
+  gap: 7px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 1px solid #cfd8d4;
+  background: #f4f6f5;
+}
+
+.emptyCell {
+  border-color: #dde4e1;
+  background: #f8faf9;
+  color: #6a777c;
+}
+
+.metric {
+  display: grid;
+  grid-template-columns: minmax(88px, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.metric span {
+  overflow: hidden;
+  color: currentColor;
+  font-size: 0.68rem;
+  font-weight: 800;
+  opacity: 0.78;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.metric strong {
+  font-size: 0.94rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.metric small {
+  grid-column: 2;
+  margin-top: -2px;
+  font-size: 0.74rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.meter {
+  display: grid;
+  grid-template-columns: minmax(88px, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.meterLabel {
+  overflow: hidden;
+  color: currentColor;
+  font-size: 0.68rem;
+  line-height: 1.25rem;
+  font-weight: 800;
+  opacity: 0.78;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.meterValue {
+  font-size: 0.94rem;
+  line-height: 1.25rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.meterPercent {
+  grid-column: 2;
+  margin-top: -2px;
+  font-size: 0.74rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.meterTrack {
+  grid-column: 1 / -1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(21, 92, 63, 0.14);
+}
+
+.meterTrackPlaceholder {
+  visibility: hidden;
+}
+
+.meterIndicator {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: currentColor;
+  transition: width 500ms;
+}
+
+.secondaryMetric {
+  padding-top: 6px;
+  border-top: 1px solid rgba(21, 92, 63, 0.16);
+}
+
+.encodedJsSavingsHigh {
+  border-color: #9ed2b8;
+  background: #e7f6ee;
+  color: #155c3f;
+}
+
+.encodedJsSavingsMedium {
+  border-color: #b6d9c9;
+  background: #eff8f3;
+  color: #1f674a;
+}
+
+.encodedJsSavingsLow {
+  border-color: #cadfd4;
+  background: #f5faf7;
+  color: #315f49;
+}
+
+.encodedJsNonImprovement {
+  border-color: #d8c9a4;
+  background: #fff7df;
+  color: #72520a;
+}
+
+@media (max-width: 1080px) {
+  .cell {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 36px;
+    row-gap: 0;
+    padding: 10px 12px;
+  }
+
+  .metric,
+  .meter {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .secondaryMetric {
+    padding-top: 0;
+    padding-left: 28px;
+    border-top: 0;
+    border-left: 1px solid rgba(21, 92, 63, 0.16);
+  }
+}
+
+@media (max-width: 460px) {
+  .cell {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .secondaryMetric {
+    padding-top: 6px;
+    padding-left: 0;
+    border-top: 1px solid rgba(21, 92, 63, 0.16);
+    border-left: 0;
+  }
+}

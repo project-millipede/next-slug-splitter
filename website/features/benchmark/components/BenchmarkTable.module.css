@@ -1,0 +1,315 @@
+.tableContainer {
+  overflow-x: auto;
+  border: 1px solid #d7dcda;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.tableDescription {
+  margin: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e3e7e5;
+  color: #5c6a70;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.routeColumn {
+  width: 28%;
+}
+
+.impactColumn {
+  width: 36%;
+}
+
+.differenceColumn {
+  width: 26%;
+}
+
+.actionColumn {
+  width: 10%;
+}
+
+.table th,
+.table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid #e6e9e8;
+  overflow: hidden;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th {
+  color: #4f5d62;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.table td {
+  font-size: 0.9rem;
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-right: 24px;
+  text-align: right;
+}
+
+.table td code {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table tbody tr:not(.expandedRow) {
+  cursor: pointer;
+}
+
+.table tbody tr:not(.expandedRow):not(.selectedRow):hover {
+  background: #f7fafa;
+}
+
+.selectedRow {
+  background: #f2f6f6;
+}
+
+.expandedRow,
+.expandedRow:hover {
+  cursor: default;
+  background: #fbfcfc;
+}
+
+.expandedRow>td {
+  padding: 0;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.routeCell {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.expandIndicator {
+  color: #66757a;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.routeCopy {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+
+.routeCopy strong {
+  overflow: hidden;
+  font-size: 0.98rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.routeCopy>div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.routeCopy code {
+  color: #5c6a70;
+}
+
+.kindBadge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.kindBadgeLight {
+  background: #e8eeee;
+  color: #59666b;
+}
+
+.kindBadgeHeavy {
+  background: #ffe6bd;
+  color: #7a4c00;
+}
+
+.runButton {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 82px;
+  min-height: 36px;
+  padding: 0 12px;
+  margin: 0;
+  appearance: none;
+  border: 1px solid #b9c3c0;
+  border-radius: 6px;
+  background: #fff;
+  color: #172026;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+@media (hover: hover) {
+  .runButton:hover:not([data-disabled]) {
+    border-color: #6f7d82;
+    background: #f7fafa;
+  }
+}
+
+.runButton:active:not([data-disabled]) {
+  background: #eef3f2;
+}
+
+.runButton[data-disabled],
+.runButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.runButton:focus-visible {
+  outline: 2px solid #135f63;
+  outline-offset: 2px;
+}
+
+@media (max-width: 1080px) {
+  .tableContainer {
+    overflow-x: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .tableDescription {
+    margin-bottom: 10px;
+    border: 1px solid #d7dcda;
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .table,
+  .table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .table colgroup,
+  .table thead {
+    display: none;
+  }
+
+  .table tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .table tbody tr:not(.expandedRow) {
+    display: grid;
+    grid-template-areas:
+      "route action"
+      "impact impact"
+      "difference difference";
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid #d7dcda;
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .table tbody tr.selectedRow:not(.expandedRow) {
+    background: #f2f6f6;
+  }
+
+  .table tbody tr:not(.expandedRow):not(.selectedRow):hover {
+    background: #fff;
+  }
+
+  .table th,
+  .table td,
+  .table th:last-child,
+  .table td:last-child {
+    padding: 0;
+    border-bottom: 0;
+    overflow: visible;
+    text-align: left;
+  }
+
+  .routeCellColumn {
+    grid-area: route;
+  }
+
+  .impactCellColumn {
+    grid-area: impact;
+  }
+
+  .differenceCellColumn {
+    grid-area: difference;
+  }
+
+  .actionCellColumn {
+    grid-area: action;
+    justify-self: end;
+  }
+
+  .routeCell {
+    grid-template-columns: 14px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+  }
+
+  .routeCopy {
+    gap: 7px;
+  }
+
+  .routeCopy strong {
+    white-space: normal;
+  }
+
+  .runButton {
+    width: 72px;
+  }
+
+  .expandedRow,
+  .expandedRow:hover {
+    display: block;
+    overflow: hidden;
+    border: 1px solid #d7dcda;
+    border-radius: 8px;
+    background: #fbfcfc;
+  }
+
+  .expandedRow>td {
+    display: block;
+    padding: 0;
+  }
+}
