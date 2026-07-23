@@ -307,6 +307,15 @@ from another release can produce false failures or invalid comparisons.
 
 ### Production Release
 
+`.vercel/` and `vercel.json` have separate responsibilities:
+
+1. `.vercel/` contains machine-local Vercel CLI linkage and remains ignored.
+2. Each `vercel.json` contains repository-owned deployment policy and remains
+   versioned.
+3. Because these files disable automatic Git deployment from `main`, they must
+   be committed together with the workflow that stages, verifies, and promotes
+   the coordinated release.
+
 All five benchmark projects disable automatic Git deployment from `main` in
 their `vercel.json` files. Production is released manually from `main` through
 [the benchmark production workflow](../.github/workflows/release-benchmark-production.yml).

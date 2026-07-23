@@ -1,5 +1,9 @@
 # next-slug-splitter
 
+[Website](https://next-splitter.com) ·
+[Quick Start](https://next-splitter.com/quick-start) ·
+[Live Benchmark](https://next-splitter.com/benchmark)
+
 > Next.js route handler generation with build-time rewrites and dev-time request routing
 
 A configuration-driven package for analyzing content page trees, generating
