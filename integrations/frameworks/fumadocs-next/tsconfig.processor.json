@@ -1,0 +1,9 @@
+{
+  "extends": "../../../tsconfig.route-handlers.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "include": ["handler-processor.ts"],
+  "exclude": ["node_modules", ".next", ".source", "dist"]
+}

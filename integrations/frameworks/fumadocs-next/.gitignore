@@ -1,0 +1,8 @@
+.next
+.source
+dist
+node_modules
+app/docs/generated-handlers
+*.tsbuildinfo
+next-env.d.ts
+.vercel

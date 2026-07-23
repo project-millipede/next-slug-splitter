@@ -16,7 +16,8 @@ through build-time rewrites (production) or a request-time proxy (development).
 6. [Configuration Reference](#configuration-reference)
 7. [Architecture](#architecture)
 8. [Capabilities](#capabilities)
-9. [Next.js Integration Points](#nextjs-integration-points)
+9. [Framework Integrations](#framework-integrations)
+10. [Next.js Integration Points](#nextjs-integration-points)
 
 ## Overview
 
@@ -987,6 +988,22 @@ bootstrap generation, and returns lazy route classifications on demand.
 - Support multi-target setups such as `docs` plus `blog`
 - Locale-aware routing with configurable detection modes
 - Phase-aware behavior — only active during development, build, and production server phases
+
+## Framework Integrations
+
+The splitter can work inside a content framework when page composition is known
+at build time. A framework integration needs to:
+
+1. Preserve the framework's public route and page-data contract.
+2. Expose the component keys used by each content page.
+3. Map selected keys to importable modules through a processor.
+4. Reuse the framework's existing layout and page components.
+
+Current integration:
+
+- **[Fumadocs Next](integrations/frameworks/fumadocs-next/README.md)** —
+  runnable App Router integration with a
+  [live demo](https://next-slug-splitter-fumadocs-integra.vercel.app/).
 
 ## Next.js Integration Points
 
