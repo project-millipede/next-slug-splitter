@@ -317,9 +317,11 @@ from another release can produce false failures or invalid comparisons.
    be committed together with the workflow that stages, verifies, and promotes
    the coordinated release.
 
-All six release projects disable automatic Git deployment from `main` in
-their `vercel.json` files. Production is released manually from `main` through
+All six release projects disable automatic Vercel Git deployment from `main`
+in their `vercel.json` files. Pushes to `main` are instead released
+automatically through
 [the benchmark production workflow](../.github/workflows/release-benchmark-production.yml).
+`workflow_dispatch` remains available for explicit retries.
 
 The workflow:
 
@@ -328,7 +330,7 @@ The workflow:
 3. Deploys six immutable candidates without moving production domains.
 4. Verifies the direct benchmark targets, candidate website facade, and
    Fumadocs routes.
-5. Waits at the protected production environment gate.
+5. Confirms that `main` still identifies the staged release commit.
 6. Promotes all six verified candidates as one coordinated release.
 7. Verifies production again.
 8. Rolls back any already-promoted project when production promotion or
@@ -339,7 +341,8 @@ The repository requires:
 - Secret `VERCEL_TOKEN`.
 - Variable `VERCEL_ORG_ID`.
 - Six Vercel project-ID variables used by the workflow.
-- A reviewer on the protected production environment.
+- A `production` environment used for deployment history, without required
+  reviewers.
 
 ## Measurement Contract
 

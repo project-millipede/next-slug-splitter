@@ -3,7 +3,7 @@ name: Release benchmark production
 # Repository setup:
 # - secret: VERCEL_TOKEN
 # - variables: VERCEL_ORG_ID and the six VERCEL_*_PROJECT_ID values below
-# - environment: production, with a required reviewer for the promotion gate
+# - environment: production, used to record the promoted website deployment
 
 on:
   workflow_dispatch:
@@ -466,7 +466,7 @@ jobs:
       - name: Check out the verified release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Confirm main has not moved while awaiting approval
+      - name: Confirm main has not moved after staging
         run: |
           git fetch origin main --depth=1
 
