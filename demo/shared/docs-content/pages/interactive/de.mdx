@@ -1,0 +1,16 @@
+# Interaktive Demo
+
+Dies ist eine **schwere** Seite — sie nutzt eine eigene React-Komponente, die
+zusätzliches JavaScript an den Browser ausliefert.
+
+## Beispielvorschau
+
+Die Vorschau unten ist eine zustandsbehaftete React-Komponente direkt in MDX:
+
+<ExamplePreview />
+
+Weil diese Seite `<ExamplePreview />` nutzt, stuft next-slug-splitter sie als
+_schwere_ Route ein und generiert einen eigenen Handler, der nur die
+`ExamplePreview`-Komponente importiert.
+
+Leichte Seiten wie "Erste Schritte" bündeln diesen Komponenten-Code nicht.
