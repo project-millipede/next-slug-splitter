@@ -1,0 +1,34 @@
+{
+  "name": "@next-slug-splitter/website",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "benchmark:local:adapter:build": "pnpm --filter @next-slug-splitter/benchmark-manifest-adapter build",
+    "benchmark:local:runner:build": "tsup --config scripts/run-benchmark-stack.tsup.config.ts",
+    "benchmark:local:prepare": "pnpm benchmark:local:adapter:build && pnpm benchmark:local:runner:build",
+    "benchmark:local:build": "pnpm benchmark:local:prepare && node dist/run-benchmark-stack.js build",
+    "benchmark:local:start": "pnpm benchmark:local:runner:build && node dist/run-benchmark-stack.js start",
+    "benchmark:local:dev": "pnpm benchmark:local:prepare && node dist/run-benchmark-stack.js dev",
+    "benchmark:local:start:website-dev": "pnpm benchmark:local:runner:build && node dist/run-benchmark-stack.js start:dev"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.6.0",
+    "@next/third-parties": "16.2.0",
+    "next": "16.2.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "schema-dts": "2.0.0",
+    "tsup": "^8.5.0",
+    "typescript": "6.0.2"
+  }
+}
