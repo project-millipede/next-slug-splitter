@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from 'react';
+import { Callout } from '@next-slug-splitter/ballast-kit/callout';
 import { MdxContent } from '../mdx-runtime';
-import { Callout } from '../components/callout';
 import {
   runtimeTrait,
   type RuntimeConfig,
@@ -10,7 +10,7 @@ import {
 /**
  * Map of component names to their React implementations.
  *
- * Keys are the tag names used in MDX source (e.g. `<Counter />`), values
+ * Keys are the tag names used in MDX source (e.g. `<ExamplePreview />`), values
  * are the React component that renders them.
  */
 type MDXComponentProps = Record<string, unknown> & {

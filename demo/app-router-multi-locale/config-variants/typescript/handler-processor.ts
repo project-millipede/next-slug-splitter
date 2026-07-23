@@ -4,11 +4,10 @@
  * The processor tells next-slug-splitter how to resolve captured components
  * and which factory import to use for each heavy App Router handler page.
  *
- * Loadable component imports reference the `@demo/components` workspace package
- * directly. Captured keys outside the app-owned loadable key set remain in the
+ * Loadable component imports reference the shared `@next-slug-splitter/ballast-kit` package
+ * boundary. Captured keys outside the app-owned loadable key set remain in the
  * MDX component scope, so this variant only resolves generated handler imports
- * for keys that should cross the loadable package boundary.
- * lookup helper.
+ * for keys that should cross that package boundary.
  *
  * This variant demonstrates inline per-entry metadata. The processor keeps a
  * small keyed metadata map locally and attaches the matching JSON metadata
@@ -33,7 +32,7 @@ import {
 // ---------------------------------------------------------------------------
 
 // Shared package boundary reused for every generated component import.
-const componentsModule = packageModule('@demo/components');
+const componentsModule = packageModule('@next-slug-splitter/ballast-kit');
 
 type RuntimeTrait = 'selection' | 'wrapper';
 type RuntimeTraits = ReadonlyArray<RuntimeTrait>;
@@ -52,16 +51,14 @@ const runtimeTraits = {
   wrapperAndSelection: [runtimeTrait.wrapper, runtimeTrait.selection]
 } as const;
 
-const metadataByKey: Readonly<
-  Partial<Record<string, RuntimeConfig>>
-> = {
-  Chart: {
+const metadataByKey: Readonly<Partial<Record<string, RuntimeConfig>>> = {
+  FlowComposer: {
     runtimeTraits: runtimeTraits.wrapper
   },
-  Counter: {
+  ExamplePreview: {
     runtimeTraits: runtimeTraits.wrapperAndSelection
   },
-  DataTable: {
+  ComponentWorkbench: {
     runtimeTraits: runtimeTraits.selection
   }
 };
@@ -83,23 +80,27 @@ const shouldEmitLoadableComponent = (key: string): boolean =>
  * Captured keys are filtered through `loadableComponentKeySet`. Omitted keys
  * remain in the MDX component scope and are not emitted into generated handlers.
  */
-export const routeHandlerProcessor = defineRouteHandlerProcessor<RuntimeConfig>({
-  resolve({ capturedComponentKeys }) {
-    const loadableComponentKeys = capturedComponentKeys.filter(
-      shouldEmitLoadableComponent
-    );
+export const routeHandlerProcessor = defineRouteHandlerProcessor<RuntimeConfig>(
+  {
+    resolve({ capturedComponentKeys }) {
+      const loadableComponentKeys = capturedComponentKeys.filter(
+        shouldEmitLoadableComponent
+      );
 
-    return {
-      factoryImport: relativeModule('lib/handler-factory/runtime'),
-      components: loadableComponentKeys.map(key => ({
-        key,
-        componentImport: {
-          source: componentsModule,
-          kind: 'named',
-          importedName: key
-        },
-        ...(metadataByKey[key] == null ? {} : { metadata: metadataByKey[key] })
-      }))
-    };
+      return {
+        factoryImport: relativeModule('lib/handler-factory/runtime'),
+        components: loadableComponentKeys.map(key => ({
+          key,
+          componentImport: {
+            source: componentsModule,
+            kind: 'named',
+            importedName: key
+          },
+          ...(metadataByKey[key] == null
+            ? {}
+            : { metadata: metadataByKey[key] })
+        }))
+      };
+    }
   }
-});
+);

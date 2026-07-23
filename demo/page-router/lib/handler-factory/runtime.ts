@@ -1,7 +1,7 @@
 /**
  * Shared demo handler factory.
  *
- * Both demo paths use this same factory:
+ * Both Pages Router docs paths use this same factory:
  *
  * - The light catch-all page passes an empty registry subset, so there are no
  *   component entries and no runtime traits to apply.
@@ -16,6 +16,7 @@
  *
  * A component can declare both traits and receive both wrappers.
  */
-import { createHandlerPageFromRuntime } from './index';
+import { createHandlerPageFromRuntime, createPageFromRuntime } from './index';
 
 export const createHandlerPage = createHandlerPageFromRuntime;
+export const createPage = createPageFromRuntime;

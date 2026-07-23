@@ -1,10 +1,7 @@
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 
-import {
-  createHrefForLocale,
-  type SupportedLocale
-} from '../lib/locale-utils';
+import { createHrefForLocale, type SupportedLocale } from '../lib/locale-utils';
 import { LanguageSwitch } from './language-switch';
 
 const containerStyle: CSSProperties = {
@@ -36,11 +33,6 @@ const logoLinkStyle: CSSProperties = {
  * 1. Layouts pass the active locale structurally.
  * 2. The logo link returns to the homepage for that locale.
  * 3. The language switch preserves the current browser-visible slug.
- *
- * @param props - Shell props.
- * @param props.locale - Active locale owned by the surrounding layout.
- * @param props.children - Page content rendered below the navigation.
- * @returns Shared demo layout shell.
  */
 export function Shell({
   locale,

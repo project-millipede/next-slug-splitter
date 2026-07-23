@@ -7,6 +7,13 @@ import { useSlugSplitterNotFoundRetry } from 'next-slug-splitter/next/pages/prox
  */
 const CATCH_ALL_ROUTE_SEGMENTS = ['docs'];
 
+/**
+ * Keep the Pages Router not-found boundary hidden while the rewrite retry is
+ * pending, then show it once the 404 is confirmed.
+ *
+ * The retry hook gives the slug-splitter proxy a chance to recover pages that
+ * are reachable through generated-handler rewrites before the user sees a 404.
+ */
 const NotFound: NextPage = () => {
   const isNotFoundConfirmed = useSlugSplitterNotFoundRetry({
     catchAllRouteSegments: CATCH_ALL_ROUTE_SEGMENTS

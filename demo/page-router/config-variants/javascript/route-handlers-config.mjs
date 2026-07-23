@@ -31,6 +31,13 @@ import {
 // ---------------------------------------------------------------------------
 
 const rootDir = process.cwd();
+const sharedContentDir = path.join(
+  rootDir,
+  '..',
+  'shared',
+  'docs-content',
+  'pages'
+);
 
 // ---------------------------------------------------------------------------
 // Route parameter
@@ -61,8 +68,8 @@ export const routeHandlersConfig = {
     createCatchAllRouteHandlersPreset({
       routeSegment: 'docs',
       handlerRouteParam: docsHandlerRouteParam,
-      contentDir: path.join(rootDir, 'content', 'pages'),
-      contentLocaleMode: 'default-locale',
+      contentDir: sharedContentDir,
+      contentLocaleMode: 'filename',
       routeContract: relativeModule('pages/docs/[...slug]'),
 
       /**

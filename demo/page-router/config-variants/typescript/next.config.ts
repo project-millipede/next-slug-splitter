@@ -12,7 +12,11 @@ import { routeHandlersConfig } from './route-handlers-config';
 
 const nextConfig: NextConfig = {
   pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'md', 'mdx'],
-  reactStrictMode: false
+  reactStrictMode: false,
+  i18n: {
+    locales: ['en', 'de'],
+    defaultLocale: 'en'
+  }
 };
 
 export default withSlugSplitter(nextConfig, {

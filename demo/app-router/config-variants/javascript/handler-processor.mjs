@@ -4,11 +4,10 @@
  * The processor tells next-slug-splitter how to resolve captured components
  * and which factory import to use for each heavy App Router handler page.
  *
- * Loadable component imports reference the `@demo/components` workspace package
- * directly. Captured keys outside the app-owned loadable key set remain in the
+ * Loadable component imports reference the shared `@next-slug-splitter/ballast-kit` package
+ * boundary. Captured keys outside the app-owned loadable key set remain in the
  * MDX component scope, so this variant only resolves generated handler imports
- * for keys that should cross the loadable package boundary.
- * lookup helper.
+ * for keys that should cross that package boundary.
  *
  * This variant demonstrates inline per-entry metadata. The processor keeps a
  * small keyed metadata map locally and attaches the matching JSON metadata
@@ -31,9 +30,6 @@ import {
 // ---------------------------------------------------------------------------
 // Processor
 // ---------------------------------------------------------------------------
-
-// Shared package boundary reused for every generated component import.
-const componentsModule = packageModule('@demo/components');
 
 /**
  * @typedef {'selection' | 'wrapper'} RuntimeTrait
@@ -65,18 +61,21 @@ const runtimeTraits = {
 
 /** @type {Readonly<Partial<Record<string, RuntimeConfig>>>} */
 const metadataByKey = {
-  Chart: {
+  FlowComposer: {
     runtimeTraits: runtimeTraits.wrapper
   },
-  Counter: {
+  ExamplePreview: {
     runtimeTraits: runtimeTraits.wrapperAndSelection
   },
-  DataTable: {
+  ComponentWorkbench: {
     runtimeTraits: runtimeTraits.selection
   }
 };
 
 const loadableComponentKeySet = new Set(Object.keys(metadataByKey));
+
+// Shared package boundary reused for every generated component import.
+const componentsModule = packageModule('@next-slug-splitter/ballast-kit');
 
 /**
  * Determine whether one captured component key should be emitted as loadable.

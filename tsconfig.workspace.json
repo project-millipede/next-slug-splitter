@@ -1,0 +1,16 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.json" },
+    { "path": "./packages/ballast-kit" },
+    { "path": "./packages/benchmark-manifest-adapter" },
+    { "path": "./packages/mdx-build" },
+    { "path": "./demo/app-router" },
+    { "path": "./demo/app-router-multi-locale" },
+    { "path": "./demo/app-router-multi-locale-heavy" },
+    { "path": "./demo/page-router" },
+    { "path": "./demo/page-router-heavy" },
+    { "path": "./integrations/frameworks/fumadocs-next" },
+    { "path": "./website" }
+  ]
+}

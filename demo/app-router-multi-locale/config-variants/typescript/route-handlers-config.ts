@@ -24,6 +24,13 @@ import {
 // ---------------------------------------------------------------------------
 
 const rootDir = process.cwd();
+const sharedContentDir = path.join(
+  rootDir,
+  '..',
+  'shared',
+  'docs-content',
+  'pages'
+);
 
 // ---------------------------------------------------------------------------
 // Route parameter
@@ -54,6 +61,7 @@ export const routeHandlersConfig: RouteHandlersConfig = {
   app: {
     rootDir,
     localeConfig,
+    localeRouteParamName: 'locale',
     prepare: {
       tsconfigPath: relativeModule(
         'config-variants/typescript/tsconfig.processor.json'
@@ -64,7 +72,7 @@ export const routeHandlersConfig: RouteHandlersConfig = {
     createAppCatchAllRouteHandlersPreset({
       routeSegment: 'docs',
       handlerRouteParam: docsHandlerRouteParam,
-      contentDir: path.join(rootDir, 'content', 'pages'),
+      contentDir: sharedContentDir,
       contentLocaleMode: 'filename',
       /**
        * Preferred App Router contract:

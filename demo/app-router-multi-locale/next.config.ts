@@ -11,15 +11,17 @@
  */
 
 import type { NextConfig } from 'next';
+import benchmarkAdapter from '@next-slug-splitter/benchmark-manifest-adapter/next-adapter';
 import { withSlugSplitter } from 'next-slug-splitter/next';
 import { routeHandlersConfig } from './route-handlers-config';
 
-const nextConfig: NextConfig = {
+export const baseNextConfig: NextConfig = {
   pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'md', 'mdx'],
   reactStrictMode: false,
   devIndicators: false
 };
 
-export default withSlugSplitter(nextConfig, {
-  routeHandlersConfig
+export default withSlugSplitter(baseNextConfig, {
+  routeHandlersConfig,
+  adapter: benchmarkAdapter
 });

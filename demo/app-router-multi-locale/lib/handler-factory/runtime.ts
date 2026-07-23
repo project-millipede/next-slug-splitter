@@ -16,6 +16,7 @@
  *
  * A component can declare both traits and receive both wrappers.
  */
-import { createHandlerPageFromRuntime } from './index';
+import { createHandlerPageFromRuntime, createPageFromRuntime } from './index';
 
 export const createHandlerPage = createHandlerPageFromRuntime;
+export const createPage = createPageFromRuntime;

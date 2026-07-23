@@ -1,5 +1,5 @@
 {
-  "extends": "../tsconfig.processor.base.json",
+  "extends": "../../../../tsconfig.route-handlers.base.json",
   "compilerOptions": {
     "outDir": "../../dist",
     "rootDir": "."

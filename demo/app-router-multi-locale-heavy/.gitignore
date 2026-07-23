@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Next.js output
+.next/
+next-env.d.ts
+
+# Generated benchmark data
+.benchmark/
+
+# Deployment output
+.vercel/

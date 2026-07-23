@@ -44,13 +44,14 @@ const pages: PageEntry[] = [
     slug: 'interactive',
     title: 'Interactive Demo',
     kind: 'heavy',
-    description: 'Uses <Counter /> — a stateful React component'
+    description: 'Uses <ExamplePreview /> — an interactive preview component'
   },
   {
     slug: 'dashboard',
     title: 'Dashboard',
     kind: 'heavy',
-    description: 'Uses <Chart /> and <DataTable /> — multiple heavy components'
+    description:
+      'Uses <FlowComposer /> and <ComponentWorkbench /> — multiple heavy components'
   }
 ];
 

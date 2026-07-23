@@ -1,0 +1,32 @@
+{
+  "name": "next-slug-splitter-page-router-heavy-baseline-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "rimraf .next && rimraf .benchmark",
+    "generate:ballast": "pnpm --filter @next-slug-splitter/ballast-kit generate",
+    "build:scripts": "pnpm --filter @next-slug-splitter/mdx-build build",
+    "compile:page-data": "pnpm build:scripts && node scripts/compile-page-data.mjs",
+    "dev": "pnpm generate:ballast && pnpm compile:page-data && next dev",
+    "build": "pnpm generate:ballast && pnpm compile:page-data && next build",
+    "start": "next start",
+    "analyze:turbo": "pnpm next experimental-analyze"
+  },
+  "dependencies": {
+    "@next-slug-splitter/ballast-kit": "workspace:*",
+    "@next-slug-splitter/benchmark-manifest-adapter": "workspace:*",
+    "next": "16.3.0-canary.31",
+    "next-slug-splitter": "file:../..",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@next-slug-splitter/mdx-build": "workspace:*",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "rimraf": "^6.1.3",
+    "typescript": "6.0.2"
+  }
+}

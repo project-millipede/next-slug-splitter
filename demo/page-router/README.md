@@ -4,15 +4,15 @@ Minimal Next.js Pages Router app that demonstrates how **next-slug-splitter** se
 
 ## The Problem
 
-MDX-based content sites frequently need interactive components embedded alongside prose — counters, charts, data grids, code playgrounds, and similar widgets. Because MDX compiles to React, the content page must have access to every component it might render. The natural Next.js approach is a single catch-all route that imports them all:
+MDX-based content sites frequently need interactive components embedded alongside prose — previews, flow composers, component workbenches, code playgrounds, and similar widgets. Because MDX compiles to React, the content page must have access to every component it might render. The natural Next.js approach is a single catch-all route that imports them all:
 
 ```tsx
 // pages/docs/[...slug].tsx — the conventional approach
-import { Counter } from '../../components/counter'; // ~1 MB dependency
-import { Chart } from '../../components/chart'; // ~3 MB dependency
-import { DataTable } from '../../components/data-table'; // ~6 MB dependency
+import { ExamplePreview } from '../../components/example-preview'; // ~1 MB dependency
+import { FlowComposer } from '../../components/flow-composer'; // ~1 MB dependency
+import { ComponentWorkbench } from '../../components/component-workbench'; // ~2 MB dependency
 
-const components = { Counter, Chart, DataTable };
+const components = { ExamplePreview, FlowComposer, ComponentWorkbench };
 
 export default function DocsPage({ code }) {
   return <MdxContent code={code} components={components} />;
@@ -25,15 +25,15 @@ With the conventional approach, this demo's build output would look roughly
 like this. The exact numbers are illustrative and can move with Next.js,
 React, and the generated ballast files:
 
-| Page            | Route                   | Bundle Size  |
-| --------------- | ----------------------- | ------------ |
-| Home            | `/`                     | 127 kB       |
-| Getting Started | `/docs/getting-started` | **~1250 kB** |
-| Tutorial        | `/docs/tutorial`        | **~1250 kB** |
-| Interactive     | `/docs/interactive`     | **~1250 kB** |
-| Dashboard       | `/docs/dashboard`       | **~1250 kB** |
+| Page            | Route                   | Bundle Size |
+| --------------- | ----------------------- | ----------- |
+| Home            | `/`                     | 127 kB      |
+| Getting Started | `/docs/getting-started` | **~400 kB** |
+| Tutorial        | `/docs/tutorial`        | **~400 kB** |
+| Interactive     | `/docs/interactive`     | **~400 kB** |
+| Dashboard       | `/docs/dashboard`       | **~400 kB** |
 
-Every docs page loads **~1250 kB** — the combined weight of all component dependencies — regardless of whether it actually uses any of them.
+Every docs page loads **~400 kB** — the combined transport weight of all component dependencies — regardless of whether it actually uses any of them.
 
 ## The Solution
 
@@ -43,19 +43,22 @@ The result is **per-page component scoping**: each page bundles only the loadabl
 
 ### Example build output with next-slug-splitter
 
-| Page            | Route                   | Generated Imports             | Illustrative Bundle Size |
-| --------------- | ----------------------- | ----------------------------- | ------------------------ |
-| Home            | `/`                     | —                             | 127 kB                   |
-| Getting Started | `/docs/getting-started` | none                          | 141 kB                   |
-| Tutorial        | `/docs/tutorial`        | none (`Callout` in MDX scope) | 141 kB                   |
-| Interactive     | `/docs/interactive`     | Counter                       | 266 kB                   |
-| Dashboard       | `/docs/dashboard`       | Chart, DataTable              | 1250 kB                  |
+| Page            | Route                   | Generated Imports                | Illustrative Bundle Size |
+| --------------- | ----------------------- | -------------------------------- | ------------------------ |
+| Home            | `/`                     | —                                | 127 kB                   |
+| Getting Started | `/docs/getting-started` | none                             | 141 kB                   |
+| Tutorial        | `/docs/tutorial`        | none (`Callout` in MDX scope)    | 141 kB                   |
+| Interactive     | `/docs/interactive`     | ExamplePreview                   | 100 kB                   |
+| Dashboard       | `/docs/dashboard`       | FlowComposer, ComponentWorkbench | 300 kB                   |
 
 The important signal is the shape of the result: light pages no longer inherit
 the heavy component graph, intermediate pages pay only for the components they
 use, and only the genuinely heavy page pays the full cost.
 
-The ballast files in this demo simulate realistic dependency sizes (visualization libraries, data grids) and are generated at dev/build time by `scripts/generate-ballast.mjs`.
+The ballast files in this demo simulate realistic dependency sizes
+(interactive previews, visual flow builders, component workbenches) and are
+generated at dev/build time by the shared `@next-slug-splitter/ballast-kit`
+package.
 
 ### How it works
 
@@ -63,8 +66,8 @@ The ballast files in this demo simulate realistic dependency sizes (visualizatio
 
 **Heavy pages** get auto-generated handlers in `pages/docs/generated-handlers/` that import only the specific loadable components they need:
 
-- `generated-handlers/interactive.tsx` bundles only `Counter`
-- `generated-handlers/dashboard.tsx` bundles only `Chart` + `DataTable`
+- `generated-handlers/interactive.tsx` bundles only `ExamplePreview`
+- `generated-handlers/dashboard.tsx` bundles only `FlowComposer` + `ComponentWorkbench`
 
 ## Quick Start
 
@@ -89,9 +92,10 @@ The default `dev` script automatically:
 Use `pnpm dev:ts` if you want to run the same demo through the optional
 TypeScript variant instead.
 
-This demo stays single-locale by omitting Next `i18n` entirely. In the current
-library model, single-locale Pages Router setups should not configure `i18n`;
-multi-locale Pages Router setups still use Next's normal `i18n` block.
+This demo is intentionally multi-locale and uses Next's normal Pages Router
+`i18n` block with `en` and `de`. The content files mirror the App Router
+multi-locale demo because both read from `../shared/docs-content/pages`: each
+route directory contains `en.mdx` and `de.mdx`.
 
 ## What to Look At
 
@@ -117,8 +121,12 @@ After starting dev or running a build, look at `pages/docs/generated-handlers/`:
 
 ```
 pages/docs/generated-handlers/
-├── interactive.tsx   ← imports only Counter
-└── dashboard.tsx     ← imports only Chart + DataTable
+├── interactive/
+│   ├── en.tsx        ← imports only ExamplePreview
+│   └── de.tsx        ← imports only ExamplePreview
+└── dashboard/
+    ├── en.tsx        ← imports only FlowComposer + ComponentWorkbench
+    └── de.tsx        ← imports only FlowComposer + ComponentWorkbench
 ```
 
 These files are auto-generated and gitignored. Each one imports exactly the loadable components that its page needs — nothing more.
@@ -153,16 +161,16 @@ The default demo path uses `config-variants/javascript/`.
 An optional TypeScript authoring variant lives in
 `config-variants/typescript/`.
 
-Both center on the same loadable package boundary:
+Both center on the same shared ballast-kit package boundary:
 
 ```js
-const componentsModule = packageModule('@demo/components');
+const componentsModule = packageModule('@next-slug-splitter/ballast-kit');
 ```
 
 Loadable components that may be emitted into generated handlers live behind the
-`@demo/components` package boundary. Captured names outside that set, such as
-`Callout`, are provided through the MDX component scope and are not emitted into
-generated handlers.
+shared `@next-slug-splitter/ballast-kit` package boundary. Captured names outside that set,
+such as `Callout`, are provided through the MDX component scope and are not
+emitted into generated handlers.
 
 The JavaScript and TypeScript variants stay behaviorally aligned:
 both attach the same runtime-trait metadata and use the same runtime-aware
@@ -231,27 +239,40 @@ Next.js release, regenerate or revalidate the patch for that release.
 ## Project Structure
 
 ```text
-.
-├── pages
-│   ├── docs
-│   │   ├── generated-handlers          ← auto-generated heavy page handlers
-│   │   └── [...slug].tsx               ← public light catch-all page
-│   ├── 404.tsx                         ← dev-only retry workaround for transient lazy-route 404s
-│   ├── _app.tsx                        ← shared layout shell
-│   └── index.tsx                       ← landing page with page listing
-├── config-variants                     ← source-of-truth demo variant configs
-├── content/pages                       ← MDX content files
-│   ├── getting-started.mdx             ← light (pure Markdown)
-│   ├── tutorial.mdx                    ← light (uses <Callout /> from MDX scope)
-│   ├── interactive.mdx                 ← heavy (uses <Counter />)
-│   └── dashboard.mdx                   ← heavy (uses <Chart />, <DataTable />)
-├── lib
-│   ├── components                      ← React components with simulated ballast
-│   ├── handler-factory                 ← shared page component factory
-│   ├── content.ts                      ← content discovery helpers
-│   └── mdx-runtime.tsx                 ← client-side MDX evaluation runtime
-└── scripts
-    ├── generate-ballast.mjs            ← creates simulated heavy dependencies
-    ├── clean-handlers.mjs              ← removes generated handlers before rebuild
-    └── erase-generated-dev-state.mjs   ← full demo reset for generated dev artifacts
+demo/
+├── page-router
+│   ├── pages
+│   │   ├── docs
+│   │   │   ├── generated-handlers      ← auto-generated heavy page handlers
+│   │   │   └── [...slug].tsx           ← public light catch-all page
+│   │   ├── 404.tsx                     ← dev-only retry workaround
+│   │   ├── _app.tsx                    ← shared layout shell
+│   │   └── index.tsx                   ← landing page with page listing
+│   ├── config-variants                 ← source-of-truth demo variant configs
+│   ├── content                         ← placeholder; MDX lives in shared docs content
+│   ├── lib
+│   │   ├── content.ts                  ← shared content discovery helpers
+│   │   ├── home-page.tsx               ← shared landing page content
+│   │   ├── language-switch.tsx         ← locale switch preserving the slug
+│   │   ├── locale-utils.ts             ← locale parsing helpers
+│   │   ├── mdx-runtime.tsx             ← client-side MDX evaluation runtime
+│   │   └── shell.tsx                   ← shared navigation shell
+│   └── scripts
+│       ├── clean-handlers.mjs          ← removes generated handlers before rebuild
+│       └── erase-generated-dev-state.mjs ← full demo reset for generated dev artifacts
+└── shared
+    └── docs-content
+        └── pages                       ← shared multi-locale MDX content
+            ├── getting-started
+            │   ├── en.mdx              ← light English content
+            │   └── de.mdx              ← light German content
+            ├── tutorial
+            │   ├── en.mdx              ← light English content
+            │   └── de.mdx              ← light German content
+            ├── interactive
+            │   ├── en.mdx              ← heavy English content
+            │   └── de.mdx              ← heavy German content
+            └── dashboard
+                ├── en.mdx              ← heavy English content
+                └── de.mdx              ← heavy German content
 ```

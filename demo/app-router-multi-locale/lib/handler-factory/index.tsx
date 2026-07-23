@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from 'react';
+import { Callout } from '@next-slug-splitter/ballast-kit/callout';
 import { MdxContent } from '../mdx-runtime';
-import { Callout } from '../components/callout';
 import {
   runtimeTrait,
   type RuntimeConfig,
@@ -10,13 +10,15 @@ import {
 /**
  * Map of component names to their React implementations.
  *
- * Keys are the tag names used in MDX source (e.g. `<Counter />`), values
+ * Keys are the tag names used in MDX source (e.g. `<ExamplePreview />`), values
  * are the React component that renders them.
  */
 type MDXComponentProps = Record<string, unknown> & {
+  /** Nested MDX children passed through custom components. */
   children?: ReactNode;
 };
 
+/** Component override map injected into the MDX runtime. */
 type MDXComponentMap = Record<string, ComponentType<MDXComponentProps>>;
 
 /**
@@ -41,9 +43,17 @@ type LoadableEntry = RuntimeConfig & {
 type LoadableRegistrySubset = Record<string, LoadableEntry>;
 
 /**
+ * Full loadable component registry available to an unsplit MDX page.
+ *
+ * The heavy baseline uses this shape because it intentionally keeps every
+ * loadable component reachable from the catch-all route.
+ */
+type LoadableRegistry = Record<string, LoadableEntry>;
+
+/**
  * Props injected by Next.js into a generated handler page.
  *
- * @property code — Pre-compiled MDX code produced by the shared route module.
+ * @property code — Pre-compiled MDX code produced by the route data loader.
  * @property slug — Route slug segments identifying the content page.
  */
 type HandlerPageProps = {
@@ -62,6 +72,16 @@ export type HandlerPageFactoryInput<T> = {
 };
 
 /**
+ * Input to the neutral page factory used by unsplit baseline pages.
+ *
+ * @property loadableRegistry — Full component registry available to the page,
+ *           keyed by the tag name used in MDX source.
+ */
+export type PageFactoryInput<T> = {
+  loadableRegistry: T;
+};
+
+/**
  * Lightweight components always available in the MDX component scope.
  *
  * These components may be captured from MDX, but the demo processor omits them
@@ -72,11 +92,28 @@ const mdxScopeComponents: MDXComponentMap = {
   Callout
 };
 
+/**
+ * Check whether a registry entry declares a runtime trait.
+ *
+ * @param entry - Loadable registry entry to inspect.
+ * @param runtimeTraitKey - Runtime trait to check for.
+ * @returns `true` when the entry includes the requested trait.
+ */
 const hasRuntimeTrait = (
   entry: LoadableEntry,
   runtimeTraitKey: RuntimeTrait
 ): boolean => entry.runtimeTraits?.includes(runtimeTraitKey) ?? false;
 
+/**
+ * Wrap a loadable MDX component according to its runtime traits.
+ *
+ * The demo uses this to make selected/generated components visually obvious
+ * without changing the MDX source. Components without wrapper or selection
+ * traits are returned unchanged.
+ *
+ * @param entry - Loadable registry entry containing the component and traits.
+ * @returns React component ready to inject into the MDX component scope.
+ */
 const enhanceComponent = (
   entry: LoadableEntry
 ): ComponentType<MDXComponentProps> => {
@@ -159,15 +196,41 @@ const enhanceComponent = (
  * and closes over them, so the returned page component renders MDX content
  * with the correct component overrides without any runtime registry lookup.
  *
- * The returned component is server-safe for the App Router demo: the MDX
- * evaluation itself stays hook-free, while interactive leaf components opt
- * into client execution individually via `'use client'`.
+ * The returned component stays router-neutral for the demos: generated
+ * handlers import only the component subset captured from that route's MDX.
+ *
+ * @param input - Handler factory input.
+ * @param input.loadableRegistrySubset - Components needed by this handler.
+ * @returns Page component that renders compiled MDX with scoped components.
  */
 export function createHandlerPageFromRuntime<T extends LoadableRegistrySubset>({
   loadableRegistrySubset
 }: HandlerPageFactoryInput<T>) {
+  return createPageFromRuntime({
+    loadableRegistry: loadableRegistrySubset
+  });
+}
+
+/**
+ * Create a page component bound to a loadable component registry.
+ *
+ * The factory extracts the concrete React components from the registry and
+ * closes over them, so the returned page component renders compiled MDX with
+ * the correct component overrides without any runtime registry lookup.
+ *
+ * This neutral alias is useful for unsplit baseline pages, where the registry
+ * is intentionally the full catch-all component scope rather than a captured
+ * splitter subset.
+ *
+ * @param input - MDX page factory input.
+ * @param input.loadableRegistry - Components available to the MDX page.
+ * @returns Page component that renders compiled MDX with scoped components.
+ */
+export function createPageFromRuntime<T extends LoadableRegistry>({
+  loadableRegistry
+}: PageFactoryInput<T>) {
   const loadableComponents: MDXComponentMap = Object.fromEntries(
-    Object.entries(loadableRegistrySubset).map(([key, entry]) => [
+    Object.entries(loadableRegistry).map(([key, entry]) => [
       key,
       enhanceComponent(entry)
     ])

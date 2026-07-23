@@ -5,8 +5,8 @@
  * The route-owned App contract imports it at module top level inside the App
  * server graph, so only page-safe helpers should live here.
  *
- * The heavier MDX compilation path now lives in `content-compiler.ts`, which
- * the route contract loads only when it actually needs page data.
+ * The heavier MDX compilation path lives in `content-compiler.ts`, which the
+ * heavy baseline loads only when it actually needs page data.
  */
 
 import { readdir } from 'node:fs/promises';
@@ -18,8 +18,14 @@ import { isSupportedLocale, type SupportedLocale } from './locale-utils';
 // Paths
 // ---------------------------------------------------------------------------
 
-/** Absolute path to the directory containing MDX content pages. */
-const CONTENT_DIR = path.join(process.cwd(), 'content', 'pages');
+/** Absolute path to the shared directory containing localized MDX pages. */
+const CONTENT_DIR = path.join(
+  process.cwd(),
+  '..',
+  'shared',
+  'docs-content',
+  'pages'
+);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,9 +44,9 @@ type ContentStaticParamEntry = {
 /**
  * Recursively collect all `.mdx` files under `dir`.
  *
- * Returns paths relative to `dir` (e.g. `"getting-started.mdx"`,
- * `"guides/advanced.mdx"`), preserving the directory structure that maps
- * directly to URL slug segments.
+ * Returns paths relative to `dir` (e.g. `"getting-started/en.mdx"`,
+ * `"guides/advanced/de.mdx"`), preserving the directory structure that maps
+ * directly to URL slug segments and localized filenames.
  *
  * @param dir - Absolute directory to scan.
  * @param base - Accumulated relative prefix used during recursion.
@@ -137,9 +143,8 @@ const isContentStaticParamEntry = (
  * @param entry - Content static-param entry to sort.
  * @returns Stable locale/slug sort key.
  */
-const toContentStaticParamSortKey = (
-  entry: ContentStaticParamEntry
-): string => `${entry.locale}:${entry.slug.join('/')}`;
+const toContentStaticParamSortKey = (entry: ContentStaticParamEntry): string =>
+  `${entry.locale}:${entry.slug.join('/')}`;
 
 /**
  * Compare two content static-param entries in deterministic locale/slug order.

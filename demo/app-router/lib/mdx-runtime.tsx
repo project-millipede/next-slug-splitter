@@ -7,7 +7,7 @@ import * as jsxRuntime from 'react/jsx-runtime';
  * Props accepted by an MDX content component.
  *
  * MDX components receive a `components` map that overrides the default HTML
- * element renderers with custom React components (e.g. `Counter`, `Chart`).
+ * element renderers with custom React components (e.g. `ExamplePreview`, `FlowComposer`).
  */
 type MDXContentProps = {
   components?: MDXComponentMap;
@@ -16,7 +16,7 @@ type MDXContentProps = {
 /**
  * Map of component names to their React implementations.
  *
- * Keys are the tag names used in MDX source (e.g. `<Counter />`), values
+ * Keys are the tag names used in MDX source (e.g. `<ExamplePreview />`), values
  * are the React component that renders them.
  */
 type MDXComponentMap = Record<string, ComponentType<Record<string, unknown>>>;

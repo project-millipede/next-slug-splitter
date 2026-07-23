@@ -31,8 +31,14 @@ import { definePageDataCompiler } from 'next-slug-splitter/next/page-data-compil
  * App-owned page-data compiler contract for the JavaScript demo variant.
  */
 
-/** Absolute path to the directory containing MDX content pages. */
-const CONTENT_DIR = path.join(process.cwd(), 'content', 'pages');
+/** Absolute path to the shared directory containing localized MDX pages. */
+const CONTENT_DIR = path.join(
+  process.cwd(),
+  '..',
+  'shared',
+  'docs-content',
+  'pages'
+);
 
 /**
  * Compile the MDX content for one slug into an evaluatable IIFE string.
@@ -50,7 +56,7 @@ const CONTENT_DIR = path.join(process.cwd(), 'content', 'pages');
  * @param {string[]} slug Slug segments identifying the content page.
  * @returns {Promise<string>} Bundled executable code consumed by the MDX runtime.
  */
-const compileContentForSlug = async (locale, slug) => {
+export const compileContentForSlug = async (locale, slug) => {
   const filePath = path.join(CONTENT_DIR, ...slug, `${locale}.mdx`);
 
   const result = await esbuild.build({
@@ -75,7 +81,12 @@ const compileContentForSlug = async (locale, slug) => {
     ]
   });
 
-  const code = result.outputFiles[0].text;
+  const [compiledOutputFile] = result.outputFiles;
+  if (compiledOutputFile == null) {
+    throw new Error('Expected esbuild to emit one compiled MDX output file.');
+  }
+
+  const { text: code } = compiledOutputFile;
   return `${code};return Component;`;
 };
 

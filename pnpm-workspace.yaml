@@ -1,0 +1,21 @@
+packages:
+  - demo/app-router
+  - demo/app-router-multi-locale
+  - demo/app-router-multi-locale-heavy
+  - demo/page-router
+  - demo/page-router-heavy
+  - packages/*
+  - integrations/frameworks/*
+  - website
+
+# Intent: make pnpm 11 dependency build-script decisions explicit across the
+# repo instead of repeating them in every demo workspace.
+allowBuilds:
+  # Direct dependency: MDX capture/build tooling; native binary install check.
+  esbuild: false
+  # Transitive dependency from Next.js: optional native image optimizer.
+  sharp: false
+
+patchedDependencies:
+  # Intent: use local Next.js fixes not yet available in the published package.
+  next@16.3.0-canary.31: demo/page-router/patches/next@16.3.0-canary.31.patch

@@ -13,7 +13,14 @@ import mdx from '@mdx-js/esbuild';
 import { globalExternals } from '@fal-works/esbuild-plugin-global-externals';
 import { definePageDataCompiler } from 'next-slug-splitter/next/page-data-compiler';
 
-const CONTENT_DIR = path.join(process.cwd(), 'content', 'pages');
+/** Absolute path to the shared directory containing localized MDX pages. */
+const CONTENT_DIR = path.join(
+  process.cwd(),
+  '..',
+  'shared',
+  'docs-content',
+  'pages'
+);
 
 /**
  * Compile the MDX content for one slug into an evaluatable IIFE string.
@@ -31,7 +38,7 @@ const CONTENT_DIR = path.join(process.cwd(), 'content', 'pages');
  * @param slug Slug segments identifying the content page.
  * @returns Bundled executable code consumed by the MDX runtime.
  */
-const compileContentForSlug = async (
+export const compileContentForSlug = async (
   locale: 'en' | 'de',
   slug: string[]
 ): Promise<string> => {
@@ -59,7 +66,12 @@ const compileContentForSlug = async (
     ]
   });
 
-  const code = result.outputFiles[0].text;
+  const [compiledOutputFile] = result.outputFiles;
+  if (compiledOutputFile == null) {
+    throw new Error('Expected esbuild to emit one compiled MDX output file.');
+  }
+
+  const { text: code } = compiledOutputFile;
   return `${code};return Component;`;
 };
 

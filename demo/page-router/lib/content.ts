@@ -6,7 +6,7 @@
  *
  * - `getAllContentSlugs` — walks the content directory tree and returns
  *   every MDX file as a Next.js static-path entry.
- * - `compileContentForSlug` — compiles a single MDX file into an IIFE
+ * - `compileContentForSlug` — compiles a single localized MDX file into an IIFE
  *   string that the client-side `MdxContent` runtime can evaluate.
  *
  * The MDX compilation uses esbuild with the `@mdx-js/esbuild` plugin.
@@ -22,20 +22,34 @@ import esbuild from 'esbuild';
 import mdx from '@mdx-js/esbuild';
 import { globalExternals } from '@fal-works/esbuild-plugin-global-externals';
 
+import { isSupportedLocale, type SupportedLocale } from './locale-utils';
+
 // ---------------------------------------------------------------------------
 // Paths
 // ---------------------------------------------------------------------------
 
-/** Absolute path to the directory containing MDX content pages. */
-const CONTENT_DIR = path.join(process.cwd(), 'content', 'pages');
+/** Absolute path to the shared directory containing localized MDX pages. */
+const CONTENT_DIR = path.join(
+  process.cwd(),
+  '..',
+  'shared',
+  'docs-content',
+  'pages'
+);
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-/** A single entry returned by `getStaticPaths` for the catch-all route. */
+/**
+ * A single localized entry returned by `getStaticPaths` for the catch-all route.
+ *
+ * The shared content tree mirrors the App Router multi-locale demo:
+ * `demo/shared/docs-content/pages/<slug>/<locale>.mdx`.
+ */
 type ContentSlugEntry = {
   params: { slug: string[] };
+  locale: SupportedLocale;
 };
 
 // ---------------------------------------------------------------------------
@@ -45,17 +59,15 @@ type ContentSlugEntry = {
 /**
  * Recursively collect all `.mdx` files under `dir`.
  *
- * Returns paths relative to `dir` (e.g. `"getting-started.mdx"`,
- * `"guides/advanced.mdx"`), preserving the directory structure that
- * maps directly to URL slug segments.
+ * Returns paths relative to `dir` (e.g. `"getting-started/en.mdx"`,
+ * `"guides/advanced/de.mdx"`), preserving the directory structure that
+ * maps directly to URL slug segments and localized filenames.
  *
- * @param dir  — Absolute directory to scan.
- * @param base — Accumulated relative prefix (used during recursion).
+ * @param dir - Absolute directory to scan.
+ * @param base - Accumulated relative prefix used during recursion.
+ * @returns Relative MDX file paths below the content root.
  */
-const collectMdxFiles = async (
-  dir: string,
-  base = ''
-): Promise<string[]> => {
+const collectMdxFiles = async (dir: string, base = ''): Promise<string[]> => {
   const entries = await readdir(dir, { withFileTypes: true });
   const files: string[] = [];
 
@@ -63,7 +75,10 @@ const collectMdxFiles = async (
     const relative = base ? `${base}/${entry.name}` : entry.name;
 
     if (entry.isDirectory()) {
-      const nested = await collectMdxFiles(path.join(dir, entry.name), relative);
+      const nested = await collectMdxFiles(
+        path.join(dir, entry.name),
+        relative
+      );
       files.push(...nested);
     } else if (entry.name.endsWith('.mdx')) {
       files.push(relative);
@@ -74,15 +89,64 @@ const collectMdxFiles = async (
 };
 
 /**
- * Convert a relative MDX file path to slug segments.
+ * Convert a localized relative MDX file path to a static path entry.
  *
- * Strips the `.mdx` extension and splits on `/`, producing the array
- * that Next.js expects for the `[...slug]` catch-all parameter.
+ * The final filename segment must be a supported locale, matching the
+ * App Router multi-locale demo's content shape:
  *
- * @example filePathToSlug('guides/advanced.mdx') // ['guides', 'advanced']
+ * @example filePathToSlugEntry('guides/advanced/de.mdx')
+ * // { locale: 'de', params: { slug: ['guides', 'advanced'] } }
+ *
+ * @param filePath - Relative MDX file path below the content root.
+ * @returns Static path entry for one localized page, or `null` when skipped.
  */
-const filePathToSlug = (filePath: string): string[] =>
-  filePath.replace(/\.mdx$/, '').split('/');
+const filePathToSlugEntry = (filePath: string): ContentSlugEntry | null => {
+  const routeSegments = filePath.replace(/\.mdx$/, '').split('/');
+  const localeSegmentIndex = routeSegments.length - 1;
+  const locale = routeSegments[localeSegmentIndex];
+  const slug = routeSegments.slice(0, localeSegmentIndex);
+
+  if (locale == null || !isSupportedLocale(locale) || slug.length === 0) {
+    return null;
+  }
+
+  return {
+    locale,
+    params: { slug }
+  };
+};
+
+/**
+ * Type guard for successfully parsed content slug entries.
+ *
+ * @param entry - Parsed static-path entry or `null`.
+ * @returns `true` when the entry should be included in `getStaticPaths`.
+ */
+const isContentSlugEntry = (
+  entry: ContentSlugEntry | null
+): entry is ContentSlugEntry => entry != null;
+
+/**
+ * Build the deterministic sort key for a localized content slug.
+ *
+ * @param entry - Content slug entry to sort.
+ * @returns Stable locale/slug sort key.
+ */
+const toContentSlugSortKey = (entry: ContentSlugEntry): string =>
+  `${entry.locale}:${entry.params.slug.join('/')}`;
+
+/**
+ * Compare two localized content slug entries in deterministic locale/slug order.
+ *
+ * @param left - Left content slug entry.
+ * @param right - Right content slug entry.
+ * @returns Locale-sort comparison result.
+ */
+const compareContentSlugEntries = (
+  left: ContentSlugEntry,
+  right: ContentSlugEntry
+): number =>
+  toContentSlugSortKey(left).localeCompare(toContentSlugSortKey(right));
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -93,13 +157,16 @@ const filePathToSlug = (filePath: string): string[] =>
  *
  * Used by `getStaticPaths` in the catch-all docs route to enumerate
  * all available content pages at build time.
+ *
+ * @returns Localized static-path entries for docs pages.
  */
 export const getAllContentSlugs = async (): Promise<ContentSlugEntry[]> => {
   const files = await collectMdxFiles(CONTENT_DIR);
 
-  return files.map(file => ({
-    params: { slug: filePathToSlug(file) }
-  }));
+  return files
+    .map(filePathToSlugEntry)
+    .filter(isContentSlugEntry)
+    .sort(compareContentSlugEntries);
 };
 
 /**
@@ -115,11 +182,15 @@ export const getAllContentSlugs = async (): Promise<ContentSlugEntry[]> => {
  * bundled into the compiled output. This keeps the per-page payload small
  * and avoids duplicate React instances.
  *
- * @param slug — Slug segments identifying the content page (e.g. `['getting-started']`).
+ * @param locale - Locale identifying the localized content file.
+ * @param slug - Slug segments identifying the content page.
  * @returns Compiled MDX code as a self-contained IIFE string.
  */
-export const compileContentForSlug = async (slug: string[]): Promise<string> => {
-  const filePath = path.join(CONTENT_DIR, ...slug) + '.mdx';
+export const compileContentForSlug = async (
+  locale: SupportedLocale,
+  slug: string[]
+): Promise<string> => {
+  const filePath = path.join(CONTENT_DIR, ...slug, `${locale}.mdx`);
 
   const result = await esbuild.build({
     entryPoints: [filePath],
@@ -149,6 +220,11 @@ export const compileContentForSlug = async (slug: string[]): Promise<string> => 
     ]
   });
 
-  const code = result.outputFiles![0].text;
+  const [compiledOutputFile] = result.outputFiles ?? [];
+  if (compiledOutputFile == null) {
+    throw new Error('Expected esbuild to emit one compiled MDX output file.');
+  }
+
+  const { text: code } = compiledOutputFile;
   return `${code};return Component;`;
 };

@@ -55,7 +55,12 @@ const compileContentForSlug = async (slug: string[]): Promise<string> => {
     ]
   });
 
-  const code = result.outputFiles[0].text;
+  const [compiledOutputFile] = result.outputFiles;
+  if (compiledOutputFile == null) {
+    throw new Error('Expected esbuild to emit one compiled MDX output file.');
+  }
+
+  const { text: code } = compiledOutputFile;
   return `${code};return Component;`;
 };
 

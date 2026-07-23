@@ -3,10 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.1.1",
   "scripts": {
     "clean": "rimraf dist && rimraf .next",
-    "generate:ballast": "node scripts/generate-ballast.mjs",
+    "generate:ballast": "pnpm --filter @next-slug-splitter/ballast-kit generate",
     "clean:handlers": "node scripts/clean-handlers.mjs",
     "clean:all": "node scripts/erase-generated-dev-state.mjs",
     "dev": "pnpm generate:ballast && next dev",
@@ -18,7 +17,7 @@
     "analyze:turbo": "pnpm next experimental-analyze"
   },
   "dependencies": {
-    "@demo/components": "workspace:*",
+    "@next-slug-splitter/ballast-kit": "workspace:*",
     "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
     "@mdx-js/esbuild": "^3.1.1",
     "esbuild": "^0.28.0",
@@ -32,7 +31,6 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "rimraf": "^6.1.3",
-    "tsx": "^4.21.0",
     "typescript": "6.0.2"
   }
 }

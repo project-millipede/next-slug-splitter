@@ -11,8 +11,8 @@ import { routeHandlersConfig as typescriptRouteHandlersConfig } from './config-v
  * Stable demo route-handlers config selector.
  *
  * The page-router demo keeps two authoring-style variants, and both center on
- * the same package-module component boundary:
- * `packageModule('@demo/components')`.
+ * the same shared ballast-kit component boundary:
+ * `packageModule('@next-slug-splitter/ballast-kit')`.
  *
  * The TypeScript variant import keeps its `.ts` extension explicitly so the
  * dev-only proxy runtime can resolve the inactive variant correctly when this

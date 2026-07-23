@@ -82,12 +82,13 @@ const homeContentByLocale: Record<
       },
       interactive: {
         title: 'Interactive Demo',
-        description: 'Uses <Counter /> — a stateful React component'
+        description:
+          'Uses <ExamplePreview /> — an interactive preview component'
       },
       dashboard: {
         title: 'Dashboard',
         description:
-          'Uses <Chart /> and <DataTable /> — multiple heavy components'
+          'Uses <FlowComposer /> and <ComponentWorkbench /> — multiple heavy components'
       }
     }
   },
@@ -113,12 +114,13 @@ const homeContentByLocale: Record<
       },
       interactive: {
         title: 'Interaktive Demo',
-        description: 'Nutzt <Counter /> — eine zustandsbehaftete Komponente'
+        description:
+          'Nutzt <ExamplePreview /> — eine interaktive Vorschau-Komponente'
       },
       dashboard: {
         title: 'Dashboard',
         description:
-          'Nutzt <Chart /> und <DataTable /> — mehrere schwere Komponenten'
+          'Nutzt <FlowComposer /> und <ComponentWorkbench /> — mehrere schwere Komponenten'
       }
     }
   }

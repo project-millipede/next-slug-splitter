@@ -3,14 +3,14 @@
 This is a **heavy** page — it uses a custom React component that ships
 additional JavaScript to the browser.
 
-## Live Counter
+## Example preview
 
-The counter below is a stateful React component embedded in MDX:
+The preview below is a stateful React component embedded in MDX:
 
-<Counter />
+<ExamplePreview />
 
-Because this page uses `<Counter />`, next-slug-splitter classifies it as
+Because this page uses `<ExamplePreview />`, next-slug-splitter classifies it as
 a _heavy_ route and generates a dedicated handler that imports only the
-`Counter` component.
+`ExamplePreview` component.
 
 Light pages like "Getting Started" never bundle this component code.

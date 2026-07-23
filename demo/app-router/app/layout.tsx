@@ -39,7 +39,7 @@ const logoLinkStyle: CSSProperties = {
 function SiteNav() {
   return (
     <nav style={navStyle}>
-      <Link href="/" style={logoLinkStyle}>
+      <Link href='/' style={logoLinkStyle}>
         next-slug-splitter demo
       </Link>
     </nav>
@@ -69,7 +69,7 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang='en'>
       <body>
         <PageShell>{children}</PageShell>
       </body>

@@ -7,7 +7,7 @@ import * as jsxRuntime from 'react/jsx-runtime';
  * Props accepted by an MDX content component.
  *
  * MDX components receive a `components` map that overrides the default HTML
- * element renderers with custom React components (e.g. `Counter`, `Chart`).
+ * element renderers with custom React components (e.g. `ExamplePreview`, `FlowComposer`).
  */
 type MDXContentProps = {
   components?: MDXComponentMap;
@@ -16,7 +16,7 @@ type MDXContentProps = {
 /**
  * Map of component names to their React implementations.
  *
- * Keys are the tag names used in MDX source (e.g. `<Counter />`), values
+ * Keys are the tag names used in MDX source (e.g. `<ExamplePreview />`), values
  * are the React component that renders them.
  */
 type MDXComponentMap = Record<string, ComponentType<Record<string, unknown>>>;
@@ -47,6 +47,9 @@ type MDXModuleResult = {
  * The bundled code expects `React`, `ReactDOM`, and `_jsx_runtime` as globals.
  * Injected via `new Function` arguments. The single assertion at this
  * boundary is unavoidable — dynamic eval returns an untyped result.
+ *
+ * @param code - Pre-compiled MDX module code.
+ * @returns Evaluated MDX module exports.
  */
 const evaluateMdx = (code: string): MDXModuleResult => {
   // eslint-disable-next-line no-new-func
@@ -54,6 +57,9 @@ const evaluateMdx = (code: string): MDXModuleResult => {
   return fn(React, ReactDOM, jsxRuntime) as MDXModuleResult;
 };
 
+/**
+ * Render compiled MDX code with optional component overrides.
+ */
 export const MdxContent = ({ code, components }: Props): ReactNode => {
   const Content = useMemo<ComponentType<MDXContentProps>>(() => {
     return evaluateMdx(code).default;
