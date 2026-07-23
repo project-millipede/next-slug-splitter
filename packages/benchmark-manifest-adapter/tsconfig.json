@@ -1,0 +1,4 @@
+{
+  "extends": "../../tsconfig.node-tool.base.json",
+  "include": ["src/**/*.ts", "tsup.config.ts"]
+}
