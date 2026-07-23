@@ -64,13 +64,13 @@ iframe request supplies the byte sizes and duration.
 
 ### Reading the Results
 
-| Result | Browser source | Meaning |
-| --- | --- | --- |
-| Payload identity | Manifest `payloadChunk` plus an exact Resource Timing pathname match | The one build-selected route-specific JavaScript resource. |
-| Encoded JS | `PerformanceResourceTiming.encodedBodySize` | Bytes in the transferred JavaScript representation before HTTP content decoding. |
-| Decoded JS | `PerformanceResourceTiming.decodedBodySize` | JavaScript bytes after HTTP content decoding, before parsing or execution. |
-| Load duration | `PerformanceResourceTiming.duration` | Duration of the same selected JavaScript request. |
-| Overall measured time | `performance.now()` around the comparison | Orchestration wall time for the sequential splitter and baseline measurements. |
+| Result                | Browser source                                                       | Meaning                                                                          |
+| --------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Payload identity      | Manifest `payloadChunk` plus an exact Resource Timing pathname match | The one build-selected route-specific JavaScript resource.                       |
+| Encoded JS            | `PerformanceResourceTiming.encodedBodySize`                          | Bytes in the transferred JavaScript representation before HTTP content decoding. |
+| Decoded JS            | `PerformanceResourceTiming.decodedBodySize`                          | JavaScript bytes after HTTP content decoding, before parsing or execution.       |
+| Load duration         | `PerformanceResourceTiming.duration`                                 | Duration of the same selected JavaScript request.                                |
+| Overall measured time | `performance.now()` around the comparison                            | Orchestration wall time for the sequential splitter and baseline measurements.   |
 
 `encodedBodySize` and `decodedBodySize` are browser API property names. The
 benchmark maps them to its JavaScript-specific `encodedJsByteSize` and
@@ -148,18 +148,18 @@ The website owns the browser-visible facade:
 
 Example mappings:
 
-| Browser-visible website path | Upstream target path |
-| --- | --- |
-| `/zones/page-router-heavy/de` | `/de` |
-| `/zones/page-router-heavy/docs/dashboard` | `/docs/dashboard` |
-| `/zones/page-router-heavy/_next/static/...` | `/_next/static/...` |
+| Browser-visible website path                | Upstream target path |
+| ------------------------------------------- | -------------------- |
+| `/zones/page-router-heavy/de`               | `/de`                |
+| `/zones/page-router-heavy/docs/dashboard`   | `/docs/dashboard`    |
+| `/zones/page-router-heavy/_next/static/...` | `/_next/static/...`  |
 
 The facade has two response paths:
 
-| Request | Facade behavior |
-| --- | --- |
-| Page, RSC, or other non-`_next` request | Uses the normal fetch-based facade, filters unsafe upstream headers, and rewrites textual target URLs into same-origin zone URLs when required. |
-| `GET /_next/...` asset | Attempts Node HTTP raw passthrough, preserving the encoded JavaScript response bytes and their `Content-Encoding`, `Content-Length`, and `Vary` metadata. |
+| Request                                 | Facade behavior                                                                                                                                           |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page, RSC, or other non-`_next` request | Uses the normal fetch-based facade, filters unsafe upstream headers, and rewrites textual target URLs into same-origin zone URLs when required.           |
+| `GET /_next/...` asset                  | Attempts Node HTTP raw passthrough, preserving the encoded JavaScript response bytes and their `Content-Encoding`, `Content-Length`, and `Vary` metadata. |
 
 Raw passthrough is used only when the upstream response can be forwarded
 unambiguously. Redirects or ambiguous `Content-Encoding` metadata fall back to
@@ -199,11 +199,11 @@ facade prefix during manifest generation. It does not configure Next.js
 
 Run commands from the repository root.
 
-| Goal | Command |
-| --- | --- |
-| Build and start production targets with the website in development mode | `pnpm --dir website benchmark:local:dev` |
-| Build the complete local benchmark stack | `pnpm --dir website benchmark:local:build` |
-| Start the already-built stack entirely in production mode | `pnpm --dir website benchmark:local:start` |
+| Goal                                                                        | Command                                                |
+| --------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Build and start production targets with the website in development mode     | `pnpm --dir website benchmark:local:dev`               |
+| Build the complete local benchmark stack                                    | `pnpm --dir website benchmark:local:build`             |
+| Start the already-built stack entirely in production mode                   | `pnpm --dir website benchmark:local:start`             |
 | Start already-built production targets with the website in development mode | `pnpm --dir website benchmark:local:start:website-dev` |
 
 The main local development command is:
@@ -228,30 +228,9 @@ production chunks and build-generated manifests. The website runs in
 development mode so interface work can iterate quickly. The runner rejects
 occupied ports before startup, and `Ctrl-C` stops all child processes.
 
-### Local Verification
+### Browser Verification
 
-With the complete local stack running, execute:
-
-```bash
-node .github/scripts/verify-benchmark-release.mjs deployments \
-  --website http://127.0.0.1:4000 \
-  --app-splitter http://127.0.0.1:4001 \
-  --app-baseline http://127.0.0.1:4002 \
-  --pages-splitter http://127.0.0.1:4003 \
-  --pages-baseline http://127.0.0.1:4004
-```
-
-The verifier checks:
-
-1. Supported direct and facade routes.
-2. Unsupported-locale behavior.
-3. Manifest schema, route keys, generated handlers, and payload paths.
-4. Direct and facade payload availability.
-5. The facade's `x-benchmark-target` response identity.
-6. Direct and facade manifest equality.
-7. `no-store, no-transform` on measured facade assets.
-
-Then verify the browser-only measurement path:
+With the complete local stack running:
 
 1. Open `/benchmark`.
 2. Select the App Router target.
@@ -265,17 +244,27 @@ Then verify the browser-only measurement path:
 
 ### Deployment Topology
 
-The production website and its linked runnable applications form one
-coordinated release across six Vercel projects:
+The website, its four benchmark targets, and the linked Fumadocs integration
+are independent Vercel projects connected to this Git repository:
 
-| Project | Responsibility |
-| --- | --- |
-| Website | Benchmark interface and same-origin facade |
-| App Router splitter zone | Splitter App Router target and manifest |
-| App Router heavy-baseline zone | Unsplit App Router baseline and manifest |
-| Pages Router splitter zone | Splitter Pages Router target and manifest |
-| Pages Router heavy-baseline zone | Unsplit Pages Router baseline and manifest |
-| Fumadocs integration | Public runnable framework integration linked from the website |
+| Root Directory                          | Responsibility                             |
+| --------------------------------------- | ------------------------------------------ |
+| `website`                               | Benchmark interface and same-origin facade |
+| `demo/app-router-multi-locale`          | Splitter App Router target and manifest    |
+| `demo/app-router-multi-locale-heavy`    | Unsplit App Router baseline and manifest   |
+| `demo/page-router`                      | Splitter Pages Router target and manifest  |
+| `demo/page-router-heavy`                | Unsplit Pages Router baseline and manifest |
+| `integrations/frameworks/fumadocs-next` | Runnable Fumadocs integration              |
+
+Configure each Vercel project with its listed Root Directory and `main` as its
+production branch. Vercel Git then installs, builds, and deploys that project
+independently when its production branch changes.
+
+The website itself does not install the root library through `file:`. The
+shared target installation process is documented in
+[Installing the Library for Deployments](../docs/deployment/library-installation.md).
+
+### Target Environment
 
 During every target build, set:
 
@@ -288,61 +277,24 @@ does not set Next.js `basePath`, so direct target previews keep normal routes
 such as `/de` and `/docs/dashboard`, while the website still serves the same
 target under `/zones/page-router-heavy/de`.
 
-Set these env vars on the benchmark project:
+Set these variables on the website project:
 
 - `BENCHMARK_APP_ROUTER_MULTI_LOCALE_ORIGIN`
 - `BENCHMARK_APP_ROUTER_MULTI_LOCALE_HEAVY_ORIGIN`
 - `BENCHMARK_PAGE_ROUTER_ORIGIN`
 - `BENCHMARK_PAGE_ROUTER_HEAVY_ORIGIN`
 
-All four origins must identify targets from the same coordinated release. The
-target deployments continue serving their direct routes at root. Only the
-website exposes `/zones/...` paths.
+Each variable points to the stable production origin of its target project. At
+runtime, the website consumes the targets' manifests, pages, and assets over
+HTTP through the facade. It does not install or build the target application
+source.
 
 Inside the benchmark UI, the browser should only see benchmark URLs such as
 `/zones/app-router-multi-locale/docs/dashboard`. Direct target deployment URLs
 remain useful for inspecting an individual demo app at its normal root.
 
-Do not partially promote a release. A website paired with manifests or chunks
-from another release can produce false failures or invalid comparisons.
-
-### Production Release
-
-`.vercel/` and `vercel.json` have separate responsibilities:
-
-1. `.vercel/` contains machine-local Vercel CLI linkage and remains ignored.
-2. Each `vercel.json` contains repository-owned deployment policy and remains
-   versioned.
-3. Because these files disable automatic Git deployment from `main`, they must
-   be committed together with the workflow that stages, verifies, and promotes
-   the coordinated release.
-
-All six release projects disable automatic Vercel Git deployment from `main`
-in their `vercel.json` files. Pushes to `main` are instead released
-automatically through
-[the benchmark production workflow](../.github/workflows/release-benchmark-production.yml).
-`workflow_dispatch` remains available for explicit retries.
-
-The workflow:
-
-1. Builds the root library and refreshes all `file:` dependency snapshots.
-2. Runs repository validation and tests.
-3. Deploys six immutable candidates without moving production domains.
-4. Verifies the direct benchmark targets, candidate website facade, and
-   Fumadocs routes.
-5. Confirms that `main` still identifies the staged release commit.
-6. Promotes all six verified candidates as one coordinated release.
-7. Verifies production again.
-8. Rolls back any already-promoted project when production promotion or
-   verification fails.
-
-The repository requires:
-
-- Secret `VERCEL_TOKEN`.
-- Variable `VERCEL_ORG_ID`.
-- Six Vercel project-ID variables used by the workflow.
-- A `production` environment used for deployment history, without required
-  reviewers.
+Configure the same variables for Preview when website previews should use
+deployed targets. Local development falls back to ports `4001`-`4004`.
 
 ## Measurement Contract
 
@@ -363,12 +315,12 @@ into a warning or a zero value.
 `PerformanceResourceTiming.responseStatus` is additional validation and
 diagnostic evidence:
 
-| Browser evidence | Benchmark behavior |
-| --- | --- |
-| Finite 2xx status | Continues with the required payload evidence |
-| Finite non-2xx status | Fails the measurement |
-| Status unavailable | Continues only when all required payload evidence remains valid |
-| Intentional light-route zero | Expects no payload status, byte-size, or duration evidence |
+| Browser evidence             | Benchmark behavior                                              |
+| ---------------------------- | --------------------------------------------------------------- |
+| Finite 2xx status            | Continues with the required payload evidence                    |
+| Finite non-2xx status        | Fails the measurement                                           |
+| Status unavailable           | Continues only when all required payload evidence remains valid |
+| Intentional light-route zero | Expects no payload status, byte-size, or duration evidence      |
 
 The status never contributes to encoded size, decoded size, load duration, or
 savings calculations. Navigation and payload statuses come from their
@@ -390,8 +342,10 @@ distinguished by status alone.
    `load`; late dynamic imports are outside the current contract.
 5. Each run is one cache-busted browser observation, not a median or controlled
    laboratory sample.
-6. The HTTP release verifier validates deployment contracts but does not execute
-   the benchmark interface or browser Resource Timing API.
+6. Projects deploy independently. They can represent different commits during
+   a normal rollout or indefinitely when one deployment fails or is skipped.
+   Treat a comparison as valid only when the selected splitter and its
+   corresponding baseline were built from compatible source versions.
 
 The planned path toward user-defined production routes and explicit library
 payload identity is documented in
@@ -408,15 +362,11 @@ payload identity is documented in
 - Build-time payload selection:
   [`packages/benchmark-manifest-adapter/src/payload-manifest.ts`](../packages/benchmark-manifest-adapter/src/payload-manifest.ts)
 - Zone route:
-  [`app/zones/[target]/[[...path]]/route.ts`](<app/zones/[target]/[[...path]]/route.ts>)
+  [`app/zones/[target]/[[...path]]/route.ts`](app/zones/[target]/[[...path]]/route.ts)
 - Fetch-based facade:
   [`lib/benchmark/server/facade.ts`](lib/benchmark/server/facade.ts)
 - Raw asset passthrough:
   [`lib/benchmark/server/raw-asset-passthrough.ts`](lib/benchmark/server/raw-asset-passthrough.ts)
-- Release verifier:
-  [`.github/scripts/verify-benchmark-release.mjs`](../.github/scripts/verify-benchmark-release.mjs)
-- Production workflow:
-  [`.github/workflows/release-benchmark-production.yml`](../.github/workflows/release-benchmark-production.yml)
 - Response-flow diagram:
   [`docs/architecture/facade/raw-passthrough.svg`](../docs/architecture/facade/raw-passthrough.svg)
 - Future generalization:

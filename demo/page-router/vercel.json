@@ -1,8 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "git": {
-    "deploymentEnabled": {
-      "main": false
-    }
-  }
+  "installCommand": "pnpm --dir ../.. run install:library",
+  "buildCommand": "pnpm --filter @next-slug-splitter/benchmark-manifest-adapter build && pnpm run build"
 }

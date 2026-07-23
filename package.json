@@ -13,7 +13,8 @@
     "test": "vitest run --environment node",
     "test:watch": "vitest --environment node",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build",
-    "analyze:turbo": "pnpm next experimental-analyze"
+    "analyze:turbo": "pnpm next experimental-analyze",
+    "install:library": "pnpm install --filter next-slug-splitter --frozen-lockfile --prod=false && pnpm build && pnpm install --frozen-lockfile --prod=false --no-optimistic-repeat-install"
   },
   "dependencies": {
     "@fal-works/esbuild-plugin-global-externals": "^2.1.2",

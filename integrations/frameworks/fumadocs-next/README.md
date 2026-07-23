@@ -9,6 +9,10 @@ layout, source, and rendering model.
 This directory is a repository fixture and production-build benchmark. For the
 library-wide model and configuration reference, see the
 [root README](../../../README.md).
+The repository fixture uses the shared
+[library installation process](../../../docs/deployment/library-installation.md).
+That process is fixture infrastructure rather than a requirement for normal
+Fumadocs applications consuming a published release.
 
 ## Table of Contents
 
@@ -276,8 +280,8 @@ heavy components selected for the current route.
 | [`next.config.ts`](./next.config.ts)                                                 | Composes Fumadocs and `next-slug-splitter`                                  |
 | [`source.config.ts`](./source.config.ts)                                             | Defines the Fumadocs content source                                         |
 | [`route-handlers-config.ts`](./route-handlers-config.ts)                             | Configures the docs target and route contract                               |
-| [`content/docs/index.mdx`](./content/docs/index.mdx)                                 | Provides the documentation integration overview                            |
-| [`content/docs/meta.json`](./content/docs/meta.json)                                 | Controls the documentation sidebar order                                   |
+| [`content/docs/index.mdx`](./content/docs/index.mdx)                                 | Provides the documentation integration overview                             |
+| [`content/docs/meta.json`](./content/docs/meta.json)                                 | Controls the documentation sidebar order                                    |
 | [`handler-processor.ts`](./handler-processor.ts)                                     | Selects heavy MDX components and their imports                              |
 | [`app/docs/[[...slug]]/page.tsx`](./app/docs/[[...slug]]/page.tsx)                   | Owns the public catch-all route                                             |
 | [`app/docs/[[...slug]]/route-contract.ts`](./app/docs/[[...slug]]/route-contract.ts) | Loads Fumadocs page data for authored and generated routes                  |
@@ -289,10 +293,10 @@ heavy components selected for the current route.
 
 Run these commands from the repository root:
 
-| Command                                                                   | Purpose                                              |
-| ------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `pnpm --filter next-slug-splitter-fumadocs-integration dev`               | Prepare generated inputs and start development mode  |
-| `pnpm --filter next-slug-splitter-fumadocs-integration build`             | Create a production build                            |
-| `pnpm --filter next-slug-splitter-fumadocs-integration start`             | Serve the production build                           |
-| `pnpm --filter next-slug-splitter-fumadocs-integration typecheck`         | Regenerate inputs and run the integration typecheck  |
-| `pnpm --filter next-slug-splitter-fumadocs-integration clean`             | Remove generated Fumadocs, handler, and build output |
+| Command                                                           | Purpose                                              |
+| ----------------------------------------------------------------- | ---------------------------------------------------- |
+| `pnpm --filter next-slug-splitter-fumadocs-integration dev`       | Prepare generated inputs and start development mode  |
+| `pnpm --filter next-slug-splitter-fumadocs-integration build`     | Create a production build                            |
+| `pnpm --filter next-slug-splitter-fumadocs-integration start`     | Serve the production build                           |
+| `pnpm --filter next-slug-splitter-fumadocs-integration typecheck` | Regenerate inputs and run the integration typecheck  |
+| `pnpm --filter next-slug-splitter-fumadocs-integration clean`     | Remove generated Fumadocs, handler, and build output |
