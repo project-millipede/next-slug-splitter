@@ -7,6 +7,27 @@ name: Release benchmark production
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/scripts/verify-benchmark-release.mjs'
+      - '.github/workflows/release-benchmark-production.yml'
+      - 'demo/app-router-multi-locale/**'
+      - 'demo/app-router-multi-locale-heavy/**'
+      - 'demo/page-router/**'
+      - 'demo/page-router-heavy/**'
+      - 'demo/shared/**'
+      - 'packages/**'
+      - 'src/**'
+      - 'website/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig*.json'
+      - 'tsup.config.ts'
+      - 'vitest.config.ts'
+      - '!**/*.md'
 
 permissions:
   contents: read
@@ -110,11 +131,23 @@ jobs:
           pnpm --filter @next-slug-splitter/benchmark-manifest-adapter build
           node .github/scripts/verify-benchmark-release.mjs file-dependencies
 
+      - name: Prepare and type-check Fumadocs generated sources
+        run: pnpm --filter next-slug-splitter-fumadocs-integration typecheck
+
       - name: Validate the workspace
         run: |
           pnpm typecheck
           pnpm typecheck:workspace
           pnpm test
+
+      - name: Confirm main has not moved before staging
+        run: |
+          git fetch origin main --depth=1
+
+          if [[ "$(git rev-parse FETCH_HEAD)" != "$GITHUB_SHA" ]]; then
+            echo '::error::main changed before staging. The newer push will create the release candidate.'
+            exit 1
+          fi
 
       - name: Stage and verify all five Vercel projects
         id: stage
