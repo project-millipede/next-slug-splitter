@@ -458,7 +458,7 @@ jobs:
     name: Promote verified candidates
     needs: stage
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     environment:
       name: production
       url: https://next-splitter.com
@@ -566,19 +566,29 @@ jobs:
             echo "Verified Fumadocs deployment at $deployment_url."
           }
 
-          promoted_projects=()
+          # Promotion and rollback mutate routing before the CLI's default
+          # status poll. Request each mutation asynchronously, then treat the
+          # independently inspected production alias as the source of truth.
+          readonly PRODUCTION_ALIAS_TIMEOUT_SECONDS=180
+          readonly PRODUCTION_ALIAS_POLL_INTERVAL_SECONDS=5
+
+          # Record a project before its promotion request because the request
+          # can succeed even when the CLI subsequently returns a failure.
+          attempted_projects=()
 
           inspect_production_url() {
             local name="$1"
             local inspection_file="$RUNNER_TEMP/$name-current.json"
 
-            VERCEL_PROJECT_ID="${project_ids[$name]}" \
+            if ! VERCEL_PROJECT_ID="${project_ids[$name]}" \
               vercel \
                 inspect "${production_origins[$name]}" \
-                --format=json \
-                --scope="$VERCEL_ORG_ID" \
-                --token="$VERCEL_TOKEN" \
-                > "$inspection_file"
+                  --format=json \
+                  --scope="$VERCEL_ORG_ID" \
+                  --token="$VERCEL_TOKEN" \
+                  > "$inspection_file"; then
+              return 1
+            fi
 
             node -e '
               const { readFileSync } = require("node:fs");
@@ -590,29 +600,79 @@ jobs:
             ' "$inspection_file"
           }
 
-          rollback_promoted_projects() {
+          wait_for_production_url() {
+            local name="$1"
+            local expected_url="$2"
+            local deadline=$((SECONDS + PRODUCTION_ALIAS_TIMEOUT_SECONDS))
+            local current_url
+            local observed_url='<unavailable>'
+
+            while ((SECONDS < deadline)); do
+              if current_url="$(inspect_production_url "$name")"; then
+                observed_url="$current_url"
+
+                if [[ "$observed_url" == "$expected_url" ]]; then
+                  echo "Verified $name production at $expected_url."
+                  return 0
+                fi
+              fi
+
+              sleep "$PRODUCTION_ALIAS_POLL_INTERVAL_SECONDS"
+            done
+
+            echo "::error::$name production did not converge to $expected_url. Last observed deployment: $observed_url."
+            return 1
+          }
+
+          restore_previous_deployment() {
+            local name="$1"
+            local previous_url="${previous_urls[$name]}"
+
+            # Always request compensation. An accepted promotion may still be
+            # in flight even while the production alias shows its prior value.
+            if ! VERCEL_PROJECT_ID="${project_ids[$name]}" \
+              vercel \
+                rollback "$previous_url" \
+                  --yes \
+                  --timeout=0 \
+                  --scope="$VERCEL_ORG_ID" \
+                  --token="$VERCEL_TOKEN"; then
+              echo "::warning::The $name rollback request returned a non-zero status. Verifying the production alias before declaring failure."
+            fi
+
+            wait_for_production_url "$name" "$previous_url"
+          }
+
+          rollback_attempted_projects() {
             local exit_code="$?"
+            local rollback_failed=0
             trap - ERR
             set +e
 
-            echo '::error::Promotion or production verification failed. Restoring prior deployments.'
+            if ((${#attempted_projects[@]} == 0)); then
+              echo '::error::Production verification failed before any promotion was attempted.'
+              exit "$exit_code"
+            fi
 
-            for ((index=${#promoted_projects[@]} - 1; index >= 0; index -= 1)); do
-              local name="${promoted_projects[$index]}"
+            echo '::error::Promotion or production verification failed. Restoring every deployment whose promotion was attempted.'
 
-              VERCEL_PROJECT_ID="${project_ids[$name]}" \
-                vercel \
-                  rollback "${previous_urls[$name]}" \
-                  --yes \
-                  --scope="$VERCEL_ORG_ID" \
-                  --token="$VERCEL_TOKEN" \
-                || echo "::error::Automatic rollback failed for $name. Restore ${previous_urls[$name]} manually."
+            for ((index=${#attempted_projects[@]} - 1; index >= 0; index -= 1)); do
+              local name="${attempted_projects[$index]}"
+
+              if ! restore_previous_deployment "$name"; then
+                rollback_failed=1
+                echo "::error::Automatic rollback could not verify $name at ${previous_urls[$name]}. Restore it manually."
+              fi
             done
+
+            if ((rollback_failed)); then
+              echo '::error::One or more production aliases could not be verified after rollback.'
+            fi
 
             exit "$exit_code"
           }
 
-          trap rollback_promoted_projects ERR
+          trap rollback_attempted_projects ERR
 
           for name in \
             app-baseline \
@@ -636,13 +696,19 @@ jobs:
             pages-splitter \
             fumadocs \
             website; do
-            VERCEL_PROJECT_ID="${project_ids[$name]}" \
+            attempted_projects+=("$name")
+
+            if ! VERCEL_PROJECT_ID="${project_ids[$name]}" \
               vercel \
                 promote "${candidate_urls[$name]}" \
-                --yes \
-                --scope="$VERCEL_ORG_ID" \
-                --token="$VERCEL_TOKEN"
-            promoted_projects+=("$name")
+                  --yes \
+                  --timeout=0 \
+                  --scope="$VERCEL_ORG_ID" \
+                  --token="$VERCEL_TOKEN"; then
+              echo "::warning::The $name promotion request returned a non-zero status. Verifying the production alias before declaring failure."
+            fi
+
+            wait_for_production_url "$name" "${candidate_urls[$name]}"
           done
 
           node .github/scripts/verify-benchmark-release.mjs deployments \
