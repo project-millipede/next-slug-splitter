@@ -12,11 +12,12 @@ import { fileURLToPath } from 'node:url';
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = path.resolve(SCRIPT_DIRECTORY, '../..');
 
-const DEMO_DIRECTORIES = [
+const FILE_DEPENDENCY_CONSUMER_DIRECTORIES = [
   'demo/app-router-multi-locale',
   'demo/app-router-multi-locale-heavy',
   'demo/page-router',
-  'demo/page-router-heavy'
+  'demo/page-router-heavy',
+  'integrations/frameworks/fumadocs-next'
 ];
 
 const VISIBLE_ROUTE_SLUGS = [
@@ -233,18 +234,24 @@ const findPackageDirectory = entryPath => {
  * and then compares the complete compiled tree before any Vercel build.
  *
  * @returns {void}
- * @throws {Error} When a demo resolves a missing or stale compiled snapshot.
+ * @throws {Error} When a workspace consumer resolves a missing or stale
+ * compiled snapshot.
  */
 const verifyFileDependencies = () => {
   const rootDistDirectory = path.join(REPOSITORY_ROOT, 'dist');
   const rootDistHash = hashDirectory(rootDistDirectory);
 
-  for (const demoDirectory of DEMO_DIRECTORIES) {
-    const absoluteDemoDirectory = path.join(REPOSITORY_ROOT, demoDirectory);
-    const demoRequire = createRequire(
-      path.join(absoluteDemoDirectory, 'package.json')
+  for (
+    const consumerDirectory of FILE_DEPENDENCY_CONSUMER_DIRECTORIES
+  ) {
+    const absoluteConsumerDirectory = path.join(
+      REPOSITORY_ROOT,
+      consumerDirectory
     );
-    const entryPath = demoRequire.resolve('next-slug-splitter');
+    const consumerRequire = createRequire(
+      path.join(absoluteConsumerDirectory, 'package.json')
+    );
+    const entryPath = consumerRequire.resolve('next-slug-splitter');
     const packageDirectory = findPackageDirectory(entryPath);
     const installedDistDirectory = path.join(packageDirectory, 'dist');
     const installedDistHash = hashDirectory(installedDistDirectory);
@@ -252,13 +259,15 @@ const verifyFileDependencies = () => {
     assert.equal(
       installedDistHash,
       rootDistHash,
-      `${demoDirectory} resolves a stale next-slug-splitter file: snapshot.\n` +
+      `${consumerDirectory} resolves a stale next-slug-splitter file: snapshot.\n` +
         `Root dist:      ${rootDistHash}\n` +
         `Installed dist: ${installedDistHash}\n` +
         `Installed path: ${installedDistDirectory}`
     );
 
-    console.log(`Verified ${demoDirectory} file: snapshot (${rootDistHash}).`);
+    console.log(
+      `Verified ${consumerDirectory} file: snapshot (${rootDistHash}).`
+    );
   }
 };
 

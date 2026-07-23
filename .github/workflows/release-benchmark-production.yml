@@ -2,7 +2,7 @@ name: Release benchmark production
 
 # Repository setup:
 # - secret: VERCEL_TOKEN
-# - variables: VERCEL_ORG_ID and the five VERCEL_*_PROJECT_ID values below
+# - variables: VERCEL_ORG_ID and the six VERCEL_*_PROJECT_ID values below
 # - environment: production, with a required reviewer for the promotion gate
 
 on:
@@ -18,6 +18,7 @@ on:
       - 'demo/page-router/**'
       - 'demo/page-router-heavy/**'
       - 'demo/shared/**'
+      - 'integrations/frameworks/fumadocs-next/**'
       - 'packages/**'
       - 'src/**'
       - 'website/**'
@@ -46,11 +47,13 @@ env:
   VERCEL_APP_BASELINE_PROJECT_ID: ${{ vars.VERCEL_APP_BASELINE_PROJECT_ID }}
   VERCEL_PAGES_SPLITTER_PROJECT_ID: ${{ vars.VERCEL_PAGES_SPLITTER_PROJECT_ID }}
   VERCEL_PAGES_BASELINE_PROJECT_ID: ${{ vars.VERCEL_PAGES_BASELINE_PROJECT_ID }}
+  VERCEL_FUMADOCS_PROJECT_ID: ${{ vars.VERCEL_FUMADOCS_PROJECT_ID }}
   WEBSITE_PRODUCTION_ORIGIN: https://next-splitter.com
   APP_SPLITTER_PRODUCTION_ORIGIN: https://next-slug-splitter-app-router-multi.vercel.app
   APP_BASELINE_PRODUCTION_ORIGIN: https://next-slug-splitter-app-router-multi-psi.vercel.app
   PAGES_SPLITTER_PRODUCTION_ORIGIN: https://next-slug-splitter-page-router-demo.vercel.app
   PAGES_BASELINE_PRODUCTION_ORIGIN: https://next-slug-splitter-page-router-heav.vercel.app
+  FUMADOCS_PRODUCTION_ORIGIN: https://next-slug-splitter-fumadocs-integra.vercel.app
 
 jobs:
   stage:
@@ -64,11 +67,13 @@ jobs:
       app_baseline_url: ${{ steps.stage.outputs.app_baseline_url }}
       pages_splitter_url: ${{ steps.stage.outputs.pages_splitter_url }}
       pages_baseline_url: ${{ steps.stage.outputs.pages_baseline_url }}
+      fumadocs_url: ${{ steps.stage.outputs.fumadocs_url }}
       previous_website_url: ${{ steps.stage.outputs.previous_website_url }}
       previous_app_splitter_url: ${{ steps.stage.outputs.previous_app_splitter_url }}
       previous_app_baseline_url: ${{ steps.stage.outputs.previous_app_baseline_url }}
       previous_pages_splitter_url: ${{ steps.stage.outputs.previous_pages_splitter_url }}
       previous_pages_baseline_url: ${{ steps.stage.outputs.previous_pages_baseline_url }}
+      previous_fumadocs_url: ${{ steps.stage.outputs.previous_fumadocs_url }}
 
     steps:
       - name: Check out the selected release commit
@@ -107,6 +112,7 @@ jobs:
             VERCEL_APP_BASELINE_PROJECT_ID
             VERCEL_PAGES_SPLITTER_PROJECT_ID
             VERCEL_PAGES_BASELINE_PROJECT_ID
+            VERCEL_FUMADOCS_PROJECT_ID
           )
 
           for setting_name in "${required_settings[@]}"; do
@@ -149,7 +155,7 @@ jobs:
             exit 1
           fi
 
-      - name: Stage and verify all five Vercel projects
+      - name: Stage and verify all six Vercel projects
         id: stage
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -192,8 +198,6 @@ jobs:
           stage_project() {
             local name="$1"
             local project_id="$2"
-            local zone_path="$3"
-            local manifest_kind="$4"
             local deployment_url_file="$RUNNER_TEMP/$name-candidate-url.txt"
 
             VERCEL_PROJECT_ID="$project_id" vercel \
@@ -202,8 +206,6 @@ jobs:
               --environment=production \
               --token="$VERCEL_TOKEN"
 
-            BENCHMARK_ZONE_PATH="$zone_path" \
-            BENCHMARK_MANIFEST_KIND="$manifest_kind" \
             VERCEL_PROJECT_ID="$project_id" \
               vercel \
                 build \
@@ -236,6 +238,34 @@ jobs:
             echo "Staged $name at ${deployment_urls[$name]}"
           }
 
+          verify_fumadocs_deployment() {
+            local deployment_url="$1"
+            local route_path
+
+            # Fumadocs immutable candidates are deployment-protected.
+            # `vercel curl` authenticates each request without making the
+            # candidate public or mistaking Vercel's login page for the app.
+            for route_path in \
+              /docs \
+              /docs/getting-started \
+              /docs/interactive \
+              /docs/dashboard \
+              /api/search; do
+              VERCEL_PROJECT_ID="$VERCEL_FUMADOCS_PROJECT_ID" \
+                vercel curl "$route_path" \
+                  --deployment="$deployment_url" \
+                  --yes \
+                  -- \
+                  --fail \
+                  --location \
+                  --silent \
+                  --show-error \
+                  --output /dev/null
+            done
+
+            echo "Verified Fumadocs deployment at $deployment_url."
+          }
+
           inspect_production \
             app-splitter \
             "$VERCEL_APP_SPLITTER_PROJECT_ID" \
@@ -253,30 +283,43 @@ jobs:
             "$VERCEL_PAGES_BASELINE_PROJECT_ID" \
             "$PAGES_BASELINE_PRODUCTION_ORIGIN"
           inspect_production \
+            fumadocs \
+            "$VERCEL_FUMADOCS_PROJECT_ID" \
+            "$FUMADOCS_PRODUCTION_ORIGIN"
+          inspect_production \
             website \
             "$VERCEL_WEBSITE_PROJECT_ID" \
             "$WEBSITE_PRODUCTION_ORIGIN"
 
+          BENCHMARK_ZONE_PATH=/zones/app-router-multi-locale \
+          BENCHMARK_MANIFEST_KIND=splitter \
+            stage_project \
+              app-splitter \
+              "$VERCEL_APP_SPLITTER_PROJECT_ID"
+
+          BENCHMARK_ZONE_PATH=/zones/app-router-multi-locale-heavy \
+          BENCHMARK_MANIFEST_KIND=heavy-baseline \
+            stage_project \
+              app-baseline \
+              "$VERCEL_APP_BASELINE_PROJECT_ID"
+
+          BENCHMARK_ZONE_PATH=/zones/page-router \
+          BENCHMARK_MANIFEST_KIND=splitter \
+            stage_project \
+              pages-splitter \
+              "$VERCEL_PAGES_SPLITTER_PROJECT_ID"
+
+          BENCHMARK_ZONE_PATH=/zones/page-router-heavy \
+          BENCHMARK_MANIFEST_KIND=heavy-baseline \
+            stage_project \
+              pages-baseline \
+              "$VERCEL_PAGES_BASELINE_PROJECT_ID"
+
           stage_project \
-            app-splitter \
-            "$VERCEL_APP_SPLITTER_PROJECT_ID" \
-            /zones/app-router-multi-locale \
-            splitter
-          stage_project \
-            app-baseline \
-            "$VERCEL_APP_BASELINE_PROJECT_ID" \
-            /zones/app-router-multi-locale-heavy \
-            heavy-baseline
-          stage_project \
-            pages-splitter \
-            "$VERCEL_PAGES_SPLITTER_PROJECT_ID" \
-            /zones/page-router \
-            splitter
-          stage_project \
-            pages-baseline \
-            "$VERCEL_PAGES_BASELINE_PROJECT_ID" \
-            /zones/page-router-heavy \
-            heavy-baseline
+            fumadocs \
+            "$VERCEL_FUMADOCS_PROJECT_ID"
+
+          verify_fumadocs_deployment "${deployment_urls[fumadocs]}"
 
           VERCEL_PROJECT_ID="$VERCEL_WEBSITE_PROJECT_ID" \
             vercel \
@@ -336,11 +379,13 @@ jobs:
           export app_baseline_url="${deployment_urls[app-baseline]}"
           export pages_splitter_url="${deployment_urls[pages-splitter]}"
           export pages_baseline_url="${deployment_urls[pages-baseline]}"
+          export fumadocs_url="${deployment_urls[fumadocs]}"
           export previous_website_url="${previous_urls[website]}"
           export previous_app_splitter_url="${previous_urls[app-splitter]}"
           export previous_app_baseline_url="${previous_urls[app-baseline]}"
           export previous_pages_splitter_url="${previous_urls[pages-splitter]}"
           export previous_pages_baseline_url="${previous_urls[pages-baseline]}"
+          export previous_fumadocs_url="${previous_urls[fumadocs]}"
 
           node <<'NODE'
           const { writeFileSync } = require('node:fs');
@@ -370,6 +415,10 @@ jobs:
               pagesBaseline: {
                 previous: process.env.previous_pages_baseline_url,
                 candidate: process.env.pages_baseline_url
+              },
+              fumadocs: {
+                previous: process.env.previous_fumadocs_url,
+                candidate: process.env.fumadocs_url
               }
             }
           };
@@ -387,11 +436,13 @@ jobs:
             echo "app_baseline_url=$app_baseline_url"
             echo "pages_splitter_url=$pages_splitter_url"
             echo "pages_baseline_url=$pages_baseline_url"
+            echo "fumadocs_url=$fumadocs_url"
             echo "previous_website_url=$previous_website_url"
             echo "previous_app_splitter_url=$previous_app_splitter_url"
             echo "previous_app_baseline_url=$previous_app_baseline_url"
             echo "previous_pages_splitter_url=$previous_pages_splitter_url"
             echo "previous_pages_baseline_url=$previous_pages_baseline_url"
+            echo "previous_fumadocs_url=$previous_fumadocs_url"
           } >> "$GITHUB_OUTPUT"
 
       - name: Preserve the staged release receipt
@@ -445,11 +496,13 @@ jobs:
           APP_BASELINE_URL: ${{ needs.stage.outputs.app_baseline_url }}
           PAGES_SPLITTER_URL: ${{ needs.stage.outputs.pages_splitter_url }}
           PAGES_BASELINE_URL: ${{ needs.stage.outputs.pages_baseline_url }}
+          FUMADOCS_URL: ${{ needs.stage.outputs.fumadocs_url }}
           PREVIOUS_WEBSITE_URL: ${{ needs.stage.outputs.previous_website_url }}
           PREVIOUS_APP_SPLITTER_URL: ${{ needs.stage.outputs.previous_app_splitter_url }}
           PREVIOUS_APP_BASELINE_URL: ${{ needs.stage.outputs.previous_app_baseline_url }}
           PREVIOUS_PAGES_SPLITTER_URL: ${{ needs.stage.outputs.previous_pages_splitter_url }}
           PREVIOUS_PAGES_BASELINE_URL: ${{ needs.stage.outputs.previous_pages_baseline_url }}
+          PREVIOUS_FUMADOCS_URL: ${{ needs.stage.outputs.previous_fumadocs_url }}
         run: |
           set -Eeuo pipefail
 
@@ -459,6 +512,7 @@ jobs:
             [app-baseline]="$VERCEL_APP_BASELINE_PROJECT_ID"
             [pages-splitter]="$VERCEL_PAGES_SPLITTER_PROJECT_ID"
             [pages-baseline]="$VERCEL_PAGES_BASELINE_PROJECT_ID"
+            [fumadocs]="$VERCEL_FUMADOCS_PROJECT_ID"
           )
           declare -A production_origins=(
             [website]="$WEBSITE_PRODUCTION_ORIGIN"
@@ -466,6 +520,7 @@ jobs:
             [app-baseline]="$APP_BASELINE_PRODUCTION_ORIGIN"
             [pages-splitter]="$PAGES_SPLITTER_PRODUCTION_ORIGIN"
             [pages-baseline]="$PAGES_BASELINE_PRODUCTION_ORIGIN"
+            [fumadocs]="$FUMADOCS_PRODUCTION_ORIGIN"
           )
           declare -A candidate_urls=(
             [website]="$WEBSITE_URL"
@@ -473,6 +528,7 @@ jobs:
             [app-baseline]="$APP_BASELINE_URL"
             [pages-splitter]="$PAGES_SPLITTER_URL"
             [pages-baseline]="$PAGES_BASELINE_URL"
+            [fumadocs]="$FUMADOCS_URL"
           )
           declare -A previous_urls=(
             [website]="$PREVIOUS_WEBSITE_URL"
@@ -480,7 +536,34 @@ jobs:
             [app-baseline]="$PREVIOUS_APP_BASELINE_URL"
             [pages-splitter]="$PREVIOUS_PAGES_SPLITTER_URL"
             [pages-baseline]="$PREVIOUS_PAGES_BASELINE_URL"
+            [fumadocs]="$PREVIOUS_FUMADOCS_URL"
           )
+
+          verify_fumadocs_deployment() {
+            local deployment_url="$1"
+            local route_path
+
+            for route_path in \
+              /docs \
+              /docs/getting-started \
+              /docs/interactive \
+              /docs/dashboard \
+              /api/search; do
+              VERCEL_PROJECT_ID="$VERCEL_FUMADOCS_PROJECT_ID" \
+                vercel curl "$route_path" \
+                  --deployment="$deployment_url" \
+                  --yes \
+                  -- \
+                  --fail \
+                  --location \
+                  --silent \
+                  --show-error \
+                  --output /dev/null
+            done
+
+            echo "Verified Fumadocs deployment at $deployment_url."
+          }
+
           promoted_projects=()
 
           inspect_production_url() {
@@ -534,6 +617,7 @@ jobs:
             app-splitter \
             pages-baseline \
             pages-splitter \
+            fumadocs \
             website; do
             current_url="$(inspect_production_url "$name")"
 
@@ -548,6 +632,7 @@ jobs:
             app-splitter \
             pages-baseline \
             pages-splitter \
+            fumadocs \
             website; do
             VERCEL_PROJECT_ID="${project_ids[$name]}" \
               vercel \
@@ -565,6 +650,8 @@ jobs:
             --pages-splitter "$PAGES_SPLITTER_PRODUCTION_ORIGIN" \
             --pages-baseline "$PAGES_BASELINE_PRODUCTION_ORIGIN"
 
+          verify_fumadocs_deployment "$FUMADOCS_PRODUCTION_ORIGIN"
+
           trap - ERR
 
           {
@@ -574,5 +661,5 @@ jobs:
             echo
             echo "Website: $WEBSITE_PRODUCTION_ORIGIN"
             echo
-            echo 'All five staged deployments and the final production aliases passed the HTTP route, manifest, declared-chunk, and facade wiring checks.'
+            echo 'All six staged deployments and the final production aliases passed their route, manifest, declared-chunk, facade, and Fumadocs checks.'
           } >> "$GITHUB_STEP_SUMMARY"

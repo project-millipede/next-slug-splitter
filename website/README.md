@@ -265,8 +265,8 @@ Then verify the browser-only measurement path:
 
 ### Deployment Topology
 
-The production benchmark is one coordinated release across five Vercel
-projects:
+The production website and its linked runnable applications form one
+coordinated release across six Vercel projects:
 
 | Project | Responsibility |
 | --- | --- |
@@ -275,6 +275,7 @@ projects:
 | App Router heavy-baseline zone | Unsplit App Router baseline and manifest |
 | Pages Router splitter zone | Splitter Pages Router target and manifest |
 | Pages Router heavy-baseline zone | Unsplit Pages Router baseline and manifest |
+| Fumadocs integration | Public runnable framework integration linked from the website |
 
 During every target build, set:
 
@@ -316,7 +317,7 @@ from another release can produce false failures or invalid comparisons.
    be committed together with the workflow that stages, verifies, and promotes
    the coordinated release.
 
-All five benchmark projects disable automatic Git deployment from `main` in
+All six release projects disable automatic Git deployment from `main` in
 their `vercel.json` files. Production is released manually from `main` through
 [the benchmark production workflow](../.github/workflows/release-benchmark-production.yml).
 
@@ -324,10 +325,11 @@ The workflow:
 
 1. Builds the root library and refreshes all `file:` dependency snapshots.
 2. Runs repository validation and tests.
-3. Deploys five immutable candidates without moving production domains.
-4. Verifies the direct targets and candidate website facade.
+3. Deploys six immutable candidates without moving production domains.
+4. Verifies the direct benchmark targets, candidate website facade, and
+   Fumadocs routes.
 5. Waits at the protected production environment gate.
-6. Promotes all five verified candidates as one coordinated release.
+6. Promotes all six verified candidates as one coordinated release.
 7. Verifies production again.
 8. Rolls back any already-promoted project when production promotion or
    verification fails.
@@ -336,7 +338,7 @@ The repository requires:
 
 - Secret `VERCEL_TOKEN`.
 - Variable `VERCEL_ORG_ID`.
-- Five Vercel project-ID variables used by the workflow.
+- Six Vercel project-ID variables used by the workflow.
 - A reviewer on the protected production environment.
 
 ## Measurement Contract
