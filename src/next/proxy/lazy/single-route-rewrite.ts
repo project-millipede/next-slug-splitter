@@ -13,9 +13,9 @@ import type {
  * Check whether one lazy proxy target emits generated handlers below its
  * physical App locale route segment.
  *
- * 1. Pages Router and conventional App output use locale-less destinations.
- * 2. Locale-scoped App output uses locale-prefixed destinations so the rewrite
- *    stays inside the physical locale layout subtree.
+ * 1. Pages Router lazy planning and conventional App output use locale-less
+ *    destinations.
+ * 2. Locale-scoped App output uses locale-prefixed destinations.
  *
  * @param config - Lazy planner config that owns the route.
  * @returns `true` when generated-handler destinations need a route-locale

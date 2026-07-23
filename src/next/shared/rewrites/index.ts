@@ -38,6 +38,23 @@ export type RouteHandlerGeneratedDestinationOptions = {
   generatedHandlersAreLocaleScoped?: boolean;
 };
 
+/**
+ * Router-owned final transformation for one generated-handler destination.
+ *
+ * The stable runtime harness invokes this after applying generated-output
+ * placement rules and supplies the locale of the heavy-route entry being
+ * processed.
+ *
+ * @param rewriteDestination - Generated-handler destination selected by shared
+ * output-placement logic.
+ * @param routeLocale - Locale owned by the heavy-route entry.
+ * @returns Final rewrite destination for the owning router.
+ */
+export type RouteHandlerGeneratedDestinationTransform = (
+  rewriteDestination: string,
+  routeLocale: string
+) => string;
+
 type BuildRouteRewriteEntriesInput = RouteHandlerRewriteTargetConfig &
   RouteHandlerGeneratedDestinationOptions & {
     /**
@@ -97,6 +114,9 @@ const createGeneratedHandlerRewriteDestination = (
  * handler pages.
  * @param generatedHandlersAreLocaleScoped - Whether generated-handler
  * destinations include the route locale as their leading path segment.
+ * @param transformGeneratedHandlerDestination - Optional router-owned final
+ * destination transformation. The builder supplies the owning entry's route
+ * locale.
  * @returns An object containing two sorted and deduplicated rewrite buckets:
  * - `rewrites`: Canonical locale-less paths (default locale) and explicit
  *   `/<locale>/...` paths (non-default locales).
@@ -108,7 +128,8 @@ export const buildRouteRewriteBuckets = (
   localeConfig: LocaleConfig,
   routeBasePath: string,
   handlerRouteSegment = 'generated-handlers',
-  generatedHandlersAreLocaleScoped = false
+  generatedHandlersAreLocaleScoped = false,
+  transformGeneratedHandlerDestination?: RouteHandlerGeneratedDestinationTransform
 ): RouteHandlerRewriteBuckets => {
   const rewrites: Array<RouteHandlerRewrite> = [];
   const rewritesOfDefaultLocale: Array<RouteHandlerRewrite> = [];
@@ -154,11 +175,13 @@ export const buildRouteRewriteBuckets = (
      * 5. App targets with generated output inside the locale subtree include
      *    the route locale in front of this destination after the base path is
      *    built.
+     * 6. A router-specific final transform can then preserve additional
+     *    destination context without changing generated-output placement.
      *
-     * Example, conventional destination:
+     * Example, locale-less destination before a router-specific transform:
      * `/de/docs/a/b` -> `/docs/generated-handlers/a/b/de`
      *
-     * Example, App locale-subtree destination:
+     * Example, locale-prefixed App output destination:
      * `/de/docs/a/b` -> `/de/docs/generated-handlers/a/b/de`
      */
     const destinationBase = createAbsoluteRewriteRoutePath(
@@ -166,24 +189,34 @@ export const buildRouteRewriteBuckets = (
       handlerRouteSegment,
       entry.handlerRelativePath
     );
-    const destination = createGeneratedHandlerRewriteDestination(
-      entry.locale,
-      destinationBase,
-      generatedHandlersAreLocaleScoped
-    );
+    const generatedHandlerDestination =
+      createGeneratedHandlerRewriteDestination(
+        entry.locale,
+        destinationBase,
+        generatedHandlersAreLocaleScoped
+      );
+    let destination = generatedHandlerDestination;
+
+    if (transformGeneratedHandlerDestination != null) {
+      destination = transformGeneratedHandlerDestination(
+        generatedHandlerDestination,
+        entry.locale
+      );
+    }
 
     if (entry.locale === localeConfig.defaultLocale) {
       /**
        * Default locale, canonical URL:
        * 1. Every locale configuration has a default locale.
        * 2. The canonical public source URL is unprefixed.
-       * 3. The destination follows the target's generated-output location.
+       * 3. The destination follows the owning router's required internal route
+       *    shape.
        * 4. The handler path suffix selects the default locale.
        *
-       * Example, conventional destination:
+       * Example, locale-less destination:
        * `/docs/a/b` -> `/docs/generated-handlers/a/b/en`
        *
-       * Example, App locale-subtree destination:
+       * Example, locale-prefixed destination:
        * `/docs/a/b` -> `/en/docs/generated-handlers/a/b/en`
        */
       rewrites.push(createRewrite(sourceRoutePath, destination));
@@ -197,13 +230,14 @@ export const buildRouteRewriteBuckets = (
        * 1. This branch is still handling the default locale.
        * 2. Multi-locale configurations also support a locale-prefixed public
        *    source URL for the default locale.
-       * 3. The destination follows the target's generated-output location.
+       * 3. The destination follows the owning router's required internal route
+       *    shape.
        * 4. The handler path suffix selects the default locale.
        *
-       * Example, conventional destination:
+       * Example, locale-less destination:
        * `/en/docs/a/b` -> `/docs/generated-handlers/a/b/en`
        *
-       * Example, App locale-subtree destination:
+       * Example, locale-prefixed destination:
        * `/en/docs/a/b` -> `/en/docs/generated-handlers/a/b/en`
        */
       rewritesOfDefaultLocale.push(
@@ -215,13 +249,14 @@ export const buildRouteRewriteBuckets = (
     /*
      * Non-default locale:
      * 1. The public source URL is locale-prefixed.
-     * 2. The destination follows the target's generated-output location.
+     * 2. The destination follows the owning router's required internal route
+     *    shape.
      * 3. The handler path suffix selects the non-default locale.
      *
-     * Example, conventional destination:
+     * Example, locale-less destination:
      * `/de/docs/a/b` -> `/docs/generated-handlers/a/b/de`
      *
-     * Example, App locale-subtree destination:
+     * Example, locale-prefixed destination:
      * `/de/docs/a/b` -> `/de/docs/generated-handlers/a/b/de`
      */
     rewrites.push(

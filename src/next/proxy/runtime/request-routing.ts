@@ -235,10 +235,10 @@ const resolveRouteHandlerProxyRewriteDestination = (
 /**
  * Create the URL passed to `NextResponse.rewrite(...)`.
  *
- * 1. Shared rewrite destinations remain locale-less.
- * 2. App Router generated handlers remain locale-less because locale is passed
- *    through generated handler params.
- * 3. Pages Router generated handlers receive the resolved request locale only
+ * 1. Pages Router lazy destinations remain locale-less during planning.
+ * 2. App destinations retain the shape required by their generated-output
+ *    placement.
+ * 3. Pages Router lazy destinations receive the resolved request locale only
  *    at this proxy transport boundary.
  * 4. Single-locale internal sentinels are never prefixed.
  *

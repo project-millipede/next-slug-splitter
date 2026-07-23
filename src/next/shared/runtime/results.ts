@@ -1,6 +1,7 @@
 import {
   buildRouteRewriteBuckets,
   type RouteHandlerGeneratedDestinationOptions,
+  type RouteHandlerGeneratedDestinationTransform,
   type RouteHandlerRewriteTargetConfig
 } from '../rewrites/index';
 
@@ -16,7 +17,9 @@ type RouteHandlerResultConfig = Pick<
 > &
   RouteHandlerRewriteTargetConfig;
 
-type RouteHandlerNextResultOptions = RouteHandlerGeneratedDestinationOptions;
+type RouteHandlerNextResultOptions = RouteHandlerGeneratedDestinationOptions & {
+  transformGeneratedHandlerDestination?: RouteHandlerGeneratedDestinationTransform;
+};
 
 /**
  * Convert one core pipeline result into the Next integration result shape.
@@ -27,6 +30,7 @@ type RouteHandlerNextResultOptions = RouteHandlerGeneratedDestinationOptions;
  *
  * @param config - Resolved target config that owns the result.
  * @param pipelineResult - Core pipeline result for the target.
+ * @param options - Router-owned generated-destination options.
  * @returns Next integration result for one target.
  */
 export const buildRouteHandlerNextResultWithRuntimeHarness = <
@@ -41,7 +45,8 @@ export const buildRouteHandlerNextResultWithRuntimeHarness = <
     config.localeConfig,
     config.routeBasePath,
     config.handlerRouteSegment,
-    options.generatedHandlersAreLocaleScoped
+    options.generatedHandlersAreLocaleScoped,
+    options.transformGeneratedHandlerDestination
   );
 
   return {

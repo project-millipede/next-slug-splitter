@@ -604,14 +604,14 @@ describe('route handlers adapter', () => {
         rewrites: [
           {
             source: '/docs/heavy',
-            destination: '/docs/generated-handlers/heavy/fr',
+            destination: '/fr/docs/generated-handlers/heavy/fr',
             locale: false
           }
         ],
         rewritesOfDefaultLocale: [
           {
             source: '/fr/docs/heavy',
-            destination: '/docs/generated-handlers/heavy/fr',
+            destination: '/fr/docs/generated-handlers/heavy/fr',
             locale: false
           }
         ]
@@ -636,12 +636,12 @@ describe('route handlers adapter', () => {
           },
           {
             source: '/docs/heavy',
-            destination: '/docs/generated-handlers/heavy/fr',
+            destination: '/fr/docs/generated-handlers/heavy/fr',
             locale: false
           },
           {
             source: '/fr/docs/heavy',
-            destination: '/docs/generated-handlers/heavy/fr',
+            destination: '/fr/docs/generated-handlers/heavy/fr',
             locale: false
           }
         ],

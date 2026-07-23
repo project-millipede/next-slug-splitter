@@ -58,7 +58,57 @@ const createAppHeavyAnalysisResult = (
   }
 });
 
+const createPagesHeavyAnalysisResult =
+  (): RouteHandlerLazyHeavyAnalysisResult => ({
+    kind: 'heavy',
+    source: 'fresh',
+    routePath: {
+      filePath: '/repo/content/pages/dashboard/de.mdx',
+      locale: 'de',
+      slugArray: ['dashboard']
+    },
+    plannedHeavyRoute: createPlannedHeavyRoute({
+      locale: 'de',
+      slugArray: ['dashboard'],
+      handlerId: 'de-dashboard',
+      handlerRelativePath: 'dashboard/de',
+      factoryImport: absoluteModule('/repo/dist/create-handler-page.js'),
+      componentEntries: []
+    }),
+    config: {
+      routerKind: 'pages',
+      targetId: 'docs',
+      emitFormat: 'ts',
+      contentLocaleMode: 'filename',
+      handlerRouteParam: TEST_SLUG_CATCH_ALL_ROUTE_PARAM,
+      routeBasePath: '/docs',
+      localeConfig: TEST_MULTI_LOCALE_CONFIG,
+      handlerRouteSegment: 'generated-handlers',
+      routeContract: absoluteModule('/repo/pages/docs/[...slug].tsx'),
+      processorConfig: {
+        processorImport: absoluteModule('/repo/dist/processor.js')
+      },
+      runtime: {
+        mdxCompileOptions: {}
+      },
+      paths: {
+        rootDir: '/repo',
+        contentDir: '/repo/content/pages',
+        generatedDir: '/repo/pages/docs/generated-handlers'
+      }
+    }
+  });
+
 describe('proxy lazy single-route rewrite', () => {
+  test('keeps multi-locale Pages destinations locale-less until proxy transport', () => {
+    expect(
+      resolveRouteHandlerLazyRewriteDestination(
+        '/de/docs/dashboard',
+        createPagesHeavyAnalysisResult()
+      )
+    ).toBe('/docs/generated-handlers/dashboard/de');
+  });
+
   test('keeps conventional App generated-handler destinations locale-less', () => {
     expect(
       resolveRouteHandlerLazyRewriteDestination(
