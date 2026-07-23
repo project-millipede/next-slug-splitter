@@ -182,6 +182,7 @@ jobs:
             VERCEL_PROJECT_ID="$project_id" vercel \
               inspect "$production_origin" \
               --format=json \
+              --scope="$VERCEL_ORG_ID" \
               --token="$VERCEL_TOKEN" \
               > "$inspection_file"
 
@@ -490,6 +491,7 @@ jobs:
               vercel \
                 inspect "${production_origins[$name]}" \
                 --format=json \
+                --scope="$VERCEL_ORG_ID" \
                 --token="$VERCEL_TOKEN" \
                 > "$inspection_file"
 
@@ -517,6 +519,7 @@ jobs:
                 vercel \
                   rollback "${previous_urls[$name]}" \
                   --yes \
+                  --scope="$VERCEL_ORG_ID" \
                   --token="$VERCEL_TOKEN" \
                 || echo "::error::Automatic rollback failed for $name. Restore ${previous_urls[$name]} manually."
             done
@@ -550,6 +553,7 @@ jobs:
               vercel \
                 promote "${candidate_urls[$name]}" \
                 --yes \
+                --scope="$VERCEL_ORG_ID" \
                 --token="$VERCEL_TOKEN"
             promoted_projects+=("$name")
           done
