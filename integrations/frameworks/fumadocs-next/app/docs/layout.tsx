@@ -1,16 +1,8 @@
 import type { ReactNode } from 'react';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
-import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 
+import { baseLayoutOptions } from '../../lib/layout.shared';
 import { source } from '../../lib/source';
-
-const baseLayoutOptions: BaseLayoutProps = {
-  nav: {
-    title: 'Fumadocs Splitter',
-    url: '/docs'
-  },
-  githubUrl: 'https://github.com/project-millipede/next-slug-splitter'
-};
 
 const docsSidebarOptions = {
   /**

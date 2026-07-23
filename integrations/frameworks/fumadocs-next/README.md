@@ -67,11 +67,15 @@ pnpm install
 pnpm --filter next-slug-splitter-fumadocs-integration dev
 ```
 
-Open <http://localhost:3000/docs>.
+Open <http://localhost:3000> for the integration homepage, or open
+<http://localhost:3000/docs> to enter the documentation directly.
 
 The `dev` script clears stale handlers, prepares the shared demo components,
 regenerates the Fumadocs source files, and starts Next.js. No separate
 route-generation command is required.
+
+The homepage remains outside the splitter target. Route-specific splitting
+continues to apply only to the documentation routes below `/docs`.
 
 ## Explore the Example
 

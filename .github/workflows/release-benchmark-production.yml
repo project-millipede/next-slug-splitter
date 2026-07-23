@@ -246,6 +246,7 @@ jobs:
             # `vercel curl` authenticates each request without making the
             # candidate public or mistaking Vercel's login page for the app.
             for route_path in \
+              / \
               /docs \
               /docs/getting-started \
               /docs/interactive \
@@ -544,6 +545,7 @@ jobs:
             local route_path
 
             for route_path in \
+              / \
               /docs \
               /docs/getting-started \
               /docs/interactive \
