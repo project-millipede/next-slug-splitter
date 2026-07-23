@@ -1,0 +1,541 @@
+name: Release benchmark production
+
+# Repository setup:
+# - secret: VERCEL_TOKEN
+# - variables: VERCEL_ORG_ID and the five VERCEL_*_PROJECT_ID values below
+# - environment: production, with a required reviewer for the promotion gate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmark-production
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '24'
+  PNPM_VERSION: '11.1.1'
+  VERCEL_CLI_VERSION: '54.5.0'
+  VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+  VERCEL_WEBSITE_PROJECT_ID: ${{ vars.VERCEL_WEBSITE_PROJECT_ID }}
+  VERCEL_APP_SPLITTER_PROJECT_ID: ${{ vars.VERCEL_APP_SPLITTER_PROJECT_ID }}
+  VERCEL_APP_BASELINE_PROJECT_ID: ${{ vars.VERCEL_APP_BASELINE_PROJECT_ID }}
+  VERCEL_PAGES_SPLITTER_PROJECT_ID: ${{ vars.VERCEL_PAGES_SPLITTER_PROJECT_ID }}
+  VERCEL_PAGES_BASELINE_PROJECT_ID: ${{ vars.VERCEL_PAGES_BASELINE_PROJECT_ID }}
+  WEBSITE_PRODUCTION_ORIGIN: https://next-splitter.com
+  APP_SPLITTER_PRODUCTION_ORIGIN: https://next-slug-splitter-app-router-multi.vercel.app
+  APP_BASELINE_PRODUCTION_ORIGIN: https://next-slug-splitter-app-router-multi-psi.vercel.app
+  PAGES_SPLITTER_PRODUCTION_ORIGIN: https://next-slug-splitter-page-router-demo.vercel.app
+  PAGES_BASELINE_PRODUCTION_ORIGIN: https://next-slug-splitter-page-router-heav.vercel.app
+
+jobs:
+  stage:
+    name: Build, stage, and verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      release_id: ${{ steps.stage.outputs.release_id }}
+      website_url: ${{ steps.stage.outputs.website_url }}
+      app_splitter_url: ${{ steps.stage.outputs.app_splitter_url }}
+      app_baseline_url: ${{ steps.stage.outputs.app_baseline_url }}
+      pages_splitter_url: ${{ steps.stage.outputs.pages_splitter_url }}
+      pages_baseline_url: ${{ steps.stage.outputs.pages_baseline_url }}
+      previous_website_url: ${{ steps.stage.outputs.previous_website_url }}
+      previous_app_splitter_url: ${{ steps.stage.outputs.previous_app_splitter_url }}
+      previous_app_baseline_url: ${{ steps.stage.outputs.previous_app_baseline_url }}
+      previous_pages_splitter_url: ${{ steps.stage.outputs.previous_pages_splitter_url }}
+      previous_pages_baseline_url: ${{ steps.stage.outputs.previous_pages_baseline_url }}
+
+    steps:
+      - name: Check out the selected release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Require the main branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo '::error::Production releases must be started from the main branch.'
+          exit 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable the repository package manager
+        run: |
+          corepack enable
+          test "$(pnpm --version)" = "$PNPM_VERSION"
+
+      - name: Install the official Vercel CLI
+        run: npm install --global "vercel@$VERCEL_CLI_VERSION"
+
+      - name: Validate release configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          required_settings=(
+            VERCEL_TOKEN
+            VERCEL_ORG_ID
+            VERCEL_WEBSITE_PROJECT_ID
+            VERCEL_APP_SPLITTER_PROJECT_ID
+            VERCEL_APP_BASELINE_PROJECT_ID
+            VERCEL_PAGES_SPLITTER_PROJECT_ID
+            VERCEL_PAGES_BASELINE_PROJECT_ID
+          )
+
+          for setting_name in "${required_settings[@]}"; do
+            if [[ -z "${!setting_name-}" ]]; then
+              echo "::error::Missing GitHub secret or variable: $setting_name"
+              exit 1
+            fi
+          done
+
+      - name: Install root library build dependencies
+        run: >-
+          pnpm install
+          --filter next-slug-splitter
+          --frozen-lockfile
+          --prod=false
+          --ignore-scripts
+
+      - name: Build the library and install the complete workspace
+        run: |
+          pnpm build
+          pnpm install --frozen-lockfile --prod=false --ignore-scripts
+          pnpm --filter @next-slug-splitter/benchmark-manifest-adapter build
+          node .github/scripts/verify-benchmark-release.mjs file-dependencies
+
+      - name: Validate the workspace
+        run: |
+          pnpm typecheck
+          pnpm typecheck:workspace
+          pnpm test
+
+      - name: Stage and verify all five Vercel projects
+        id: stage
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          release_id="${GITHUB_SHA:0:12}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          declare -A deployment_urls
+          declare -A previous_urls
+
+          read_deployment_url() {
+            local inspection_file="$1"
+
+            node -e '
+              const { readFileSync } = require("node:fs");
+              const deployment = JSON.parse(readFileSync(process.argv[1], "utf8"));
+              const url = deployment.url.startsWith("http")
+                ? deployment.url
+                : `https://${deployment.url}`;
+              process.stdout.write(url);
+            ' "$inspection_file"
+          }
+
+          inspect_production() {
+            local name="$1"
+            local project_id="$2"
+            local production_origin="$3"
+            local inspection_file="$RUNNER_TEMP/$name-previous.json"
+
+            VERCEL_PROJECT_ID="$project_id" vercel \
+              inspect "$production_origin" \
+              --format=json \
+              --token="$VERCEL_TOKEN" \
+              > "$inspection_file"
+
+            previous_urls["$name"]="$(read_deployment_url "$inspection_file")"
+          }
+
+          stage_project() {
+            local name="$1"
+            local project_id="$2"
+            local zone_path="$3"
+            local manifest_kind="$4"
+            local deployment_url_file="$RUNNER_TEMP/$name-candidate-url.txt"
+
+            VERCEL_PROJECT_ID="$project_id" vercel \
+              pull \
+              --yes \
+              --environment=production \
+              --token="$VERCEL_TOKEN"
+
+            BENCHMARK_ZONE_PATH="$zone_path" \
+            BENCHMARK_MANIFEST_KIND="$manifest_kind" \
+            VERCEL_PROJECT_ID="$project_id" \
+              vercel \
+                build \
+                --prod \
+                --yes \
+                --token="$VERCEL_TOKEN"
+
+            node .github/scripts/verify-benchmark-release.mjs file-dependencies
+
+            VERCEL_PROJECT_ID="$project_id" vercel \
+              deploy \
+              --prebuilt \
+              --prod \
+              --skip-domain \
+              --archive=tgz \
+              --yes \
+              --meta="releaseId=$release_id" \
+              --meta="githubSha=$GITHUB_SHA" \
+              --meta="githubRunId=$GITHUB_RUN_ID" \
+              --token="$VERCEL_TOKEN" \
+              > "$deployment_url_file"
+
+            deployment_urls["$name"]="$(tail -n 1 "$deployment_url_file")"
+
+            if [[ ! "${deployment_urls[$name]}" =~ ^https://.+\.vercel\.app$ ]]; then
+              echo "::error::Vercel returned an invalid candidate URL for $name."
+              exit 1
+            fi
+
+            echo "Staged $name at ${deployment_urls[$name]}"
+          }
+
+          inspect_production \
+            app-splitter \
+            "$VERCEL_APP_SPLITTER_PROJECT_ID" \
+            "$APP_SPLITTER_PRODUCTION_ORIGIN"
+          inspect_production \
+            app-baseline \
+            "$VERCEL_APP_BASELINE_PROJECT_ID" \
+            "$APP_BASELINE_PRODUCTION_ORIGIN"
+          inspect_production \
+            pages-splitter \
+            "$VERCEL_PAGES_SPLITTER_PROJECT_ID" \
+            "$PAGES_SPLITTER_PRODUCTION_ORIGIN"
+          inspect_production \
+            pages-baseline \
+            "$VERCEL_PAGES_BASELINE_PROJECT_ID" \
+            "$PAGES_BASELINE_PRODUCTION_ORIGIN"
+          inspect_production \
+            website \
+            "$VERCEL_WEBSITE_PROJECT_ID" \
+            "$WEBSITE_PRODUCTION_ORIGIN"
+
+          stage_project \
+            app-splitter \
+            "$VERCEL_APP_SPLITTER_PROJECT_ID" \
+            /zones/app-router-multi-locale \
+            splitter
+          stage_project \
+            app-baseline \
+            "$VERCEL_APP_BASELINE_PROJECT_ID" \
+            /zones/app-router-multi-locale-heavy \
+            heavy-baseline
+          stage_project \
+            pages-splitter \
+            "$VERCEL_PAGES_SPLITTER_PROJECT_ID" \
+            /zones/page-router \
+            splitter
+          stage_project \
+            pages-baseline \
+            "$VERCEL_PAGES_BASELINE_PROJECT_ID" \
+            /zones/page-router-heavy \
+            heavy-baseline
+
+          VERCEL_PROJECT_ID="$VERCEL_WEBSITE_PROJECT_ID" \
+            vercel \
+              pull \
+              --yes \
+              --environment=production \
+              --token="$VERCEL_TOKEN"
+
+          BENCHMARK_APP_ROUTER_MULTI_LOCALE_ORIGIN="${deployment_urls[app-splitter]}" \
+          BENCHMARK_APP_ROUTER_MULTI_LOCALE_HEAVY_ORIGIN="${deployment_urls[app-baseline]}" \
+          BENCHMARK_PAGE_ROUTER_ORIGIN="${deployment_urls[pages-splitter]}" \
+          BENCHMARK_PAGE_ROUTER_HEAVY_ORIGIN="${deployment_urls[pages-baseline]}" \
+          VERCEL_PROJECT_ID="$VERCEL_WEBSITE_PROJECT_ID" \
+            vercel \
+              build \
+              --prod \
+              --yes \
+              --token="$VERCEL_TOKEN"
+
+          website_url_file="$RUNNER_TEMP/website-candidate-url.txt"
+          VERCEL_PROJECT_ID="$VERCEL_WEBSITE_PROJECT_ID" \
+            vercel \
+              deploy \
+              --prebuilt \
+              --prod \
+              --skip-domain \
+              --archive=tgz \
+              --yes \
+              --env="BENCHMARK_APP_ROUTER_MULTI_LOCALE_ORIGIN=${deployment_urls[app-splitter]}" \
+              --env="BENCHMARK_APP_ROUTER_MULTI_LOCALE_HEAVY_ORIGIN=${deployment_urls[app-baseline]}" \
+              --env="BENCHMARK_PAGE_ROUTER_ORIGIN=${deployment_urls[pages-splitter]}" \
+              --env="BENCHMARK_PAGE_ROUTER_HEAVY_ORIGIN=${deployment_urls[pages-baseline]}" \
+              --meta="releaseId=$release_id" \
+              --meta="githubSha=$GITHUB_SHA" \
+              --meta="githubRunId=$GITHUB_RUN_ID" \
+              --token="$VERCEL_TOKEN" \
+              > "$website_url_file"
+
+          deployment_urls[website]="$(tail -n 1 "$website_url_file")"
+
+          if [[ ! "${deployment_urls[website]}" =~ ^https://.+\.vercel\.app$ ]]; then
+            echo '::error::Vercel returned an invalid website candidate URL.'
+            exit 1
+          fi
+
+          node .github/scripts/verify-benchmark-release.mjs deployments \
+            --website "${deployment_urls[website]}" \
+            --app-splitter "${deployment_urls[app-splitter]}" \
+            --app-baseline "${deployment_urls[app-baseline]}" \
+            --pages-splitter "${deployment_urls[pages-splitter]}" \
+            --pages-baseline "${deployment_urls[pages-baseline]}"
+
+          lockfile_sha256="$(sha256sum pnpm-lock.yaml | cut -d ' ' -f 1)"
+          export release_id lockfile_sha256
+          export website_url="${deployment_urls[website]}"
+          export app_splitter_url="${deployment_urls[app-splitter]}"
+          export app_baseline_url="${deployment_urls[app-baseline]}"
+          export pages_splitter_url="${deployment_urls[pages-splitter]}"
+          export pages_baseline_url="${deployment_urls[pages-baseline]}"
+          export previous_website_url="${previous_urls[website]}"
+          export previous_app_splitter_url="${previous_urls[app-splitter]}"
+          export previous_app_baseline_url="${previous_urls[app-baseline]}"
+          export previous_pages_splitter_url="${previous_urls[pages-splitter]}"
+          export previous_pages_baseline_url="${previous_urls[pages-baseline]}"
+
+          node <<'NODE'
+          const { writeFileSync } = require('node:fs');
+
+          const receipt = {
+            schemaVersion: 1,
+            releaseId: process.env.release_id,
+            sourceSha: process.env.GITHUB_SHA,
+            lockfileSha256: process.env.lockfile_sha256,
+            deployments: {
+              website: {
+                previous: process.env.previous_website_url,
+                candidate: process.env.website_url
+              },
+              appSplitter: {
+                previous: process.env.previous_app_splitter_url,
+                candidate: process.env.app_splitter_url
+              },
+              appBaseline: {
+                previous: process.env.previous_app_baseline_url,
+                candidate: process.env.app_baseline_url
+              },
+              pagesSplitter: {
+                previous: process.env.previous_pages_splitter_url,
+                candidate: process.env.pages_splitter_url
+              },
+              pagesBaseline: {
+                previous: process.env.previous_pages_baseline_url,
+                candidate: process.env.pages_baseline_url
+              }
+            }
+          };
+
+          writeFileSync(
+            'benchmark-release-receipt.json',
+            `${JSON.stringify(receipt, null, 2)}\n`
+          );
+          NODE
+
+          {
+            echo "release_id=$release_id"
+            echo "website_url=$website_url"
+            echo "app_splitter_url=$app_splitter_url"
+            echo "app_baseline_url=$app_baseline_url"
+            echo "pages_splitter_url=$pages_splitter_url"
+            echo "pages_baseline_url=$pages_baseline_url"
+            echo "previous_website_url=$previous_website_url"
+            echo "previous_app_splitter_url=$previous_app_splitter_url"
+            echo "previous_app_baseline_url=$previous_app_baseline_url"
+            echo "previous_pages_splitter_url=$previous_pages_splitter_url"
+            echo "previous_pages_baseline_url=$previous_pages_baseline_url"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Preserve the staged release receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: benchmark-release-${{ steps.stage.outputs.release_id }}
+          path: benchmark-release-receipt.json
+          if-no-files-found: error
+          retention-days: 30
+
+  promote:
+    name: Promote verified candidates
+    needs: stage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://next-splitter.com
+
+    steps:
+      - name: Check out the verified release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Confirm main has not moved while awaiting approval
+        run: |
+          git fetch origin main --depth=1
+
+          if [[ "$(git rev-parse FETCH_HEAD)" != "$GITHUB_SHA" ]]; then
+            echo '::error::main changed after staging. Start a new release for the latest commit.'
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable the repository package manager
+        run: |
+          corepack enable
+          test "$(pnpm --version)" = "$PNPM_VERSION"
+
+      - name: Install the official Vercel CLI
+        run: npm install --global "vercel@$VERCEL_CLI_VERSION"
+
+      - name: Promote with rollback protection
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          WEBSITE_URL: ${{ needs.stage.outputs.website_url }}
+          APP_SPLITTER_URL: ${{ needs.stage.outputs.app_splitter_url }}
+          APP_BASELINE_URL: ${{ needs.stage.outputs.app_baseline_url }}
+          PAGES_SPLITTER_URL: ${{ needs.stage.outputs.pages_splitter_url }}
+          PAGES_BASELINE_URL: ${{ needs.stage.outputs.pages_baseline_url }}
+          PREVIOUS_WEBSITE_URL: ${{ needs.stage.outputs.previous_website_url }}
+          PREVIOUS_APP_SPLITTER_URL: ${{ needs.stage.outputs.previous_app_splitter_url }}
+          PREVIOUS_APP_BASELINE_URL: ${{ needs.stage.outputs.previous_app_baseline_url }}
+          PREVIOUS_PAGES_SPLITTER_URL: ${{ needs.stage.outputs.previous_pages_splitter_url }}
+          PREVIOUS_PAGES_BASELINE_URL: ${{ needs.stage.outputs.previous_pages_baseline_url }}
+        run: |
+          set -Eeuo pipefail
+
+          declare -A project_ids=(
+            [website]="$VERCEL_WEBSITE_PROJECT_ID"
+            [app-splitter]="$VERCEL_APP_SPLITTER_PROJECT_ID"
+            [app-baseline]="$VERCEL_APP_BASELINE_PROJECT_ID"
+            [pages-splitter]="$VERCEL_PAGES_SPLITTER_PROJECT_ID"
+            [pages-baseline]="$VERCEL_PAGES_BASELINE_PROJECT_ID"
+          )
+          declare -A production_origins=(
+            [website]="$WEBSITE_PRODUCTION_ORIGIN"
+            [app-splitter]="$APP_SPLITTER_PRODUCTION_ORIGIN"
+            [app-baseline]="$APP_BASELINE_PRODUCTION_ORIGIN"
+            [pages-splitter]="$PAGES_SPLITTER_PRODUCTION_ORIGIN"
+            [pages-baseline]="$PAGES_BASELINE_PRODUCTION_ORIGIN"
+          )
+          declare -A candidate_urls=(
+            [website]="$WEBSITE_URL"
+            [app-splitter]="$APP_SPLITTER_URL"
+            [app-baseline]="$APP_BASELINE_URL"
+            [pages-splitter]="$PAGES_SPLITTER_URL"
+            [pages-baseline]="$PAGES_BASELINE_URL"
+          )
+          declare -A previous_urls=(
+            [website]="$PREVIOUS_WEBSITE_URL"
+            [app-splitter]="$PREVIOUS_APP_SPLITTER_URL"
+            [app-baseline]="$PREVIOUS_APP_BASELINE_URL"
+            [pages-splitter]="$PREVIOUS_PAGES_SPLITTER_URL"
+            [pages-baseline]="$PREVIOUS_PAGES_BASELINE_URL"
+          )
+          promoted_projects=()
+
+          inspect_production_url() {
+            local name="$1"
+            local inspection_file="$RUNNER_TEMP/$name-current.json"
+
+            VERCEL_PROJECT_ID="${project_ids[$name]}" \
+              vercel \
+                inspect "${production_origins[$name]}" \
+                --format=json \
+                --token="$VERCEL_TOKEN" \
+                > "$inspection_file"
+
+            node -e '
+              const { readFileSync } = require("node:fs");
+              const deployment = JSON.parse(readFileSync(process.argv[1], "utf8"));
+              const url = deployment.url.startsWith("http")
+                ? deployment.url
+                : `https://${deployment.url}`;
+              process.stdout.write(url);
+            ' "$inspection_file"
+          }
+
+          rollback_promoted_projects() {
+            local exit_code="$?"
+            trap - ERR
+            set +e
+
+            echo '::error::Promotion or production verification failed. Restoring prior deployments.'
+
+            for ((index=${#promoted_projects[@]} - 1; index >= 0; index -= 1)); do
+              local name="${promoted_projects[$index]}"
+
+              VERCEL_PROJECT_ID="${project_ids[$name]}" \
+                vercel \
+                  rollback "${previous_urls[$name]}" \
+                  --yes \
+                  --token="$VERCEL_TOKEN" \
+                || echo "::error::Automatic rollback failed for $name. Restore ${previous_urls[$name]} manually."
+            done
+
+            exit "$exit_code"
+          }
+
+          trap rollback_promoted_projects ERR
+
+          for name in \
+            app-baseline \
+            app-splitter \
+            pages-baseline \
+            pages-splitter \
+            website; do
+            current_url="$(inspect_production_url "$name")"
+
+            if [[ "$current_url" != "${previous_urls[$name]}" ]]; then
+              echo "::error::$name changed after staging. Expected ${previous_urls[$name]}, found $current_url."
+              exit 1
+            fi
+          done
+
+          for name in \
+            app-baseline \
+            app-splitter \
+            pages-baseline \
+            pages-splitter \
+            website; do
+            VERCEL_PROJECT_ID="${project_ids[$name]}" \
+              vercel \
+                promote "${candidate_urls[$name]}" \
+                --yes \
+                --token="$VERCEL_TOKEN"
+            promoted_projects+=("$name")
+          done
+
+          node .github/scripts/verify-benchmark-release.mjs deployments \
+            --website "$WEBSITE_PRODUCTION_ORIGIN" \
+            --app-splitter "$APP_SPLITTER_PRODUCTION_ORIGIN" \
+            --app-baseline "$APP_BASELINE_PRODUCTION_ORIGIN" \
+            --pages-splitter "$PAGES_SPLITTER_PRODUCTION_ORIGIN" \
+            --pages-baseline "$PAGES_BASELINE_PRODUCTION_ORIGIN"
+
+          trap - ERR
+
+          {
+            echo '## Benchmark production release'
+            echo
+            echo "Release: \`${{ needs.stage.outputs.release_id }}\`"
+            echo
+            echo "Website: $WEBSITE_PRODUCTION_ORIGIN"
+            echo
+            echo 'All five staged deployments and the final production aliases passed the HTTP route, manifest, declared-chunk, and facade wiring checks.'
+          } >> "$GITHUB_STEP_SUMMARY"
