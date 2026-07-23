@@ -1,0 +1,33 @@
+{
+  "name": "@next-slug-splitter/mdx-build",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "build": "pnpm typecheck && tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    "./compile-page-data": {
+      "types": "./src/compile-heavy-page-data.ts",
+      "import": "./dist/compile-heavy-page-data.js",
+      "default": "./dist/compile-heavy-page-data.js"
+    },
+    "./create-page-data-compiler": {
+      "types": "./src/heavy-mdx-page-data-compiler.ts",
+      "import": "./dist/heavy-mdx-page-data-compiler.js",
+      "default": "./dist/heavy-mdx-page-data-compiler.js"
+    }
+  },
+  "dependencies": {
+    "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
+    "@mdx-js/esbuild": "^3.1.1",
+    "esbuild": "^0.28.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsup": "^8.5.0",
+    "typescript": "6.0.2"
+  }
+}
