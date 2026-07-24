@@ -193,7 +193,13 @@
 .runButton[data-disabled],
 .runButton:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+}
+
+.runButton[data-running] {
+  border-color: #135f63;
+  background: #eef3f2;
+  color: #135f63;
+  cursor: progress;
 }
 
 .runButton:focus-visible {

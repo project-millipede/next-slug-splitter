@@ -69,19 +69,33 @@ iframe request supplies the byte sizes and duration.
 | Payload identity      | Manifest `payloadChunk` plus an exact Resource Timing pathname match | The one build-selected route-specific JavaScript resource.                       |
 | Encoded JS            | `PerformanceResourceTiming.encodedBodySize`                          | Bytes in the transferred JavaScript representation before HTTP content decoding. |
 | Decoded JS            | `PerformanceResourceTiming.decodedBodySize`                          | JavaScript bytes after HTTP content decoding, before parsing or execution.       |
-| Load duration         | `PerformanceResourceTiming.duration`                                 | Duration of the same selected JavaScript request.                                |
+| Load duration         | `PerformanceResourceTiming.duration`                                 | Single-run duration of the same selected JavaScript request.                     |
 | Overall measured time | `performance.now()` around the comparison                            | Orchestration wall time for the sequential splitter and baseline measurements.   |
+
+#### JavaScript Byte Differences
 
 `encodedBodySize` and `decodedBodySize` are browser API property names. The
 benchmark maps them to its JavaScript-specific `encodedJsByteSize` and
 `decodedJsByteSize` model.
 
-Internal differences use `baseline - splitter`. The interface presents the
+Internal byte differences use `baseline - splitter`. The interface presents the
 splitter relative to the baseline:
 
-- A negative displayed value is a saving.
-- A positive displayed value is a regression.
-- Zero means no observed difference.
+- A negative displayed value is a selected-payload saving.
+- A positive displayed value is a selected-payload increase.
+- Zero means no observed byte difference.
+
+#### Load-Duration Differences
+
+Load-duration differences use the same internal `baseline - splitter`
+calculation and displayed splitter-relative sign:
+
+- **Negative:** Faster in this run.
+- **Positive:** Slower in this run; not necessarily a regression.
+- **Timing varies:** Rerun and use Encoded JS as the steadier payload
+  comparison.
+
+#### Intentional Light-Route Zero
 
 An intentional light-route result of `0 B / 0 ms` means the splitter manifest
 declares no selected route-specific payload. It does not mean that the complete

@@ -49,7 +49,7 @@ export function BenchmarkTable({
         <thead>
           <tr>
             <th>Route</th>
-            <th>Encoded JS / load</th>
+            <th>Encoded JS / load duration</th>
             <th>Difference</th>
             <th>Action</th>
           </tr>
@@ -57,6 +57,7 @@ export function BenchmarkTable({
         <tbody>
           {rows.map(({ route, target, state }) => {
             const rowId = createRowId(route);
+            const routeDisplayName = getRouteDisplayName(route);
             const isSelected = selectedId === rowId;
             const isMeasuring = state.phase === 'measuring';
 
@@ -72,7 +73,7 @@ export function BenchmarkTable({
                         {isSelected ? 'v' : '>'}
                       </span>
                       <div className={styles.routeCopy}>
-                        <strong>{getRouteDisplayName(route)}</strong>
+                        <strong>{routeDisplayName}</strong>
                         <div>
                           <span
                             className={`${styles.kindBadge} ${
@@ -96,8 +97,12 @@ export function BenchmarkTable({
                   </td>
                   <td className={styles.actionCellColumn}>
                     <Button
-                      aria-label={`Measure ${getRouteDisplayName(route)}`}
+                      aria-busy={isMeasuring || undefined}
+                      aria-label={`${
+                        isMeasuring ? 'Measuring' : 'Measure'
+                      } ${routeDisplayName}`}
                       className={styles.runButton}
+                      data-running={isMeasuring ? '' : undefined}
                       disabled={isMeasurementRunning || isMeasuring}
                       focusableWhenDisabled
                       onClick={(event: MouseEvent<HTMLButtonElement>) => {

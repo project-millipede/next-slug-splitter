@@ -1,6 +1,7 @@
 'use client';
 
 import { Meter } from '@base-ui/react/meter';
+import { Popover } from '@base-ui/react/popover';
 
 import {
   calculateDeltaPercent,
@@ -43,6 +44,79 @@ const getEncodedJsTone = (deltaPercent: number | null): string => {
   return styles.encodedJsSavingsLow;
 };
 
+/**
+ * Label load duration and explain its sign and run-to-run variability.
+ *
+ * The popover opens on hover for pointer users and remains available through
+ * focus or click for keyboard and touch users.
+ */
+function LoadDurationLabel() {
+  return (
+    <span className={styles.loadDurationLabel}>
+      Load duration
+      <Popover.Root>
+        <Popover.Trigger
+          aria-label='About load duration measurements'
+          className={styles.loadDurationInfoTrigger}
+          onClick={event => {
+            event.stopPropagation();
+          }}
+          openOnHover
+          type='button'
+        >
+          i
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Positioner
+            className={styles.loadDurationInfoPositioner}
+            sideOffset={8}
+          >
+            <Popover.Popup className={styles.loadDurationInfoPopup}>
+              <Popover.Title className={styles.loadDurationInfoTitle}>
+                Reading load duration
+              </Popover.Title>
+              <ul className={styles.loadDurationInfoList}>
+                <li className={styles.loadDurationInfoItem}>
+                  <span
+                    className={`${styles.loadDurationInfoBadge} ${styles.loadDurationInfoBadgeNegative}`}
+                  >
+                    −
+                  </span>
+                  <p className={styles.loadDurationInfoCopy}>
+                    <strong>Negative</strong> Faster in this run.
+                  </p>
+                </li>
+                <li className={styles.loadDurationInfoItem}>
+                  <span
+                    className={`${styles.loadDurationInfoBadge} ${styles.loadDurationInfoBadgePositive}`}
+                  >
+                    +
+                  </span>
+                  <p className={styles.loadDurationInfoCopy}>
+                    <strong>Positive</strong> Slower in this run; not
+                    necessarily a regression.
+                  </p>
+                </li>
+                <li className={styles.loadDurationInfoItem}>
+                  <span
+                    className={`${styles.loadDurationInfoBadge} ${styles.loadDurationInfoBadgeVariable}`}
+                  >
+                    ≈
+                  </span>
+                  <p className={styles.loadDurationInfoCopy}>
+                    <strong>Timing varies</strong> Rerun and use Encoded JS as
+                    the steadier payload comparison.
+                  </p>
+                </li>
+              </ul>
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
+    </span>
+  );
+}
+
 export function DifferenceCell({
   result
 }: {
@@ -61,7 +135,7 @@ export function DifferenceCell({
           />
         </div>
         <div className={`${styles.metric} ${styles.secondaryMetric}`}>
-          <span>Load duration</span>
+          <LoadDurationLabel />
           <strong>-</strong>
           <small>-</small>
         </div>
@@ -107,7 +181,7 @@ export function DifferenceCell({
         </Meter.Track>
       </Meter.Root>
       <div className={`${styles.metric} ${styles.secondaryMetric}`}>
-        <span>Load duration</span>
+        <LoadDurationLabel />
         <strong>{formatSignedDurationDelta(loadDurationDelta)}</strong>
         <small>{formatSignedPercentDelta(loadDurationDeltaPercent)}</small>
       </div>

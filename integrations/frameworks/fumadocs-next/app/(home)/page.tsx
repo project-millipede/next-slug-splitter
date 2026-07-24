@@ -13,11 +13,11 @@ export default function HomePage() {
         Fumadocs + next-slug-splitter
       </p>
       <h1 className="mt-4 max-w-3xl text-4xl font-bold tracking-tight">
-        Route-specific MDX bundles for Fumadocs.
+        Keep heavy custom components page-specific
       </h1>
       <div className="mt-6 flex flex-wrap items-center justify-center gap-6">
         <Link className="font-medium underline underline-offset-4" href="/docs">
-          Explore the documentation
+          Explore the integration
         </Link>
         <a
           className="text-fd-muted-foreground underline underline-offset-4"
