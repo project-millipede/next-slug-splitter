@@ -1,23 +1,73 @@
 'use client';
 
 import { Meter } from '@base-ui/react/meter';
-import { Progress } from '@base-ui/react/progress';
 
 import {
   sumChunkLoadDurations,
   sumEncodedJsBytes
 } from '../measurement/chunks';
 import { formatBytes, formatDuration } from '../measurement/format';
-import type { RowState } from '../measurement/types';
+import type { MeasurementResult, RowState } from '../measurement/types';
 import styles from './BundleImpact.module.css';
+
+type BundleMeasurement = {
+  encodedJsByteSize: number;
+  loadDurationMs: number;
+};
+
+type BundleImpactMeasurement = {
+  baseline: BundleMeasurement;
+  splitter: BundleMeasurement;
+};
 
 type BundleBarProps = {
   label: string;
-  value: number;
-  loadDuration: number;
+  measurement: BundleMeasurement | null;
   percent: number | null;
   tone: 'baseline' | 'splitter';
-  note?: string;
+};
+
+/**
+ * Longest normal status message rendered below the two meters.
+ *
+ * The same copy remains invisibly present in every state so typography and
+ * available width determine the reserved status height intrinsically.
+ */
+const NO_SELECTED_PAYLOAD_MESSAGE = 'No selected JavaScript payload';
+
+/**
+ * Derive the paired bundle measurements from a completed route result.
+ *
+ * This helper owns the distinction between two states:
+ *
+ * 1. A missing result means the route has not produced a measurement yet and
+ *    returns `null`.
+ * 2. An empty measured chunk collection is valid evidence and produces zero
+ *    bytes and zero duration.
+ *
+ * Keeping that distinction here allows the lower-level sum functions to
+ * continue accepting only measured chunk collections and returning numbers.
+ *
+ * @param result Completed route measurement, when available.
+ * @returns Paired baseline and splitter measurements, or `null`.
+ */
+const getBundleImpactMeasurement = (
+  result: MeasurementResult | null
+): BundleImpactMeasurement | null => {
+  if (result == null) {
+    return null;
+  }
+
+  return {
+    baseline: {
+      encodedJsByteSize: sumEncodedJsBytes(result.baseline.chunks),
+      loadDurationMs: sumChunkLoadDurations(result.baseline.chunks)
+    },
+    splitter: {
+      encodedJsByteSize: sumEncodedJsBytes(result.splitter.chunks),
+      loadDurationMs: sumChunkLoadDurations(result.splitter.chunks)
+    }
+  };
 };
 
 /**
@@ -60,106 +110,105 @@ const formatBundleAriaValue = (
   )} load duration, ${comparison}`;
 };
 
-function BundleBar({
-  label,
-  value,
-  loadDuration,
-  percent,
-  tone,
-  note
-}: BundleBarProps) {
-  const width = getBundleBarWidth(value, percent);
+function BundleBar({ label, measurement, percent, tone }: BundleBarProps) {
+  const width =
+    measurement == null
+      ? 0
+      : getBundleBarWidth(measurement.encodedJsByteSize, percent);
+  const displayedValue =
+    measurement == null
+      ? '-'
+      : `${formatBytes(measurement.encodedJsByteSize)} / ${formatDuration(
+          measurement.loadDurationMs
+        )}`;
 
   return (
     <Meter.Root
-      aria-valuetext={formatBundleAriaValue(
-        label,
-        value,
-        loadDuration,
-        percent
-      )}
+      aria-hidden={measurement == null ? true : undefined}
+      aria-valuetext={
+        measurement == null
+          ? undefined
+          : formatBundleAriaValue(
+              label,
+              measurement.encodedJsByteSize,
+              measurement.loadDurationMs,
+              percent
+            )
+      }
       className={`${styles.meter} ${styles[tone]}`}
       value={width}
     >
       <Meter.Label className={styles.meterLabel}>{label}</Meter.Label>
       <Meter.Value className={styles.meterValue}>
-        {() => `${formatBytes(value)} / ${formatDuration(loadDuration)}`}
+        {() => displayedValue}
       </Meter.Value>
       <Meter.Track className={styles.meterTrack}>
-        <Meter.Indicator className={styles.meterIndicator} />
+        <Meter.Indicator
+          className={`${styles.meterIndicator} ${
+            measurement == null ? styles.meterIndicatorPlaceholder : ''
+          }`}
+        />
       </Meter.Track>
-      {note == null ? null : <div className={styles.meterNote}>{note}</div>}
     </Meter.Root>
-  );
-}
-
-function MeasuringProgress() {
-  return (
-    <Progress.Root
-      className={`${styles.progress} ${styles.running}`}
-      value={null}
-    >
-      <Progress.Label className={styles.progressLabel}>
-        Measuring without and with splitter...
-      </Progress.Label>
-      <Progress.Track className={styles.progressTrack}>
-        <Progress.Indicator className={styles.progressIndicator} />
-      </Progress.Track>
-    </Progress.Root>
   );
 }
 
 export function BundleImpact({ state }: { state: RowState }) {
   const { result } = state;
-
-  if (result == null) {
-    if (state.phase === 'measuring') {
-      return <MeasuringProgress />;
-    }
-
-    if (state.phase === 'failed') {
-      return (
-        <div className={`${styles.placeholder} ${styles.error}`}>
-          {state.error.message}
-        </div>
-      );
-    }
-
-    return (
-      <div className={styles.placeholder}>Run to compare both route loads.</div>
-    );
-  }
-
-  const splitterEncodedJsTotal = sumEncodedJsBytes(result.splitter.chunks);
-  const splitterLoadDuration = sumChunkLoadDurations(result.splitter.chunks);
-  const baselineEncodedJsTotal = sumEncodedJsBytes(result.baseline.chunks);
-  const baselineLoadDuration = sumChunkLoadDurations(result.baseline.chunks);
+  const isMeasuring = state.phase === 'measuring';
+  const measurement = getBundleImpactMeasurement(result);
   const splitterEncodedJsPercent =
-    baselineEncodedJsTotal <= 0
+    measurement == null || measurement.baseline.encodedJsByteSize <= 0
       ? null
-      : (splitterEncodedJsTotal / baselineEncodedJsTotal) * 100;
+      : (measurement.splitter.encodedJsByteSize /
+          measurement.baseline.encodedJsByteSize) *
+        100;
+  let statusMessage: string | null;
+  let statusTone: string;
+
+  if (isMeasuring) {
+    statusMessage = 'Measuring…';
+    statusTone = '';
+  } else if (state.phase === 'failed') {
+    statusMessage = state.error.message;
+    statusTone = styles.error;
+  } else if (measurement != null) {
+    statusMessage =
+      measurement.splitter.encodedJsByteSize === 0
+        ? NO_SELECTED_PAYLOAD_MESSAGE
+        : null;
+    statusTone = '';
+  } else {
+    statusMessage = 'Run to compare.';
+    statusTone = '';
+  }
 
   return (
     <div className={styles.impact}>
       <BundleBar
         label='Baseline'
-        value={baselineEncodedJsTotal}
-        loadDuration={baselineLoadDuration}
-        percent={100}
+        measurement={measurement == null ? null : measurement.baseline}
+        percent={measurement == null ? null : 100}
         tone='baseline'
       />
       <BundleBar
         label='Splitter'
-        value={splitterEncodedJsTotal}
-        loadDuration={splitterLoadDuration}
+        measurement={measurement == null ? null : measurement.splitter}
         percent={splitterEncodedJsPercent}
         tone='splitter'
-        note={
-          splitterEncodedJsTotal === 0
-            ? 'No selected JavaScript payload'
-            : undefined
-        }
       />
+      <div
+        aria-atomic='true'
+        aria-live='polite'
+        className={`${styles.status} ${statusTone}`}
+      >
+        <span aria-hidden='true' className={styles.statusReservation}>
+          {NO_SELECTED_PAYLOAD_MESSAGE}
+        </span>
+        {statusMessage == null ? null : (
+          <span className={styles.statusMessage}>{statusMessage}</span>
+        )}
+      </div>
     </div>
   );
 }

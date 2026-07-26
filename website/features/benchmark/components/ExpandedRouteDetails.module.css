@@ -112,7 +112,7 @@
   background: #e3e7e5;
 }
 
-.decodedJsSizeSummary dl div {
+.decodedJsSizeSummary dl>div {
   min-width: 0;
   padding: 9px 10px;
   background: #fbfcfc;

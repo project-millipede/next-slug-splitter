@@ -24,35 +24,61 @@
   gap: 8px;
 }
 
-.chunkRow {
+.chunk {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) repeat(4, auto);
-  align-items: center;
   gap: 10px;
   min-width: 0;
   padding-bottom: 8px;
   border-bottom: 1px solid #eef1f0;
-  font-size: 0.82rem;
 }
 
-.chunkRow:last-child {
+.chunk:last-child {
   padding-bottom: 0;
   border-bottom: 0;
 }
 
-.chunkRow code {
-  display: block;
+.resource {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.resourceLabel {
+  color: #5c6a70;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.evidence {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 1px;
+  margin: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  border: 1px solid #e3e7e5;
+  border-radius: 7px;
+  background: #e3e7e5;
 }
 
-.chunkRow span {
-  white-space: nowrap;
+.evidence div {
+  min-width: 0;
+  padding: 8px 9px;
+  background: #fbfcfc;
 }
 
-@media (max-width: 1080px) {
-  .chunkRow {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
+.evidence dt {
+  color: #5c6a70;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.evidence dd {
+  margin: 4px 0 0;
+  color: #162127;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }

@@ -52,7 +52,7 @@ const getEncodedJsTone = (deltaPercent: number | null): string => {
  */
 function LoadDurationLabel() {
   return (
-    <span className={styles.loadDurationLabel}>
+    <span className={`${styles.metricLabel} ${styles.loadDurationLabel}`}>
       Load duration
       <Popover.Root>
         <Popover.Trigger
@@ -126,9 +126,13 @@ export function DifferenceCell({
     return (
       <div className={`${styles.cell} ${styles.emptyCell}`}>
         <div className={styles.meter}>
-          <span className={styles.meterLabel}>Encoded JS</span>
-          <strong className={styles.meterValue}>-</strong>
-          <small className={styles.meterPercent}>-</small>
+          <div className={styles.metric}>
+            <span className={styles.metricLabel}>Encoded JS</span>
+            <div className={styles.metricValues}>
+              <strong className={styles.metricValue}>-</strong>
+              <small className={styles.metricPercent}>-</small>
+            </div>
+          </div>
           <div
             aria-hidden='true'
             className={`${styles.meterTrack} ${styles.meterTrackPlaceholder}`}
@@ -136,8 +140,10 @@ export function DifferenceCell({
         </div>
         <div className={`${styles.metric} ${styles.secondaryMetric}`}>
           <LoadDurationLabel />
-          <strong>-</strong>
-          <small>-</small>
+          <div className={styles.metricValues}>
+            <strong className={styles.metricValue}>-</strong>
+            <small className={styles.metricPercent}>-</small>
+          </div>
         </div>
       </div>
     );
@@ -169,21 +175,31 @@ export function DifferenceCell({
         className={styles.meter}
         value={toSavingsMeterValue(encodedJsDeltaPercent)}
       >
-        <Meter.Label className={styles.meterLabel}>Encoded JS</Meter.Label>
-        <Meter.Value className={styles.meterValue}>
-          {() => formatSignedByteDelta(result.encodedJsByteSizeDelta)}
-        </Meter.Value>
-        <small className={styles.meterPercent}>
-          {formatSignedPercentDelta(encodedJsDeltaPercent)}
-        </small>
+        <div className={styles.metric}>
+          <Meter.Label className={styles.metricLabel}>Encoded JS</Meter.Label>
+          <div className={styles.metricValues}>
+            <Meter.Value className={styles.metricValue}>
+              {() => formatSignedByteDelta(result.encodedJsByteSizeDelta)}
+            </Meter.Value>
+            <small className={styles.metricPercent}>
+              {formatSignedPercentDelta(encodedJsDeltaPercent)}
+            </small>
+          </div>
+        </div>
         <Meter.Track className={styles.meterTrack}>
           <Meter.Indicator className={styles.meterIndicator} />
         </Meter.Track>
       </Meter.Root>
       <div className={`${styles.metric} ${styles.secondaryMetric}`}>
         <LoadDurationLabel />
-        <strong>{formatSignedDurationDelta(loadDurationDelta)}</strong>
-        <small>{formatSignedPercentDelta(loadDurationDeltaPercent)}</small>
+        <div className={styles.metricValues}>
+          <strong className={styles.metricValue}>
+            {formatSignedDurationDelta(loadDurationDelta)}
+          </strong>
+          <small className={styles.metricPercent}>
+            {formatSignedPercentDelta(loadDurationDeltaPercent)}
+          </small>
+        </div>
       </div>
     </div>
   );

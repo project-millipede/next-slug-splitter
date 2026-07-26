@@ -17,44 +17,24 @@
 
 .metric,
 .meter {
-  display: grid;
-  grid-template-columns: minmax(88px, 1fr) auto;
-  align-items: baseline;
-  gap: 8px;
   width: 100%;
   min-width: 0;
   max-width: 100%;
 }
 
-.metric span {
-  overflow: hidden;
-  color: currentColor;
-  font-size: 0.68rem;
-  font-weight: 800;
-  opacity: 0.78;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
+.metric {
+  display: flex;
+  align-items: baseline;
+  column-gap: 8px;
 }
 
-.metric strong {
-  font-size: 0.94rem;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  white-space: nowrap;
+.meter {
+  display: flex;
+  flex-direction: column;
+  row-gap: 8px;
 }
 
-.metric small {
-  grid-column: 2;
-  margin-top: -2px;
-  font-size: 0.74rem;
-  font-weight: 850;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.meterLabel {
+.metricLabel {
   overflow: hidden;
   color: currentColor;
   font-size: 0.68rem;
@@ -66,7 +46,7 @@
   white-space: nowrap;
 }
 
-.meterValue {
+.metricValue {
   font-size: 0.94rem;
   line-height: 1.25rem;
   font-weight: 850;
@@ -75,18 +55,25 @@
   white-space: nowrap;
 }
 
-.meterPercent {
-  grid-column: 2;
-  margin-top: -2px;
+.metricPercent {
   font-size: 0.74rem;
   font-weight: 850;
   font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
+}
+
+.metricValues {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  row-gap: 0.375rem;
+  margin-left: auto;
 }
 
 .meterTrack {
-  grid-column: 1 / -1;
+  width: 100%;
   height: 5px;
   overflow: hidden;
   border-radius: 999px;
@@ -254,40 +241,4 @@
   border-color: #d8c9a4;
   background: #fff7df;
   color: #72520a;
-}
-
-@media (max-width: 1080px) {
-  .cell {
-    width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 36px;
-    row-gap: 0;
-    padding: 10px 12px;
-  }
-
-  .metric,
-  .meter {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .secondaryMetric {
-    padding-top: 0;
-    padding-left: 28px;
-    border-top: 0;
-    border-left: 1px solid rgba(92, 106, 112, 0.22);
-  }
-}
-
-@media (max-width: 460px) {
-  .cell {
-    grid-template-columns: 1fr;
-    gap: 7px;
-  }
-
-  .secondaryMetric {
-    padding-top: 6px;
-    padding-left: 0;
-    border-top: 1px solid rgba(92, 106, 112, 0.22);
-    border-left: 0;
-  }
 }

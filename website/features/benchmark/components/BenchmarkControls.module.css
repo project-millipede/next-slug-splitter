@@ -67,12 +67,6 @@
 
 @media (max-width: 1080px) {
   .toolbar {
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 460px) {
-  .toolbar {
     display: grid;
     grid-template-columns: 1fr 1fr;
   }

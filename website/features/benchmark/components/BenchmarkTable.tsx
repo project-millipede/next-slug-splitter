@@ -33,11 +33,11 @@ export function BenchmarkTable({
   return (
     <div className={styles.tableContainer}>
       <p className={styles.tableDescription}>
-        Compares the build-selected JavaScript payload requested by each route
-        load. Encoded JS is the transferred representation; decoded JS is its
-        size after HTTP content decoding. Load duration comes from the same
-        browser request. Shared framework, runtime, and layout chunks are
-        excluded.
+        Compares the build-selected JavaScript payload loaded by the baseline
+        and splitter versions of each route. Encoded JS is the response-body
+        size as transferred; decoded JS is its size after HTTP content decoding.
+        Load duration is measured from the same browser resource request. Shared
+        framework, runtime, and layout chunks are excluded.
       </p>
       <table className={styles.table}>
         <colgroup>
@@ -51,7 +51,7 @@ export function BenchmarkTable({
             <th>Route</th>
             <th>Encoded JS / load duration</th>
             <th>Difference</th>
-            <th>Action</th>
+            <th className={styles.actionHeaderColumn}>Action</th>
           </tr>
         </thead>
         <tbody>

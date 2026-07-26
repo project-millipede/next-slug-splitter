@@ -1,14 +1,16 @@
 .impact {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .meter {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) max-content;
   row-gap: 5px;
   column-gap: 12px;
   width: 100%;
+  min-width: 0;
   max-width: 100%;
 }
 
@@ -48,12 +50,25 @@
   transition: width 500ms;
 }
 
-.meterNote {
-  grid-column: 1 / 3;
+.meterIndicatorPlaceholder {
+  visibility: hidden;
+}
+
+.status {
+  display: grid;
   color: #66757a;
   font-size: 0.72rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.statusReservation,
+.statusMessage {
+  grid-area: 1 / 1;
+}
+
+.statusReservation {
+  visibility: hidden;
 }
 
 .baseline .meterIndicator {
@@ -64,68 +79,7 @@
   background: #208a61;
 }
 
-.placeholder,
-.progress {
-  display: grid;
-  align-content: center;
-  gap: 8px;
-  min-height: 74px;
-  color: #5c6a70;
-  font-size: 0.88rem;
-}
-
-.progress {
-  grid-template-columns: 1fr;
-  width: 100%;
-  max-width: 100%;
-}
-
-.progressLabel {
-  font-size: 0.88rem;
-  line-height: 1.25rem;
-}
-
-.running {
-  color: #135f63;
-  font-weight: 700;
-}
-
 .error {
   color: #a33b00;
   font-weight: 700;
-}
-
-.progressTrack {
-  grid-column: 1 / 2;
-  position: relative;
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #dbe8e6;
-}
-
-.progressIndicator {
-  position: absolute;
-  width: 38%;
-  height: 100%;
-  border-radius: inherit;
-  background: #135f63;
-  transition: width 500ms;
-  animation: progressPulse 1.1s ease-in-out infinite;
-}
-
-@keyframes progressPulse {
-  0% {
-    transform: translateX(-105%);
-  }
-
-  100% {
-    transform: translateX(265%);
-  }
-}
-
-@media (max-width: 1080px) {
-  .placeholder {
-    min-height: 74px;
-  }
 }

@@ -26,6 +26,7 @@ import type {
   RowState
 } from '../measurement/types';
 import { ChunkDiagnostics } from './ChunkDiagnostics';
+import { PathDisclosure } from './PathDisclosure';
 import styles from './ExpandedRouteDetails.module.css';
 
 type ExpandedRouteDetailsProps = {
@@ -39,13 +40,13 @@ type ExpandedRouteDetailsProps = {
  *
  * @param result Completed measurement result, when available.
  * @param route Public demo route being inspected.
- * @returns Baseline zone URL, or `-` before measurement.
+ * @returns Baseline zone URL, or `null` before measurement.
  */
 const getBaselineRoutePath = (
   result: MeasurementResult | null,
   route: DemoRoute
-): string =>
-  result == null ? '-' : toZoneUrl(result.baselineTarget, route.path);
+): string | null =>
+  result == null ? null : toZoneUrl(result.baselineTarget, route.path);
 
 /**
  * Resolve the rewrite-target fallback shown before or after measurement.
@@ -146,7 +147,7 @@ function RewriteTarget({ result }: { result: MeasurementResult | null }) {
     return <strong>{getRewriteTargetLabel(result)}</strong>;
   }
 
-  return <code>{generatedHandlerPath}</code>;
+  return <PathDisclosure label='Rewrite target' path={generatedHandlerPath} />;
 }
 
 function RouteDetailsGrid({
@@ -158,6 +159,9 @@ function RouteDetailsGrid({
   target: ComparisonDemoTarget;
   result: MeasurementResult | null;
 }) {
+  const splitterRoutePath = toZoneUrl(target, route.path);
+  const baselineRoutePath = getBaselineRoutePath(result, route);
+
   return (
     <div className={styles.detailsGrid}>
       <div>
@@ -165,12 +169,16 @@ function RouteDetailsGrid({
         <strong>{route.kind}</strong>
       </div>
       <div>
-        <span>With splitter</span>
-        <code>{toZoneUrl(target, route.path)}</code>
+        <span>Splitter route</span>
+        <PathDisclosure label='Splitter route' path={splitterRoutePath} />
       </div>
       <div>
-        <span>Without splitter</span>
-        <code>{getBaselineRoutePath(result, route)}</code>
+        <span>Baseline route</span>
+        {baselineRoutePath == null ? (
+          <code>-</code>
+        ) : (
+          <PathDisclosure label='Baseline route' path={baselineRoutePath} />
+        )}
       </div>
       <div>
         <span>Rewrite target</span>
