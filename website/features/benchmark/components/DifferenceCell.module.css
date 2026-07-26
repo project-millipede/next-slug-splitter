@@ -15,11 +15,15 @@
   color: #6a777c;
 }
 
-.metric {
+.metric,
+.meter {
   display: grid;
   grid-template-columns: minmax(88px, 1fr) auto;
   align-items: baseline;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .metric span {
@@ -48,15 +52,6 @@
   font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
-}
-
-.meter {
-  display: grid;
-  grid-template-columns: minmax(88px, 1fr) auto;
-  align-items: baseline;
-  gap: 8px;
-  width: 100%;
-  max-width: 100%;
 }
 
 .meterLabel {
@@ -121,6 +116,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-width: 0;
 }
 
 .loadDurationInfoTrigger {
