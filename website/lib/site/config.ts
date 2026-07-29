@@ -2,9 +2,7 @@ export const SITE_NAME = 'next-slug-splitter';
 export const SITE_TITLE = 'Catch-all routing without catch-all bundles';
 export const SITE_DESCRIPTION =
   'Build-time route splitting for broad Next.js content routes. Give catch-all pages page-specific bundle boundaries, then verify route transport in a live benchmark.';
-export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  'https://next-slug-splitter-website.vercel.app';
+export const SITE_URL = 'https://next-splitter.com';
 /**
  * Optional GA4 measurement ID used by the website deployment.
  *
