@@ -124,14 +124,24 @@
   },
   "keywords": [
     "nextjs",
-    "route-handlers",
-    "dynamic-routes",
-    "content-routing",
-    "mdx",
+    "nextjs-plugin",
+    "next-config",
+    "adapter-path",
     "rewrites",
-    "build-time",
-    "static-generation",
+    "app-router",
+    "pages-router",
+    "catch-all-routes",
+    "dynamic-routes",
+    "route-handlers",
+    "route-generation",
     "locale-routing",
-    "route-generation"
+    "route-splitting",
+    "bundle-splitting",
+    "code-splitting",
+    "bundle-optimization",
+    "tree-shaking",
+    "next/dynamic",
+    "build-time",
+    "mdx"
   ]
 }
