@@ -23,10 +23,10 @@
   "dependencies": {
     "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
     "@mdx-js/esbuild": "^3.1.1",
-    "esbuild": "^0.28.0"
+    "esbuild": "^0.28.1"
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
+    "@types/node": "^26.1.2",
     "tsup": "^8.5.0",
     "typescript": "6.0.2"
   }

@@ -20,11 +20,11 @@
     "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
     "@mdx-js/esbuild": "^3.1.1",
     "@mdx-js/mdx": "^3.1.1",
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.28.1",
     "fast-glob": "^3.3.2",
-    "file-entry-cache": "^11.1.2",
+    "file-entry-cache": "11.1.2",
     "recma-component-resolver": "^0.5.1",
-    "ts-morph": "^27.0.2",
+    "ts-morph": "^28.0.0",
     "unified": "^11.0.5"
   },
   "peerDependencies": {
@@ -32,14 +32,14 @@
     "react": "^18.2.0 || ^19.0.0"
   },
   "devDependencies": {
-    "@types/node": "^25.3.3",
+    "@types/node": "^26.1.2",
     "@types/react": "^19.2.18",
-    "memfs": "^4.57.1",
+    "memfs": "^4.67.0",
     "next": "^16.3.0",
     "react": "^19.2.8",
     "tsup": "^8.5.0",
     "typescript": "6.0.2",
-    "vitest": "4.1.1"
+    "vitest": "4.1.10"
   },
   "pnpm": {
     "overrides": {

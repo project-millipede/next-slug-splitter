@@ -21,14 +21,14 @@
     "@next-slug-splitter/benchmark-manifest-adapter": "workspace:*",
     "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
     "@mdx-js/esbuild": "^3.1.1",
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.28.1",
     "next": "^16.3.0",
     "next-slug-splitter": "file:../..",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
+    "@types/node": "^26.1.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "rimraf": "^6.1.3",
