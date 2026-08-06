@@ -16,7 +16,7 @@
   "dependencies": {
     "@next-slug-splitter/ballast-kit": "workspace:*",
     "@next-slug-splitter/benchmark-manifest-adapter": "workspace:*",
-    "next": "^16.2.0",
+    "next": "^16.3.0",
     "next-slug-splitter": "file:../..",
     "react": "0.0.0-experimental-705268dc-20260409",
     "react-dom": "0.0.0-experimental-705268dc-20260409"

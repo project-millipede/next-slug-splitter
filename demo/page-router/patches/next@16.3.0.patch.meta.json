@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-05-28T13:07:26.244Z",
+  "generatedAt": "2026-08-06T09:17:42.118Z",
   "generator": {
-    "scriptPath": "./create-next-combined-patch.sh",
+    "scriptPath": "/Users/markusgritsch/Development/Topics/Millipede/Project/OSS-Projects/contributions/next-patch-tools/create-next-combined-patch.sh",
     "behavior": "compose all requested refs into one pnpm patch"
   },
   "target": {
-    "package": "next@16.3.0-canary.31",
-    "gitHead": "95f80a5499e3bffb012c7f4fdcefd91a10d01412"
+    "package": "next@16.3.0",
+    "gitHead": "d73f5622e226358dcef8cf7a8a373333ff265ae7"
   },
   "repositories": {
     "next": "/Users/markusgritsch/Development/Topics/Millipede/Project/OSS-Projects/contributions/next.js",
@@ -18,7 +18,7 @@
     "build": "pnpm build"
   },
   "patch": {
-    "path": "/Users/markusgritsch/Development/Topics/Millipede/Project/OSS-Projects/next-slug-splitter/demo/page-router/patches/next@16.3.0-canary.31.patch",
+    "path": "/Users/markusgritsch/Development/Topics/Millipede/Project/OSS-Projects/next-slug-splitter/demo/page-router/patches/next@16.3.0.patch",
     "candidate": false
   },
   "sourcePaths": [
@@ -30,58 +30,50 @@
   "refs": [
     {
       "label": "#91760/dev",
-      "ref": "stale-dev-manifest-rewrite-fix",
-      "resolvedCommit": "937057869341bf454ed4937b912b42c5e8a97f4f",
-      "mergeBase": "546250ec9db080d785046927e6dc7a473828cd7a",
+      "ref": "stale-dev-manifest-rewrite-fix-16.3.0",
+      "resolvedCommit": "c5988bc640eff3959b42d8d716be257bdb60a4e8",
+      "mergeBase": "d73f5622e226358dcef8cf7a8a373333ff265ae7",
       "commitCount": 2,
       "appliedCommitCount": 1
     },
     {
       "label": "#93129/pages",
-      "ref": "rewrite-reconciliation-before-router",
-      "resolvedCommit": "1de2472bdebbe045946c658a4b8aba70caa34977",
-      "mergeBase": "8ddc1cdbdd89109fdfd0f1550bcdfbc7beb84889",
-      "commitCount": 3,
+      "ref": "rewrite-reconciliation-before-router-16.3.0",
+      "resolvedCommit": "0e0d1fd1425662dda25810e5b254420b54c666d7",
+      "mergeBase": "d73f5622e226358dcef8cf7a8a373333ff265ae7",
+      "commitCount": 2,
       "appliedCommitCount": 2
     }
   ],
   "commits": [
     {
       "refLabel": "#91760/dev",
-      "commit": "ab357e2359b76910b9149c96ec069f73d8029786",
-      "shortCommit": "ab357e2359",
+      "commit": "1126240ac121f1cf4933cdf758bba3f1c8921de0",
+      "shortCommit": "1126240ac1",
       "status": "applied",
       "reason": "",
       "subject": "fix: refresh stale dev page list before adopting rewritten routes"
     },
     {
       "refLabel": "#91760/dev",
-      "commit": "937057869341bf454ed4937b912b42c5e8a97f4f",
-      "shortCommit": "9370578693",
+      "commit": "c5988bc640eff3959b42d8d716be257bdb60a4e8",
+      "shortCommit": "c5988bc640",
       "status": "skipped",
       "reason": "no included source paths after filters",
       "subject": "test: add stale dev pages manifest rewrite regression"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
-      "shortCommit": "a7b978568e",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
+      "shortCommit": "1a0f6898fb",
       "status": "applied",
       "reason": "",
       "subject": "feat(next): compute Pages rewrite reconciliation before router creation"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "bf18ea3815699da8f3c8f051326d841f3ce53059",
-      "shortCommit": "bf18ea3815",
-      "status": "skipped",
-      "reason": "no included source paths after filters",
-      "subject": "test(next): cover rewrite reconciliation required not-required and unknown"
-    },
-    {
-      "refLabel": "#93129/pages",
-      "commit": "1de2472bdebbe045946c658a4b8aba70caa34977",
-      "shortCommit": "1de2472bde",
+      "commit": "0e0d1fd1425662dda25810e5b254420b54c666d7",
+      "shortCommit": "0e0d1fd142",
       "status": "applied",
       "reason": "",
       "subject": "fix(next): omit rewrite reconciliation from shared static HTML"
@@ -90,82 +82,82 @@
   "appliedSourceFiles": [
     {
       "refLabel": "#91760/dev",
-      "commit": "ab357e2359b76910b9149c96ec069f73d8029786",
+      "commit": "1126240ac121f1cf4933cdf758bba3f1c8921de0",
       "path": "packages/next/src/client/page-loader.ts"
     },
     {
       "refLabel": "#91760/dev",
-      "commit": "ab357e2359b76910b9149c96ec069f73d8029786",
+      "commit": "1126240ac121f1cf4933cdf758bba3f1c8921de0",
       "path": "packages/next/src/shared/lib/router/router.ts"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
       "path": "packages/next/errors.json"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
       "path": "packages/next/src/build/webpack/plugins/build-manifest-plugin-utils.ts"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
       "path": "packages/next/src/client/index.tsx"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
       "path": "packages/next/src/lib/load-custom-routes.ts"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
       "path": "packages/next/src/server/base-server.ts"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
       "path": "packages/next/src/server/render.tsx"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
       "path": "packages/next/src/server/request-meta.ts"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
       "path": "packages/next/src/server/route-modules/pages/pages-handler.ts"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
       "path": "packages/next/src/server/server-utils.ts"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
       "path": "packages/next/src/shared/lib/router/router.ts"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
       "path": "packages/next/src/shared/lib/router/utils/resolve-rewrites.ts"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
       "path": "packages/next/src/shared/lib/router/utils/rewrite-reconciliation.ts"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "a7b978568e15bdaf08fecda81655637aac6514c4",
+      "commit": "1a0f6898fbe1b302ae4f88a602c7e2e0e20e1721",
       "path": "packages/next/src/shared/lib/utils.ts"
     },
     {
       "refLabel": "#93129/pages",
-      "commit": "1de2472bdebbe045946c658a4b8aba70caa34977",
+      "commit": "0e0d1fd1425662dda25810e5b254420b54c666d7",
       "path": "packages/next/src/server/render.tsx"
     }
   ],

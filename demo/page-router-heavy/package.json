@@ -16,7 +16,7 @@
   "dependencies": {
     "@next-slug-splitter/ballast-kit": "workspace:*",
     "@next-slug-splitter/benchmark-manifest-adapter": "workspace:*",
-    "next": "16.3.0-canary.31",
+    "next": "16.3.0",
     "next-slug-splitter": "file:../..",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
