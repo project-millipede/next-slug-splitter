@@ -73,6 +73,59 @@ Validity for this layer comes from:
   unchanged
 - the persisted record version still matching the current schema
 
+#### `file-entry-cache` version constraint
+
+This layer is pinned to exactly `file-entry-cache@11.1.2` in
+`package.json`. Do not upgrade it without adapting the cache manager
+first, and do not widen the range back to a caret.
+
+Background. The cache manager
+(`src/next/proxy/lazy/single-route-cache-manager.ts`) relies on
+last-observed-state change detection: `writeCachedRouteCaptureRecord`
+seeds file descriptors through `getFileDescriptor` and stores the Stage
+1 record in descriptor metadata, and the next same-process read through
+`readCachedRouteCaptureRecord` must observe `changed: false` without an
+intervening `reconcile()`. Same-process write-then-read reuse is a
+deliberate part of the design — the manager is RAM-first and only
+reconciles on `flushAll`, on `close`, or through the auto-persist
+interval.
+
+What changed upstream. `file-entry-cache@11.1.5` intentionally restored
+the v8 change-detection semantics requested by ESLint in
+jaredwray/cacheable#1648 via PR jaredwray/cacheable#1649. The cache now
+keeps an `_originalMeta` snapshot per key, taken on first observation
+and refreshed only by `reconcile()`. As a result, `changed` is sticky
+within a process: a file first seen during the current process reports
+`changed: true` on every subsequent `getFileDescriptor` call until a
+reconcile updates the baseline. Verified behavior:
+
+- `11.1.2`: first call `changed: true`, second call `changed: false`
+  (comparison against live cache state)
+- `11.1.5`: first call `changed: true`, second call `changed: true`
+  (comparison against the original, unreconciled baseline)
+
+Under 11.1.5 semantics, Stage 1 records written earlier in the same
+process would never be reused; only cross-process reuse after a flush
+still works. This is covered by
+`src/__tests__/next/proxy/lazy/single-route-analysis.test.ts`, which
+fails with `source: 'fresh'` instead of `source: 'cache'` when the pin
+is lifted.
+
+Upgrade preconditions. Before moving past 11.1.2, the cache manager
+must be adapted to sticky-baseline semantics, either by:
+
+- reconciling after each write (persists per write; changes the
+  RAM-first profile and needs a performance re-evaluation), or
+- keeping an own in-memory validity baseline instead of trusting
+  `descriptor.changed` for same-process reuse
+
+Security note. `file-entry-cache@11.1.6` and `flat-cache@6.1.24`,
+published on 2026-08-04, contained a supply-chain payload and were
+subsequently unpublished by npm (jaredwray/cacheable#1692). Known-clean
+versions are `file-entry-cache@11.1.2` / `11.1.5` with
+`flat-cache@6.1.23`. Treat any future release line from that incident
+window with caution and verify provenance before adopting it.
+
 ### Parent-side lightweight bootstrap reuse
 
 The parent proxy runtime keeps lightweight bootstrap state in:
