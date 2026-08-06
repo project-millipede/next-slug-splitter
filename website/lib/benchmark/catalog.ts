@@ -116,7 +116,7 @@ type DemoRouteCase = Omit<DemoRoute, 'targetId'>;
 export const DEMO_TARGETS: ReadonlyArray<DemoTarget> = [
   {
     id: 'app-router-multi-locale',
-    label: 'App Router multi-locale',
+    label: 'App Router',
     role: 'comparison',
     zonePath: '/zones/app-router-multi-locale',
     originEnvName: 'BENCHMARK_APP_ROUTER_MULTI_LOCALE_ORIGIN',
@@ -126,7 +126,7 @@ export const DEMO_TARGETS: ReadonlyArray<DemoTarget> = [
   },
   {
     id: 'app-router-multi-locale-heavy',
-    label: 'App Router multi-locale heavy baseline',
+    label: 'App Router heavy baseline',
     role: 'baseline',
     zonePath: '/zones/app-router-multi-locale-heavy',
     originEnvName: 'BENCHMARK_APP_ROUTER_MULTI_LOCALE_HEAVY_ORIGIN',
